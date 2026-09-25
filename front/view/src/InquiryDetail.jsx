@@ -98,7 +98,7 @@ const InquiryDetail = ({
       container: { flex: 1, backgroundColor: colors.white },
       body: {
         flex: 1,
-        paddingHorizontal: width * 0.07,
+        paddingHorizontal: width * 0.04,
       },
       center: {
         flex: 1,

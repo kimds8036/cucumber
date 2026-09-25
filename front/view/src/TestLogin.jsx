@@ -205,7 +205,7 @@ const createStyles = (width, normalize) => ({
     backgroundColor: colors.white,
   },
   headerSection: {
-    paddingHorizontal: width * 0.05,
+    paddingHorizontal: width * 0.04,
     paddingTop: normalize(8),
     paddingBottom: normalize(12),
     flexDirection: 'row',
@@ -254,7 +254,7 @@ const createStyles = (width, normalize) => ({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: width * 0.05,
+    paddingHorizontal: width * 0.04,
     paddingTop: normalize(12),
     paddingBottom: normalize(8),
   },
@@ -298,7 +298,7 @@ const createStyles = (width, normalize) => ({
     alignItems: 'center',
   },
   listContent: {
-    paddingHorizontal: width * 0.05,
+    paddingHorizontal: width * 0.04,
     paddingBottom: normalize(40),
   },
   separator: {

@@ -17,7 +17,7 @@ export const createMessageStyles = (width, normalize) => {
     // 쪽지/개인우편 토글 영역 (슬라이딩 pill)
     toggleContainer: {
       flexDirection: 'row',
-      paddingHorizontal: width * 0.1,
+      paddingHorizontal: width * 0.04,
       paddingVertical: normalize(10),
       paddingTop: normalize(8),
       gap: normalize(8),

@@ -654,14 +654,7 @@ export function BoardAllContent({ navigation, posts }) {
             )
           }
           ListHeaderComponent={
-            <View
-              style={{
-                marginHorizontal: -(width * 0.04),
-                width,
-              }}
-            >
-              <TopAdBanner tipRefreshKey={tipRefreshKey} />
-            </View>
+            <TopAdBanner tipRefreshKey={tipRefreshKey} />
           }
           ListEmptyComponent={
             !loading ? (

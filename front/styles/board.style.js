@@ -21,7 +21,7 @@ export const createBoardStyles = (width, normalize) => {
     // 정렬 버튼 영역
     sortContainer: {
       flexDirection: 'row',
-      paddingHorizontal: width * 0.05,
+      paddingHorizontal: width * 0.04,
       paddingVertical: normalize(10),
       paddingTop: normalize(8),
       gap: normalize(8),
@@ -656,7 +656,7 @@ export const createDetailStyles = (width, normalize) => {
     },
     // 게시글 내용 영역
     contentSection: {
-      paddingHorizontal: width * 0.05,
+      paddingHorizontal: width * 0.04,
       paddingTop: normalize(13),
       paddingBottom: normalize(13),
     },
@@ -814,7 +814,7 @@ export const createDetailStyles = (width, normalize) => {
     },
     // 댓글 섹션 (SchoolMail.style.js smDetailComment* 와 동일 톤·간격)
     commentSection: {
-      paddingHorizontal: width * 0,
+      paddingHorizontal: width * 0.04,
       paddingVertical: normalize(10),
     },
     commentSectionTitle: {
@@ -972,7 +972,7 @@ export const createDetailStyles = (width, normalize) => {
       backgroundColor: colors.white,
       borderTopWidth: 0.5,
       borderTopColor: colors.textLight1,
-      paddingHorizontal: width * 0.03,
+      paddingHorizontal: width * 0.04,
       paddingVertical: normalize(12),
       paddingBottom: Platform.OS === 'ios' ? normalize(14) : normalize(12),
     },

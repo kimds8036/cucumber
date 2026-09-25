@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Dimensions, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import Skeleton from '../../../../components/common/Skeleton';
 import { CHAT_LIST_SPINNER_DELAY_MS } from '../constants/chatConfig';
@@ -47,7 +47,10 @@ export default function MessageList({
   onViewableItemsChanged,
 }) {
   const initialScrollIndex = Math.max(0, (data?.length ?? 1) - 1);
-  const n = typeof normalize === 'function' ? normalize : (v) => v;
+  const n =
+    typeof normalize === 'function'
+      ? normalize
+      : (size) => Math.round((Dimensions.get('window').width / 375) * size);
   const renderItem = useCallback(
     ({ item }) => {
       if (item.type === 'dateBanner')

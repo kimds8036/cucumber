@@ -232,7 +232,7 @@ const createStyles = (width, normalize) => ({
   },
   content: {
     flex: 1,
-    paddingHorizontal: width * 0.07,
+    paddingHorizontal: width * 0.04,
   },
   scrollContent: {
     paddingBottom: normalize(24),

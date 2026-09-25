@@ -1,7 +1,8 @@
-import { StyleSheet } from 'react-native';
+import { Dimensions, StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
 
-const normalize = (size) => size;
+const normalize = (size) =>
+  Math.round((Dimensions.get('window').width / 375) * size);
 const COLORS = {
   ...colors,
   inputBackground: colors.textLight1,

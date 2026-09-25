@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Dimensions, View } from 'react-native';
 import Skeleton from '../../../../components/common/Skeleton';
 import { colors } from '../../../../styles/colors';
 
@@ -8,7 +8,10 @@ import { colors } from '../../../../styles/colors';
  * 헤더·입력창은 ChatScreen에서 실제 컴포넌트가 표시됨.
  */
 export default function ChatLoadingSkeleton({ normalize }) {
-  const n = typeof normalize === 'function' ? normalize : (v) => v;
+  const n =
+    typeof normalize === 'function'
+      ? normalize
+      : (size) => Math.round((Dimensions.get('window').width / 375) * size);
   const barWidths = ['58%', '72%', '48%', '64%'];
 
   return (

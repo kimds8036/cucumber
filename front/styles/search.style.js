@@ -108,7 +108,7 @@ export const createSearchStyles = (width, normalize) => {
     searchTabsContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: width * 0.05,
+      paddingHorizontal: width * 0.04,
       paddingVertical: normalize(8),
       gap: normalize(8),
       backgroundColor: colors.white,

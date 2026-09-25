@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Dimensions, View } from 'react-native';
 import ChatInput from '../../../../components/ChatInput.jsx';
 
 export default function MessageInput({
@@ -16,7 +16,10 @@ export default function MessageInput({
   mainPlaceholder,
   chatInputStyles,
 }) {
-  const n = typeof normalize === 'function' ? normalize : (v) => v;
+  const n =
+    typeof normalize === 'function'
+      ? normalize
+      : (size) => Math.round((Dimensions.get('window').width / 375) * size);
   const paddingBottom = bottomInset > 0 ? bottomInset : n(12);
 
   return (

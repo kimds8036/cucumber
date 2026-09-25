@@ -30,7 +30,7 @@ export const createTimerStyles = (width, normalize) => {
       backgroundColor: colors.white,
     },
     scrollContent: {
-      paddingHorizontal: width * 0.05,
+      paddingHorizontal: width * 0.04,
       paddingTop: normalize(8),
       paddingBottom: normalize(24),
       gap: normalize(16),

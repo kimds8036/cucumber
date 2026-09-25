@@ -3,8 +3,11 @@ import { colors, fonts, fontSizes } from './colors';
 import { shadow } from './tokens';
 
 export const createAdStyles = (normalize, width) => {
-  const n = typeof normalize === 'function' ? normalize : (v) => v;
-  const w = typeof width === 'number' ? width : 360;
+  const w = typeof width === 'number' ? width : 375;
+  const n =
+    typeof normalize === 'function'
+      ? normalize
+      : (size) => Math.round((w / 375) * size);
   /** schoolMailbox 그리드 카드와 동일 너비 — MailboxAdPlaceholder */
   const mailboxCardWidth = (w * 0.92 - n(8)) / 2;
 

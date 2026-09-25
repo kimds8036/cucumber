@@ -128,7 +128,7 @@ export const createLoginStyles = (width, normalize) => {
       backgroundColor: colors.white,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: width * 0.08,
+      paddingHorizontal: width * 0.04,
     },
     logoContainer: {
       alignItems: 'center',

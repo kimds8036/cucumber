@@ -12,9 +12,8 @@ export const space = {
   lg: 16,
   xl: 20,
   xxl: 24,
-  /** SubHeader · SignupPrimaryFooter 가로 거터 */
-  screenGutterRatio: 0.07,
-  /** 게시판 리스트 등 */
+  /** 화면 좌우 거터. 리스트 거터와 같다 */
+  screenGutterRatio: 0.04,
   listGutterRatio: 0.04,
 };
 

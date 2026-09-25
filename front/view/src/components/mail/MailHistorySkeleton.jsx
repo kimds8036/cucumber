@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Dimensions, View } from 'react-native';
 import Skeleton from '../../../../components/common/Skeleton';
 import { colors } from '../../../../styles/colors';
 
@@ -11,7 +11,10 @@ export default function MailHistorySkeleton({
   normalize,
   rowCount = 5,
 }) {
-  const n = typeof normalize === 'function' ? normalize : (v) => v;
+  const n =
+    typeof normalize === 'function'
+      ? normalize
+      : (size) => Math.round((Dimensions.get('window').width / 375) * size);
   const r = n(12);
   const accentW = r;
 

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Image, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Image, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { api } from '../../../../utils/api';
@@ -83,7 +83,10 @@ export default function PostCard({
 }) {
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(() => Boolean(roomId));
-  const n = typeof normalize === 'function' ? normalize : (v) => v;
+  const n =
+    typeof normalize === 'function'
+      ? normalize
+      : (size) => Math.round((Dimensions.get('window').width / 375) * size);
   const readyFiredRef = useRef(false);
   const thumbLoadFiredRef = useRef(false);
   const loadingRef = useRef(loading);

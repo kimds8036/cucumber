@@ -138,7 +138,7 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
       paddingBottom: normalize(100),
     },
     smDetailLetterWrap: {
-      paddingHorizontal: width * 0.05,
+      paddingHorizontal: width * 0.04,
       paddingBottom: normalize(8),
       paddingVertical: normalize(16),
     },
@@ -236,7 +236,7 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
 
     // 댓글 영역
     smDetailCommentSection: {
-      paddingHorizontal: width * 0.06,
+      paddingHorizontal: width * 0.04,
       paddingTop: normalize(8),
       paddingBottom: normalize(10),
     },
@@ -384,7 +384,7 @@ export const createSchoolMailDetailStyles = (width, normalize) => {
       backgroundColor: colors.white,
       borderTopWidth: 1,
       borderTopColor: colors.textLight1,
-      paddingHorizontal: width * 0.03,
+      paddingHorizontal: width * 0.04,
       paddingVertical: normalize(12),
       paddingBottom: Platform.OS === 'ios' ? normalize(34) : normalize(12),
     },
