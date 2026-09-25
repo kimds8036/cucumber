@@ -42,6 +42,7 @@ import {
 } from '../../../utils/timerRuntimeStore';
 import { preloadStudyRoomAssets } from '../../../utils/preloadStudyRoomAssets';
 import { tdb } from './timerHelpers';
+import TopAdBanner from '../../../components/ads/TopAdBanner';
 import { useTimerDay } from './useTimerDay';
 import {
   LiveElapsedTicker,
@@ -370,6 +371,7 @@ export function TimerContent() {
             ))}
           </View>
         </View>
+        <TopAdBanner inset={false} />
 
         <TimerDayContentSkeleton styles={styles} normalize={normalize} />
       </ScrollView>
@@ -402,6 +404,7 @@ export function TimerContent() {
                 onFriendPress={handleFriendPress}
                 onAddFriendPress={handleOpenAddFriend}
               />
+              <TopAdBanner inset={false} />
               {showDayContentSkeleton ? (
                 <TimerDayContentSkeleton styles={styles} normalize={normalize} />
               ) : (

@@ -12,7 +12,7 @@ export const createMyPageStyles = (normalize) => {
       flex: 1,
       backgroundColor: colors.white,
     },
-    // MainHeader 본문 상단: 게시판 탭 `BoardAllContent`의 `sortContainer` paddingTop 과 동일
+    // MainHeader 본문 상단: 게시판 탭 `SortChips`의 paddingTop 과 동일
     scrollView: {
       flex: 1,
       paddingTop: normalize(8),

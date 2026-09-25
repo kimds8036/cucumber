@@ -77,7 +77,7 @@ function mapMailForCard(raw, mailboxSchoolId) {
   };
 }
 
-const SchoolMailboxScreen = ({ navigation, route }) => {
+const SchoolMailboxScreen = ({ navigation, route, embedded = false }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(
@@ -318,12 +318,8 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
       </View>
     ) : null;
 
-  return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <SubHeader title="학교 우편함" onBack={() => navigation?.goBack()} />
-      <TopAdBanner />
-
-      <View style={styles.container}>
+  const list = (
+      <View style={[styles.container, embedded && { flex: 1 }]}>
         <FlatList
           style={styles.list}
           contentContainerStyle={[
@@ -382,6 +378,15 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
           />
         </TouchableOpacity>
       </View>
+  );
+
+  if (embedded) return list;
+
+  return (
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <SubHeader title="학교 우편함" onBack={() => navigation?.goBack()} />
+      <TopAdBanner />
+      {list}
     </SafeAreaView>
   );
 };

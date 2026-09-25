@@ -31,6 +31,7 @@ import { equippedBadgeFromApiRow } from '../../constants/badges';
 import BoardPostCard from '../../components/Boardpostcard';
 import AdPlaceholder from '../../src/screens/ad/AdPlaceholder';
 import TopAdBanner from '../../components/ads/TopAdBanner';
+import SortChips from '../../components/common/SortChips';
 import Skeleton from '../../components/common/Skeleton';
 import { useLocationContext } from '../../context/LocationContext';
 import { useGuidePreview } from '../../context/GuidePreviewContext';
@@ -90,6 +91,7 @@ export function BoardAllContent({ navigation, posts }) {
   const distanceStale = permissionGranted && !coords;
 
   const [sortType, setSortType] = useState('latest'); // latest, popular, nearby
+  const [boardScope, setBoardScope] = useState('national'); // national | school
   const [serverPosts, setServerPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -284,12 +286,27 @@ export function BoardAllContent({ navigation, posts }) {
             : sortType === 'nearby'
               ? 'nearby'
               : 'latest';
+        let schoolId;
+        if (boardScope === 'school') {
+          const schoolRes = await api.get('/api/schools/me');
+          schoolId = schoolRes.data?.data?.id;
+          if (!schoolId) {
+            setServerPosts([]);
+            setHasMore(false);
+            setPage(1);
+            setLoading(false);
+            setLoadingMore(false);
+            setRefreshing(false);
+            return;
+          }
+        }
         const params = {
-          boardType: 'national',
+          boardType: boardScope === 'school' ? 'school' : 'national',
           sort: sortParam,
           page: nextPage,
           limit: 20,
         };
+        if (schoolId) params.schoolId = schoolId;
         if (coords) {
           params.viewerLat = coords.latitude;
           params.viewerLng = coords.longitude;
@@ -371,7 +388,7 @@ export function BoardAllContent({ navigation, posts }) {
         setRefreshing(false);
       }
     },
-    [sortType, coords, posts, isGuidePreview],
+    [sortType, boardScope, coords, posts, isGuidePreview],
   );
 
   useEffect(() => {
@@ -416,7 +433,7 @@ export function BoardAllContent({ navigation, posts }) {
       return;
     }
     fetchPosts(1, false);
-  }, [sortType, isGuidePreview]);
+  }, [sortType, boardScope, isGuidePreview]);
 
   const handlePullToRefresh = useCallback(() => {
     if (isGuidePreview) return;
@@ -577,57 +594,16 @@ export function BoardAllContent({ navigation, posts }) {
   return (
     <>
       <TopAdBanner />
-      {/* 정렬 버튼 영역 */}
-      <View style={styles.sortContainer}>
-        <TouchableOpacity
-          style={[
-            styles.sortButton,
-            sortType === 'latest' && styles.sortButtonActive,
-          ]}
-          onPress={() => setSortType('latest')}
-        >
-          <Text
-            style={[
-              styles.sortButtonText,
-              sortType === 'latest' && styles.sortButtonTextActive,
-            ]}
-          >
-            최신
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.sortButton,
-            sortType === 'popular' && styles.sortButtonActive,
-          ]}
-          onPress={() => setSortType('popular')}
-        >
-          <Text
-            style={[
-              styles.sortButtonText,
-              sortType === 'popular' && styles.sortButtonTextActive,
-            ]}
-          >
-            인기
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.sortButton,
-            sortType === 'nearby' && styles.sortButtonActive,
-          ]}
-          onPress={() => setSortType('nearby')}
-        >
-          <Text
-            style={[
-              styles.sortButtonText,
-              sortType === 'nearby' && styles.sortButtonTextActive,
-            ]}
-          >
-            근처
-          </Text>
-        </TouchableOpacity>
-      </View>
+      <SortChips
+        value={boardScope}
+        onChange={setBoardScope}
+        options={[
+          { value: 'national', label: '전체' },
+          { value: 'school', label: '학생' },
+        ]}
+        sortValue={sortType}
+        onSortChange={setSortType}
+      />
 
       {/* 게시글 목록 — 초기 로딩 시 스켈레톤 행을 리스트 데이터로 렌더(측정 방해 방지) */}
       <View style={{ flex: 1 }}>

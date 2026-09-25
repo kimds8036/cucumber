@@ -22,8 +22,8 @@ import {
   buildRollingMealSlots,
   getKstYmd,
 } from '../../utils/mealRollingSlots';
-import StudyGrassMap from '../../components/studygrassmap';
 import Skeleton from '../../components/common/Skeleton';
+import TopAdBanner from '../../components/ads/TopAdBanner';
 const OtherSchoolScreen = ({ route, navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
@@ -51,37 +51,6 @@ const OtherSchoolScreen = ({ route, navigation }) => {
   const [mealsByDate, setMealsByDate] = useState({});
   const [error, setError] = useState(null);
   const [selectedMealSlot, setSelectedMealSlot] = useState(null);
-  const [grassDays, setGrassDays] = useState([]);
-  const [grassTipVisible, setGrassTipVisible] = useState(false);
-  const GRASS_TIP_MS = 3000;
-  const GRASS_TIP_TEXT =
-    '같은 학교에 가입한 학생들의 공부량을 학년 구분 없이 모아 보여 주는 잔디예요.';
-
-  useEffect(() => {
-    if (!grassTipVisible) return undefined;
-    const timer = setTimeout(() => setGrassTipVisible(false), GRASS_TIP_MS);
-    return () => clearTimeout(timer);
-  }, [grassTipVisible]);
-  const getCurrentSemesterDays = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1;
-    let start;
-    let end;
-    if (month >= 3 && month <= 8) {
-      start = new Date(year, 2, 1);
-      end = new Date(year, 7, 31);
-    } else if (month >= 9) {
-      start = new Date(year, 8, 1);
-      end = new Date(year + 1, 2, 0);
-    } else {
-      start = new Date(year - 1, 8, 1);
-      end = new Date(year, 2, 0);
-    }
-    const diffDays =
-      Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
-    return diffDays;
-  };
 
   useEffect(() => {
     const fetchSchool = async () => {
@@ -150,36 +119,6 @@ const OtherSchoolScreen = ({ route, navigation }) => {
     };
   }, [routeSchoolId]);
 
-  useEffect(() => {
-    let mounted = true;
-    const fetchStudyGrass = async () => {
-      if (!routeSchoolId) {
-        setGrassDays([]);
-        return;
-      }
-      try {
-        const res = await api.get(`/api/schools/${routeSchoolId}/study-grass`, {
-          params: { days: getCurrentSemesterDays() },
-        });
-        if (!mounted) return;
-        const series = res.data?.data?.series || [];
-        const mapped = Array.isArray(series)
-          ? series.map((row) => ({
-              dayKey: row?.dayKey,
-              totalElapsedMs: row?.totalElapsedMs,
-            }))
-          : [];
-        setGrassDays(mapped);
-      } catch (e) {
-        if (mounted) setGrassDays([]);
-      }
-    };
-    fetchStudyGrass();
-    return () => {
-      mounted = false;
-    };
-  }, [routeSchoolId]);
-
   const mealSlotsResult = useMemo(
     () => buildRollingMealSlots(mealsByDate),
     [mealsByDate],
@@ -193,12 +132,10 @@ const OtherSchoolScreen = ({ route, navigation }) => {
     return slot.mealType || '급식';
   };
 
-  const grassTitle = `${schoolInfo.name || routeName || '학교'} 공부 잔디밭`;
   const showInitialSkeleton =
     loading &&
     !schoolInfo.location &&
-    Object.keys(mealsByDate).length === 0 &&
-    grassDays.length === 0;
+    Object.keys(mealsByDate).length === 0;
 
   if (showInitialSkeleton) {
     return (
@@ -530,31 +467,7 @@ const OtherSchoolScreen = ({ route, navigation }) => {
           </View>
         </View>
 
-        {/* 공부 잔디 카드 — 우리 학교 화면과 동일 */}
-        <View style={styles.grassCard}>
-          <View style={styles.grassCardTitleRow}>
-            <Text style={styles.grassCardTitle}>{grassTitle}</Text>
-            <TouchableOpacity
-              onPress={() => setGrassTipVisible(true)}
-              hitSlop={8}
-              style={styles.grassCardInfoBtn}
-              accessibilityRole="button"
-              accessibilityLabel="공부 잔디밭 안내"
-            >
-              <Ionicons
-                name="information-circle-outline"
-                size={normalize(16)}
-                color={colors.textLight3}
-              />
-            </TouchableOpacity>
-            {grassTipVisible ? (
-              <View style={styles.grassCardTooltip}>
-                <Text style={styles.grassCardTooltipText}>{GRASS_TIP_TEXT}</Text>
-              </View>
-            ) : null}
-          </View>
-          <StudyGrassMap days={grassDays} />
-        </View>
+        <TopAdBanner inset={false} />
 
         {/* 학교 우편함 — 이전 가로형 카드 디자인 */}
         <View style={otherSchoolStyles.mailboxWideBlock}>

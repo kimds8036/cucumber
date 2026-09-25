@@ -28,6 +28,8 @@ import { equippedBadgeFromApiRow } from '../../constants/badges';
 import BoardPostCard from '../../components/Boardpostcard';
 import AdPlaceholder from '../../src/screens/ad/AdPlaceholder';
 import TopAdBanner from '../../components/ads/TopAdBanner';
+import SortChips from '../../components/common/SortChips';
+import SchoolMailboxScreen from './schoolMailbox';
 import { useLocationContext } from '../../context/LocationContext';
 import Skeleton from '../../components/common/Skeleton';
 import { injectAdSlots } from '../../hooks/useAdSlots';
@@ -62,7 +64,7 @@ function formatTimeAgo(createdAt) {
   return date.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
 }
 
-const SchoolBoardAll = ({ navigation }) => {
+const SchoolBoardAll = ({ navigation, route }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(
@@ -73,6 +75,13 @@ const SchoolBoardAll = ({ navigation }) => {
   // TODO: /api/ads 연동 후 useAdSlots(AD_PLACEMENTS.FEED_BOARD)
   const adSlots = [];
 
+  const [section, setSection] = useState(
+    route?.params?.section === 'mail' ? 'mail' : 'board',
+  );
+  const [schoolMeta, setSchoolMeta] = useState({
+    id: route?.params?.schoolId ?? null,
+    name: route?.params?.schoolName ?? '',
+  });
   const [schoolPosts, setSchoolPosts] = useState([]);
   const [sortType] = useState('latest');
   const [loading, setLoading] = useState(false);
@@ -113,6 +122,10 @@ const SchoolBoardAll = ({ navigation }) => {
         }
         const schoolRes = await api.get('/api/schools/me');
         const schoolId = schoolRes.data?.data?.id;
+        const schoolName = schoolRes.data?.data?.name;
+        if (schoolId) {
+          setSchoolMeta({ id: schoolId, name: schoolName || '' });
+        }
         if (!schoolId) {
           setSchoolPosts([]);
           setLoading(false);
@@ -277,8 +290,30 @@ const SchoolBoardAll = ({ navigation }) => {
         }
       />
       <TopAdBanner />
+      <SortChips
+        value={section}
+        onChange={setSection}
+        options={[
+          { value: 'board', label: '게시판' },
+          { value: 'mail', label: '우편함' },
+        ]}
+      />
+
+      {section === 'mail' ? (
+        <SchoolMailboxScreen
+          embedded
+          navigation={navigation}
+          route={{
+            params: {
+              schoolId: schoolMeta.id,
+              schoolName: schoolMeta.name,
+            },
+          }}
+        />
+      ) : null}
 
       {/* 게시글 목록 — 로딩 중에는 목록을 그리되 가려 두고, 게이트 종료 후 한 번에 표시 */}
+      {section === 'board' ? (
       <View style={{ flex: 1 }}>
         <FlatList
           style={[styles.postList, hideListBehindLoader && { opacity: 0 }]}
@@ -387,8 +422,9 @@ const SchoolBoardAll = ({ navigation }) => {
           </View>
         ) : null}
       </View>
+      ) : null}
 
-      {/* 글쓰기 플로팅 버튼 */}
+      {section === 'board' ? (
       <TouchableOpacity
         style={styles.floatingButton}
         activeOpacity={0.8}
@@ -402,6 +438,7 @@ const SchoolBoardAll = ({ navigation }) => {
           color={colors.white}
         />
       </TouchableOpacity>
+      ) : null}
     </SafeAreaView>
   );
 };

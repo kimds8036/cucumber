@@ -43,6 +43,8 @@ import {
 } from '../../src/screens/UserGuide/guidePreviewData';
 import { getProfileInnerColor } from '../../utils/profileIconColor';
 import ChatAdPlaceholder from '../../src/screens/ad/ChatAdPlaceholder';
+import TopAdBanner from '../../components/ads/TopAdBanner';
+import SortChips from '../../components/common/SortChips';
 import { injectAdSlots } from '../../hooks/useAdSlots';
 import { AD_PLACEMENTS } from '../../constants/adPlacements';
 import {
@@ -365,7 +367,6 @@ export function MessageContent({ navigation }) {
   );
 
   const [messageType, setMessageType] = useState('note'); // 'note' | 'mail' (쪽지 탭에 익명+DM 혼합)
-  const slideAnim = useRef(new Animated.Value(0)).current; // 0=쪽지, 1=개인우편
   const [noteRooms, setNoteRooms] = useState([]);
   const [mails, setMails] = useState([]);
   const [loadingNote, setLoadingNote] = useState(false);
@@ -559,16 +560,6 @@ export function MessageContent({ navigation }) {
     );
   }, []);
 
-  const handleMessageTypeChange = (type) => {
-    setMessageType(type);
-    const toValue = type === 'note' ? 0 : 1;
-    Animated.spring(slideAnim, {
-      toValue,
-      useNativeDriver: false,
-      tension: 60,
-      friction: 10,
-    }).start();
-  };
 
   const fetchRooms = useCallback(async () => {
     if (isGuidePreview) {
@@ -804,12 +795,10 @@ export function MessageContent({ navigation }) {
     if (!isGuidePreview) return;
     if (guideMessageTab === 'mail') {
       setMessageType('mail');
-      slideAnim.setValue(1);
       return;
     }
     setMessageType('note');
-    slideAnim.setValue(0);
-  }, [isGuidePreview, guideMessageTab, slideAnim]);
+  }, [isGuidePreview, guideMessageTab]);
 
   // 쪽지 탭: 익명 채팅방 + DM 방 동시 조회 후 최신순 병합
   useEffect(() => {
@@ -916,50 +905,15 @@ export function MessageContent({ navigation }) {
 
   return (
     <>
-      {/* 쪽지/개인우편 토글 — 슬라이딩 pill */}
-      <View style={styles.toggleContainer}>
-        <View style={styles.toggleTrack}>
-          <Animated.View
-            style={[
-              styles.togglePill,
-              {
-                left: slideAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['0%', '50%'],
-                }),
-              },
-            ]}
-          />
-          <TouchableOpacity
-            style={styles.toggleOption}
-            onPress={() => handleMessageTypeChange('note')}
-            activeOpacity={1}
-          >
-            <Text
-              style={[
-                styles.toggleOptionText,
-                messageType === 'note' && styles.toggleOptionTextActive,
-              ]}
-            >
-              쪽지
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.toggleOption}
-            onPress={() => handleMessageTypeChange('mail')}
-            activeOpacity={1}
-          >
-            <Text
-              style={[
-                styles.toggleOptionText,
-                messageType === 'mail' && styles.toggleOptionTextActive,
-              ]}
-            >
-              개인 우편
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <TopAdBanner />
+      <SortChips
+        value={messageType}
+        onChange={setMessageType}
+        options={[
+          { value: 'note', label: '쪽지' },
+          { value: 'mail', label: '우편' },
+        ]}
+      />
 
       {/* 메인 내용 영역 */}
       <View style={styles.contentArea}>

@@ -19,15 +19,14 @@ import { formatStudentCount } from '../../utils/formatStudentCount';
 import { colors, fontSizes } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { createOurSchoolStyles } from '../../styles/school.style';
-import StudyGrassMap from '../../components/studygrassmap';
 import Skeleton from '../../components/common/Skeleton';
+import TopAdBanner from '../../components/ads/TopAdBanner';
 import { useGuidePreview } from '../../context/GuidePreviewContext';
 import { GuideFocusTarget } from '../../components/guide/GuideFocusTarget';
 import { GUIDE_FOCUS_TARGETS as T } from '../../src/screens/UserGuide/guideFocusTargets';
 import {
   getGuideSchoolInfo,
   getGuideSchoolMeals,
-  getGuideStudyGrassDays,
 } from '../../src/screens/UserGuide/guidePreviewData';
 import { syncMealWidgetFromNext, writeSchoolId } from '../../utils/widget';
 import {
@@ -64,37 +63,6 @@ const OurSchoolScreen = ({ navigation }) => {
   /** 끼니 마감(10/14/20) 경과 시 롤링 슬롯 재계산용 */
   const [mealClockMs, setMealClockMs] = useState(() => Date.now());
   const [selectedMealSlot, setSelectedMealSlot] = useState(null);
-  const [grassDays, setGrassDays] = useState([]);
-  const [grassTipVisible, setGrassTipVisible] = useState(false);
-  const GRASS_TIP_MS = 3000;
-  const GRASS_TIP_TEXT =
-    '같은 학교에 가입한 학생들의 공부량을 학년 구분 없이 모아 보여 주는 잔디예요.';
-
-  useEffect(() => {
-    if (!grassTipVisible) return undefined;
-    const timer = setTimeout(() => setGrassTipVisible(false), GRASS_TIP_MS);
-    return () => clearTimeout(timer);
-  }, [grassTipVisible]);
-  const getCurrentSemesterDays = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1;
-    let start;
-    let end;
-    if (month >= 3 && month <= 8) {
-      start = new Date(year, 2, 1);
-      end = new Date(year, 7, 31);
-    } else if (month >= 9) {
-      start = new Date(year, 8, 1);
-      end = new Date(year + 1, 2, 0);
-    } else {
-      start = new Date(year - 1, 8, 1);
-      end = new Date(year, 2, 0);
-    }
-    const diffDays =
-      Math.floor((end.getTime() - start.getTime()) / 86400000) + 1;
-    return diffDays;
-  };
 
   const isFreshCache = (ts) => {
     if (!ts) return false;
@@ -110,7 +78,7 @@ const OurSchoolScreen = ({ navigation }) => {
 
   useEffect(() => {
     applyGuideScroll();
-  }, [applyGuideScroll, schoolInfo.name, grassDays.length, mealsByDate]);
+  }, [applyGuideScroll, schoolInfo.name, mealsByDate]);
 
   // 마감 시각·자정이 지나도 화면에 머무르면 롤링 3칸이 갱신되도록 시계를 돌린다.
   useEffect(() => {
@@ -293,36 +261,6 @@ const OurSchoolScreen = ({ navigation }) => {
     };
   }, [schoolInfo.id, isGuidePreview]);
 
-  useEffect(() => {
-    let mounted = true;
-    const fetchStudyGrass = async () => {
-      if (isGuidePreview) {
-        setGrassDays(getGuideStudyGrassDays());
-        return;
-      }
-      try {
-        const res = await api.get('/api/schools/me/study-grass', {
-          params: { days: getCurrentSemesterDays() },
-        });
-        if (!mounted) return;
-        const series = res.data?.data?.series || [];
-        const mapped = Array.isArray(series)
-          ? series.map((row) => ({
-              dayKey: row?.dayKey,
-              totalElapsedMs: row?.totalElapsedMs,
-            }))
-          : [];
-        setGrassDays(mapped);
-      } catch (error) {
-        if (mounted) setGrassDays([]);
-      }
-    };
-    fetchStudyGrass();
-    return () => {
-      mounted = false;
-    };
-  }, [isGuidePreview]);
-
   const mealSlotsResult = useMemo(
     () => buildRollingMealSlots(mealsByDate, { now: new Date(mealClockMs) }),
     [mealsByDate, mealClockMs],
@@ -360,8 +298,7 @@ const OurSchoolScreen = ({ navigation }) => {
     loading &&
     !schoolInfo.name &&
     popularPosts.length === 0 &&
-    Object.keys(mealsByDate).length === 0 &&
-    grassDays.length === 0;
+    Object.keys(mealsByDate).length === 0;
 
   if (showInitialSkeleton) {
     return (
@@ -674,30 +611,8 @@ const OurSchoolScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* 공부 잔디 카드 */}
-        <GuideFocusTarget name={T.SCHOOL_GRASS_CARD} style={styles.grassCard}>
-          <View style={styles.grassCardTitleRow}>
-            <Text style={styles.grassCardTitle}>우리 학교 공부 잔디밭</Text>
-            <TouchableOpacity
-              onPress={() => setGrassTipVisible(true)}
-              hitSlop={8}
-              style={styles.grassCardInfoBtn}
-              accessibilityRole="button"
-              accessibilityLabel="공부 잔디밭 안내"
-            >
-              <Ionicons
-                name="information-circle-outline"
-                size={normalize(16)}
-                color={colors.textLight3}
-              />
-            </TouchableOpacity>
-            {grassTipVisible ? (
-              <View style={styles.grassCardTooltip}>
-                <Text style={styles.grassCardTooltipText}>{GRASS_TIP_TEXT}</Text>
-              </View>
-            ) : null}
-          </View>
-          <StudyGrassMap days={grassDays} />
+        <GuideFocusTarget name={T.SCHOOL_GRASS_CARD}>
+          <TopAdBanner inset={false} />
         </GuideFocusTarget>
 
         {/* 게시판 / 우편함 바로가기 */}
@@ -731,7 +646,8 @@ const OurSchoolScreen = ({ navigation }) => {
               style={{ flex: 1 }}
               activeOpacity={0.7}
               onPress={() =>
-                navigation?.navigate('SchoolMailbox', {
+                navigation?.navigate('SchoolBoardAll', {
+                  section: 'mail',
                   schoolId: schoolInfo.id,
                   schoolName: schoolInfo.name,
                 })

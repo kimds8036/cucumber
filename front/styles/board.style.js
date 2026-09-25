@@ -18,38 +18,6 @@ export const createBoardStyles = (width, normalize) => {
       backgroundColor: colors.white,
     },
 
-    // 정렬 버튼 영역
-    sortContainer: {
-      flexDirection: 'row',
-      paddingHorizontal: width * 0.04,
-      paddingVertical: normalize(10),
-      paddingTop: normalize(8),
-      gap: normalize(8),
-      borderBottomWidth: 1,
-      borderBottomColor: colors.textLight1,
-    },
-    sortButton: {
-      paddingHorizontal: normalize(16),
-      paddingVertical: normalize(8),
-      borderRadius: normalize(20),
-      backgroundColor: colors.white,
-      borderWidth: 1,
-      borderColor: colors.textLight1,
-    },
-    sortButtonActive: {
-      backgroundColor: colors.primary,
-      borderColor: colors.primary,
-    },
-    sortButtonText: {
-      fontSize: normalize(fontSizes.xl),
-      fontFamily: fonts.bold,
-      color: colors.textLight4,
-    },
-    sortButtonTextActive: {
-      color: colors.white,
-      fontFamily: fonts.bold,
-    },
-
     // 게시글 목록
     postList: {
       flex: 1,
