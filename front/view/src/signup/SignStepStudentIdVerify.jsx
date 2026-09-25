@@ -392,7 +392,7 @@ const SignStepStudentIdVerify = ({
               activeOpacity={0.85}
             >
               {busy ? (
-                <ActivityIndicator color={colors.textWhite} />
+                <ActivityIndicator color={colors.white} />
               ) : (
                 <Text style={localStyles.submitBtnText}>제출하기</Text>
               )}
@@ -464,14 +464,14 @@ function createLocalStyles(normalize, width) {
     instructionText: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.lg+1),
-      color: colors.textWhite,
+      color: colors.white,
       textAlign: 'center',
       lineHeight: normalize(Math.round(fontSizes.xl * 1.5)),
     },
     statusText: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.lg),
-      color: colors.textWhite,
+      color: colors.white,
       textAlign: 'center',
     },
     bottomBlock: {
@@ -492,9 +492,9 @@ function createLocalStyles(normalize, width) {
       justifyContent: 'center',
     },
     retakeBtn: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderWidth: StyleSheet.hairlineWidth * 2,
-      borderColor: colors.border || colors.textLight20,
+      borderColor: colors.textLight1 || colors.textLight2,
     },
     submitBtn: {
       backgroundColor: colors.primary,
@@ -505,12 +505,12 @@ function createLocalStyles(normalize, width) {
     retakeBtnText: {
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.xxl),
-      color: colors.textPrimary,
+      color: colors.text,
     },
     submitBtnText: {
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.xxl),
-      color: colors.textWhite,
+      color: colors.white,
     },
     altAuthRow: {
       flexDirection: 'row',
@@ -523,12 +523,12 @@ function createLocalStyles(normalize, width) {
     altAuthPrefix: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.lg),
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     altAuthAction: {
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.lg),
-      color: colors.textPrimary,
+      color: colors.text,
     },
     disabledLink: {
       opacity: 0.5,
@@ -546,14 +546,14 @@ function createLocalStyles(normalize, width) {
     completeTitle: {
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.heading),
-      color: colors.textPrimary,
+      color: colors.text,
       textAlign: 'center',
       marginBottom: normalize(16),
     },
     completeSubtitle: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.xl),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textAlign: 'center',
       lineHeight: normalize(Math.round(fontSizes.xl * 1.5)),
       marginBottom: normalize(4),

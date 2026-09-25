@@ -10,7 +10,7 @@ export const createMyPageStyles = (normalize) => {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     // MainHeader 본문 상단: 게시판 탭 `BoardAllContent`의 `sortContainer` paddingTop 과 동일
     scrollView: {
@@ -28,7 +28,7 @@ export const createMyPageStyles = (normalize) => {
       alignItems: 'center',
       paddingVertical: normalize(14),
       paddingHorizontal: normalize(18),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(999),
       marginBottom: normalize(10),
       ...shadow.md,
@@ -44,42 +44,42 @@ export const createMyPageStyles = (normalize) => {
     menuTitle: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       fontWeight: '500',
     },
     menuSubtitle: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginTop: normalize(2),
     },
     modalOverlay: {
       flex: 1,
-      backgroundColor: colors.overlay,
+      backgroundColor: colors.textLight4,
       justifyContent: 'center',
       alignItems: 'center',
     },
     modalContent: {
       width: '80%',
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(12),
       padding: normalize(20),
     },
     modalTitle: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: normalize(16),
       textAlign: 'center',
     },
     input: {
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: colors.textLight1,
       borderRadius: normalize(8),
       padding: normalize(12),
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: normalize(16),
     },
     modalButtons: {
@@ -94,7 +94,7 @@ export const createMyPageStyles = (normalize) => {
       marginHorizontal: normalize(4),
     },
     cancelButton: {
-      backgroundColor: colors.textLight5,
+      backgroundColor: colors.textLight1,
     },
     deleteButton: {
       backgroundColor: colors.alert,
@@ -105,25 +105,25 @@ export const createMyPageStyles = (normalize) => {
     cancelButtonText: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       fontWeight: '600',
     },
     deleteButtonText: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textWhite,
+      color: colors.white,
       fontWeight: '600',
     },
     confirmButtonText: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textWhite,
+      color: colors.white,
       fontWeight: '600',
     },
     ttSkeletonCard: {
       marginHorizontal: normalize(16),
       marginBottom: normalize(8),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(12),
       padding: normalize(16),
       minHeight: normalize(260),
@@ -133,7 +133,7 @@ export const createMyPageStyles = (normalize) => {
       width: normalize(100),
       height: normalize(14),
       borderRadius: normalize(8),
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
       marginBottom: normalize(12),
     },
     ttSkeletonRow: {
@@ -145,22 +145,22 @@ export const createMyPageStyles = (normalize) => {
       width: normalize(22),
       height: normalize(24),
       borderRadius: normalize(4),
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
     },
     ttSkeletonCell: {
       flex: 1,
       height: normalize(24),
       borderRadius: normalize(4),
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
     },
     ttSkeletonText: {
       marginTop: normalize(8),
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     profileSkeletonCard: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       marginHorizontal: normalize(16),
       marginTop: 0,
       marginBottom: normalize(8),
@@ -187,19 +187,19 @@ export const createMyPageStyles = (normalize) => {
       width: normalize(120),
       height: normalize(14),
       borderRadius: normalize(6),
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
     },
     profileSkeletonUsername: {
       width: normalize(90),
       height: normalize(10),
       borderRadius: normalize(6),
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
     },
     profileSkeletonSchool: {
       width: normalize(150),
       height: normalize(10),
       borderRadius: normalize(6),
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
     },
     profileSkeletonQuickRow: {
       flexDirection: 'row',
@@ -210,12 +210,12 @@ export const createMyPageStyles = (normalize) => {
       flex: 1,
       height: normalize(76),
       borderRadius: normalize(12),
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
     },
     menuSkeletonItem: {
       height: normalize(52),
       borderRadius: normalize(999),
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
       marginBottom: normalize(10),
     },
   });
@@ -225,7 +225,7 @@ export const createMyPageStyles = (normalize) => {
 export const createProfileCardStyles = (normalize) =>
   StyleSheet.create({
     profileCard: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       marginHorizontal: normalize(16),
       marginTop: 0,
       marginBottom: normalize(8),
@@ -260,14 +260,14 @@ export const createProfileCardStyles = (normalize) =>
     profileName: {
       fontSize: normalize(fontSizes.title),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       flexShrink: 0,
       maxWidth: '42%',
     },
     profileUsername: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       flex: 1,
       minWidth: 0,
       flexShrink: 1,
@@ -275,14 +275,14 @@ export const createProfileCardStyles = (normalize) =>
     profileSchool: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: normalize(20),
       marginTop: normalize(4),
     },
     profileSchoolLine: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: normalize(20),
     },
     profileEnrollmentBlock: {
@@ -301,7 +301,7 @@ export const createProfileCardStyles = (normalize) =>
       flexShrink: 1,
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.medium,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: normalize(20),
     },
     profileEnrollmentInfoBtn: {
@@ -316,7 +316,7 @@ export const createProfileCardStyles = (normalize) =>
       paddingHorizontal: normalize(12),
       paddingVertical: normalize(10),
       borderRadius: normalize(10),
-      backgroundColor: colors.surface,
+      backgroundColor: colors.textLight1,
       shadowColor: '#272A26',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.06,
@@ -326,12 +326,12 @@ export const createProfileCardStyles = (normalize) =>
     profileInfoTooltipText: {
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: normalize(18),
     },
     profileDivider: {
       height: 1,
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
       alignSelf: 'flex-start',
       width: '95%',
       marginVertical: normalize(4),
@@ -351,14 +351,14 @@ export const createProfileCardStyles = (normalize) =>
       alignSelf: 'stretch',
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textAlign: 'center',
     },
     quickLinkMeta: {
       alignSelf: 'stretch',
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       textAlign: 'center',
     },
     quickLinkInlineRow: {
@@ -370,14 +370,14 @@ export const createProfileCardStyles = (normalize) =>
       fontSize: normalize(fontSizes.lg),
       lineHeight: normalize(fontSizes.xl + 2),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       includeFontPadding: false,
     },
     quickLinkMetaInline: {
       fontSize: normalize(fontSizes.xl),
       lineHeight: normalize(fontSizes.xl + 2),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       includeFontPadding: false,
     },
     quickLinkDot: {
@@ -395,14 +395,14 @@ export const createProfileCardStyles = (normalize) =>
       width: '48%',
       height: normalize(24),
       borderRadius: normalize(6),
-      backgroundColor: colors.primaryLight30,
+      backgroundColor: colors.primaryLight4,
     },
     quickLinkSkeletonLabel: {
       alignSelf: 'center',
       width: '64%',
       height: normalize(15),
       borderRadius: normalize(4),
-      backgroundColor: colors.primaryLight30,
+      backgroundColor: colors.primaryLight4,
     },
     timetableActionRow: {
       flexDirection: 'row',
@@ -424,14 +424,14 @@ export const createProfileCardStyles = (normalize) =>
       alignSelf: 'stretch',
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.background,
+      color: colors.white,
       textAlign: 'center',
     },
     timetableActionLabel: {
       alignSelf: 'stretch',
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textAlign: 'center',
     },
   });
@@ -441,7 +441,7 @@ export const createNotificationSettingsStyles = (normalize) => {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     scroll: {
       flex: 1,
@@ -469,7 +469,7 @@ export const createNotificationSettingsStyles = (normalize) => {
     sectionHeaderDescription: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textLight40,
+      color: colors.textLight3,
       marginTop: normalize(3),
       marginLeft: normalize(3),
       lineHeight: normalize(fontSizes.lg + 5),
@@ -477,7 +477,7 @@ export const createNotificationSettingsStyles = (normalize) => {
 
     card: {
       marginHorizontal: normalize(16),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(16),
       paddingHorizontal: normalize(18),
       ...shadow.md,
@@ -499,12 +499,12 @@ export const createNotificationSettingsStyles = (normalize) => {
     notifTitle: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     notifTitleBold: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     notifSwitchWrap: {
       transform: [{ scaleX: 0.78 }, { scaleY: 0.78 }],
@@ -512,21 +512,21 @@ export const createNotificationSettingsStyles = (normalize) => {
     notifSubtitle: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginTop: normalize(2),
     },
     textDisabled: {
-      color: colors.textLight20,
+      color: colors.textLight2,
     },
 
     divider: {
       height: 1,
-      backgroundColor: colors.border,
+      backgroundColor: colors.textLight1,
       marginBottom: normalize(4),
     },
     innerDivider: {
       height: 1,
-      backgroundColor: colors.textLight5,
+      backgroundColor: colors.textLight1,
     },
 
     sliderWrapper: {
@@ -538,7 +538,7 @@ export const createNotificationSettingsStyles = (normalize) => {
     sliderTrack: {
       height: normalize(4),
       borderRadius: normalize(2),
-      backgroundColor: colors.border,
+      backgroundColor: colors.textLight1,
       overflow: 'hidden',
     },
     sliderFill: {
@@ -551,7 +551,7 @@ export const createNotificationSettingsStyles = (normalize) => {
       width: normalize(18),
       height: normalize(18),
       borderRadius: normalize(9),
-      backgroundColor: colors.textWhite,
+      backgroundColor: colors.white,
       marginLeft: normalize(-9),
       top: normalize(1),
       borderWidth: 2,
@@ -576,7 +576,7 @@ export const createNotificationSettingsStyles = (normalize) => {
     distanceHint: {
       fontSize: normalize(fontSizes.md + 1),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
 
     pwField: {
@@ -598,14 +598,14 @@ export const createNotificationSettingsStyles = (normalize) => {
     pwLabel: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginBottom: normalize(6),
       fontWeight: '500',
     },
     pwInputWrap: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.surface,
+      backgroundColor: colors.textLight1,
       borderRadius: normalize(10),
       paddingHorizontal: normalize(12),
       height: normalize(44),
@@ -614,7 +614,7 @@ export const createNotificationSettingsStyles = (normalize) => {
       flex: 1,
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       paddingVertical: normalize(2),
       textAlignVertical: 'center',
     },
@@ -658,7 +658,7 @@ export const createNotificationSettingsStyles = (normalize) => {
       flex: 1,
       fontSize: normalize(fontSizes.xl - 1),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: normalize(fontSizes.xl + 5),
     },
     schoolButton: {
@@ -679,7 +679,7 @@ export const createNotificationSettingsStyles = (normalize) => {
       marginBottom: normalize(16),
     },
     actionButtonText: {
-      color: colors.textWhite,
+      color: colors.white,
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
     },
@@ -691,7 +691,7 @@ export const createScrapedPostsStyles = (normalize) => {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     scrollView: {
       flex: 1,
@@ -700,12 +700,12 @@ export const createScrapedPostsStyles = (normalize) => {
     postItem: {
       padding: normalize(16),
       borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      borderBottomColor: colors.textLight1,
     },
     postTitle: {
       fontSize: normalize(fontSizes.xl + 1),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       fontWeight: '500',
       marginBottom: normalize(8),
     },
@@ -716,13 +716,13 @@ export const createScrapedPostsStyles = (normalize) => {
     postAuthor: {
       fontSize: normalize(fontSizes.xl - 1),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginRight: normalize(8),
     },
     postDate: {
       fontSize: normalize(fontSizes.xl - 1),
       fontFamily: fonts.regular,
-      color: colors.textLight20,
+      color: colors.textLight2,
       flex: 1,
     },
     scrapInfo: {
@@ -739,7 +739,7 @@ export const createScrapedPostsStyles = (normalize) => {
     emptyText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textLight20,
+      color: colors.textLight2,
       fontWeight: '500',
     },
   });
@@ -750,7 +750,7 @@ export const createMyPostsStyles = (normalize) => {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
 
     scroll: {
@@ -767,7 +767,7 @@ export const createMyPostsStyles = (normalize) => {
       gap: normalize(10),
     },
     postItem: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(14),
       padding: normalize(16),
       ...shadow.md,
@@ -775,7 +775,7 @@ export const createMyPostsStyles = (normalize) => {
     postTitle: {
       fontSize: normalize(fontSizes.xl + 1),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       fontWeight: '500',
       lineHeight: normalize(21),
       marginBottom: normalize(10),
@@ -788,7 +788,7 @@ export const createMyPostsStyles = (normalize) => {
     postDate: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textLight20,
+      color: colors.textLight2,
     },
     stats: {
       flexDirection: 'row',
@@ -802,7 +802,7 @@ export const createMyPostsStyles = (normalize) => {
     statText: {
       fontSize: normalize(fontSizes.xl - 1),
       fontFamily: fonts.regular,
-      color: colors.textLight40,
+      color: colors.textLight3,
     },
     myPostSkeletonItemGap: {
       marginBottom: normalize(10),
@@ -811,33 +811,33 @@ export const createMyPostsStyles = (normalize) => {
       width: '92%',
       height: normalize(16),
       borderRadius: normalize(6),
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
       marginBottom: normalize(8),
     },
     myPostSkeletonTitleLine2: {
       width: '66%',
       height: normalize(16),
       borderRadius: normalize(6),
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
       marginBottom: normalize(12),
     },
     myPostSkeletonDate: {
       width: normalize(86),
       height: normalize(12),
       borderRadius: normalize(4),
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
     },
     myPostSkeletonIcon: {
       width: normalize(14),
       height: normalize(14),
       borderRadius: normalize(7),
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
     },
     myPostSkeletonCount: {
       width: normalize(16),
       height: normalize(12),
       borderRadius: normalize(4),
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
     },
 
     empty: {
@@ -849,7 +849,7 @@ export const createMyPostsStyles = (normalize) => {
     emptyText: {
       fontSize: normalize(fontSizes.xl + 1),
       fontFamily: fonts.regular,
-      color: colors.textLight20,
+      color: colors.textLight2,
       fontWeight: '500',
     },
   });
@@ -860,7 +860,7 @@ export const createMyPostsStyles = (normalize) => {
  * 마이페이지·알림 설정 등 이 파일 스타일을 쓰는 화면에서 `{...themedTextInputProps}` 로 넘기세요.
  */
 export const themedTextInputProps = {
-  placeholderTextColor: colors.textLight20,
+  placeholderTextColor: colors.textLight2,
   selectionColor: colors.primary,
 };
 
@@ -886,7 +886,7 @@ export const createHiddenPostsAppealsStyles = (width, normalize) =>
   StyleSheet.create({
     safeArea: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     scroll: {
       flex: 1,
@@ -910,10 +910,10 @@ export const createHiddenPostsAppealsStyles = (width, normalize) =>
     toggleTrack: {
       flex: 1,
       flexDirection: 'row',
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(20),
       borderWidth: 1,
-      borderColor: colors.primaryLight50,
+      borderColor: colors.primaryLight5,
       position: 'relative',
       height: normalize(40),
     },
@@ -937,16 +937,16 @@ export const createHiddenPostsAppealsStyles = (width, normalize) =>
     toggleOptionText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     toggleOptionTextActive: {
-      color: colors.background,
+      color: colors.white,
       fontFamily: fonts.bold,
     },
     statSummaryBox: {
       flexDirection: 'row',
       alignItems: 'stretch',
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(16),
       borderWidth: 2,
       borderColor: colors.primary,
@@ -962,13 +962,13 @@ export const createHiddenPostsAppealsStyles = (width, normalize) =>
     statSummaryDivider: {
       width: 1,
       alignSelf: 'stretch',
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
       marginVertical: normalize(4),
     },
     statNumber: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.heading),
-      color: colors.textPrimary,
+      color: colors.text,
     },
     statNumberHighlight: {
       color: colors.primary,
@@ -976,15 +976,15 @@ export const createHiddenPostsAppealsStyles = (width, normalize) =>
     statLabel: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.lg - 1),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginTop: normalize(3),
     },
     card: {
       flexDirection: 'row',
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(14),
       borderWidth: 1,
-      borderColor: colors.textLight10,
+      borderColor: colors.textLight1,
       marginBottom: normalize(12),
       overflow: 'hidden',
     },
@@ -1005,7 +1005,7 @@ export const createHiddenPostsAppealsStyles = (width, normalize) =>
     pillNeutralText: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.lg - 1),
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     pillDanger: {
       backgroundColor: colors.alertLight,
@@ -1016,24 +1016,24 @@ export const createHiddenPostsAppealsStyles = (width, normalize) =>
     pillDangerText: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.lg - 1),
-      color: colors.textPrimary,
+      color: colors.text,
     },
     previewText: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.xl),
-      color: colors.textPrimary,
+      color: colors.text,
       lineHeight: normalize(fontSizes.xl + 7),
       marginBottom: normalize(8),
     },
     dividerSection: {
       borderTopWidth: 1,
-      borderTopColor: colors.textLight10,
+      borderTopColor: colors.textLight1,
       paddingTop: normalize(8),
     },
     metaText: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.lg),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: normalize(fontSizes.lg + 6),
     },
     reportMetaRow: {
@@ -1063,13 +1063,13 @@ export const createHiddenPostsAppealsStyles = (width, normalize) =>
     metaTime: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.lg - 1),
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     noticeBox: {
-      backgroundColor: colors.textLight5,
+      backgroundColor: colors.textLight1,
       borderRadius: normalize(10),
       borderWidth: 1,
-      borderColor: colors.textLight10,
+      borderColor: colors.textLight1,
       padding: normalize(12),
       marginBottom: normalize(10),
       gap: normalize(6),
@@ -1086,14 +1086,14 @@ export const createHiddenPostsAppealsStyles = (width, normalize) =>
     appealInput: {
       minHeight: normalize(82),
       borderWidth: 1,
-      borderColor: colors.textLight10,
+      borderColor: colors.textLight1,
       borderRadius: normalize(10),
-      backgroundColor: colors.textLight5,
+      backgroundColor: colors.textLight1,
       paddingHorizontal: normalize(10),
       paddingVertical: normalize(10),
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.xl - 1),
-      color: colors.textPrimary,
+      color: colors.text,
       textAlignVertical: 'top',
     },
     appealSubmit: {
@@ -1105,12 +1105,12 @@ export const createHiddenPostsAppealsStyles = (width, normalize) =>
       paddingVertical: normalize(8),
     },
     appealSubmitDisabled: {
-      backgroundColor: colors.textLight20,
+      backgroundColor: colors.textLight2,
     },
     appealSubmitText: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.lg),
-      color: colors.textWhite,
+      color: colors.white,
     },
     emptyWrap: {
       paddingTop: normalize(80),
@@ -1124,6 +1124,6 @@ export const createHiddenPostsAppealsStyles = (width, normalize) =>
     emptyText: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.xl - 1),
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
   });

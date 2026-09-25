@@ -10,7 +10,7 @@ import {
 export const STUDENT_ID_GUIDE_BORDER_WIDTH = 2;
 export const STUDENT_ID_GUIDE_CORNER_RADIUS = 16;
 
-const DIM_BG = colors.overlayDark;
+const DIM_BG = colors.textLight6;
 
 /** even-odd 딤 + 둥근 구멍 (틀과 동일 rx) */
 function buildRoundedDimPath(stageW, stageH, holeX, holeY, holeW, holeH, radius) {

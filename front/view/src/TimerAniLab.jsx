@@ -132,7 +132,7 @@ const labelStyles = StyleSheet.create({
     fontFamily: fonts.bold,
     fontSize: 10,
     lineHeight: 12,
-    color: '#FFFFFF',
+    color: colors.white,
     letterSpacing: 0.2,
     textAlign: 'center',
     textShadowColor: 'rgba(0,0,0,0.75)',
@@ -143,7 +143,7 @@ const labelStyles = StyleSheet.create({
     fontFamily: fonts.bold,
     fontSize: 10,
     lineHeight: 12,
-    color: '#FFFFFF',
+    color: colors.white,
     textAlign: 'center',
     textShadowColor: 'rgba(0,0,0,0.75)',
     textShadowOffset: { width: 0, height: 1 },
@@ -1233,7 +1233,7 @@ export default function TimerAniLab({ navigation }) {
       StyleSheet.create({
         root: {
           flex: 1,
-          backgroundColor: '#000',
+          backgroundColor: colors.text,
         },
         stage: {
           ...StyleSheet.absoluteFillObject,
@@ -1391,7 +1391,7 @@ export default function TimerAniLab({ navigation }) {
         activeOpacity={0.85}
         accessibilityLabel="뒤로가기"
       >
-        <Ionicons name="chevron-back" size={24} color={colors.textWhite} />
+        <Ionicons name="chevron-back" size={24} color={colors.white} />
       </TouchableOpacity>
     </View>
   );

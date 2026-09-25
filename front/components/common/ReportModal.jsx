@@ -268,7 +268,7 @@ export default function ReportModal({
                   <TextInput
                     style={s.textInput}
                     placeholder="상세 사유를 입력해 주세요 (선택)"
-                    placeholderTextColor={colors.textLight40}
+                    placeholderTextColor={colors.textLight3}
                     multiline
                     numberOfLines={4}
                     textAlignVertical="top"
@@ -290,7 +290,7 @@ export default function ReportModal({
                     activeOpacity={0.85}
                   >
                     {loading ? (
-                      <ActivityIndicator color="#fff" size="small" />
+                      <ActivityIndicator color={colors.white} size="small" />
                     ) : (
                       <Text style={s.submitText}>신고 접수</Text>
                     )}
@@ -324,7 +324,7 @@ export default function ReportModal({
             activeOpacity={0.85}
           >
             {blocking ? (
-              <ActivityIndicator color={colors.textWhite} size="small" />
+              <ActivityIndicator color={colors.white} size="small" />
             ) : (
               <Text style={s.popupBtnConfirmText}>차단하기</Text>
             )}
@@ -361,7 +361,7 @@ const makeStyles = (N) =>
     },
     sheetWrapper: { flex: 1, justifyContent: 'flex-end' },
     sheet: {
-      backgroundColor: '#fff',
+      backgroundColor: colors.white,
       borderTopLeftRadius: N(20),
       borderTopRightRadius: N(20),
       paddingBottom: N(20),
@@ -374,14 +374,14 @@ const makeStyles = (N) =>
       paddingHorizontal: N(20),
       paddingVertical: N(20),
       borderBottomWidth: 1,
-      borderBottomColor: colors.textLight10,
+      borderBottomColor: colors.textLight1,
     },
     title: {
       fontFamily: fonts.bold,
       fontSize: N(18),
-      color: colors.textPrimary,
+      color: colors.text,
     },
-    closeBtn: { fontSize: N(16), color: colors.textSecondary },
+    closeBtn: { fontSize: N(16), color: colors.textLight4 },
     body: {
       paddingHorizontal: N(20),
       paddingTop: N(18),
@@ -390,7 +390,7 @@ const makeStyles = (N) =>
     guide: {
       fontFamily: fonts.regular,
       fontSize: N(13),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: N(19),
       marginBottom: N(18),
     },
@@ -405,17 +405,17 @@ const makeStyles = (N) =>
       paddingVertical: N(6),
       borderRadius: N(20),
       borderWidth: 1,
-      borderColor: colors.textLight20,
-      backgroundColor: '#fff',
+      borderColor: colors.textLight2,
+      backgroundColor: colors.white,
     },
     chipActive: {
       borderColor: colors.primary,
-      backgroundColor: colors.primaryLight10,
+      backgroundColor: colors.primaryLight2,
     },
     chipText: {
       fontFamily: fonts.regular,
       fontSize: N(13),
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     chipTextActive: {
       fontFamily: fonts.medium,
@@ -423,19 +423,19 @@ const makeStyles = (N) =>
     },
     textInput: {
       borderWidth: 1,
-      borderColor: colors.textLight20,
+      borderColor: colors.textLight2,
       borderRadius: N(8),
       padding: N(12),
       fontFamily: fonts.regular,
       fontSize: N(13),
-      color: colors.textPrimary,
+      color: colors.text,
       minHeight: N(100),
-      backgroundColor: colors.textLight5,
+      backgroundColor: colors.textLight1,
     },
     charCount: {
       fontFamily: fonts.regular,
       fontSize: N(11),
-      color: colors.textLight40,
+      color: colors.textLight3,
       textAlign: 'right',
       marginTop: N(6),
     },
@@ -450,22 +450,22 @@ const makeStyles = (N) =>
       paddingVertical: N(14),
       alignItems: 'center',
     },
-    submitBtnDisabled: { backgroundColor: colors.textLight20 },
+    submitBtnDisabled: { backgroundColor: colors.textLight2 },
     submitText: {
       fontFamily: fonts.bold,
       fontSize: N(15),
-      color: '#fff',
+      color: colors.white,
     },
     popupTitle: {
       fontSize: 18,
-      color: colors.textPrimary,
+      color: colors.text,
       fontWeight: '700',
       textAlign: 'center',
       marginBottom: 10,
     },
     popupMessage: {
       fontSize: 14,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textAlign: 'center',
       lineHeight: 22,
       marginBottom: 16,
@@ -483,7 +483,7 @@ const makeStyles = (N) =>
       justifyContent: 'center',
     },
     popupBtnCancel: {
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
     },
     popupBtnConfirm: {
       backgroundColor: colors.primary,
@@ -491,11 +491,11 @@ const makeStyles = (N) =>
     popupBtnCancelText: {
       fontSize: 14,
       fontWeight: '600',
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     popupBtnConfirmText: {
       fontSize: 14,
       fontWeight: '700',
-      color: colors.textWhite,
+      color: colors.white,
     },
   });

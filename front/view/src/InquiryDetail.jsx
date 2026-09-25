@@ -18,7 +18,7 @@ function statusMeta(status) {
     return { label: '답변 완료', color: colors.primary };
   }
   if (status === 'closed') {
-    return { label: '종료', color: colors.textSecondary };
+    return { label: '종료', color: colors.textLight4 };
   }
   return { label: '확인 중', color: colors.alert };
 }
@@ -95,7 +95,7 @@ const InquiryDetail = ({
 
   const styles = useMemo(
     () => ({
-      container: { flex: 1, backgroundColor: colors.background },
+      container: { flex: 1, backgroundColor: colors.white },
       body: {
         flex: 1,
         paddingHorizontal: width * 0.07,
@@ -109,7 +109,7 @@ const InquiryDetail = ({
       errorText: {
         fontFamily: fonts.regular,
         fontSize: normalize(fontSizes.md),
-        color: colors.textSecondary,
+        color: colors.textLight4,
         textAlign: 'center',
       },
       content: {
@@ -120,28 +120,28 @@ const InquiryDetail = ({
       date: {
         fontFamily: fonts.regular,
         fontSize: normalize(12),
-        color: colors.textSecondary,
+        color: colors.textLight4,
       },
       sectionLabel: {
         fontFamily: fonts.bold,
         fontSize: normalize(13),
-        color: colors.textSecondary,
+        color: colors.textLight4,
         marginBottom: normalize(8),
         marginLeft: normalize(8),
       },
       bodyText: {
         fontFamily: fonts.regular,
         fontSize: normalize(fontSizes.lg),
-        color: colors.textPrimary,
+        color: colors.text,
         lineHeight: normalize(22),
       },
       answerBox: {
-        backgroundColor: colors.textLight5,
+        backgroundColor: colors.textLight1,
         borderRadius: normalize(12),
         padding: normalize(14),
       },
       pendingBox: {
-        backgroundColor: colors.textLight5,
+        backgroundColor: colors.textLight1,
         borderRadius: normalize(12),
         paddingVertical: normalize(28),
         paddingHorizontal: normalize(20),
@@ -150,7 +150,7 @@ const InquiryDetail = ({
       pendingTitle: {
         fontFamily: fonts.bold,
         fontSize: normalize(fontSizes.lg),
-        color: colors.textPrimary,
+        color: colors.text,
         textAlign: 'center',
         marginTop: normalize(12),
         marginBottom: normalize(10),
@@ -158,7 +158,7 @@ const InquiryDetail = ({
       pendingDesc: {
         fontFamily: fonts.regular,
         fontSize: normalize(fontSizes.md),
-        color: colors.textSecondary,
+        color: colors.textLight4,
         textAlign: 'center',
         lineHeight: normalize(20),
       },
@@ -223,7 +223,7 @@ const InquiryDetail = ({
                   <Ionicons
                     name="time-outline"
                     size={normalize(28)}
-                    color={colors.textSecondary}
+                    color={colors.textLight4}
                   />
                   <Text style={styles.pendingTitle}>
                     아직 답변이 등록되지 않았어요

@@ -5,8 +5,8 @@ import { getNormalize } from '../styles/frame.style';
 
 // ── 잔디 그라데이션 색상 (colors.js 기반) ─────────────────────────────────────
 const GRASS_COLORS = [
-  colors.primaryLight30,
-  colors.primaryLight50,
+  colors.primaryLight4,
+  colors.primaryLight5,
   'rgba(166,218,149,0.7)',
   colors.primary,
   '#6DBF52',
@@ -228,13 +228,13 @@ const StudyGrassMap = ({ days = null, weeks = WEEKS }) => {
         },
         divider: {
           height: normalize(1),
-          backgroundColor: colors.textLight10,
+          backgroundColor: colors.textLight1,
           marginVertical: normalize(16),
         },
         sectionTitle: {
           fontSize: normalize(13),
           fontWeight: '600',
-          color: colors.textSecondary,
+          color: colors.textLight4,
           marginBottom: normalize(6),
         },
         body: {
@@ -257,7 +257,7 @@ const StudyGrassMap = ({ days = null, weeks = WEEKS }) => {
           position: 'absolute',
           top: 0,
           fontSize: normalize(9),
-          color: colors.textSecondary,
+          color: colors.textLight4,
         },
         grassWrapper: {
           flexDirection: 'row',
@@ -283,7 +283,7 @@ const StudyGrassMap = ({ days = null, weeks = WEEKS }) => {
         dayLabel: {
           width: layout.DAY_COL_W,
           fontSize: normalize(8),
-          color: colors.textSecondary,
+          color: colors.textLight4,
           height: layout.STEP,
           lineHeight: layout.STEP,
           textAlign: 'right',
@@ -323,7 +323,7 @@ const StudyGrassMap = ({ days = null, weeks = WEEKS }) => {
         },
         legendText: {
           fontSize: normalize(8),
-          color: colors.textSecondary,
+          color: colors.textLight4,
         },
       }),
     [normalize, layout],

@@ -69,7 +69,7 @@ export default function StudentVerificationGate() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
   },
   inner: {
     flex: 1,
@@ -79,20 +79,20 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: 'Baloo2-Bold',
-    color: colors.textPrimary,
+    color: colors.text,
     textAlign: 'center',
     marginBottom: 16,
   },
   body: {
     fontFamily: 'Baloo2-Regular',
-    color: colors.textSecondary,
+    color: colors.textLight4,
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 8,
   },
   hint: {
     fontFamily: 'Baloo2-Regular',
-    color: colors.textSecondary,
+    color: colors.textLight4,
     marginTop: 24,
   },
 });

@@ -223,7 +223,7 @@ export default function TimerCharacterStage({
           overflow: 'hidden',
           backgroundColor: '#E8F0E3',
           borderWidth: StyleSheet.hairlineWidth,
-          borderColor: colors.textLight20,
+          borderColor: colors.textLight2,
         },
         floor: {
           position: 'absolute',
@@ -307,7 +307,7 @@ export default function TimerCharacterStage({
           textAlign: 'center',
           fontFamily: fonts.regular,
           fontSize: 13,
-          color: colors.textSecondary,
+          color: colors.textLight4,
         },
       }),
     [charSize, deskTop, seatX, stageH, stageW],

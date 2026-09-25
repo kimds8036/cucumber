@@ -67,7 +67,7 @@ const SignStepCertificate = ({
               notifyChange({ certificateUrl: text });
             }}
             placeholder="https://naver.me/XXXXXXXX"
-            placeholderTextColor={colors.textSecondary}
+            placeholderTextColor={colors.textLight4}
             autoCapitalize="none"
             autoCorrect={false}
             spellCheck={false}
@@ -81,7 +81,7 @@ const SignStepCertificate = ({
         <GrowingUnderline
           active={urlFocused || Boolean(certificateUrl)}
           normalize={normalize}
-          fillColor={colors.textLight40}
+          fillColor={colors.textLight3}
         />
 
         <Text style={[localStyles.fieldLabel, localStyles.fieldLabelSpaced]}>
@@ -97,7 +97,7 @@ const SignStepCertificate = ({
               notifyChange({ accessNumber: next });
             }}
             placeholder="6자리 번호 입력"
-            placeholderTextColor={colors.textSecondary}
+            placeholderTextColor={colors.textLight4}
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="number-pad"
@@ -109,7 +109,7 @@ const SignStepCertificate = ({
         <GrowingUnderline
           active={accessFocused || Boolean(accessNumber)}
           normalize={normalize}
-          fillColor={accessNumberError ? colors.alert : colors.textLight40}
+          fillColor={accessNumberError ? colors.alert : colors.textLight3}
         />
         <View style={localStyles.fieldFeedbackSlot}>
           {accessNumberError ? (
@@ -130,7 +130,7 @@ function createLocalStyles(normalize) {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.lg),
       lineHeight: normalize(Math.round(fontSizes.lg * 1.45)),
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     fieldLabelSpaced: {
       marginTop: normalize(24),
@@ -144,7 +144,7 @@ function createLocalStyles(normalize) {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.xxl),
       minHeight: normalize(fontSizes.xxl),
-      color: colors.textPrimary,
+      color: colors.text,
       ...Platform.select({
         android: { includeFontPadding: false, textAlignVertical: 'center' },
         ios: {},

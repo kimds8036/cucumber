@@ -101,7 +101,7 @@ const SignProfileUsername = () => {
           checkStatus === 'taken' ||
           checkStatus === 'error'
         ? colors.alert
-        : colors.textLight40;
+        : colors.textLight3;
 
   const helperMessage =
     checkStatus === 'invalid'
@@ -167,7 +167,7 @@ const SignProfileUsername = () => {
                 value={username}
                 onChangeText={(text) => setUsername(text.replace(/\s/g, '_'))}
                 placeholder={USERNAME_HINT}
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={colors.textLight4}
                 autoCapitalize="none"
                 autoCorrect={false}
                 maxLength={20}
@@ -220,7 +220,7 @@ function createStyles(normalize, width) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     flex: {
       flex: 1,
@@ -233,14 +233,14 @@ function createStyles(normalize, width) {
     title: {
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.heading+2),
-      color: colors.textPrimary,
+      color: colors.text,
       textAlign: 'left',
       lineHeight: normalize(32),
     },
     subtitle: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.lg),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textAlign: 'left',
       lineHeight: normalize(22),
       marginBottom: normalize(40),
@@ -255,7 +255,7 @@ function createStyles(normalize, width) {
       paddingVertical: normalize(12),
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.xl),
-      color: colors.textPrimary,
+      color: colors.text,
       ...Platform.select({
         android: { includeFontPadding: false },
         ios: {},
@@ -278,7 +278,7 @@ function createStyles(normalize, width) {
       color: colors.alert,
     },
     fieldFeedbackMuted: {
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
   });
 }

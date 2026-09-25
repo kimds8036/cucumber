@@ -173,7 +173,7 @@ export default function BoardPostContent({
             <Entypo
               name="dots-three-vertical"
               size={normalize(14)}
-              color={colors.textSecondary}
+              color={colors.textLight4}
             />
           </TouchableOpacity>
         </View>

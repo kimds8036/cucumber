@@ -176,7 +176,7 @@ const PinInput = ({
             <Ionicons
               name="backspace-outline"
               size={normalize(22)}
-              color={colors.textPrimary}
+              color={colors.text}
             />
           </TouchableOpacity>
         </View>

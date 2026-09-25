@@ -11,7 +11,7 @@ const PolicyDocumentSkeleton = ({ styles, normalize }) => (
           width: `${Math.round(ratio * 100)}%`,
           height: normalize(14),
           borderRadius: normalize(4),
-          backgroundColor: colors.textLight10,
+          backgroundColor: colors.textLight1,
           opacity: 0.55 - index * 0.05,
         }}
       />
@@ -24,7 +24,7 @@ const PolicyDocumentSkeleton = ({ styles, normalize }) => (
           width: `${Math.round(ratio * 100)}%`,
           height: normalize(12),
           borderRadius: normalize(4),
-          backgroundColor: colors.textLight10,
+          backgroundColor: colors.textLight1,
           opacity: 0.42 + (index % 3) * 0.06,
         }}
       />

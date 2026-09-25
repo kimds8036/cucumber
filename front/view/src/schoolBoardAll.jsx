@@ -271,7 +271,7 @@ const SchoolBoardAll = ({ navigation }) => {
           <Ionicons
             name="search"
             size={normalize(22)}
-            color={colors.textPrimary}
+            color={colors.text}
           />
         }
       />
@@ -322,7 +322,7 @@ const SchoolBoardAll = ({ navigation }) => {
               right: 0,
               top: 0,
               bottom: 0,
-              backgroundColor: colors.background,
+              backgroundColor: colors.white,
               paddingHorizontal: width * 0.04,
               paddingTop: normalize(8),
               zIndex: 2,
@@ -397,7 +397,7 @@ const SchoolBoardAll = ({ navigation }) => {
         <FontAwesome5
           name="plus"
           size={normalize(24)}
-          color={colors.background}
+          color={colors.white}
         />
       </TouchableOpacity>
     </SafeAreaView>

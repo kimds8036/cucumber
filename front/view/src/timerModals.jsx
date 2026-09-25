@@ -197,7 +197,7 @@ export const AddSubjectModal = ({ visible, onClose, onAdd }) => {
               <TextInput
                 style={m.input}
                 placeholder="과목명"
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={colors.textLight4}
                 value={name}
                 onChangeText={setName}
                 autoFocus
@@ -264,7 +264,7 @@ export const AddSubjectModal = ({ visible, onClose, onAdd }) => {
                   <Ionicons
                     name="shuffle"
                     size={normalize(14)}
-                    color={colors.textSecondary}
+                    color={colors.textLight4}
                     style={m.randomIcon}
                   />
                   <Text style={m.randomText}>랜덤</Text>
@@ -411,7 +411,7 @@ export const AddTaskModal = ({
               <TextInput
                 style={[m.input, m.inputMultiline]}
                 placeholder="할 일 내용"
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={colors.textLight4}
                 value={content}
                 onChangeText={setContent}
                 multiline
@@ -548,7 +548,7 @@ export const CalendarModal = ({
                 <Ionicons
                   name="chevron-back"
                   size={normalize(20)}
-                  color={colors.textPrimary}
+                  color={colors.text}
                 />
               </TouchableOpacity>
               <Text style={m.calendarMonthTitle}>
@@ -562,7 +562,7 @@ export const CalendarModal = ({
                 <Ionicons
                   name="chevron-forward"
                   size={normalize(20)}
-                  color={canGoNextMonth ? colors.textPrimary : colors.textLight20}
+                  color={canGoNextMonth ? colors.text : colors.textLight2}
                 />
               </TouchableOpacity>
             </View>
@@ -601,7 +601,7 @@ export const CalendarModal = ({
                           style={[
                             m.dayText,
                             isSelected && m.dayTextSelected,
-                            isFuture && { color: colors.textLight20 },
+                            isFuture && { color: colors.textLight2 },
                           ]}
                         >
                           {day}

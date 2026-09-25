@@ -35,19 +35,19 @@ const makeFieldStyles = (normalize) =>
     inputLabel: {
       fontFamily: fonts.regular,
       fontSize: normalize(14),
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: normalize(6),
     },
     inputWrapper: {
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: colors.textLight1,
       borderRadius: normalize(12),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     input: {
       fontFamily: fonts.regular,
       fontSize: normalize(15),
-      color: colors.textPrimary,
+      color: colors.text,
       paddingHorizontal: normalize(14),
       paddingVertical: normalize(12),
     },
@@ -303,7 +303,7 @@ const StudentIdResubmit = ({ mode = 'rejected', navigation }) => {
           onPress={runResubmit}
         >
           {busy ? (
-            <ActivityIndicator color={colors.background} />
+            <ActivityIndicator color={colors.white} />
           ) : (
             <Text
               style={[
@@ -325,7 +325,7 @@ const localStyles = StyleSheet.create({
   root: {
     flex: 1,
     width: '100%',
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
   },
   body: {
     flex: 1,
@@ -340,7 +340,7 @@ const localStyles = StyleSheet.create({
   schoolHint: {
     fontFamily: fonts.regular,
     fontSize: 13,
-    color: colors.textSecondary,
+    color: colors.textLight4,
     lineHeight: 20,
     marginBottom: 4,
   },
@@ -356,13 +356,13 @@ const localStyles = StyleSheet.create({
     minHeight: 280,
     borderRadius: 24,
     overflow: 'hidden',
-    backgroundColor: '#000',
+    backgroundColor: colors.text,
   },
   cameraStage: {
     flex: 1,
     width: '100%',
     minHeight: 280,
-    backgroundColor: '#000',
+    backgroundColor: colors.text,
   },
   retakeLink: {
     alignSelf: 'center',
@@ -389,7 +389,7 @@ const localStyles = StyleSheet.create({
   },
   submitBtnText: {
     fontFamily: fonts.bold,
-    color: colors.background,
+    color: colors.white,
   },
   centered: {
     flex: 1,
@@ -399,7 +399,7 @@ const localStyles = StyleSheet.create({
   permLabel: {
     fontFamily: fonts.regular,
     fontSize: 15,
-    color: colors.textPrimary,
+    color: colors.text,
     marginBottom: 12,
   },
 });

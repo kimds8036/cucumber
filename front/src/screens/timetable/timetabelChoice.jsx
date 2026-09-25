@@ -474,7 +474,7 @@ export default function TimetabelChoice({ navigation, route }) {
                 gap: 8,
               }}
             >
-              <Entypo name="check" size={20} color={colors.background} />
+              <Entypo name="check" size={20} color={colors.white} />
               <Text style={styles.choiceRightTitle}>자동 선택</Text>
             </View>
           </TouchableOpacity>
@@ -499,7 +499,7 @@ export default function TimetabelChoice({ navigation, route }) {
               <MaterialCommunityIcons
                 name="pencil"
                 size={20}
-                color={colors.textSecondary}
+                color={colors.textLight4}
               />
               <Text style={styles.choiceWrongTitle}>직접 선택</Text>
             </View>
@@ -521,7 +521,7 @@ export default function TimetabelChoice({ navigation, route }) {
         <Text
           style={{
             fontSize: 18,
-            color: colors.textPrimary,
+            color: colors.text,
             fontWeight: '700',
             textAlign: 'center',
             marginBottom: 10,
@@ -533,7 +533,7 @@ export default function TimetabelChoice({ navigation, route }) {
           <Text
             style={{
               fontSize: 14,
-              color: colors.textSecondary,
+              color: colors.textLight4,
               textAlign: 'center',
               lineHeight: 22,
             }}
@@ -548,11 +548,11 @@ export default function TimetabelChoice({ navigation, route }) {
               marginTop: 2,
             }}
           >
-            <Feather name="edit" size={16} color={colors.textSecondary} />
+            <Feather name="edit" size={16} color={colors.textLight4} />
             <Text
               style={{
                 fontSize: 14,
-                color: colors.textSecondary,
+                color: colors.textLight4,
                 lineHeight: 22,
               }}
             >
@@ -576,7 +576,7 @@ export default function TimetabelChoice({ navigation, route }) {
             style={{
               fontSize: 14,
               fontWeight: '700',
-              color: colors.textWhite,
+              color: colors.white,
             }}
           >
             확인

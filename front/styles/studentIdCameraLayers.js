@@ -39,7 +39,7 @@ export function createStudentIdCameraLayerStyles() {
     },
     guideDim: {
       position: 'absolute',
-      backgroundColor: colors.overlayDark,
+      backgroundColor: colors.textLight6,
       ...(androidLayer ? { elevation: 0 } : null),
     },
     guideFrame: {

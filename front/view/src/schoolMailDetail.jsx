@@ -784,7 +784,7 @@ export default function SchoolMailDetail({ navigation, route }) {
               <Entypo
                 name="dots-three-vertical"
                 size={normalize(14)}
-                color={colors.textSecondary}
+                color={colors.textLight4}
               />
             </TouchableOpacity>
           </View>
@@ -831,7 +831,7 @@ export default function SchoolMailDetail({ navigation, route }) {
             <Ionicons
               name="return-down-forward"
               size={normalize(16)}
-              color={colors.textSecondary}
+              color={colors.textLight4}
             />
           </View>
           {bubble}
@@ -882,7 +882,7 @@ export default function SchoolMailDetail({ navigation, route }) {
           <Ionicons
             name="chevron-down"
             size={normalize(18)}
-            color={colors.textSecondary}
+            color={colors.textLight4}
           />
           <Text style={styles.smDetailLoadMoreText}>댓글 더보기</Text>
         </TouchableOpacity>,
@@ -899,7 +899,7 @@ export default function SchoolMailDetail({ navigation, route }) {
           <Ionicons
             name="chevron-up"
             size={normalize(18)}
-            color={colors.textSecondary}
+            color={colors.textLight4}
           />
           <Text style={styles.smDetailLoadMoreText}>댓글 접기</Text>
         </TouchableOpacity>,
@@ -917,14 +917,14 @@ export default function SchoolMailDetail({ navigation, route }) {
           style={{
             zIndex: 1,
             elevation: 0,
-            backgroundColor: colors.background,
+            backgroundColor: colors.white,
           }}
         >
           <SubHeader title="받은 우편" onBack={() => navigation.goBack()} />
         </View>
 
         <View
-          style={{ flex: 1, backgroundColor: colors.background }}
+          style={{ flex: 1, backgroundColor: colors.white }}
           pointerEvents="box-none"
         >
           {loading ? (
@@ -980,7 +980,7 @@ export default function SchoolMailDetail({ navigation, route }) {
               <Text
                 style={{
                   fontFamily: fonts.regular,
-                  color: colors.textSecondary,
+                  color: colors.textLight4,
                   textAlign: 'center',
                 }}
               >
@@ -1002,7 +1002,7 @@ export default function SchoolMailDetail({ navigation, route }) {
                     onRefresh={onRefreshMail}
                     tintColor={colors.primary}
                     colors={[colors.primary]}
-                    progressBackgroundColor={colors.background}
+                    progressBackgroundColor={colors.white}
                   />
                 }
               >
@@ -1057,7 +1057,7 @@ export default function SchoolMailDetail({ navigation, route }) {
                           <Entypo
                             name="dots-three-vertical"
                             size={normalize(14)}
-                            color={colors.textSecondary}
+                            color={colors.textLight4}
                           />
                         </TouchableOpacity>
                       </View>
@@ -1076,7 +1076,7 @@ export default function SchoolMailDetail({ navigation, route }) {
               <Animated.View
                 style={[
                   {
-                    backgroundColor: colors.background,
+                    backgroundColor: colors.white,
                     paddingBottom: Math.max(insets.bottom, normalize(12)),
                   },
                   inputAnimStyle,
@@ -1118,12 +1118,12 @@ export default function SchoolMailDetail({ navigation, route }) {
               <TouchableWithoutFeedback>
                 <View
                   style={{
-                    backgroundColor: colors.background,
+                    backgroundColor: colors.white,
                     borderRadius: normalize(12),
                     minWidth: width * 0.45,
                     maxWidth: width * 0.7,
                     paddingVertical: normalize(4),
-                    shadowColor: colors.shadow,
+                    shadowColor: colors.text,
                     shadowOffset: { width: 0, height: 2 },
                     shadowOpacity: 0.15,
                     shadowRadius: 5,
@@ -1182,7 +1182,7 @@ export default function SchoolMailDetail({ navigation, route }) {
                             style={{
                               fontSize: normalize(13),
                               fontFamily: fonts.regular,
-                              color: colors.textPrimary,
+                              color: colors.text,
                             }}
                           >
                             {item.label}
@@ -1190,14 +1190,14 @@ export default function SchoolMailDetail({ navigation, route }) {
                           <Ionicons
                             name={item.icon}
                             size={normalize(17)}
-                            color={colors.textSecondary}
+                            color={colors.textLight4}
                           />
                         </TouchableOpacity>
                         {index < postItems.length - 1 && (
                           <View
                             style={{
                               height: 1,
-                              backgroundColor: colors.textLight10,
+                              backgroundColor: colors.textLight1,
                               marginHorizontal: normalize(8),
                             }}
                           />
@@ -1227,7 +1227,7 @@ export default function SchoolMailDetail({ navigation, route }) {
                             style={{
                               fontSize: normalize(13),
                               fontFamily: fonts.regular,
-                              color: colors.textPrimary,
+                              color: colors.text,
                             }}
                           >
                             {item.label}
@@ -1235,14 +1235,14 @@ export default function SchoolMailDetail({ navigation, route }) {
                           <Ionicons
                             name={item.iconName}
                             size={normalize(17)}
-                            color={colors.textSecondary}
+                            color={colors.textLight4}
                           />
                         </TouchableOpacity>
                         {index < commentMenuItems.length - 1 && (
                           <View
                             style={{
                               height: 1,
-                              backgroundColor: colors.textLight10,
+                              backgroundColor: colors.textLight1,
                               marginHorizontal: normalize(8),
                             }}
                           />

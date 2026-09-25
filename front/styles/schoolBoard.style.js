@@ -14,7 +14,7 @@ export const createSchoolBoardStyles = (width, normalize) => {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
 
     // 게시글 목록 — BoardPostCard + board.style.js 와 동일
@@ -24,7 +24,7 @@ export const createSchoolBoardStyles = (width, normalize) => {
       paddingVertical: normalize(16),
     },
     postItem: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(18),
       padding: normalize(14),
       marginBottom: normalize(12),
@@ -64,7 +64,7 @@ export const createSchoolBoardStyles = (width, normalize) => {
     postAuthor: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: metaLineHeight,
       textAlignVertical: 'center',
       ...metaTextAndroid,
@@ -72,7 +72,7 @@ export const createSchoolBoardStyles = (width, normalize) => {
     postDot: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: metaLineHeight,
       textAlignVertical: 'center',
       marginHorizontal: normalize(6),
@@ -81,7 +81,7 @@ export const createSchoolBoardStyles = (width, normalize) => {
     postTime: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: metaLineHeight,
       textAlignVertical: 'center',
       ...metaTextAndroid,
@@ -89,7 +89,7 @@ export const createSchoolBoardStyles = (width, normalize) => {
     postLocation: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.primaryLight30,
+      backgroundColor: colors.primaryLight4,
       paddingHorizontal: normalize(10),
       borderRadius: normalize(13),
       gap: normalize(4),
@@ -97,7 +97,7 @@ export const createSchoolBoardStyles = (width, normalize) => {
     postLocationText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     postLocationWrap: {
       flexShrink: 1,
@@ -116,7 +116,7 @@ export const createSchoolBoardStyles = (width, normalize) => {
       flexDirection: 'row',
       alignItems: 'center',
       gap: normalize(1),
-      backgroundColor: colors.primaryLight20,
+      backgroundColor: colors.primaryLight3,
       borderRadius: normalize(10),
       paddingHorizontal: normalize(7),
       paddingVertical: normalize(2),
@@ -140,7 +140,7 @@ export const createSchoolBoardStyles = (width, normalize) => {
     postContent: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       lineHeight: normalize(20),
       marginBottom: normalize(7),
     },
@@ -162,7 +162,7 @@ export const createSchoolBoardStyles = (width, normalize) => {
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.primaryDark,
-      backgroundColor: colors.primaryLight10,
+      backgroundColor: colors.primaryLight2,
       borderRadius: normalize(10),
       paddingHorizontal: normalize(5),
       paddingVertical: normalize(1),
@@ -174,7 +174,7 @@ export const createSchoolBoardStyles = (width, normalize) => {
       opacity: 0,
     },
     postTagMoreChip: {
-      backgroundColor: colors.primaryLight10,
+      backgroundColor: colors.primaryLight2,
       paddingHorizontal: normalize(1),
       paddingVertical: normalize(1),
       borderRadius: normalize(10),
@@ -200,14 +200,14 @@ export const createSchoolBoardStyles = (width, normalize) => {
       width: normalize(70),
       height: normalize(70),
       borderRadius: normalize(8),
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
       alignSelf: 'flex-start',
     },
 
     // 내용과 푸터 사이 경계선
     postDivider: {
       height: 1,
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
       marginBottom: normalize(10),
     },
 
@@ -231,7 +231,7 @@ export const createSchoolBoardStyles = (width, normalize) => {
     postStatText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     menuButton: {
       justifyContent: 'center',
@@ -257,7 +257,7 @@ export const createSchoolBoardStyles = (width, normalize) => {
     },
     emptyText: {
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     loadingMoreContainer: {
       paddingVertical: normalize(16),
@@ -265,7 +265,7 @@ export const createSchoolBoardStyles = (width, normalize) => {
     },
     loadingMoreText: {
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     listContentContainer: {
       paddingBottom: normalize(80),

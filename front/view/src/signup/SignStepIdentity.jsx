@@ -263,7 +263,7 @@ const SignStepIdentity = ({
               setName(t);
               notifyChange({ name: t.trim(), birthDate });
             }}
-            placeholderTextColor={colors.textSecondary}
+            placeholderTextColor={colors.textLight4}
             editable={!isBusy}
           />
         </View>
@@ -339,7 +339,7 @@ const SignStepIdentity = ({
                 notifyChange({ phoneNumber: t });
               }}
               keyboardType="phone-pad"
-              placeholderTextColor={colors.textSecondary}
+              placeholderTextColor={colors.textLight4}
               editable={!isVerified && !isBusy}
             />
             <TouchableOpacity
@@ -349,7 +349,7 @@ const SignStepIdentity = ({
                   isBusy ||
                   isVerified ||
                   resendCooldownSec > 0) && {
-                  backgroundColor: colors.textLight10,
+                  backgroundColor: colors.textLight1,
                 },
               ]}
               onPress={handleSendCode}
@@ -361,7 +361,7 @@ const SignStepIdentity = ({
               }
             >
               {sendingCode ? (
-                <ActivityIndicator size="small" color={colors.background} />
+                <ActivityIndicator size="small" color={colors.white} />
               ) : (
                 <Text style={styles.verifyButtonText}>{sendButtonLabel()}</Text>
               )}
@@ -393,7 +393,7 @@ const SignStepIdentity = ({
             disabled={isBusy}
           >
             {verifyingCode ? (
-              <ActivityIndicator size="small" color={colors.background} />
+              <ActivityIndicator size="small" color={colors.white} />
             ) : (
               <Text style={styles.verifyButtonText}>인증 확인</Text>
             )}

@@ -65,7 +65,7 @@ const SignupPrimaryFooter = ({
           activeOpacity={0.85}
         >
           {loading ? (
-            <ActivityIndicator color={colors.textWhite} />
+            <ActivityIndicator color={colors.white} />
           ) : (
             <Text
               style={[styles.buttonText, isDisabled && styles.buttonTextDisabled]}
@@ -97,7 +97,7 @@ function createStyles(
       ...(cancelParentPadding && !embedded
         ? { marginHorizontal: -parentInset }
         : null),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       zIndex: 10,
       flexShrink: 0,
     },
@@ -108,7 +108,7 @@ function createStyles(
       marginBottom: edge,
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textAlign: 'center',
     },
     button: {
@@ -120,15 +120,15 @@ function createStyles(
       justifyContent: 'center',
     },
     buttonDisabled: {
-      backgroundColor: colors.disabled,
+      backgroundColor: colors.textLight1,
     },
     buttonText: {
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.xxl),
-      color: colors.textWhite,
+      color: colors.white,
     },
     buttonTextDisabled: {
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
   });
 }

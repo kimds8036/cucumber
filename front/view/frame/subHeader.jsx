@@ -45,13 +45,13 @@ const SubHeader = ({
               <Feather
                 name={resolvedBackIconName}
                 size={normalize(20)}
-                color={colors.textPrimary}
+                color={colors.text}
               />
             ) : (
               <Ionicons
                 name={resolvedBackIconName}
                 size={normalize(20)}
-                color={colors.textPrimary}
+                color={colors.text}
               />
             )}
           </TouchableOpacity>
@@ -80,13 +80,13 @@ const SubHeader = ({
                 <Ionicons
                   name={rightIcon}
                   size={normalize(22)}
-                  color={colors.textPrimary}
+                  color={colors.text}
                 />
               ) : (
                 <Text
                   style={[
                     styles.rightButtonText,
-                    rightDisabled ? { color: colors.background2 } : null,
+                    rightDisabled ? { color: colors.textLight2 } : null,
                   ]}
                 >
                   {rightButtonText}

@@ -4,11 +4,11 @@ import { colors, fonts, fontSizes } from '../../../styles/colors';
 const normalize = (size) => size;
 const COLORS = {
   ...colors,
-  inputBackground: colors.surface,
-  selectedBackground: colors.primaryLight20,
-  textDisabled: colors.textLight20,
-  textTertiary: colors.textSecondary,
-  white: colors.background,
+  inputBackground: colors.textLight1,
+  selectedBackground: colors.primaryLight3,
+  textDisabled: colors.textLight2,
+  textTertiary: colors.textLight4,
+  white: colors.white,
 };
 
 export const DAYS = ['월', '화', '수', '목', '금'];

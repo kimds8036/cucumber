@@ -106,7 +106,7 @@ const overlayStyles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     zIndex: 100,
     elevation: 100,
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
   },
 });
 

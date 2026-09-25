@@ -22,13 +22,13 @@ function statusMeta(status) {
     return {
       label: '답변 완료',
       color: colors.primary,
-      backgroundColor: colors.primaryLight10,
+      backgroundColor: colors.primaryLight2,
     };
   }
   if (status === 'closed') {
     return {
       label: '종료',
-      color: colors.textSecondary,
+      color: colors.textLight4,
       backgroundColor: 'rgba(39, 42, 38, 0.05)',
     };
   }
@@ -107,7 +107,7 @@ const MyInquiries = ({
 
   const styles = useMemo(
     () => ({
-      container: { flex: 1, backgroundColor: colors.background },
+      container: { flex: 1, backgroundColor: colors.white },
       emptyWrap: {
         flex: 1,
         alignItems: 'center',
@@ -118,7 +118,7 @@ const MyInquiries = ({
       emptyText: {
         fontFamily: fonts.regular,
         fontSize: normalize(fontSizes.md),
-        color: colors.textSecondary,
+        color: colors.textLight4,
         textAlign: 'center',
         lineHeight: normalize(22),
       },
@@ -126,7 +126,7 @@ const MyInquiries = ({
         paddingHorizontal: normalize(16),
         paddingVertical: normalize(14),
         borderBottomWidth: 1,
-        borderBottomColor: colors.border,
+        borderBottomColor: colors.textLight1,
         flexDirection: 'row',
         alignItems: 'center',
         gap: normalize(12),
@@ -160,12 +160,12 @@ const MyInquiries = ({
       dateText: {
         fontFamily: fonts.regular,
         fontSize: normalize(12),
-        color: colors.textSecondary,
+        color: colors.textLight4,
       },
       preview: {
         fontFamily: fonts.regular,
         fontSize: normalize(fontSizes.lg),
-        color: colors.textPrimary,
+        color: colors.text,
         marginLeft: normalize(2),
       },
       unreadDot: {
@@ -233,7 +233,7 @@ const MyInquiries = ({
         <Ionicons
           name="chevron-forward"
           size={normalize(18)}
-          color={colors.textSecondary}
+          color={colors.textLight4}
         />
       </TouchableOpacity>
     );
@@ -290,7 +290,7 @@ const MyInquiries = ({
         <FontAwesome5
           name="plus"
           size={normalize(24)}
-          color={colors.background}
+          color={colors.white}
         />
       </TouchableOpacity>
     </Root>

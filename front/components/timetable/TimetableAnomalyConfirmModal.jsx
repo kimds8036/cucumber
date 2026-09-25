@@ -35,7 +35,7 @@ export default function TimetableAnomalyConfirmModal({
       <Text
         style={{
           fontSize: 18,
-          color: colors.textPrimary,
+          color: colors.text,
           fontWeight: '700',
           textAlign: 'center',
           marginBottom: 10,
@@ -46,7 +46,7 @@ export default function TimetableAnomalyConfirmModal({
       <Text
         style={{
           fontSize: 14,
-          color: colors.textSecondary,
+          color: colors.textLight4,
           textAlign: 'center',
           lineHeight: 22,
           marginBottom: 16,
@@ -61,7 +61,7 @@ export default function TimetableAnomalyConfirmModal({
             {
               height: 42,
               borderRadius: 10,
-              backgroundColor: colors.textLight5,
+              backgroundColor: colors.textLight1,
               alignItems: 'center',
               justifyContent: 'center',
             },
@@ -75,7 +75,7 @@ export default function TimetableAnomalyConfirmModal({
               {
                 fontSize: 14,
                 fontWeight: '700',
-                color: colors.textSecondary,
+                color: colors.textLight4,
               },
             ]}
           >
@@ -99,7 +99,7 @@ export default function TimetableAnomalyConfirmModal({
           <Text
             style={[
               modalStyles.timetableResetModalDeleteText,
-              { fontSize: 14, fontWeight: '700', color: colors.textWhite },
+              { fontSize: 14, fontWeight: '700', color: colors.white },
             ]}
           >
             저장하기

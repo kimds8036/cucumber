@@ -300,7 +300,7 @@ const OtherSchoolScreen = ({ route, navigation }) => {
                   <Ionicons
                     name="location-outline"
                     size={normalize(14)}
-                    color={colors.textSecondary}
+                    color={colors.textLight4}
                   />
                   <Text style={styles.locationText}>{schoolInfo.location}</Text>
                 </View>
@@ -544,7 +544,7 @@ const OtherSchoolScreen = ({ route, navigation }) => {
               <Ionicons
                 name="information-circle-outline"
                 size={normalize(16)}
-                color={colors.textLight40}
+                color={colors.textLight3}
               />
             </TouchableOpacity>
             {grassTipVisible ? (
@@ -585,7 +585,7 @@ const OtherSchoolScreen = ({ route, navigation }) => {
               <Ionicons
                 name="chevron-forward"
                 size={normalize(22)}
-                color={colors.textSecondary}
+                color={colors.textLight4}
               />
             </View>
           </TouchableOpacity>

@@ -153,11 +153,11 @@ export default function GlobalToast({
         activeOpacity={0.92}
         onPress={onPress}
         style={{
-          backgroundColor: colors.background,
+          backgroundColor: colors.white,
           borderRadius: normalize(16),
           paddingHorizontal: normalize(16),
           paddingVertical: normalize(14),
-          shadowColor: colors.shadow,
+          shadowColor: colors.text,
           shadowOpacity: 0.12,
           shadowRadius: normalize(16),
           shadowOffset: { width: 0, height: normalize(4) },
@@ -177,7 +177,7 @@ export default function GlobalToast({
                 ellipsizeMode="tail"
                 style={{
                   fontSize: normalize(fontSizes.xl),
-                  color: colors.textPrimary,
+                  color: colors.text,
                   fontFamily: fonts.bold,
                 }}
               >
@@ -189,7 +189,7 @@ export default function GlobalToast({
                 style={{
                   marginTop: normalize(2),
                   fontSize: normalize(fontSizes.lg),
-                  color: colors.textPrimary,
+                  color: colors.text,
                   fontFamily: fonts.regular,
                 }}
               >
@@ -202,7 +202,7 @@ export default function GlobalToast({
               ellipsizeMode="tail"
               style={{
                 fontSize: normalize(fontSizes.xl),
-                color: colors.textPrimary,
+                color: colors.text,
                 fontFamily: fonts.bold,
               }}
             >

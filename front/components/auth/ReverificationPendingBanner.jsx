@@ -60,12 +60,12 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: 'Baloo2-Bold',
-    color: colors.textPrimary,
+    color: colors.text,
     marginBottom: 2,
   },
   body: {
     fontFamily: 'Baloo2-Regular',
-    color: colors.textSecondary,
+    color: colors.textLight4,
     lineHeight: 18,
   },
 });

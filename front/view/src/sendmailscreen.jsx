@@ -247,14 +247,14 @@ const SendMailScreen = ({ navigation, route }) => {
                     <MaterialCommunityIcons
                       name="school-outline"
                       size={normalize(18)}
-                      color={colors.textSecondary}
+                      color={colors.textLight4}
                     />
                     <TextInput
                       style={[styles.input, { marginLeft: normalize(6) }]}
                       placeholder="학교 검색하기"
                       value={schoolQuery}
                       onChangeText={setSchoolQuery}
-                      placeholderTextColor={colors.textSecondary}
+                      placeholderTextColor={colors.textLight4}
                     />
                   </View>
                   {schoolLoading && (
@@ -272,7 +272,7 @@ const SendMailScreen = ({ navigation, route }) => {
                         borderWidth: 1,
                         borderColor: '#EEE',
                         borderRadius: normalize(10),
-                        backgroundColor: '#FFF',
+                        backgroundColor: colors.white,
                       }}
                     >
                       {schoolResults.map((school, index) => (
@@ -293,7 +293,7 @@ const SendMailScreen = ({ navigation, route }) => {
                         >
                           <Text
                             style={{
-                              color: colors.textPrimary,
+                              color: colors.text,
                               fontFamily: fonts.bold,
                             }}
                           >
@@ -301,7 +301,7 @@ const SendMailScreen = ({ navigation, route }) => {
                           </Text>
                           <Text
                             style={{
-                              color: colors.textSecondary,
+                              color: colors.textLight4,
                               fontSize: normalize(12),
                               fontFamily: fonts.regular,
                             }}
@@ -326,7 +326,7 @@ const SendMailScreen = ({ navigation, route }) => {
                   <MaterialCommunityIcons
                     name="school-outline"
                     size={normalize(18)}
-                    color={colors.textSecondary}
+                    color={colors.textLight4}
                   />
                   <TextInput
                     style={[styles.input, { marginLeft: normalize(6) }]}
@@ -346,7 +346,7 @@ const SendMailScreen = ({ navigation, route }) => {
                     <Ionicons
                       name="close-circle"
                       size={normalize(18)}
-                      color={colors.textSecondary}
+                      color={colors.textLight4}
                     />
                   </TouchableOpacity>
                 </View>
@@ -366,7 +366,7 @@ const SendMailScreen = ({ navigation, route }) => {
                   <MaterialIcons
                     name="person-outline"
                     size={normalize(20)}
-                    color={colors.textSecondary}
+                    color={colors.textLight4}
                   />
                   <TextInput
                     style={[
@@ -375,7 +375,7 @@ const SendMailScreen = ({ navigation, route }) => {
                     ]}
                     placeholder="학교를 먼저 선택하세요"
                     editable={false}
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={colors.textLight4}
                   />
                 </View>
               ) : (
@@ -391,7 +391,7 @@ const SendMailScreen = ({ navigation, route }) => {
                             onChangeText={setRecipientGrade}
                             keyboardType="number-pad"
                             maxLength={2}
-                            placeholderTextColor={colors.textSecondary}
+                            placeholderTextColor={colors.textLight4}
                           />
                         </View>
                         <View style={styles.recipientSubField}>
@@ -402,7 +402,7 @@ const SendMailScreen = ({ navigation, route }) => {
                             onChangeText={setRecipientClass}
                             keyboardType="number-pad"
                             maxLength={3}
-                            placeholderTextColor={colors.textSecondary}
+                            placeholderTextColor={colors.textLight4}
                           />
                         </View>
                       </View>
@@ -414,7 +414,7 @@ const SendMailScreen = ({ navigation, route }) => {
                         value={recipientName}
                         onChangeText={setRecipientName}
                         maxLength={20}
-                        placeholderTextColor={colors.textSecondary}
+                        placeholderTextColor={colors.textLight4}
                       />
                     </View>
                   </View>
@@ -433,7 +433,7 @@ const SendMailScreen = ({ navigation, route }) => {
                         <MaterialIcons
                           name="alternate-email"
                           size={normalize(20)}
-                          color={colors.textSecondary}
+                          color={colors.textLight4}
                         />
                         <TextInput
                           style={[styles.input, { marginLeft: normalize(6) }]}
@@ -442,7 +442,7 @@ const SendMailScreen = ({ navigation, route }) => {
                           onChangeText={setRecipientUsername}
                           autoCapitalize="none"
                           autoCorrect={false}
-                          placeholderTextColor={colors.textSecondary}
+                          placeholderTextColor={colors.textLight4}
                         />
                       </View>
                     </>
@@ -467,7 +467,7 @@ const SendMailScreen = ({ navigation, route }) => {
                   onChangeText={handleMailContentChange}
                   multiline
                   textAlignVertical="top"
-                  placeholderTextColor={colors.textSecondary}
+                  placeholderTextColor={colors.textLight4}
                 />
                 <View style={styles.replyFormMetaRow}>
                   <View style={styles.sendMetaRight}>
@@ -480,7 +480,7 @@ const SendMailScreen = ({ navigation, route }) => {
                         <MaterialCommunityIcons
                           name="television-classic"
                           size={15}
-                          color={colors.textPrimary}
+                          color={colors.text}
                         />
                         <Text style={styles.replyFormChipText}>x 2</Text>
                       </TouchableOpacity>
@@ -513,7 +513,7 @@ const SendMailScreen = ({ navigation, route }) => {
             activeOpacity={0.9}
           >
             {sending ? (
-              <Loading color={colors.background} />
+              <Loading color={colors.white} />
             ) : (
               <Text style={styles.bottomCtaText}>
                 {showHomonymUI ? '재전송' : '전송하기'}

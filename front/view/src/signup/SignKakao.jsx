@@ -832,7 +832,7 @@ const SignKakao = ({ navigation }) => {
                 <Feather
                   name="x"
                   size={normalize(20)}
-                  color={colors.textPrimary}
+                  color={colors.text}
                 />
               </TouchableOpacity>
               <Text style={styles.headerTitle}>{getStepTitle()}</Text>
@@ -855,7 +855,7 @@ const SignKakao = ({ navigation }) => {
               <>
                 <ActivityIndicator size="large" color={colors.primary} />
                 <Text
-                  style={{ marginTop: normalize(16), color: colors.textSecondary, textAlign: 'center' }}
+                  style={{ marginTop: normalize(16), color: colors.textLight4, textAlign: 'center' }}
                 >
                   카카오 로그인을 여는 중…
                 </Text>
@@ -864,7 +864,7 @@ const SignKakao = ({ navigation }) => {
               <>
                 <Text
                   style={{
-                    color: colors.textPrimary,
+                    color: colors.text,
                     fontSize: normalize(16),
                     textAlign: 'center',
                     marginBottom: normalize(8),

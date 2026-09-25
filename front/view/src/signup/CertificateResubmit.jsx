@@ -105,7 +105,7 @@ const CertificateResubmit = ({ navigation }) => {
               value={certificateUrl}
               onChangeText={setCertificateUrl}
               placeholder="ex) https://naver.me/XXXXXXXX"
-              placeholderTextColor={colors.textSecondary}
+              placeholderTextColor={colors.textLight4}
               autoCapitalize="none"
               autoCorrect={false}
               spellCheck={false}
@@ -130,7 +130,7 @@ const CertificateResubmit = ({ navigation }) => {
               value={accessNumber}
               onChangeText={setAccessNumber}
               placeholder="ex) 000000"
-              placeholderTextColor={colors.textSecondary}
+              placeholderTextColor={colors.textLight4}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="number-pad"
@@ -154,7 +154,7 @@ const CertificateResubmit = ({ navigation }) => {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
   },
   body: {
     flex: 1,
@@ -162,18 +162,18 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: fonts.regular,
-    color: colors.textPrimary,
+    color: colors.text,
     marginBottom: 6,
   },
   inputWrapper: {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.textLight1,
     borderRadius: 12,
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
   },
   input: {
     fontFamily: fonts.regular,
-    color: colors.textPrimary,
+    color: colors.text,
     paddingHorizontal: 14,
     paddingVertical: 12,
   },

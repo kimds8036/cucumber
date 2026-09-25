@@ -62,12 +62,12 @@ export default function MealCard({ schulCode, atptCode = '' }) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
     borderRadius: 12,
     padding: 16,
     minHeight: 120,
     justifyContent: 'center',
-    shadowColor: colors.shadow,
+    shadowColor: colors.text,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -75,12 +75,12 @@ const styles = StyleSheet.create({
   },
   skeletonLine: {
     height: 14,
-    backgroundColor: colors.backgroundGray,
+    backgroundColor: colors.textLight2,
     borderRadius: 4,
   },
   emptyText: {
     textAlign: 'center',
-    color: colors.textSecondary,
+    color: colors.textLight4,
     fontSize: 14,
   },
   errorText: {
@@ -93,16 +93,16 @@ const styles = StyleSheet.create({
   },
   dateBadge: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: colors.textLight4,
     marginBottom: 4,
   },
   menu: {
     fontSize: 14,
-    color: colors.textPrimary,
+    color: colors.text,
   },
   calories: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: colors.textLight4,
     marginTop: 2,
   },
 });

@@ -288,7 +288,7 @@ const BoardWrite = ({ navigation, route }) => {
         <TextInput
           style={styles.textInput}
           placeholder="오늘의 이야기를 들려주세요"
-          placeholderTextColor={colors.textSecondary}
+          placeholderTextColor={colors.textLight4}
           multiline
           value={content}
           onChangeText={setContent}
@@ -324,7 +324,7 @@ const BoardWrite = ({ navigation, route }) => {
               name="pricetag-outline"
               size={22}
               color={
-                activePanel === 'tag' ? colors.primary : colors.textSecondary
+                activePanel === 'tag' ? colors.primary : colors.textLight4
               }
             />
           </TouchableOpacity>
@@ -336,7 +336,7 @@ const BoardWrite = ({ navigation, route }) => {
             <Ionicons
               name="image-outline"
               size={22}
-              color={colors.textSecondary}
+              color={colors.textLight4}
             />
           </TouchableOpacity>
 
@@ -347,7 +347,7 @@ const BoardWrite = ({ navigation, route }) => {
             <Ionicons
               name={locationEnabled ? 'location-sharp' : 'location-outline'}
               size={22}
-              color={locationEnabled ? colors.primary : colors.textSecondary}
+              color={locationEnabled ? colors.primary : colors.textLight4}
             />
           </TouchableOpacity>
         </View>
@@ -389,7 +389,7 @@ const BoardWrite = ({ navigation, route }) => {
                 onPress={handlePressPhoto}
                 style={styles.photoAddButton}
               >
-                <Ionicons name="add" size={20} color={colors.textSecondary} />
+                <Ionicons name="add" size={20} color={colors.textLight4} />
               </TouchableOpacity>
             )}
             {postImages.map((uri, index) => (
@@ -404,7 +404,7 @@ const BoardWrite = ({ navigation, route }) => {
                   <Ionicons
                     name="close-circle"
                     size={18}
-                    color={colors.background}
+                    color={colors.white}
                   />
                 </TouchableOpacity>
               </View>
@@ -483,7 +483,7 @@ const BoardWrite = ({ navigation, route }) => {
                       ref={tagInputRef}
                       style={styles.writeHashtagInputInline}
                       placeholder="태그 추가"
-                      placeholderTextColor={colors.textSecondary}
+                      placeholderTextColor={colors.textLight4}
                       value={hashtagInput}
                       onChangeText={handleHashtagInputChange}
                       onSubmitEditing={handleAddHashtag}

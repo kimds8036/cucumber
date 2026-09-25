@@ -371,7 +371,7 @@ function MailInbox({ onOpen, onBack, navigation }) {
           <Octicons
             name="history"
             size={normalize(22)}
-            color={colors.textPrimary}
+            color={colors.text}
           />
         }
         onRightPress={() => navigation?.navigate('MailHistory')}
@@ -599,7 +599,7 @@ function MailInbox({ onOpen, onBack, navigation }) {
                   <Ionicons
                     name="flag-outline"
                     size={16}
-                    color={colors.textSecondary}
+                    color={colors.textLight4}
                   />
                 </View>
                 <View>
@@ -864,7 +864,7 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
             <Octicons
               name="history"
               size={normalize(18)}
-              color={colors.textPrimary}
+              color={colors.text}
             />
           }
           onRightPress={() =>
@@ -939,7 +939,7 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
           <Octicons
             name="history"
             size={normalize(18)}
-            color={colors.textPrimary}
+            color={colors.text}
           />
         }
         onRightPress={() =>

@@ -75,11 +75,11 @@ const OptimizedImage = memo(({ uri, onPress, onLongPress, isSending }) => (
           backgroundColor: 'rgba(0,0,0,0.38)',
         }}
       >
-        <Loading color="#fff" size="small" />
+        <Loading color={colors.white} size="small" />
         <Text
           style={{
             marginTop: 8,
-            color: '#fff',
+            color: colors.white,
             fontSize: 12,
             fontWeight: '600',
           }}
@@ -131,7 +131,7 @@ const DateBanner = ({ msg, normalize }) => (
         backgroundColor: '#EEE',
       }}
     >
-      <Text style={{ fontSize: normalize(11), color: colors.textSecondary }}>
+      <Text style={{ fontSize: normalize(11), color: colors.textLight4 }}>
         {formatChatDateBanner(msg.dateKey)}
       </Text>
     </View>
@@ -306,7 +306,7 @@ const MessageBubble = ({
                     paddingVertical: 0,
                   },
               msg.isFailed && { borderWidth: 1, borderColor: colors.alert },
-              msg.is_deleted && { backgroundColor: colors.textLight10 },
+              msg.is_deleted && { backgroundColor: colors.textLight1 },
             ]}
           >
             {(onBubbleLongPress) => (

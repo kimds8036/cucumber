@@ -23,7 +23,7 @@ import { useKeyboardHandler } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFonts, Jua_400Regular } from '@expo-google-fonts/jua';
-import { fonts, fontSizes } from '../../styles/colors';
+import { colors, fonts, fontSizes } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
 import { useSocket } from '../../context/SocketContext';
 import { api } from '../../utils/api';
@@ -38,7 +38,7 @@ const BUBBLE_TTL_MS = 3000;
 const CARNIVAL = {
   bgTop: '#FFF6EE',
   bgBottom: '#FFEFDD',
-  card: '#FFFFFF',
+  card: colors.white,
   border: '#FFD9B0',
   avatar: '#FFE1B8',
   point: '#FF8FA3',
@@ -985,7 +985,7 @@ function createStyles(normalize) {
       fontFamily: fonts.regular,
       fontSize: normalize(11.5),
       lineHeight: normalize(15),
-      color: '#FFFFFF',
+      color: colors.white,
     },
     centerCol: {
       flex: 1,
@@ -1110,7 +1110,7 @@ function createStyles(normalize) {
     },
     submitText: {
       fontSize: normalize(fontSizes.md),
-      color: '#FFFFFF',
+      color: colors.white,
     },
     popupTitle: {
       fontSize: normalize(18),

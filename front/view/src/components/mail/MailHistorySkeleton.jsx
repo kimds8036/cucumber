@@ -38,7 +38,7 @@ export default function MailHistorySkeleton({
                     style={{
                       width: accentW,
                       alignSelf: 'stretch',
-                      backgroundColor: colors.textLight10,
+                      backgroundColor: colors.textLight1,
                       borderTopLeftRadius: r,
                       borderBottomLeftRadius: r,
                     }}
@@ -96,7 +96,7 @@ export default function MailHistorySkeleton({
                     style={{
                       width: accentW,
                       alignSelf: 'stretch',
-                      backgroundColor: colors.primaryLight50,
+                      backgroundColor: colors.primaryLight5,
                       borderTopRightRadius: r,
                       borderBottomRightRadius: r,
                     }}

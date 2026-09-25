@@ -13,7 +13,7 @@ export const createOtherSchoolStyles = (normalize) =>
       alignItems: 'center',
       justifyContent: 'flex-start',
       alignSelf: 'stretch',
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(16),
       paddingVertical: normalize(8),
       paddingHorizontal: normalize(15),
@@ -36,7 +36,7 @@ export const createOtherSchoolStyles = (normalize) =>
     mailboxWideTitle: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       includeFontPadding: false,
     },
     mailboxWideChevronWrap: {

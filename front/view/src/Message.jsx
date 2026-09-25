@@ -331,12 +331,12 @@ const SwipeableRow = ({ children, onDelete }) => {
           zIndex: 1,
         }}
       >
-        <Ionicons name="trash-outline" size={24} color="#fff" />
+        <Ionicons name="trash-outline" size={24} color={colors.white} />
       </TouchableOpacity>
       <Animated.View
         style={{
           width: containerWidth + 2,
-          backgroundColor: colors.background,
+          backgroundColor: colors.white,
           transform: [{ translateX }],
           zIndex: 2,
         }}
@@ -985,7 +985,7 @@ export function MessageContent({ navigation }) {
                   <Text
                     style={{
                       fontFamily: fonts.regular,
-                      color: colors.textSecondary,
+                      color: colors.textLight4,
                     }}
                   >
                     아직 시작된 쪽지가 없습니다.
@@ -1165,7 +1165,7 @@ export function MessageContent({ navigation }) {
                   <Text
                     style={{
                       fontFamily: fonts.regular,
-                      color: colors.textSecondary,
+                      color: colors.textLight4,
                     }}
                   >
                     아직 도착한 우편이 없습니다.
@@ -1304,7 +1304,7 @@ export function MessageContent({ navigation }) {
                                 : 'arrow-right-long'
                             }
                             size={normalize(14)}
-                            color={colors.background2}
+                            color={colors.textLight2}
                           />
                         )}
                       </View>
@@ -1330,7 +1330,7 @@ export function MessageContent({ navigation }) {
               size={normalize(30)}
               top={normalize(2)}
               right={normalize(1)}
-              color={colors.background}
+              color={colors.white}
             />
           </TouchableOpacity>
         </GuideFocusTarget>
@@ -1419,7 +1419,7 @@ export function MessageContent({ navigation }) {
                   <Ionicons
                     name="flag-outline"
                     size={16}
-                    color={colors.textSecondary}
+                    color={colors.textLight4}
                   />
                 </View>
                 <View>

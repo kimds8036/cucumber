@@ -23,7 +23,7 @@ export default function DateBanner({ date, normalize }) {
     <View style={{ alignItems: 'center', paddingVertical: n(10) }}>
       <View
         style={{
-          backgroundColor: colors.textLight10,
+          backgroundColor: colors.textLight1,
           paddingHorizontal: n(14),
           borderRadius: n(12),
           height: n(24),
@@ -33,7 +33,7 @@ export default function DateBanner({ date, normalize }) {
         <Text
           style={{
             fontSize: n(fontSizes.md),
-            color: colors.textSecondary,
+            color: colors.textLight4,
             fontFamily: fonts?.regular,
           }}
         >

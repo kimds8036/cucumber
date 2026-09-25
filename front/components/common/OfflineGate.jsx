@@ -221,7 +221,7 @@ export default function OfflineGate({ children }) {
         onPress={refresh}
         style={({ pressed }) => [styles.retryBtn, pressed && styles.retryBtnPressed]}
       >
-        <Feather name="refresh-cw" size={16} color={colors.textPrimary} />
+        <Feather name="refresh-cw" size={16} color={colors.text} />
         <Text style={styles.retryText}>다시 시도</Text>
       </Pressable>
     </View>
@@ -234,13 +234,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 32,
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
   },
   iconCircle: {
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: colors.primaryLight30,
+    backgroundColor: colors.primaryLight4,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 28,
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
     fontSize: 20,
     lineHeight: 30,
-    color: colors.textPrimary,
+    color: colors.text,
     textAlign: 'center',
     marginBottom: 12,
   },
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     fontSize: 14,
     lineHeight: 22,
-    color: colors.textSecondary,
+    color: colors.textLight4,
     textAlign: 'center',
     marginBottom: 28,
   },
@@ -269,15 +269,15 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
+    borderColor: colors.textLight1,
+    backgroundColor: colors.white,
   },
   retryBtnPressed: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.textLight1,
   },
   retryText: {
     fontFamily: fonts.regular,
     fontSize: 15,
-    color: colors.textPrimary,
+    color: colors.text,
   },
 });

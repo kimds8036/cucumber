@@ -11,7 +11,7 @@ export const createMessageStyles = (width, normalize) => {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
 
     // 쪽지/개인우편 토글 영역 (슬라이딩 pill)
@@ -25,10 +25,10 @@ export const createMessageStyles = (width, normalize) => {
     toggleTrack: {
       flex: 1,
       flexDirection: 'row',
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(20),
       borderWidth: 1,
-      borderColor: colors.primaryLight50,
+      borderColor: colors.primaryLight5,
       position: 'relative',
       height: normalize(40),
     },
@@ -58,10 +58,10 @@ export const createMessageStyles = (width, normalize) => {
     toggleOptionText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     toggleOptionTextActive: {
-      color: colors.background,
+      color: colors.white,
       fontFamily: fonts.bold,
     },
 
@@ -78,7 +78,7 @@ export const createMessageStyles = (width, normalize) => {
       alignItems: 'center',
       paddingVertical: normalize(12),
       paddingHorizontal: normalize(8),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     listItemLeft: {
       flexDirection: 'row',
@@ -101,13 +101,13 @@ export const createMessageStyles = (width, normalize) => {
     listItemName: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: normalize(2),
     },
     listItemContent: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     listItemRight: {
       alignSelf: 'center',
@@ -120,7 +120,7 @@ export const createMessageStyles = (width, normalize) => {
     listItemTime: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginBottom: normalize(4),
     },
     unreadBadge: {
@@ -135,7 +135,7 @@ export const createMessageStyles = (width, normalize) => {
     unreadBadgeText: {
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.bold,
-      color: colors.background,
+      color: colors.white,
     },
     floatingButton: {
       position: 'absolute',
@@ -157,7 +157,7 @@ export const createChatStyles = (width, normalize) => {
   return StyleSheet.create({
     chatDivider: {
       height: 1,
-      backgroundColor: colors.background2,
+      backgroundColor: colors.textLight2,
       marginHorizontal: width * 0,
       marginVertical: normalize(3),
     },
@@ -204,7 +204,7 @@ export const createChatStyles = (width, normalize) => {
     opponentName: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: normalize(3),
       marginLeft: 0,
     },
@@ -216,14 +216,14 @@ export const createChatStyles = (width, normalize) => {
       borderBottomLeftRadius: normalize(16),
       borderTopRightRadius: normalize(16),
       borderBottomRightRadius: normalize(16),
-      backgroundColor: colors.textLight5,
+      backgroundColor: colors.textLight1,
       alignSelf: 'flex-start',
     },
     opponentBubbleText: {
       fontSize: normalize(fontSizes.xl),
       lineHeight: normalize(fontSizes.xl) * 1.6,
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       ...Platform.select({
         android: { includeFontPadding: false },
       }),
@@ -237,7 +237,7 @@ export const createChatStyles = (width, normalize) => {
     chatTimeOpponent: {
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginLeft: normalize(7),
       alignSelf: 'flex-end',
     },
@@ -270,14 +270,14 @@ export const createChatStyles = (width, normalize) => {
       paddingHorizontal: normalize(14),
       borderRadius: normalize(16),
       borderTopRightRadius: normalize(0),
-      backgroundColor: colors.primaryLight30,
+      backgroundColor: colors.primaryLight4,
       minWidth: 0,
     },
     userBubbleText: {
       fontSize: normalize(fontSizes.xl),
       lineHeight: normalize(fontSizes.xl) * 1.6,
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       ...Platform.select({
         android: { includeFontPadding: false },
       }),
@@ -285,13 +285,13 @@ export const createChatStyles = (width, normalize) => {
     deletedMessageText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       fontStyle: 'italic',
     },
     chatTimeUser: {
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: normalize(fontSizes.md + 2),
       includeFontPadding: false,
       textAlignVertical: 'bottom',
@@ -301,7 +301,7 @@ export const createChatStyles = (width, normalize) => {
     // 답장 UI
     // ─────────────────────────────────────────────
     replyPreviewContainer: {
-      backgroundColor: colors.surface,
+      backgroundColor: colors.textLight1,
       paddingHorizontal: normalize(12),
       paddingVertical: normalize(8),
       flexDirection: 'row',
@@ -313,17 +313,17 @@ export const createChatStyles = (width, normalize) => {
     },
     replyPreviewTitle: {
       fontSize: normalize(fontSizes.md),
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     replyPreviewContent: {
       fontSize: normalize(fontSizes.xl),
-      color: colors.textPrimary,
+      color: colors.text,
       marginTop: 4,
     },
 
     replyQuoteBox: {
       borderBottomWidth: normalize(1),
-      borderBottomColor: colors.textLight10,
+      borderBottomColor: colors.textLight1,
       paddingVertical: normalize(6),
       paddingRight: normalize(24),
       marginBottom: normalize(6),
@@ -345,7 +345,7 @@ export const createChatStyles = (width, normalize) => {
     replyQuoteText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary, // textPrimary → textSecondary로 구분감
+      color: colors.textLight4, // textPrimary → textSecondary로 구분감
       textAlign: 'left',
       alignSelf: 'stretch',
     },
@@ -356,7 +356,7 @@ export const createChatStyles = (width, normalize) => {
     chatPinnedHeader: {
       flexShrink: 0,
       flexGrow: 0,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       zIndex: 20,
       elevation: 4,
     },
@@ -367,7 +367,7 @@ export const createChatStyles = (width, normalize) => {
     chatScreenMain: {
       flex: 1,
       minHeight: 0,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     chatListContainer: {
       flex: 1,
@@ -384,7 +384,7 @@ export const createChatStyles = (width, normalize) => {
     loadMoreButton: {
       backgroundColor: 'rgba(255,255,255,0.98)',
       borderWidth: 1,
-      borderColor: colors.textLight20,
+      borderColor: colors.textLight2,
       borderRadius: normalize(14),
       paddingHorizontal: normalize(12),
       paddingVertical: normalize(7),
@@ -392,11 +392,11 @@ export const createChatStyles = (width, normalize) => {
     loadMoreButtonText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     chatSkeletonOverlay: {
       ...StyleSheet.absoluteFillObject,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       zIndex: 50,
     },
     chatToastWrap: {
@@ -407,7 +407,7 @@ export const createChatStyles = (width, normalize) => {
       alignItems: 'center',
     },
     chatToastCard: {
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
       borderRadius: normalize(999),
       paddingHorizontal: normalize(16),
       paddingVertical: normalize(10),
@@ -415,16 +415,16 @@ export const createChatStyles = (width, normalize) => {
     chatToastText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     replyPreviewFallback: {
       flexDirection: 'row',
       alignItems: 'center',
       paddingHorizontal: normalize(16),
       paddingVertical: normalize(8),
-      backgroundColor: colors.surface,
+      backgroundColor: colors.textLight1,
       borderTopWidth: 1,
-      borderTopColor: colors.textLight20,
+      borderTopColor: colors.textLight2,
     },
     replyPreviewMetaWrap: {
       flex: 1,
@@ -437,7 +437,7 @@ export const createChatStyles = (width, normalize) => {
     replyPreviewContentFallback: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
   });
 };

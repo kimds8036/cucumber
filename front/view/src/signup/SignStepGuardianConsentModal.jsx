@@ -21,7 +21,7 @@ const SignStepGuardianConsentModal = ({
       style={{
         fontSize: normalize(18),
         fontWeight: '700',
-        color: colors.textPrimary,
+        color: colors.text,
         textAlign: 'center',
         marginBottom: 10,
       }}
@@ -32,7 +32,7 @@ const SignStepGuardianConsentModal = ({
       style={{
         fontSize: normalize(14),
         lineHeight: normalize(22),
-        color: colors.textSecondary,
+        color: colors.textLight4,
         textAlign: 'center',
         marginBottom: 16,
       }}
@@ -55,7 +55,7 @@ const SignStepGuardianConsentModal = ({
     >
       <Text
         style={{
-          color: colors.textWhite,
+          color: colors.white,
           fontWeight: '700',
           fontSize: normalize(14),
         }}
@@ -69,7 +69,7 @@ const SignStepGuardianConsentModal = ({
         marginTop: 8,
         height: 42,
         borderRadius: 10,
-        backgroundColor: colors.textLight5,
+        backgroundColor: colors.textLight1,
         alignItems: 'center',
         justifyContent: 'center',
       }}
@@ -78,7 +78,7 @@ const SignStepGuardianConsentModal = ({
     >
       <Text
         style={{
-          color: colors.textSecondary,
+          color: colors.textLight4,
           fontWeight: '700',
           fontSize: normalize(14),
         }}

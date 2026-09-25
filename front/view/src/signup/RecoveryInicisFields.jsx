@@ -188,7 +188,7 @@ const RecoveryInicisFields = ({
             <Text
               style={{
                 fontSize: normalize(15),
-                color: colors.textPrimary,
+                color: colors.text,
                 textAlign: 'center',
               }}
             >

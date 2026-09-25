@@ -132,7 +132,7 @@ const ChangeSchool = ({ navigation }) => {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
   },
   container: {
     flex: 1,

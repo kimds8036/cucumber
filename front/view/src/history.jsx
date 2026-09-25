@@ -250,7 +250,7 @@ export default function MailHistoryScreen({ navigation, route }) {
           <View
             style={{ paddingVertical: normalize(24), alignItems: 'center' }}
           >
-            <Text style={{ color: colors.textPrimary }}>{error}</Text>
+            <Text style={{ color: colors.text }}>{error}</Text>
           </View>
         )}
         {!loading && !error && historyItems.length === 0 && (
@@ -282,7 +282,7 @@ export default function MailHistoryScreen({ navigation, route }) {
                       style={{
                         width: accentW,
                         alignSelf: 'stretch',
-                        backgroundColor: colors.textLight10,
+                        backgroundColor: colors.textLight1,
                         borderTopLeftRadius: r,
                         borderBottomLeftRadius: r,
                       }}
@@ -315,7 +315,7 @@ export default function MailHistoryScreen({ navigation, route }) {
                       style={{
                         width: accentW,
                         alignSelf: 'stretch',
-                        backgroundColor: colors.primaryLight50,
+                        backgroundColor: colors.primaryLight5,
                         borderTopRightRadius: r,
                         borderBottomRightRadius: r,
                       }}

@@ -260,13 +260,13 @@ const FriendsScreen = ({ navigation }) => {
             <Ionicons
               name="search-outline"
               size={16}
-              color={colors.textSecondary}
+              color={colors.textLight4}
               style={styles.searchIcon}
             />
             <TextInput
               style={styles.searchInput}
               placeholder="이름, 아이디, 학교 검색"
-              placeholderTextColor={colors.textLight40}
+              placeholderTextColor={colors.textLight3}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
@@ -275,7 +275,7 @@ const FriendsScreen = ({ navigation }) => {
                 <Ionicons
                   name="close-circle"
                   size={16}
-                  color={colors.textLight40}
+                  color={colors.textLight3}
                 />
               </TouchableOpacity>
             )}
@@ -438,7 +438,7 @@ const FriendsScreen = ({ navigation }) => {
                     <Ionicons
                       name="people-outline"
                       size={48}
-                      color={colors.textLight20}
+                      color={colors.textLight2}
                     />
                     <Text style={styles.emptyText}>
                       {searchQuery.trim().length > 0
@@ -567,7 +567,7 @@ const FriendsScreen = ({ navigation }) => {
                       <Ionicons
                         name="ban-outline"
                         size={16}
-                        color={colors.textSecondary}
+                        color={colors.textLight4}
                       />
                     </View>
                     <View>

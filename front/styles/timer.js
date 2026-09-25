@@ -2,11 +2,11 @@ import { StyleSheet, Platform } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
 import { shadow } from './tokens';
 
-/** 모달 시트 상단 — colors.shadow 기준 (tokens.shadow 와 동일 톤) */
+/** 모달 시트 상단 — colors.text 기준 (tokens.shadow 와 동일 톤) */
 const friendModalSheetShadow = (normalize) =>
   Platform.select({
     ios: {
-      shadowColor: colors.shadow,
+      shadowColor: colors.text,
       shadowOffset: { width: 0, height: normalize(2) },
       shadowOpacity: 0.12,
       shadowRadius: normalize(4),
@@ -23,11 +23,11 @@ export const createTimerStyles = (width, normalize) => {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     scroll: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     scrollContent: {
       paddingHorizontal: width * 0.05,
@@ -48,7 +48,7 @@ export const createTimerStyles = (width, normalize) => {
     dateBarText: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       minWidth: normalize(100),
       textAlign: 'center',
     },
@@ -73,7 +73,7 @@ export const createTimerStyles = (width, normalize) => {
     studyRoomEntryText: {
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.bold,
-      color: colors.textWhite,
+      color: colors.white,
     },
     saveBtnText: {
       fontSize: normalize(fontSizes.xl),
@@ -96,7 +96,7 @@ export const createTimerStyles = (width, normalize) => {
       width: normalize(56),
       height: normalize(56),
       borderRadius: normalize(28),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderWidth: 2,
       borderColor: colors.primary,
       justifyContent: 'center',
@@ -106,7 +106,7 @@ export const createTimerStyles = (width, normalize) => {
       marginTop: normalize(4),
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textAlign: 'center',
     },
     friendStoryCircleWrap: {
@@ -139,14 +139,14 @@ export const createTimerStyles = (width, normalize) => {
       includeFontPadding: false,
       textAlignVertical: 'center',
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textAlign: 'center',
       maxWidth: normalize(56),
     },
 
     // 타이머 상자 — 학교탭 급식 `mealSectionCard`와 동일 톤(배경·radius·shadow.md)
     timerCard: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(16),
       paddingHorizontal: normalize(10),
       paddingVertical: normalize(16),
@@ -169,7 +169,7 @@ export const createTimerStyles = (width, normalize) => {
     timerHint: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginBottom: normalize(16),
     },
     timerBtn: {
@@ -183,21 +183,21 @@ export const createTimerStyles = (width, normalize) => {
       backgroundColor: colors.primary,
     },
     timerBtnPause: {
-      backgroundColor: colors.textLight5,
+      backgroundColor: colors.textLight1,
     },
     timerBtnText: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textWhite,
+      color: colors.white,
     },
     timerBtnTextPause: {
-      color: colors.textPrimary,
+      color: colors.text,
     },
 
     // 구분선
     divider: {
       height: 1,
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
       marginBottom: normalize(10),
     },
 
@@ -224,7 +224,7 @@ export const createTimerStyles = (width, normalize) => {
     todoTitle: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: 0,
     },
     todoHeaderButtons: {
@@ -259,7 +259,7 @@ export const createTimerStyles = (width, normalize) => {
       borderRadius: normalize(12),
       overflow: 'hidden',
       borderWidth: 0.5,
-      borderColor: colors.border,
+      borderColor: colors.textLight1,
     },
     subjectRow: {
       flexDirection: 'row',
@@ -280,12 +280,12 @@ export const createTimerStyles = (width, normalize) => {
     subjectName: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     subjectTime: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginTop: normalize(2),
     },
     subjectStartBtn: {
@@ -315,13 +315,13 @@ export const createTimerStyles = (width, normalize) => {
     subjectStartBtnText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
-      color: colors.background,
+      color: colors.white,
     },
     subjectTasksArea: {
-      backgroundColor: colors.background || colors.background,
+      backgroundColor: colors.white || colors.white,
       paddingVertical: normalize(6),
       borderTopWidth: 0.5,
-      borderTopColor: colors.border,
+      borderTopColor: colors.textLight1,
     },
     taskRow: {
       flexDirection: 'row',
@@ -336,7 +336,7 @@ export const createTimerStyles = (width, normalize) => {
       height: normalize(18),
       borderRadius: normalize(4),
       borderWidth: 2,
-      borderColor: colors.textLight20,
+      borderColor: colors.textLight2,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -348,10 +348,10 @@ export const createTimerStyles = (width, normalize) => {
       flex: 1,
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     taskContentDone: {
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textDecorationLine: 'line-through',
     },
     todoAddUnderSubject: {
@@ -361,7 +361,7 @@ export const createTimerStyles = (width, normalize) => {
     todoAddUnderSubjectText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     taskStatusRow: {
       flexDirection: 'row',
@@ -371,7 +371,7 @@ export const createTimerStyles = (width, normalize) => {
       width: normalize(26),
       height: normalize(26),
       borderRadius: normalize(13),
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -382,12 +382,12 @@ export const createTimerStyles = (width, normalize) => {
       backgroundColor: colors.alert,
     },
     taskStatusPending: {
-      backgroundColor: colors.textSecondary,
+      backgroundColor: colors.textLight4,
     },
     taskStatusText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
-      color: colors.textWhite,
+      color: colors.white,
     },
     timetableColumn: {
       flex: 1,
@@ -398,7 +398,7 @@ export const createTimerStyles = (width, normalize) => {
       // 높이 제한을 없애 전체 페이지 스크롤에서 00~05까지 노출
     },
     stopwatchCard: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(20),
       paddingVertical: normalize(18),
       paddingHorizontal: normalize(20),
@@ -413,12 +413,12 @@ export const createTimerStyles = (width, normalize) => {
     stopwatchLabel: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     stopwatchSubLabel: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     stopwatchTime: {
       fontSize: normalize(fontSizes.heading + 6),
@@ -444,20 +444,20 @@ export const createTimerStyles = (width, normalize) => {
       gap: normalize(6),
     },
     controlButtonSecondary: {
-      backgroundColor: colors.textLight5,
+      backgroundColor: colors.textLight1,
     },
     controlButtonText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.background,
+      color: colors.white,
     },
     controlButtonTextSecondary: {
-      color: colors.textPrimary,
+      color: colors.text,
     },
 
     // 친구 섹션
     friendSection: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(20),
       paddingVertical: normalize(14),
       paddingHorizontal: normalize(20),
@@ -472,7 +472,7 @@ export const createTimerStyles = (width, normalize) => {
     friendTitle: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     friendAddButton: {
       flexDirection: 'row',
@@ -481,7 +481,7 @@ export const createTimerStyles = (width, normalize) => {
       paddingVertical: normalize(4),
       paddingHorizontal: normalize(8),
       borderRadius: normalize(12),
-      backgroundColor: colors.primaryLight30,
+      backgroundColor: colors.primaryLight4,
     },
     friendAddText: {
       fontSize: normalize(fontSizes.lg),
@@ -540,7 +540,7 @@ export const createTimerStyles = (width, normalize) => {
       marginTop: normalize(4),
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textAlign: 'center',
     },
 
@@ -555,7 +555,7 @@ export const createTimerStyles = (width, normalize) => {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.textLight5,
+      backgroundColor: colors.textLight1,
       borderRadius: normalize(12),
       paddingHorizontal: normalize(10),
       paddingVertical: normalize(6),
@@ -565,7 +565,7 @@ export const createTimerStyles = (width, normalize) => {
       flex: 1,
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     friendSearchButton: {
       paddingVertical: normalize(8),
@@ -576,12 +576,12 @@ export const createTimerStyles = (width, normalize) => {
     friendSearchButtonText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
-      color: colors.background,
+      color: colors.white,
     },
 
     // 타임테이블
     timetableSection: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(20),
       paddingVertical: normalize(14),
       paddingHorizontal: normalize(20),
@@ -590,7 +590,7 @@ export const createTimerStyles = (width, normalize) => {
     timetableTitle: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: normalize(10),
     },
     timetableHeaderRow: {
@@ -614,7 +614,7 @@ export const createTimerStyles = (width, normalize) => {
     timetableMinuteHeaderText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     timetableBody: {
       maxHeight: normalize(600),
@@ -623,7 +623,7 @@ export const createTimerStyles = (width, normalize) => {
       flexDirection: 'row',
       alignItems: 'center',
       borderTopWidth: 0.5,
-      borderColor: colors.textLight10,
+      borderColor: colors.textLight1,
     },
     timetableHourCell: {
       width: normalize(20),
@@ -634,7 +634,7 @@ export const createTimerStyles = (width, normalize) => {
     timetableHourText: {
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     timetableSlotsRow: {
       flexDirection: 'row',
@@ -644,8 +644,8 @@ export const createTimerStyles = (width, normalize) => {
       flex: 1,
       height: normalize(16),
       borderLeftWidth: 0.5,
-      borderColor: colors.textLight10,
-      backgroundColor: colors.background,
+      borderColor: colors.textLight1,
+      backgroundColor: colors.white,
       overflow: 'hidden',
       flexDirection: 'row',
     },
@@ -657,20 +657,20 @@ export const createTimerStyles = (width, normalize) => {
       minWidth: 0,
     },
     timetableSlotActive: {
-      backgroundColor: colors.primaryLight30,
+      backgroundColor: colors.primaryLight4,
     },
     timetableFooterText: {
       marginTop: normalize(8),
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
 
     // 저장용 플래너 캡처 (좌: 날짜/시간/투두, 우: 타임테이블, 버튼 없음)
     plannerCaptureWrap: {
       position: 'relative',
       width: width,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       paddingVertical: normalize(16),
     },
     plannerCaptureRow: {
@@ -681,7 +681,7 @@ export const createTimerStyles = (width, normalize) => {
       paddingHorizontal: normalize(14),
       paddingVertical: normalize(8),
       borderRightWidth: 1,
-      borderColor: colors.textLight10,
+      borderColor: colors.textLight1,
     },
     plannerRightColumn: {
       flex: 1,
@@ -691,24 +691,24 @@ export const createTimerStyles = (width, normalize) => {
     plannerLabel: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginBottom: normalize(2),
     },
     plannerValue: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: normalize(8),
     },
     plannerMemoLine: {
       height: 1,
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
       marginBottom: normalize(16),
     },
     plannerTodoTitle: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: normalize(10),
     },
     plannerSubjectRow: {
@@ -728,12 +728,12 @@ export const createTimerStyles = (width, normalize) => {
     plannerSubjectName: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     plannerSubjectTime: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginTop: 2,
     },
     plannerTaskRow: {
@@ -749,7 +749,7 @@ export const createTimerStyles = (width, normalize) => {
       height: normalize(18),
       borderRadius: normalize(4),
       borderWidth: 2,
-      borderColor: colors.textLight20,
+      borderColor: colors.textLight2,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -761,10 +761,10 @@ export const createTimerStyles = (width, normalize) => {
       flex: 1,
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     plannerTaskContentDone: {
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textDecorationLine: 'line-through',
     },
     /** @timer.jsx */
@@ -782,7 +782,7 @@ export const createTimerStyles = (width, normalize) => {
       pointerEvents: 'none',
     },
     viewShotBg: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     captureWatermarkOverlay: {
       position: 'absolute',
@@ -843,7 +843,7 @@ export const createTimerFriendModalStyles = (normalize) =>
   StyleSheet.create({
     pokeOverlay: {
       flex: 1,
-      backgroundColor: colors.overlayLight,
+      backgroundColor: colors.textLight3,
     },
     pokeWrapper: {
       position: 'absolute',
@@ -852,7 +852,7 @@ export const createTimerFriendModalStyles = (normalize) =>
       right: 0,
     },
     pokePopup: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderTopLeftRadius: normalize(24),
       borderTopRightRadius: normalize(24),
       paddingHorizontal: normalize(24),
@@ -863,7 +863,7 @@ export const createTimerFriendModalStyles = (normalize) =>
     pokeHandle: {
       width: normalize(40),
       height: normalize(4),
-      backgroundColor: colors.border,
+      backgroundColor: colors.textLight1,
       borderRadius: normalize(2),
       alignSelf: 'center',
       marginBottom: normalize(20),
@@ -906,7 +906,7 @@ export const createTimerFriendModalStyles = (normalize) =>
     pokeFriendName: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       lineHeight: normalize(24),
       includeFontPadding: false,
       textAlignVertical: 'center',
@@ -919,14 +919,14 @@ export const createTimerFriendModalStyles = (normalize) =>
     pokeFriendUsername: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: normalize(20),
       includeFontPadding: false,
     },
     pokeStatusText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginTop: normalize(4),
       lineHeight: normalize(20),
       includeFontPadding: false,
@@ -939,7 +939,7 @@ export const createTimerFriendModalStyles = (normalize) =>
     pokeOutsideDesc: {
       fontSize: normalize(fontSizes.title),
       fontFamily: fonts.bold,
-      color: colors.background,
+      color: colors.white,
       lineHeight: normalize(24),
       includeFontPadding: false,
       textAlign: 'center',
@@ -952,11 +952,11 @@ export const createTimerFriendModalStyles = (normalize) =>
     pokeOutsideDescRest: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.background,
+      color: colors.white,
     },
     pokeDivider: {
       height: 1,
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
       marginBottom: normalize(16),
     },
     pokeInfoBox: {
@@ -982,11 +982,11 @@ export const createTimerFriendModalStyles = (normalize) =>
     pokeInfoDesc: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.background2,
+      color: colors.textLight2,
       lineHeight: normalize(16),
     },
     pokePrimaryBtn: {
-      backgroundColor: colors.primaryLight20,
+      backgroundColor: colors.primaryLight3,
       borderRadius: normalize(20),
       paddingVertical: normalize(12),
       alignItems: 'center',
@@ -1011,7 +1011,7 @@ export const createTimerFriendModalStyles = (normalize) =>
     },
     // 쿡 찌르기 전용 버튼
     pokeActionBtn: {
-      backgroundColor: colors.primaryLight20,
+      backgroundColor: colors.primaryLight3,
       borderRadius: normalize(10),
       paddingVertical: normalize(14),
       alignItems: 'center',
@@ -1033,7 +1033,7 @@ export const createTimerFriendModalStyles = (normalize) =>
       textAlignVertical: 'center',
     },
     pokeMessageBtn: {
-      backgroundColor: colors.primaryLight20,
+      backgroundColor: colors.primaryLight3,
       borderRadius: normalize(20),
       paddingVertical: normalize(12),
       alignItems: 'center',
@@ -1041,7 +1041,7 @@ export const createTimerFriendModalStyles = (normalize) =>
     },
     // 메시지 보내기 전용 버튼
     pokeMessageActionBtn: {
-      backgroundColor: colors.textLight5,
+      backgroundColor: colors.textLight1,
       borderRadius: normalize(10),
       paddingVertical: normalize(8),
       alignItems: 'center',
@@ -1058,7 +1058,7 @@ export const createTimerFriendModalStyles = (normalize) =>
     pokeMessageActionBtnText: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.background2,
+      color: colors.textLight2,
       includeFontPadding: false,
       textAlignVertical: 'center',
     },
@@ -1071,7 +1071,7 @@ export const createTimerFriendModalStyles = (normalize) =>
       gap: normalize(12),
     },
     pokeMessageBtnIcon: {
-      color: colors.background2,
+      color: colors.textLight2,
       fontSize: normalize(fontSizes.xxl),
       alignSelf: 'center',
       paddingHorizontal: normalize(4),
@@ -1087,7 +1087,7 @@ export const createTimerFriendModalStyles = (normalize) =>
       alignItems: 'flex-start',
     },
     pokeMessageBtnText: {
-      color: colors.background,
+      color: colors.white,
       fontSize: normalize(15),
       fontFamily: fonts.bold,
       alignSelf: 'flex-start',
@@ -1097,13 +1097,13 @@ export const createTimerFriendModalStyles = (normalize) =>
     pokeCancelBtn: {
       paddingVertical: normalize(12),
       alignItems: 'center',
-      backgroundColor: colors.textLight5,
+      backgroundColor: colors.textLight1,
       borderRadius: normalize(20),
     },
     pokeCancelBtnText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
 
     addFriendOverlay: {
@@ -1117,7 +1117,7 @@ export const createTimerFriendModalStyles = (normalize) =>
       right: 0,
     },
     addFriendPopup: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderTopLeftRadius: normalize(24),
       borderTopRightRadius: normalize(24),
       paddingHorizontal: normalize(24),
@@ -1128,7 +1128,7 @@ export const createTimerFriendModalStyles = (normalize) =>
     addFriendHandle: {
       width: normalize(40),
       height: normalize(4),
-      backgroundColor: colors.border,
+      backgroundColor: colors.textLight1,
       borderRadius: normalize(2),
       alignSelf: 'center',
       marginBottom: normalize(20),
@@ -1136,19 +1136,19 @@ export const createTimerFriendModalStyles = (normalize) =>
     addFriendTitle: {
       fontSize: normalize(fontSizes.title),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: normalize(10),
       marginTop: normalize(10),
     },
     addFriendSubtitle: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     addFriendInputRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.surface,
+      backgroundColor: colors.textLight1,
       borderRadius: normalize(12),
       paddingHorizontal: normalize(14),
       paddingVertical: normalize(12),
@@ -1159,7 +1159,7 @@ export const createTimerFriendModalStyles = (normalize) =>
       flex: 1,
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       padding: 0,
     },
     addFriendPrimaryBtn: {
@@ -1180,18 +1180,18 @@ export const createTimerFriendModalStyles = (normalize) =>
     addFriendPrimaryBtnText: {
       fontSize: normalize(15),
       fontFamily: fonts.bold,
-      color: colors.textWhite,
+      color: colors.white,
     },
     addFriendCancelBtn: {
       paddingVertical: normalize(12),
       alignItems: 'center',
-      backgroundColor: colors.surface,
+      backgroundColor: colors.textLight1,
       borderRadius: normalize(14),
     },
     addFriendCancelBtnText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
   });
 
@@ -1202,7 +1202,7 @@ export const createTimerModalsStyles = (normalize) =>
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: colors.overlayLight,
+      backgroundColor: colors.textLight3,
     },
     overlay: {
       position: 'absolute',
@@ -1225,13 +1225,13 @@ export const createTimerModalsStyles = (normalize) =>
       justifyContent: 'center',
     },
     card: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(18),
       paddingHorizontal: normalize(18),
       paddingVertical: normalize(18),
     },
     bottomSheetCard: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderTopLeftRadius: normalize(24),
       borderTopRightRadius: normalize(24),
       paddingHorizontal: normalize(18),
@@ -1244,13 +1244,13 @@ export const createTimerModalsStyles = (normalize) =>
     title: {
       fontSize: normalize(fontSizes.title),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: normalize(10),
     },
     label: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginBottom: normalize(6),
     },
     labelNoMargin: {
@@ -1258,13 +1258,13 @@ export const createTimerModalsStyles = (normalize) =>
     },
     input: {
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: colors.textLight1,
       borderRadius: normalize(10),
       paddingHorizontal: normalize(12),
       paddingVertical: normalize(8),
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: normalize(12),
       textAlignVertical: 'center',
       includeFontPadding: false,
@@ -1279,7 +1279,7 @@ export const createTimerModalsStyles = (normalize) =>
     subjectPresetTitle: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginBottom: normalize(6),
     },
     subjectPresetRow: {
@@ -1293,9 +1293,9 @@ export const createTimerModalsStyles = (normalize) =>
       paddingHorizontal: normalize(10),
       paddingVertical: normalize(6),
       borderRadius: normalize(14),
-      backgroundColor: colors.surface,
+      backgroundColor: colors.textLight1,
       borderWidth: 1,
-      borderColor: colors.textLight10,
+      borderColor: colors.textLight1,
     },
     subjectPresetDot: {
       width: normalize(10),
@@ -1305,12 +1305,12 @@ export const createTimerModalsStyles = (normalize) =>
     subjectPresetText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     emptySubjectHint: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginBottom: normalize(16),
     },
     colorRow: {
@@ -1343,7 +1343,7 @@ export const createTimerModalsStyles = (normalize) =>
       borderColor: colors.transparent,
     },
     colorDotSelected: {
-      borderColor: colors.textPrimary,
+      borderColor: colors.text,
       borderWidth: 2,
     },
     randomBtn: {
@@ -1351,7 +1351,7 @@ export const createTimerModalsStyles = (normalize) =>
       paddingHorizontal: normalize(10),
       paddingVertical: normalize(6),
       borderRadius: normalize(12),
-      backgroundColor: colors.surface,
+      backgroundColor: colors.textLight1,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
@@ -1363,7 +1363,7 @@ export const createTimerModalsStyles = (normalize) =>
     randomText: {
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.bold,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: normalize(14),
     },
     row: {
@@ -1377,7 +1377,7 @@ export const createTimerModalsStyles = (normalize) =>
       paddingHorizontal: normalize(14),
       paddingVertical: normalize(10),
       borderRadius: normalize(10),
-      backgroundColor: colors.surface,
+      backgroundColor: colors.textLight1,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
@@ -1385,7 +1385,7 @@ export const createTimerModalsStyles = (normalize) =>
     cancelText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     primaryBtn: {
       flex: 1,
@@ -1400,7 +1400,7 @@ export const createTimerModalsStyles = (normalize) =>
     primaryText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textWhite,
+      color: colors.white,
     },
     btnDisabled: {
       opacity: 0.4,
@@ -1418,7 +1418,7 @@ export const createTimerModalsStyles = (normalize) =>
     calendarMonthTitle: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     weekRow: {
       flexDirection: 'row',
@@ -1432,7 +1432,7 @@ export const createTimerModalsStyles = (normalize) =>
     weekDayText: {
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.bold,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     calendarGrid: {
       flexDirection: 'row',
@@ -1458,19 +1458,19 @@ export const createTimerModalsStyles = (normalize) =>
     dayText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     timerSaveModalTitle: {
       fontSize: normalize(fontSizes.title),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       textAlign: 'center',
       marginBottom: normalize(10),
     },
     timerSaveModalBody: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textAlign: 'center',
       lineHeight: normalize(22),
       marginBottom: normalize(16),
@@ -1485,10 +1485,10 @@ export const createTimerModalsStyles = (normalize) =>
     timerSaveModalConfirmText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textWhite,
+      color: colors.white,
     },
     dayTextSelected: {
       fontFamily: fonts.bold,
-      color: colors.textWhite,
+      color: colors.white,
     },
   });

@@ -132,7 +132,7 @@ export default function StudentVerificationRejected({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
   },
   inner: {
     flexGrow: 1,
@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: 'Baloo2-Bold',
-    color: colors.textPrimary,
+    color: colors.text,
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
   },
   reasonText: {
     fontFamily: 'Baloo2-Bold',
-    color: colors.textPrimary,
+    color: colors.text,
   },
   button: {
     width: '100%',
@@ -174,11 +174,11 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     fontFamily: 'Baloo2-Bold',
-    color: colors.background,
+    color: colors.white,
   },
   secondaryButton: {
     width: '100%',
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
     borderWidth: 1,
     borderColor: colors.primary,
     justifyContent: 'center',
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     fontFamily: 'Baloo2-Regular',
-    color: colors.textSecondary,
+    color: colors.textLight4,
     textDecorationLine: 'underline',
   },
 });

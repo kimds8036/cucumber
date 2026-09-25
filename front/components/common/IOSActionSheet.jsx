@@ -96,11 +96,11 @@ const styles = StyleSheet.create({
     minHeight: 50,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
   },
   actionText: {
     fontSize: 17,
-    color: colors.textPrimary,
+    color: colors.text,
     fontWeight: '500',
   },
   actionTextDanger: {
@@ -113,13 +113,13 @@ const styles = StyleSheet.create({
   cancel: {
     minHeight: 50,
     borderRadius: 14,
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cancelText: {
     fontSize: 17,
-    color: colors.textPrimary,
+    color: colors.text,
     fontWeight: '600',
   },
 });

@@ -143,7 +143,7 @@ const Inquiry = ({ navigation, route }) => {
           value={content}
           onChangeText={setContent}
           placeholder="문의 내용을 자세히 입력해주세요"
-          placeholderTextColor={colors.textLight40}
+          placeholderTextColor={colors.textLight3}
           multiline
           textAlignVertical="top"
           maxLength={5000}
@@ -168,7 +168,7 @@ const Inquiry = ({ navigation, route }) => {
           value={contactEmail}
           onChangeText={setContactEmail}
           placeholder="example@email.com"
-          placeholderTextColor={colors.textLight40}
+          placeholderTextColor={colors.textLight3}
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
@@ -228,7 +228,7 @@ const Inquiry = ({ navigation, route }) => {
 const createStyles = (width, normalize) => ({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
   },
   content: {
     flex: 1,
@@ -247,7 +247,7 @@ const createStyles = (width, normalize) => ({
   sectionLabelText: {
     fontSize: normalize(fontSizes.lg),
     fontFamily: fonts.bold,
-    color: colors.textPrimary,
+    color: colors.text,
   },
   lockedFieldWrap: {
     width: '100%',
@@ -255,22 +255,22 @@ const createStyles = (width, normalize) => ({
     borderRadius: normalize(14),
     paddingHorizontal: normalize(14),
     paddingVertical: normalize(10),
-    backgroundColor: colors.surface,
+    backgroundColor: colors.textLight1,
     marginBottom: normalize(8),
     justifyContent: 'center',
   },
   lockedFieldText: {
     fontSize: normalize(fontSizes.lg),
     fontFamily: fonts.regular,
-    color: colors.textSecondary,
+    color: colors.textLight4,
   },
   lockedFieldPlaceholder: {
-    color: colors.textLight40,
+    color: colors.textLight3,
   },
   helperText: {
     fontSize: normalize(fontSizes.md),
     fontFamily: fonts.regular,
-    color: colors.textSecondary,
+    color: colors.textLight4,
     marginTop: normalize(4),
     marginLeft: normalize(4),
     marginBottom: normalize(4),
@@ -279,14 +279,14 @@ const createStyles = (width, normalize) => ({
     width: '100%',
     minHeight: normalize(46),
     borderWidth: 1,
-    borderColor: colors.textLight20,
+    borderColor: colors.textLight2,
     borderRadius: normalize(14),
     paddingHorizontal: normalize(14),
     paddingVertical: normalize(10),
     fontSize: normalize(fontSizes.lg),
     fontFamily: fonts.regular,
-    color: colors.textPrimary,
-    backgroundColor: colors.background,
+    color: colors.text,
+    backgroundColor: colors.white,
     marginBottom: normalize(8),
   },
   textarea: {
@@ -296,7 +296,7 @@ const createStyles = (width, normalize) => ({
   footerSection: {
     paddingTop: normalize(8),
     paddingBottom: normalize(12),
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
   },
   primaryButton: {
     width: '100%',
@@ -307,12 +307,12 @@ const createStyles = (width, normalize) => ({
     paddingVertical: normalize(14),
   },
   primaryButtonDisabled: {
-    backgroundColor: colors.textLight20,
+    backgroundColor: colors.textLight2,
   },
   primaryButtonText: {
     fontSize: normalize(fontSizes.xxl),
     fontFamily: fonts.bold,
-    color: '#fff',
+    color: colors.white,
   },
   resultBackdrop: {
     flex: 1,
@@ -321,20 +321,20 @@ const createStyles = (width, normalize) => ({
     paddingHorizontal: normalize(28),
   },
   resultCard: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.white,
     borderRadius: normalize(14),
     padding: normalize(20),
   },
   resultTitle: {
     fontSize: normalize(fontSizes.xxl),
     fontFamily: fonts.bold,
-    color: colors.textPrimary,
+    color: colors.text,
     marginBottom: normalize(10),
   },
   resultBody: {
     fontSize: normalize(fontSizes.lg),
     fontFamily: fonts.regular,
-    color: colors.textSecondary,
+    color: colors.textLight4,
     lineHeight: normalize(22),
   },
   resultBtn: {
@@ -347,7 +347,7 @@ const createStyles = (width, normalize) => ({
     justifyContent: 'center',
   },
   resultBtnText: {
-    color: '#fff',
+    color: colors.white,
     fontFamily: fonts.bold,
     fontSize: normalize(fontSizes.xl),
   },

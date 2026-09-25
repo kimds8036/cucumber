@@ -143,7 +143,7 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
                 <MaterialCommunityIcons
                   name="school-outline"
                   size={normalize(18)}
-                  color={colors.textSecondary}
+                  color={colors.textLight4}
                 />
                 <TextInput
                   style={[styles.input, { marginLeft: normalize(6) }]}
@@ -169,7 +169,7 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
                   onChangeText={handleMailContentChange}
                   multiline
                   textAlignVertical="top"
-                  placeholderTextColor={colors.textSecondary}
+                  placeholderTextColor={colors.textLight4}
                 />
                 <View style={styles.replyFormMetaRow}>
                   <View style={styles.sendMetaRight}>
@@ -184,7 +184,7 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
                       <MaterialCommunityIcons
                         name="television-classic"
                         size={15}
-                        color={colors.textPrimary}
+                        color={colors.text}
                       />
                       <Text style={styles.replyFormChipText}>x 2</Text>
                     </TouchableOpacity>
@@ -213,7 +213,7 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
             activeOpacity={0.9}
           >
             {sending ? (
-              <Loading color={colors.background} />
+              <Loading color={colors.white} />
             ) : (
               <Text style={styles.bottomCtaText}>전송하기</Text>
             )}

@@ -44,7 +44,7 @@ export default function CommentInput({
             <Ionicons
               name="close-circle"
               size={normalize(18)}
-              color={colors.textSecondary}
+              color={colors.textLight4}
             />
           </TouchableOpacity>
         </View>
@@ -73,14 +73,14 @@ export default function CommentInput({
                   position: 'absolute',
                   top: -6,
                   right: -6,
-                  backgroundColor: '#000',
+                  backgroundColor: colors.text,
                   borderRadius: 10,
                 }}
               >
                 <Ionicons
                   name="close-circle"
                   size={normalize(18)}
-                  color="#fff"
+                  color={colors.white}
                 />
               </TouchableOpacity>
             </View>
@@ -115,7 +115,7 @@ export default function CommentInput({
               ? `${replyToAuthorLabel}에게 답글 입력...`
               : (mainPlaceholder ?? '댓글을 입력하세요')
           }
-          placeholderTextColor={colors.textSecondary}
+          placeholderTextColor={colors.textLight4}
           value={bottomComment}
           onChangeText={setBottomComment}
           multiline
@@ -142,7 +142,7 @@ export default function CommentInput({
           <Ionicons
             name="arrow-up"
             size={normalize(22)}
-            color={colors.background}
+            color={colors.white}
           />
         </TouchableOpacity>
       </View>

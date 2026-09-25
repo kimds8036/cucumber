@@ -95,7 +95,7 @@ function getTooltipContainerJustify(textAlign) {
 function GuideTooltipDescription({ description, textAlign }) {
   const textStyle = {
     fontSize: 18,
-    color: colors.background,
+    color: colors.white,
     fontFamily: fonts.bold,
     textAlign,
     flexShrink: 0,
@@ -126,7 +126,7 @@ function GuideTooltipContent({ description, layout }) {
   if (textAlign === 'left' && showArrow) {
     return (
       <View style={rowStyle}>
-        <MaterialIcons name="keyboard-double-arrow-right" size={40} color={colors.background} />
+        <MaterialIcons name="keyboard-double-arrow-right" size={40} color={colors.white} />
         <GuideTooltipDescription description={description} textAlign={textAlign} />
       </View>
     );
@@ -136,7 +136,7 @@ function GuideTooltipContent({ description, layout }) {
     return (
       <View style={rowStyle}>
         <GuideTooltipDescription description={description} textAlign={textAlign} />
-        <MaterialIcons name="keyboard-double-arrow-left" size={40} color={colors.background} />
+        <MaterialIcons name="keyboard-double-arrow-left" size={40} color={colors.white} />
       </View>
     );
   }
@@ -327,7 +327,7 @@ export default function GuideOverlayScreen({ navigation, route }) {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <View style={{ flex: 1, backgroundColor: colors.white }}>
       <GuidePreviewProvider
         messageTab={step.guideMessageTab || 'note'}
         schoolScrollTo={step.guideSchoolScrollTo}
@@ -336,7 +336,7 @@ export default function GuideOverlayScreen({ navigation, route }) {
         focusMeasureKey={stepIndex}
       >
         <SafeAreaView
-          style={{ flex: 1, backgroundColor: colors.background }}
+          style={{ flex: 1, backgroundColor: colors.white }}
           edges={['top', 'bottom']}
         >
           <View key={`guide-bg-${stepIndex}`} style={{ flex: 1 }} pointerEvents="none">
@@ -344,7 +344,7 @@ export default function GuideOverlayScreen({ navigation, route }) {
               headerTitle={getMainTabTitle(step.activeTab)}
               navigation={GUIDE_NAVIGATION}
             />
-            <View style={{ flex: 1, backgroundColor: colors.background }}>
+            <View style={{ flex: 1, backgroundColor: colors.white }}>
               <Background {...(step.backgroundProps || {})} />
             </View>
             <MainFooter activeTab={step.activeTab} onTabPress={() => {}} />

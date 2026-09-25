@@ -37,7 +37,7 @@ export default function Skeleton({
           height,
           borderRadius,
           opacity,
-          backgroundColor: colors.textLight10,
+          backgroundColor: colors.textLight1,
         },
         style,
       ]}

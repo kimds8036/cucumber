@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Modal, View, TouchableOpacity, Text, Animated } from 'react-native';
 import { Image } from 'expo-image';
 import Skeleton from '../../components/common/Skeleton';
+import { colors } from '../../styles/colors';
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
@@ -205,7 +206,7 @@ export default function ImageViewer({ visible, uri, onClose }) {
           style={{ position: 'absolute', top: 50, right: 20, zIndex: 10 }}
           activeOpacity={0.85}
         >
-          <Text style={{ color: '#fff', fontSize: 28 }}>✕</Text>
+          <Text style={{ color: colors.white, fontSize: 28 }}>✕</Text>
         </TouchableOpacity>
 
         <View

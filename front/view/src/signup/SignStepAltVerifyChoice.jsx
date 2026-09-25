@@ -77,7 +77,7 @@ const SignStepAltVerifyChoice = ({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
     borderWidth: 2,
     borderColor: colors.primary,
   },
@@ -91,11 +91,11 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontFamily: fonts.bold,
-    color: colors.textPrimary,
+    color: colors.text,
   },
   cardBody: {
     fontFamily: fonts.regular,
-    color: colors.textSecondary,
+    color: colors.textLight4,
   },
 });
 

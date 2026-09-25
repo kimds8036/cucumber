@@ -17,7 +17,7 @@ function PostCardSkeleton({ n, onLayout }) {
         height: h,
         marginTop: mt,
         borderRadius: n(4),
-        backgroundColor: colors.textLight10,
+        backgroundColor: colors.textLight1,
       }}
     />
   );
@@ -27,7 +27,7 @@ function PostCardSkeleton({ n, onLayout }) {
       pointerEvents="none"
       onLayout={onLayout}
       style={{
-        backgroundColor: colors.background,
+        backgroundColor: colors.white,
         marginHorizontal: n(12),
         marginTop: n(6),
         marginBottom: n(4),
@@ -35,7 +35,7 @@ function PostCardSkeleton({ n, onLayout }) {
         paddingHorizontal: n(12),
         paddingVertical: n(8),
         height: n(100),
-        shadowColor: '#000',
+        shadowColor: colors.text,
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.06,
         shadowRadius: 6,
@@ -60,7 +60,7 @@ function PostCardSkeleton({ n, onLayout }) {
             width: 56,
             height: 56,
             borderRadius: 8,
-            backgroundColor: colors.textLight10,
+            backgroundColor: colors.textLight1,
             justifyContent: 'center',
             alignItems: 'center',
           }}
@@ -196,14 +196,14 @@ export default function PostCard({
       onLayout={handleLayout}
       onPress={() => onPress?.(post)}
       style={{
-        backgroundColor: colors.background,
+        backgroundColor: colors.white,
         marginHorizontal: n(12),
         marginTop: n(6),
         marginBottom: n(4),
         borderRadius: n(10),
         paddingHorizontal: n(12),
         paddingVertical: n(8),
-        shadowColor: '#000',
+        shadowColor: colors.text,
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.06,
         shadowRadius: 6,
@@ -233,7 +233,7 @@ export default function PostCard({
                 flex: 1,
                 fontSize: n(11),
                 fontFamily: fonts.regular,
-                color: colors.textSecondary,
+                color: colors.textLight4,
               }}
             >
               {post.author}
@@ -250,7 +250,7 @@ export default function PostCard({
                 style={{
                   fontSize: n(11),
                   fontFamily: fonts.regular,
-                  color: colors.textSecondary,
+                  color: colors.textLight4,
                   marginRight: n(10),
                 }}
               >
@@ -266,7 +266,7 @@ export default function PostCard({
                 style={{
                   fontSize: n(11),
                   fontFamily: fonts.regular,
-                  color: colors.textSecondary,
+                  color: colors.textLight4,
                 }}
               >
                 {post.comments}
@@ -281,7 +281,7 @@ export default function PostCard({
               width: 56,
               height: 56,
               borderRadius: 8,
-              backgroundColor: colors.textLight10,
+              backgroundColor: colors.textLight1,
             }}
             resizeMode="cover"
             onLoad={handleThumbnailLoad}
@@ -296,7 +296,7 @@ export default function PostCard({
           marginTop: n(5),
           fontSize: n(13),
           fontFamily: fonts.regular,
-          color: colors.textPrimary,
+          color: colors.text,
           lineHeight: n(18),
         }}
       >

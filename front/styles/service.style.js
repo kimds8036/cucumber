@@ -5,7 +5,7 @@ export const createServiceStyles = (normalize) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     scroll: {
       flex: 1,
@@ -23,7 +23,7 @@ export const createServiceStyles = (normalize) =>
     legalMetaLine: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       lineHeight: normalize(20),
     },
     legalMetaLabel: {
@@ -32,58 +32,58 @@ export const createServiceStyles = (normalize) =>
     chapterTitle: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       marginTop: normalize(8),
       marginBottom: normalize(2),
     },
     sectionTitle: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       marginTop: normalize(4),
       marginBottom: normalize(6),
     },
     para: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       lineHeight: normalize(20),
     },
     bullet: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       lineHeight: normalize(20),
       paddingLeft: normalize(4),
     },
     bulletNested: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       lineHeight: normalize(20),
       paddingLeft: normalize(24),
     },
     divider: {
       height: 1,
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
       marginVertical: normalize(6),
     },
     blockquote: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: normalize(20),
       marginLeft: normalize(4),
       paddingLeft: normalize(12),
       borderLeftWidth: normalize(3),
-      borderLeftColor: colors.textLight10,
+      borderLeftColor: colors.textLight1,
       fontStyle: 'italic',
     },
     table: {
       width: '100%',
       alignSelf: 'stretch',
       borderWidth: 1,
-      borderColor: colors.textLight10,
+      borderColor: colors.textLight1,
       borderRadius: normalize(8),
       marginVertical: normalize(4),
     },
@@ -92,13 +92,13 @@ export const createServiceStyles = (normalize) =>
       flexDirection: 'row',
       alignItems: 'flex-start',
       borderBottomWidth: 1,
-      borderBottomColor: colors.textLight10,
+      borderBottomColor: colors.textLight1,
     },
     tableRowLast: {
       borderBottomWidth: 0,
     },
     tableHeaderRow: {
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
     },
     tableCellLabel: {
       flexGrow: 2,
@@ -108,7 +108,7 @@ export const createServiceStyles = (normalize) =>
       paddingVertical: normalize(10),
       paddingHorizontal: normalize(10),
       borderRightWidth: 1,
-      borderRightColor: colors.textLight10,
+      borderRightColor: colors.textLight1,
     },
     tableCellValue: {
       flexGrow: 3,
@@ -126,7 +126,7 @@ export const createServiceStyles = (normalize) =>
       paddingVertical: normalize(10),
       paddingHorizontal: normalize(10),
       borderRightWidth: 1,
-      borderRightColor: colors.textLight10,
+      borderRightColor: colors.textLight1,
     },
     tableCellCol3Last: {
       flexGrow: 3,
@@ -144,24 +144,24 @@ export const createServiceStyles = (normalize) =>
       paddingVertical: normalize(10),
       paddingHorizontal: normalize(10),
       borderRightWidth: 1,
-      borderRightColor: colors.textLight10,
+      borderRightColor: colors.textLight1,
     },
     tableHeaderText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       lineHeight: normalize(20),
     },
     tableCellText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       lineHeight: normalize(20),
     },
     tableCellLabelText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       lineHeight: normalize(20),
     },
     tableCellContent: {

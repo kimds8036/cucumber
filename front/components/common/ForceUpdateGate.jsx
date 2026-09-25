@@ -88,7 +88,7 @@ export default function ForceUpdateGate({ children, onPhaseChange }) {
           flex: 1,
           justifyContent: 'center',
           alignItems: 'center',
-          backgroundColor: colors.background,
+          backgroundColor: colors.white,
         }}
       >
         <ActivityIndicator size="large" color={colors.primaryDark} />
@@ -96,7 +96,7 @@ export default function ForceUpdateGate({ children, onPhaseChange }) {
           style={{
             marginTop: 16,
             fontFamily: fonts.regular,
-            color: colors.textSecondary,
+            color: colors.textLight4,
           }}
         >
           앱 버전을 확인하는 중이에요…
@@ -115,14 +115,14 @@ export default function ForceUpdateGate({ children, onPhaseChange }) {
           justifyContent: 'center',
           alignItems: 'center',
           paddingHorizontal: 28,
-          backgroundColor: colors.background,
+          backgroundColor: colors.white,
         }}
       >
         <Text
           style={{
             fontFamily: fonts.bold,
             fontSize: 20,
-            color: colors.textPrimary,
+            color: colors.text,
             textAlign: 'center',
             marginBottom: 12,
           }}
@@ -133,7 +133,7 @@ export default function ForceUpdateGate({ children, onPhaseChange }) {
           style={{
             fontFamily: fonts.regular,
             fontSize: 15,
-            color: colors.textSecondary,
+            color: colors.textLight4,
             textAlign: 'center',
             lineHeight: 22,
             marginBottom: 24,
@@ -156,7 +156,7 @@ export default function ForceUpdateGate({ children, onPhaseChange }) {
             style={{
               fontFamily: fonts.bold,
               fontSize: 16,
-              color: colors.textPrimary,
+              color: colors.text,
             }}
           >
             스토어에서 업데이트
@@ -173,14 +173,14 @@ export default function ForceUpdateGate({ children, onPhaseChange }) {
         justifyContent: 'center',
         alignItems: 'center',
         paddingHorizontal: 28,
-        backgroundColor: colors.background,
+        backgroundColor: colors.white,
       }}
     >
       <Text
         style={{
           fontFamily: fonts.bold,
           fontSize: 18,
-          color: colors.textPrimary,
+          color: colors.text,
           textAlign: 'center',
           marginBottom: 12,
         }}
@@ -191,7 +191,7 @@ export default function ForceUpdateGate({ children, onPhaseChange }) {
         style={{
           fontFamily: fonts.regular,
           fontSize: 15,
-          color: colors.textSecondary,
+          color: colors.textLight4,
           textAlign: 'center',
           lineHeight: 22,
           marginBottom: 24,
@@ -212,7 +212,7 @@ export default function ForceUpdateGate({ children, onPhaseChange }) {
           style={{
             fontFamily: fonts.bold,
             fontSize: 16,
-            color: colors.textPrimary,
+            color: colors.text,
           }}
         >
           다시 시도

@@ -61,7 +61,7 @@ function WhackListSkeleton({ normalize, width }) {
             paddingHorizontal: normalize(16),
             paddingVertical: normalize(14),
             borderBottomWidth: 1,
-            borderBottomColor: colors.border,
+            borderBottomColor: colors.textLight1,
           }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'stretch', gap: normalize(8) }}>
@@ -104,7 +104,7 @@ function categoryMeta(category) {
     return {
       label: '기능',
       color: colors.primaryDark,
-      backgroundColor: colors.primaryLight10,
+      backgroundColor: colors.primaryLight2,
       borderColor: colors.primary,
     };
   }
@@ -118,7 +118,7 @@ function categoryMeta(category) {
 
 function adminStatusMeta(status) {
   const muted = {
-    color: colors.textSecondary,
+    color: colors.textLight4,
     backgroundColor: 'rgba(39, 42, 38, 0.06)',
   };
   if (status === 'fixed') {
@@ -243,14 +243,14 @@ const DeveloperWhack = ({ navigation }) => {
     marginBottom: normalize(6),
     fontFamily: fonts.bold,
     fontSize: normalize(wFont.label),
-    color: colors.textPrimary,
+    color: colors.text,
   };
 
   const counterStyle = {
     marginTop: normalize(4),
     fontFamily: fonts.regular,
     fontSize: normalize(wFont.counter),
-    color: colors.textSecondary,
+    color: colors.textLight4,
     textAlign: 'right',
   };
 
@@ -258,11 +258,11 @@ const DeveloperWhack = ({ navigation }) => {
     padding: normalize(12),
     borderRadius: normalize(10),
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: colors.textLight1,
+    backgroundColor: colors.textLight1,
     fontFamily: fonts.regular,
     fontSize: normalize(wFont.input),
-    color: colors.textPrimary,
+    color: colors.text,
   };
 
   const renderItem = ({ item }) => {
@@ -279,7 +279,7 @@ const DeveloperWhack = ({ navigation }) => {
           paddingHorizontal: normalize(16),
           paddingVertical: normalize(14),
           borderBottomWidth: 1,
-          borderBottomColor: colors.border,
+          borderBottomColor: colors.textLight1,
         }}
       >
         <View style={{ flexDirection: 'row', alignItems: 'stretch' }}>
@@ -307,7 +307,7 @@ const DeveloperWhack = ({ navigation }) => {
                     marginLeft: normalize(4),
                     fontFamily: fonts.regular,
                     fontSize: normalize(wFont.name),
-                    color: colors.textSecondary,
+                    color: colors.textLight4,
                   }}
                 >
                   {item.honoreeDisplay || '익명'}
@@ -318,7 +318,7 @@ const DeveloperWhack = ({ navigation }) => {
                   style={{
                     fontFamily: fonts.regular,
                     fontSize: normalize(wFont.body),
-                    color: colors.textPrimary,
+                    color: colors.text,
                     lineHeight: normalize(24),
                   }}
                 >
@@ -352,7 +352,7 @@ const DeveloperWhack = ({ navigation }) => {
             <Ionicons
               name={expanded ? 'chevron-up' : 'chevron-down'}
               size={normalize(18)}
-              color={colors.textSecondary}
+              color={colors.textLight4}
             />
           </View>
         </View>
@@ -363,14 +363,14 @@ const DeveloperWhack = ({ navigation }) => {
               marginTop: normalize(10),
               paddingTop: normalize(12),
               borderTopWidth: 1,
-              borderTopColor: colors.border,
+              borderTopColor: colors.textLight1,
             }}
           >
             <Text
               style={{
                 fontFamily: fonts.regular,
                 fontSize: normalize(wFont.caption),
-                color: colors.textSecondary,
+                color: colors.textLight4,
                 marginBottom: normalize(6),
               }}
             >
@@ -380,7 +380,7 @@ const DeveloperWhack = ({ navigation }) => {
               style={{
                 fontFamily: fonts.regular,
                 fontSize: normalize(wFont.reply),
-                color: colors.textPrimary,
+                color: colors.text,
                 lineHeight: normalize(22),
               }}
             >
@@ -407,7 +407,7 @@ const DeveloperWhack = ({ navigation }) => {
           marginBottom: normalize(8),
           fontFamily: fonts.bold,
           fontSize: normalize(wFont.section),
-          color: colors.textPrimary,
+          color: colors.text,
         }}
       >
         무엇을 전달할까요?
@@ -426,15 +426,15 @@ const DeveloperWhack = ({ navigation }) => {
                 paddingVertical: normalize(8),
                 borderRadius: normalize(20),
                 borderWidth: 1,
-                borderColor: active ? meta.borderColor : colors.border,
-                backgroundColor: active ? meta.backgroundColor : colors.surface,
+                borderColor: active ? meta.borderColor : colors.textLight1,
+                backgroundColor: active ? meta.backgroundColor : colors.textLight1,
               }}
             >
               <Text
                 style={{
                   fontFamily: active ? fonts.bold : fonts.regular,
                   fontSize: normalize(wFont.tab),
-                  color: active ? meta.color : colors.textSecondary,
+                  color: active ? meta.color : colors.textLight4,
                 }}
               >
                 {item.label}
@@ -483,7 +483,7 @@ const DeveloperWhack = ({ navigation }) => {
           marginTop: normalize(16),
           paddingVertical: normalize(14),
           borderRadius: normalize(10),
-          backgroundColor: canSubmit ? colors.primary : colors.textLight20,
+          backgroundColor: canSubmit ? colors.primary : colors.textLight2,
           alignItems: 'center',
         }}
       >
@@ -491,7 +491,7 @@ const DeveloperWhack = ({ navigation }) => {
           style={{
             fontFamily: fonts.bold,
             fontSize: normalize(wFont.button),
-            color: colors.textWhite,
+            color: colors.white,
           }}
         >
           {submitting ? '보내는 중…' : '개발팀에 전달하기'}
@@ -501,7 +501,7 @@ const DeveloperWhack = ({ navigation }) => {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.white }} edges={['top']}>
       <SubHeader
         title="회초리"
         onBack={() => navigation.goBack()}
@@ -540,7 +540,7 @@ const DeveloperWhack = ({ navigation }) => {
                 style={{
                   fontFamily: fonts.regular,
                   fontSize: normalize(wFont.empty),
-                  color: colors.textSecondary,
+                  color: colors.textLight4,
                   textAlign: 'center',
                   lineHeight: normalize(24),
                 }}
@@ -554,7 +554,7 @@ const DeveloperWhack = ({ navigation }) => {
       )}
 
       <Modal visible={composeVisible} animationType="slide" onRequestClose={closeCompose}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.white }} edges={['top']}>
           <SubHeader
             title="제보하기"
             onBack={closeCompose}
@@ -574,7 +574,7 @@ const DeveloperWhack = ({ navigation }) => {
         <Text
           style={{
             fontSize: 18,
-            color: colors.textPrimary,
+            color: colors.text,
             fontWeight: '700',
             textAlign: 'center',
             marginBottom: 10,
@@ -585,7 +585,7 @@ const DeveloperWhack = ({ navigation }) => {
         <Text
           style={{
             fontSize: 14,
-            color: colors.textSecondary,
+            color: colors.textLight4,
             textAlign: 'center',
             lineHeight: 22,
             marginBottom: 16,
@@ -609,7 +609,7 @@ const DeveloperWhack = ({ navigation }) => {
             style={{
               fontSize: 14,
               fontWeight: '700',
-              color: colors.textWhite,
+              color: colors.white,
             }}
           >
             확인

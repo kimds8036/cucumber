@@ -348,7 +348,7 @@ export default function BreakoutGame() {
               { left: item.x, top: item.y, width: item.w, height: item.h },
             ]}
           >
-            <Ionicons name="add-circle" size={normalize(16)} color="#fff" />
+            <Ionicons name="add-circle" size={normalize(16)} color={colors.white} />
           </View>
         ))}
         {balls.map((ball) => (
@@ -435,7 +435,7 @@ function createStyles(normalize) {
     },
     ball: {
       position: 'absolute',
-      backgroundColor: colors.textPrimary,
+      backgroundColor: colors.text,
     },
     paddle: {
       position: 'absolute',
@@ -459,14 +459,14 @@ function createStyles(normalize) {
     overlayTitle: {
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.title),
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: normalize(8),
       textAlign: 'center',
     },
     overlayHint: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.md),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textAlign: 'center',
     },
     retryBtn: {
@@ -479,13 +479,13 @@ function createStyles(normalize) {
     retryText: {
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.md),
-      color: colors.textWhite,
+      color: colors.white,
     },
     tip: {
       marginTop: normalize(8),
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.sm),
-      color: colors.textLight40,
+      color: colors.textLight3,
       textAlign: 'center',
     },
   });

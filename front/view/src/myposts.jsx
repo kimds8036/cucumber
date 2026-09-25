@@ -217,7 +217,7 @@ const ActivityPage = ({ navigation, route }) => {
                   style={{
                     fontFamily: 'Baloo2-Bold',
                     fontSize: normalize(15),
-                    color: colors.textPrimary,
+                    color: colors.text,
                     marginBottom: normalize(10),
                   }}
                 >
@@ -235,7 +235,7 @@ const ActivityPage = ({ navigation, route }) => {
                     <Text
                       style={{
                         fontSize: normalize(12),
-                        color: colors.textSecondary,
+                        color: colors.textLight4,
                         marginBottom: normalize(6),
                       }}
                     >
@@ -244,7 +244,7 @@ const ActivityPage = ({ navigation, route }) => {
                     <Text
                       style={{
                         fontSize: normalize(14),
-                        color: colors.textPrimary,
+                        color: colors.text,
                         lineHeight: normalize(20),
                       }}
                       numberOfLines={2}
@@ -260,7 +260,7 @@ const ActivityPage = ({ navigation, route }) => {
                 style={{
                   fontFamily: 'Baloo2-Bold',
                   fontSize: normalize(15),
-                  color: colors.textPrimary,
+                  color: colors.text,
                   marginBottom: normalize(10),
                 }}
               >
@@ -293,7 +293,7 @@ const ActivityPage = ({ navigation, route }) => {
                   : 'bookmark-outline'
               }
               size={normalize(48)}
-              color={colors.textLight20}
+              color={colors.textLight2}
             />
             <Text style={styles.emptyText}>
               {listKind === 'written'

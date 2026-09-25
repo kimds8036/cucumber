@@ -410,7 +410,7 @@ const MyPage = ({ navigation }) => {
           <Ionicons
             name={icon}
             size={normalize(22)}
-            color={colors.textPrimary}
+            color={colors.text}
             style={styles.menuIcon}
           />
           <View>
@@ -424,7 +424,7 @@ const MyPage = ({ navigation }) => {
           <Ionicons
             name="chevron-forward"
             size={normalize(20)}
-            color={colors.textSecondary}
+            color={colors.textLight4}
           />
         )}
       </TouchableOpacity>

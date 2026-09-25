@@ -418,7 +418,7 @@ const EditTimetable = ({ navigation, route }) => {
                       <Feather
                         name="plus"
                         size={normalize(16)}
-                        color={colors.background2}
+                        color={colors.textLight2}
                         style={{
                           opacity:
                             maxPeriodCount >= EDIT_TS_PICKER_MAX ? 0.35 : 1,
@@ -497,13 +497,13 @@ const EditTimetable = ({ navigation, route }) => {
       >
         <View style={{ flex: 1, justifyContent: 'flex-end' }}>
           <TouchableOpacity
-            style={{ flex: 1, backgroundColor: colors.overlay }}
+            style={{ flex: 1, backgroundColor: colors.textLight4 }}
             activeOpacity={1}
             onPress={() => setPeriodModalVisible(false)}
           />
           <View
             style={{
-              backgroundColor: colors.background,
+              backgroundColor: colors.white,
               borderTopLeftRadius: normalize(14),
               borderTopRightRadius: normalize(14),
               paddingBottom: Math.max(insets.bottom, normalize(12)),
@@ -525,7 +525,7 @@ const EditTimetable = ({ navigation, route }) => {
                   ? {
                       fontFamily: fonts.bold,
                       fontSize: normalize(fontSizes.xl),
-                      color: colors.textPrimary,
+                      color: colors.text,
                     }
                   : undefined
               }
@@ -549,7 +549,7 @@ const EditTimetable = ({ navigation, route }) => {
                 style={{
                   fontFamily: fonts.bold,
                   fontSize: normalize(fontSizes.xl),
-                  color: colors.background,
+                  color: colors.white,
                 }}
               >
                 완료

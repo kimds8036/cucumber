@@ -427,7 +427,7 @@ export default function BoardDetail({ navigation, route }) {
           style={{
             zIndex: 1,
             elevation: 0,
-            backgroundColor: colors.background,
+            backgroundColor: colors.white,
           }}
         >
           <SubHeader title="게시판" onBack={() => navigation.goBack()} />
@@ -435,7 +435,7 @@ export default function BoardDetail({ navigation, route }) {
         <View
           style={{
             flex: 1,
-            backgroundColor: colors.background,
+            backgroundColor: colors.white,
             overflow: 'hidden',
             zIndex: 0,
           }}
@@ -504,7 +504,7 @@ export default function BoardDetail({ navigation, route }) {
                   right: 0,
                   top: 0,
                   bottom: 0,
-                  backgroundColor: colors.background,
+                  backgroundColor: colors.white,
                 }}
               >
                 <View style={styles.contentSection}>
@@ -614,7 +614,7 @@ export default function BoardDetail({ navigation, route }) {
             <Animated.View
               style={[
                 {
-                  backgroundColor: colors.background,
+                  backgroundColor: colors.white,
                   paddingBottom: Math.max(insets.bottom, normalize(12)),
                 },
                 inputAnimStyle,

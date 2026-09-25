@@ -257,7 +257,7 @@ function createStyles(n, bottomInset) {
       ...StyleSheet.absoluteFillObject,
     },
     sheet: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderTopLeftRadius: n(20),
       borderTopRightRadius: n(20),
       paddingHorizontal: n(20),
@@ -278,14 +278,14 @@ function createStyles(n, bottomInset) {
       width: n(40),
       height: n(4),
       borderRadius: n(2),
-      backgroundColor: colors.textLight20,
+      backgroundColor: colors.textLight2,
     },
     image: {
       width: '100%',
       height: n(160),
       borderRadius: n(12),
       marginBottom: n(16),
-      backgroundColor: colors.primaryLight20,
+      backgroundColor: colors.primaryLight3,
     },
     imagePlaceholder: {
       alignItems: 'center',
@@ -294,20 +294,20 @@ function createStyles(n, bottomInset) {
     imagePlaceholderText: {
       fontFamily: fonts.regular,
       fontSize: n(fontSizes.lg),
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     title: {
       alignSelf: 'stretch',
       fontFamily: fonts.bold,
       fontSize: n(fontSizes.title),
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: n(8),
     },
     subtitle: {
       alignSelf: 'stretch',
       fontFamily: fonts.regular,
       fontSize: n(fontSizes.lg),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: n(22),
       marginBottom: n(20),
     },
@@ -325,12 +325,12 @@ function createStyles(n, bottomInset) {
     ctaText: {
       fontFamily: fonts.bold,
       fontSize: n(fontSizes.xl),
-      color: colors.textWhite ?? colors.background,
+      color: colors.white ?? colors.white,
     },
     hideToday: {
       fontFamily: fonts.regular,
       fontSize: n(fontSizes.lg),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       paddingVertical: n(8),
     },
   });

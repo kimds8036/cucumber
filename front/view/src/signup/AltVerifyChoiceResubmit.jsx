@@ -33,7 +33,7 @@ const AltVerifyChoiceResubmit = ({
           <Ionicons
             name="chevron-back"
             size={normalize(24)}
-            color={colors.textPrimary}
+            color={colors.text}
           />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { fontSize: normalize(18) }]}>
@@ -55,7 +55,7 @@ const AltVerifyChoiceResubmit = ({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
   },
   header: {
     flexDirection: 'row',
@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontFamily: fonts.bold,
-    color: colors.textPrimary,
+    color: colors.text,
   },
   body: {
     flex: 1,

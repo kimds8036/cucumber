@@ -414,7 +414,7 @@ const OurSchoolScreen = ({ navigation }) => {
                   style={{
                     height: normalize(18),
                     width: '45%',
-                    backgroundColor: colors.disabled,
+                    backgroundColor: colors.textLight1,
                     borderRadius: 6,
                     marginBottom: 10,
                   }}
@@ -423,7 +423,7 @@ const OurSchoolScreen = ({ navigation }) => {
                   style={{
                     height: normalize(14),
                     width: '65%',
-                    backgroundColor: colors.surface,
+                    backgroundColor: colors.textLight1,
                     borderRadius: 6,
                     marginBottom: 12,
                   }}
@@ -437,7 +437,7 @@ const OurSchoolScreen = ({ navigation }) => {
                           style={{
                             height: normalize(18),
                             width: normalize(18),
-                            backgroundColor: colors.surface,
+                            backgroundColor: colors.textLight1,
                             borderRadius: 6,
                           }}
                         />
@@ -445,7 +445,7 @@ const OurSchoolScreen = ({ navigation }) => {
                           style={{
                             height: normalize(14),
                             width: normalize(52),
-                            backgroundColor: colors.surface,
+                            backgroundColor: colors.textLight1,
                             borderRadius: 6,
                           }}
                         />
@@ -463,7 +463,7 @@ const OurSchoolScreen = ({ navigation }) => {
                   <Ionicons
                     name="location-outline"
                     size={normalize(14)}
-                    color={colors.textSecondary}
+                    color={colors.textLight4}
                   />
                   <Text style={styles.locationText}>{schoolInfo.location}</Text>
                 </View>
@@ -548,7 +548,7 @@ const OurSchoolScreen = ({ navigation }) => {
                             style={{
                               height: normalize(fontSizes.xl),
                               width: '58%',
-                              backgroundColor: colors.disabled,
+                              backgroundColor: colors.textLight1,
                               borderRadius: 6,
                             }}
                           />
@@ -558,7 +558,7 @@ const OurSchoolScreen = ({ navigation }) => {
                             style={{
                               height: normalize(fontSizes.lg),
                               width: normalize(32),
-                              backgroundColor: colors.border,
+                              backgroundColor: colors.textLight1,
                               borderRadius: 6,
                             }}
                           />
@@ -572,7 +572,7 @@ const OurSchoolScreen = ({ navigation }) => {
                               height: normalize(fontSizes.lg),
                               marginBottom: normalize(2),
                               width: line === 3 ? '62%' : '100%',
-                              backgroundColor: colors.surface,
+                              backgroundColor: colors.textLight1,
                               borderRadius: 4,
                             }}
                           />
@@ -688,7 +688,7 @@ const OurSchoolScreen = ({ navigation }) => {
               <Ionicons
                 name="information-circle-outline"
                 size={normalize(16)}
-                color={colors.textLight40}
+                color={colors.textLight3}
               />
             </TouchableOpacity>
             {grassTipVisible ? (
@@ -820,7 +820,7 @@ const OurSchoolScreen = ({ navigation }) => {
               <Text
                 style={{
                   fontSize: normalize(fontSizes.md),
-                  color: colors.textSecondary,
+                  color: colors.textLight4,
                 }}
               >
                 아직 인기 게시글이 없습니다.

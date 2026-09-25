@@ -12,11 +12,11 @@ export const createNotificationSkeletonStyles = (normalize) =>
       width: normalize(48),
       height: normalize(48),
       borderRadius: normalize(24),
-      backgroundColor: colors.border,
+      backgroundColor: colors.textLight1,
       marginRight: normalize(12),
     },
     content: { flex: 1 },
-    line: { backgroundColor: colors.border, borderRadius: normalize(4) },
+    line: { backgroundColor: colors.textLight1, borderRadius: normalize(4) },
     titleLine: {
       height: normalize(16),
       width: '60%',
@@ -34,14 +34,14 @@ export const createNotificationStyles = (normalize) =>
   StyleSheet.create({
     rootWrapper: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     tabContainer: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       paddingVertical: normalize(4),
     },
     tabContent: {
@@ -53,41 +53,41 @@ export const createNotificationStyles = (normalize) =>
       paddingHorizontal: normalize(12),
       paddingVertical: normalize(5),
       borderRadius: normalize(20),
-      backgroundColor: colors.textLight5,
+      backgroundColor: colors.textLight1,
       flexDirection: 'row',
       alignItems: 'center',
       gap: normalize(5),
       position: 'relative',
     },
     tabButtonActive: {
-      backgroundColor: colors.textPrimary,
+      backgroundColor: colors.text,
     },
     tabText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     tabTextActive: {
-      color: colors.background,
+      color: colors.white,
       fontFamily: fonts.bold,
     },
     countBadge: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       paddingHorizontal: normalize(6.5),
       paddingVertical: normalize(1),
       borderRadius: normalize(999),
       alignItems: 'center',
     },
     countBadgeActive: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     countText: {
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     countTextActive: {
-      color: colors.textSecondary,
+      color: colors.textLight4,
       fontFamily: fonts.bold,
     },
     tabUnreadDot: {
@@ -107,13 +107,13 @@ export const createNotificationStyles = (normalize) =>
       flexGrow: 1,
     },
     notificationItem: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       flexDirection: 'row',
       padding: normalize(18),
       alignItems: 'flex-start',
     },
     notificationItemUnread: {
-      backgroundColor: colors.primaryLight10,
+      backgroundColor: colors.primaryLight2,
     },
     iconContainer: {
       borderRadius: normalize(24),
@@ -127,20 +127,20 @@ export const createNotificationStyles = (normalize) =>
     notificationTitle: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: normalize(4),
     },
     notificationText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: normalize(22),
       marginBottom: normalize(4),
     },
     notificationTime: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textLight40,
+      color: colors.textLight3,
     },
     summaryWatcherRow: {
       marginTop: normalize(8),
@@ -190,13 +190,13 @@ export const createNotificationStyles = (normalize) =>
     emptyTitle: {
       fontSize: normalize(fontSizes.heading - 2),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       marginTop: normalize(16),
     },
     emptyText: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.regular,
-      color: colors.textLight40,
+      color: colors.textLight3,
       marginTop: normalize(8),
       textAlign: 'center',
     },
@@ -210,7 +210,7 @@ export const createNotificationStyles = (normalize) =>
     emptyButtonText: {
       fontSize: normalize(fontSizes.xl + 1),
       fontFamily: fonts.bold,
-      color: colors.textWhite,
+      color: colors.white,
     },
     footerLoader: {
       paddingVertical: normalize(16),
@@ -219,10 +219,10 @@ export const createNotificationStyles = (normalize) =>
     footerLoaderText: {
       fontSize: normalize(fontSizes.lg + 1),
       fontFamily: fonts.regular,
-      color: colors.textLight40,
+      color: colors.textLight3,
     },
     emptyIcon: {
-      color: colors.border,
+      color: colors.textLight1,
       size: normalize(64),
     },
     notificationIcon: {
@@ -239,10 +239,10 @@ export const createNotificationStyles = (normalize) =>
       gap: normalize(8),
     },
     announcementItem: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       paddingVertical: normalize(10),
       borderBottomWidth: 1,
-      borderColor: colors.textLight10,
+      borderColor: colors.textLight1,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -254,13 +254,13 @@ export const createNotificationStyles = (normalize) =>
     announcementTitle: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: normalize(4),
     },
     announcementMeta: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textLight40,
+      color: colors.textLight3,
     },
     announcementEmptyContainer: {
       flexGrow: 1,
@@ -270,6 +270,6 @@ export const createNotificationStyles = (normalize) =>
     announcementEmptyText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textLight20,
+      color: colors.textLight2,
     },
   });

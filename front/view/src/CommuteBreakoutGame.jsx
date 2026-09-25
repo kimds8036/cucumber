@@ -21,7 +21,7 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     // 상태바(헤더 위) 영역은 SubHeader와 동일하게 — 게임 크림색이 비치지 않게
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
   },
   gameSlot: {
     flex: 1,

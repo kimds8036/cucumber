@@ -80,7 +80,7 @@ export default function AlertHost() {
         <Text
           style={{
             fontSize: 18,
-            color: colors.textPrimary,
+            color: colors.text,
             fontWeight: '700',
             textAlign: 'center',
             marginBottom: 10,
@@ -93,7 +93,7 @@ export default function AlertHost() {
         <Text
           style={{
             fontSize: 14,
-            color: colors.textSecondary,
+            color: colors.textLight4,
             textAlign: 'center',
             lineHeight: 22,
             marginBottom: noteText ? 8 : 16,
@@ -106,7 +106,7 @@ export default function AlertHost() {
         <Text
           style={{
             fontSize: 12,
-            color: colors.textLight40,
+            color: colors.textLight3,
             textAlign: 'center',
             lineHeight: 16,
             marginBottom: 16,
@@ -136,7 +136,7 @@ export default function AlertHost() {
                 backgroundColor: isDestructive
                   ? colors.alert
                   : isCancel
-                    ? colors.textLight5
+                    ? colors.textLight1
                     : colors.primary,
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -148,7 +148,7 @@ export default function AlertHost() {
                 style={{
                   fontSize: 14,
                   fontWeight: '700',
-                  color: isCancel ? colors.textSecondary : colors.textWhite,
+                  color: isCancel ? colors.textLight4 : colors.white,
                 }}
               >
                 {text}

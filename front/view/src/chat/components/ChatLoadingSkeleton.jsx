@@ -15,7 +15,7 @@ export default function ChatLoadingSkeleton({ normalize }) {
     <View
       style={{
         flex: 1,
-        backgroundColor: colors.background,
+        backgroundColor: colors.white,
         justifyContent: 'flex-end',
         paddingHorizontal: n(6),
         paddingBottom: n(12),

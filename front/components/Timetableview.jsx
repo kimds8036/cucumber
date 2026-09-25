@@ -48,7 +48,7 @@ const TimetableView = ({
   const styles = useMemo(
     () =>
       createTimetableViewStyles(normalize, {
-        dividerColor: colors.timetableBorder,
+        dividerColor: colors.textLight1,
       }),
     [normalize],
   );
@@ -230,7 +230,7 @@ const TimetableView = ({
         <Text
           style={{
             fontSize: 18,
-            color: colors.textPrimary,
+            color: colors.text,
             fontWeight: '700',
             textAlign: 'center',
             marginBottom: 10,
@@ -241,7 +241,7 @@ const TimetableView = ({
         <Text
           style={{
             fontSize: 14,
-            color: colors.textSecondary,
+            color: colors.textLight4,
             textAlign: 'center',
             lineHeight: 22,
             marginBottom: 16,
@@ -264,7 +264,7 @@ const TimetableView = ({
             style={{
               fontSize: 14,
               fontWeight: '700',
-              color: colors.textWhite,
+              color: colors.white,
             }}
           >
             확인

@@ -11,7 +11,7 @@ export const createAdStyles = (normalize, width) => {
   return StyleSheet.create({
     // AdPlaceholder (board card style)
     postItem: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: n(18),
       padding: n(14),
       marginBottom: n(12),
@@ -32,14 +32,14 @@ export const createAdStyles = (normalize, width) => {
     postAuthor: {
       fontSize: n(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: n(18),
       textAlignVertical: 'center',
     },
     postDot: {
       fontSize: n(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: n(18),
       textAlignVertical: 'center',
       marginHorizontal: n(6),
@@ -47,7 +47,7 @@ export const createAdStyles = (normalize, width) => {
     postTime: {
       fontSize: n(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: n(18),
       textAlignVertical: 'center',
     },
@@ -63,7 +63,7 @@ export const createAdStyles = (normalize, width) => {
     postContent: {
       fontSize: n(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       lineHeight: n(20),
       marginTop: n(2),
       marginBottom: n(7),
@@ -86,7 +86,7 @@ export const createAdStyles = (normalize, width) => {
     postStatText: {
       fontSize: n(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
 
     tipTopRow: {
@@ -117,7 +117,7 @@ export const createAdStyles = (normalize, width) => {
       flex: 1,
       fontSize: n(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textWhite,
+      color: colors.white,
       lineHeight: n(18),
     },
 
@@ -125,7 +125,7 @@ export const createAdStyles = (normalize, width) => {
     adSection: {
       minHeight: n(40),
       marginHorizontal: w * 0,
-      backgroundColor: colors.primaryLight10,
+      backgroundColor: colors.primaryLight2,
       justifyContent: 'center',
       alignItems: 'center',
       marginBottom: n(12),
@@ -145,19 +145,19 @@ export const createAdStyles = (normalize, width) => {
       flex: 1,
       fontSize: n(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     adSectionTitle: {
       fontSize: n(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       lineHeight: n(20),
     },
     adSectionBody: {
       marginTop: n(2),
       fontSize: n(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: n(16),
     },
 
@@ -167,7 +167,7 @@ export const createAdStyles = (normalize, width) => {
       alignItems: 'center',
       paddingVertical: n(12),
       paddingHorizontal: n(8),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     listItemLeft: {
       flexDirection: 'row',
@@ -182,13 +182,13 @@ export const createAdStyles = (normalize, width) => {
     listItemName: {
       fontSize: n(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: n(2),
     },
     listItemContent: {
       fontSize: n(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginTop: n(2),
     },
     listItemRight: {
@@ -207,7 +207,7 @@ export const createAdStyles = (normalize, width) => {
       width: mailboxCardWidth,
       minHeight: n(150),
       flexDirection: 'column',
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: n(14),
       padding: n(12),
       marginBottom: n(10),
@@ -228,20 +228,20 @@ export const createAdStyles = (normalize, width) => {
     cardFromLabel: {
       fontSize: n(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       flexShrink: 1,
     },
     cardMetaDot: {
       fontSize: n(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginHorizontal: n(4),
     },
     cardPreview: {
       flexGrow: 1,
       fontSize: n(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       lineHeight: n(fontSizes.title),
       marginTop: n(4),
       marginBottom: n(10),
@@ -255,7 +255,7 @@ export const createAdStyles = (normalize, width) => {
     cardTime: {
       fontSize: n(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     statRow: {
       flexDirection: 'row',
@@ -270,7 +270,7 @@ export const createAdStyles = (normalize, width) => {
     statText: {
       fontSize: n(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
 
     // SearchAdPlaceholder — result.style.js fullCard 행과 동일
@@ -278,7 +278,7 @@ export const createAdStyles = (normalize, width) => {
       paddingHorizontal: n(18),
       paddingVertical: n(16),
       borderBottomWidth: 1,
-      borderBottomColor: colors.textLight10,
+      borderBottomColor: colors.textLight1,
     },
     contentTimeRow: {
       flexDirection: 'row',
@@ -292,25 +292,25 @@ export const createAdStyles = (normalize, width) => {
     fullSnippet: {
       fontSize: n(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: n(19),
       marginTop: n(2),
     },
     metaTimeInline: {
       fontSize: n(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.background2,
+      color: colors.textLight2,
     },
 
     // NotificationAdPlaceholder — notification.style.js 알림 행과 동일
     notificationItem: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       flexDirection: 'row',
       padding: n(18),
       alignItems: 'flex-start',
     },
     notificationItemUnread: {
-      backgroundColor: colors.primaryLight10,
+      backgroundColor: colors.primaryLight2,
     },
     iconContainer: {
       borderRadius: n(24),
@@ -324,7 +324,7 @@ export const createAdStyles = (normalize, width) => {
     notificationTitle: {
       fontSize: n(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: n(4),
     },
     notificationTitleSlot: {
@@ -334,14 +334,14 @@ export const createAdStyles = (normalize, width) => {
     notificationText: {
       fontSize: n(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: n(20),
       marginTop: n(2),
     },
     notificationTime: {
       fontSize: n(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textLight40,
+      color: colors.textLight3,
     },
     notificationIcon: {
       size: n(22),

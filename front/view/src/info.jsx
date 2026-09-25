@@ -34,7 +34,7 @@ function MenuSkeleton({ styles, normalize }) {
               width: normalize(72),
               height: normalize(14),
               borderRadius: normalize(4),
-              backgroundColor: colors.textLight10,
+              backgroundColor: colors.textLight1,
             }}
           />
           <View
@@ -43,7 +43,7 @@ function MenuSkeleton({ styles, normalize }) {
               width: normalize(48),
               height: normalize(12),
               borderRadius: normalize(4),
-              backgroundColor: colors.textLight10,
+              backgroundColor: colors.textLight1,
             }}
           />
         </View>
@@ -59,14 +59,14 @@ function MenuSkeleton({ styles, normalize }) {
                 width: '55%',
                 height: normalize(14),
                 borderRadius: normalize(4),
-                backgroundColor: colors.textLight10,
+                backgroundColor: colors.textLight1,
               }}
             />
           </View>
           <Ionicons
             name="chevron-forward"
             size={normalize(20)}
-            color={colors.textLight10}
+            color={colors.textLight1}
           />
         </View>
       ))}
@@ -163,7 +163,7 @@ const Info = ({ navigation }) => {
                 <Ionicons
                   name="chevron-forward"
                   size={normalize(20)}
-                  color={colors.textSecondary}
+                  color={colors.textLight4}
                 />
               ) : null}
             </TouchableOpacity>

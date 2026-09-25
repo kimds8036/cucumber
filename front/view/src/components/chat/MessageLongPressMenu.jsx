@@ -217,7 +217,7 @@ export default function MessageLongPressMenu({
                   style={{
                     fontSize: normalize(17),
                     fontFamily: fonts.bold,
-                    color: colors.textPrimary,
+                    color: colors.text,
                     marginBottom: normalize(8),
                   }}
                 >
@@ -227,7 +227,7 @@ export default function MessageLongPressMenu({
                   style={{
                     fontSize: normalize(14),
                     fontFamily: fonts.regular,
-                    color: colors.textSecondary,
+                    color: colors.textLight4,
                     lineHeight: normalize(20),
                     marginBottom: normalize(20),
                   }}
@@ -251,7 +251,7 @@ export default function MessageLongPressMenu({
                       style={{
                         fontSize: normalize(15),
                         fontFamily: fonts.bold,
-                        color: colors.textPrimary,
+                        color: colors.text,
                       }}
                     >
                       취소
@@ -349,7 +349,7 @@ export default function MessageLongPressMenu({
                     styles.arrowDown,
                     {
                       left: placement.arrowLeft,
-                      borderTopColor: '#FFFFFF',
+                      borderTopColor: colors.white,
                     },
                   ]}
                 />
@@ -359,7 +359,7 @@ export default function MessageLongPressMenu({
                     styles.arrowUp,
                     {
                       left: placement.arrowLeft,
-                      borderBottomColor: '#FFFFFF',
+                      borderBottomColor: colors.white,
                     },
                   ]}
                 />
@@ -389,7 +389,7 @@ function MenuRow({ normalize, icon, label, onPress, disabled, destructive }) {
       <Ionicons
         name={icon}
         size={normalize(22)}
-        color={destructive ? '#C62828' : colors.textPrimary}
+        color={destructive ? '#C62828' : colors.text}
         style={{ marginRight: normalize(14) }}
       />
       <Text
@@ -398,7 +398,7 @@ function MenuRow({ normalize, icon, label, onPress, disabled, destructive }) {
           {
             fontSize: normalize(16),
             fontFamily: fonts.bold,
-            color: destructive ? '#C62828' : colors.textPrimary,
+            color: destructive ? '#C62828' : colors.text,
           },
         ]}
       >
@@ -414,7 +414,7 @@ const styles = StyleSheet.create({
   },
   overlayFill: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: colors.overlayLight,
+    backgroundColor: colors.textLight3,
   },
   confirmLayer: {
     ...StyleSheet.absoluteFillObject,
@@ -449,7 +449,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   shadowSoftIos: {
-    shadowColor: '#000',
+    shadowColor: colors.text,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,

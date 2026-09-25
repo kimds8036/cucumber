@@ -134,7 +134,7 @@ function EmptyState({ message, styles: hpa, normalize }) {
         <MaterialCommunityIcons
           name="flag-off-outline"
           size={normalize(48)}
-          color={colors.textLight40}
+          color={colors.textLight3}
         />
       </View>
       <Text style={hpa.emptyText}>{message}</Text>
@@ -359,7 +359,7 @@ export default function HiddenPostsAppeals({ navigation }) {
                 value={input}
                 onChangeText={(text) => handleChangeAppealInput(post.id, text)}
                 placeholder="소명 내용을 작성해 주세요"
-                placeholderTextColor={colors.textLight40}
+                placeholderTextColor={colors.textLight3}
                 multiline
                 style={hpa.appealInput}
               />

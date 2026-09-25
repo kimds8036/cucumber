@@ -1365,7 +1365,7 @@ const SignPhone = ({ navigation }) => {
                 <Feather
                   name="x"
                   size={normalize(20)}
-                  color={colors.textPrimary}
+                  color={colors.text}
                 />
               </TouchableOpacity>
               <Text style={styles.headerTitle}>{getStepTitle()}</Text>

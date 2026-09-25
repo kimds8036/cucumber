@@ -1,9 +1,11 @@
+import { colors } from '../styles/colors';
+
 const PROFILE_INNER_COLOR_BY_ID = {
   1: '#E8FFDD', // lightgreen
   2: '#FFFCD7', // yellow
   3: '#FFF3F3', // red
   4: '#E5F0FF', // blue
-  5: '#FFFFFF', // white
+  5: colors.white, // white
 };
 
 export const PROFILE_INNER_COLORS = [

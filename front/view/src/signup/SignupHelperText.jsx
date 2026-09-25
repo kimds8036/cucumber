@@ -4,17 +4,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
 
 const PRIMARY_HELPER = {
-  backgroundColor: colors.primaryLight10,
+  backgroundColor: colors.primaryLight2,
   textColor: colors.primaryDark,
   iconColor: colors.primaryDark,
 };
 
 const VARIANT_CONFIG = {
   default: {
-    backgroundColor: colors.surface,
-    textColor: colors.textLight70,
+    backgroundColor: colors.textLight1,
+    textColor: colors.textLight5,
     iconName: 'information-circle-outline',
-    iconColor: colors.textLight40,
+    iconColor: colors.textLight3,
   },
   success: {
     ...PRIMARY_HELPER,
@@ -27,7 +27,7 @@ const VARIANT_CONFIG = {
   /** 라벨·입력 사이 안내 — 배경/아이콘/여백 없음 */
   plain: {
     backgroundColor: colors.transparent,
-    textColor: colors.textSecondary,
+    textColor: colors.textLight4,
     showIcon: false,
     flush: true,
   },

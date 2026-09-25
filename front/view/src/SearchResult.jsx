@@ -484,14 +484,14 @@ export default function SearchResult({ route, navigation }) {
                               <Ionicons
                                 name="school-outline"
                                 size={normalize(16)}
-                                color={colors.textSecondary}
+                                color={colors.textLight4}
                               />
                             </View>
                             <Text style={s.schoolName}>{school.name}</Text>
                             <Ionicons
                               name="chevron-forward"
                               size={normalize(16)}
-                              color={colors.textLight20}
+                              color={colors.textLight2}
                             />
                           </TouchableOpacity>
                         ))}
@@ -593,7 +593,7 @@ export default function SearchResult({ route, navigation }) {
                               <Ionicons
                                 name="chevron-forward"
                                 size={normalize(13)}
-                                color={colors.textSecondary}
+                                color={colors.textLight4}
                               />
                             </TouchableOpacity>
                           )}
@@ -678,7 +678,7 @@ export default function SearchResult({ route, navigation }) {
                           <Ionicons
                             name="search-outline"
                             size={normalize(26)}
-                            color={colors.textLight20}
+                            color={colors.textLight2}
                           />
                         </View>
                         <Text style={s.emptyTitle}>검색 결과가 없습니다</Text>
@@ -709,7 +709,7 @@ export default function SearchResult({ route, navigation }) {
                           <Ionicons
                             name="chevron-down"
                             size={normalize(14)}
-                            color={colors.textSecondary}
+                            color={colors.textLight4}
                             style={s.loadMoreChevron}
                           />
                         </TouchableOpacity>
@@ -759,7 +759,7 @@ export default function SearchResult({ route, navigation }) {
                       <Ionicons
                         name="time-outline"
                         size={normalize(15)}
-                        color={colors.textLight20}
+                        color={colors.textLight2}
                       />
                       <Text style={s.recentText}>{item}</Text>
                       <TouchableOpacity
@@ -776,7 +776,7 @@ export default function SearchResult({ route, navigation }) {
                         <Ionicons
                           name="close"
                           size={normalize(15)}
-                          color={colors.textLight20}
+                          color={colors.textLight2}
                         />
                       </TouchableOpacity>
                     </TouchableOpacity>

@@ -10,13 +10,13 @@ export const createFriendStyles = (normalize) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     friendCountChip: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.primaryDark,
-      backgroundColor: colors.primaryLight20,
+      backgroundColor: colors.primaryLight3,
       paddingHorizontal: normalize(10),
       paddingVertical: normalize(4),
       borderRadius: normalize(20),
@@ -25,7 +25,7 @@ export const createFriendStyles = (normalize) =>
       paddingVertical: normalize(12),
       paddingBottom: normalize(16),
       borderBottomWidth: 1,
-      borderBottomColor: colors.textLight10,
+      borderBottomColor: colors.textLight1,
     },
     requestsHeader: {
       flexDirection: 'row',
@@ -35,7 +35,7 @@ export const createFriendStyles = (normalize) =>
     requestsTitle: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     requestsCount: {
       fontSize: normalize(fontSizes.lg),
@@ -50,13 +50,13 @@ export const createFriendStyles = (normalize) =>
       width: normalize(120),
       marginRight: normalize(12),
       alignItems: 'center',
-      backgroundColor: colors.surface,
+      backgroundColor: colors.textLight1,
       borderRadius: normalize(12),
       paddingVertical: normalize(12),
       paddingHorizontal: normalize(8),
       borderWidth: 1,
-      borderColor: colors.textLight10,
-      shadowColor: colors.shadow,
+      borderColor: colors.textLight1,
+      shadowColor: colors.text,
       shadowOffset: { width: 0, height: normalize(2) },
       shadowOpacity: 0.08,
       shadowRadius: normalize(4),
@@ -73,18 +73,18 @@ export const createFriendStyles = (normalize) =>
     reqAvatarText: {
       fontSize: normalize(fontSizes.heading),
       fontFamily: fonts.bold,
-      color: colors.textWhite,
+      color: colors.white,
     },
     reqName: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: normalize(2),
     },
     reqUsername: {
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginBottom: normalize(10),
     },
     reqButtons: {
@@ -101,11 +101,11 @@ export const createFriendStyles = (normalize) =>
     reqAcceptText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
-      color: colors.textWhite,
+      color: colors.white,
     },
     reqRejectBtn: {
       flex: 1,
-      backgroundColor: colors.disabled,
+      backgroundColor: colors.textLight1,
       paddingVertical: normalize(6),
       borderRadius: normalize(8),
       alignItems: 'center',
@@ -113,14 +113,14 @@ export const createFriendStyles = (normalize) =>
     reqRejectText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
-      color: colors.textLight70,
+      color: colors.textLight5,
     },
     searchWrapper: {
       flexDirection: 'row',
       alignItems: 'center',
       marginHorizontal: normalize(16),
       marginVertical: normalize(12),
-      backgroundColor: colors.surface,
+      backgroundColor: colors.textLight1,
       borderRadius: normalize(12),
       paddingHorizontal: normalize(12),
       paddingVertical: normalize(10),
@@ -132,13 +132,13 @@ export const createFriendStyles = (normalize) =>
       flex: 1,
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       padding: 0,
     },
     listSectionTitle: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       paddingTop: normalize(14),
       paddingBottom: normalize(8),
     },
@@ -163,7 +163,7 @@ export const createFriendStyles = (normalize) =>
     avatarText: {
       fontSize: normalize(fontSizes.title),
       fontFamily: fonts.bold,
-      color: colors.textWhite,
+      color: colors.white,
     },
     friendInfo: {
       flex: 1,
@@ -177,17 +177,17 @@ export const createFriendStyles = (normalize) =>
     friendName: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     friendUsername: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     friendSchool: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textLight70,
+      color: colors.textLight5,
     },
     friendIconBtn: {
       width: normalize(36),
@@ -206,24 +206,24 @@ export const createFriendStyles = (normalize) =>
     emptyText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textLight40,
+      color: colors.textLight3,
     },
     modalOverlay: {
       flex: 1,
-      backgroundColor: colors.overlayLight,
+      backgroundColor: colors.textLight3,
     },
     bottomSheet: {
       position: 'absolute',
       bottom: 0,
       left: 0,
       right: 0,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderTopLeftRadius: normalize(24),
       borderTopRightRadius: normalize(24),
       paddingHorizontal: normalize(24),
       paddingBottom: normalize(40),
       paddingTop: normalize(12),
-      shadowColor: colors.shadow,
+      shadowColor: colors.text,
       shadowOffset: { width: 0, height: normalize(4) },
       shadowOpacity: 0.12,
       shadowRadius: normalize(12),
@@ -232,7 +232,7 @@ export const createFriendStyles = (normalize) =>
     sheetHandle: {
       width: normalize(40),
       height: normalize(4),
-      backgroundColor: colors.border,
+      backgroundColor: colors.textLight1,
       borderRadius: normalize(2),
       alignSelf: 'center',
       marginBottom: normalize(20),
@@ -254,12 +254,12 @@ export const createFriendStyles = (normalize) =>
     sheetAvatarText: {
       fontSize: normalize(22),
       fontFamily: fonts.bold,
-      color: colors.textWhite,
+      color: colors.white,
     },
     sheetName: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     sheetNameRow: {
       flexDirection: 'row',
@@ -269,16 +269,16 @@ export const createFriendStyles = (normalize) =>
     sheetUsername: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     sheetSchool: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     sheetDivider: {
       height: 1,
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
       marginBottom: normalize(16),
     },
     sheetAction: {
@@ -287,7 +287,7 @@ export const createFriendStyles = (normalize) =>
       justifyContent: 'center',
       gap: normalize(6),
       paddingVertical: normalize(14),
-      backgroundColor: colors.textLight5,
+      backgroundColor: colors.textLight1,
       borderRadius: normalize(10),
       marginBottom: normalize(10),
     },
@@ -307,7 +307,7 @@ export const createFriendStyles = (normalize) =>
       justifyContent: 'center',
       gap: normalize(6),
       paddingVertical: normalize(8),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(10),
       marginBottom: normalize(10),
     },
@@ -326,7 +326,7 @@ export const createFriendStyles = (normalize) =>
     sheetActionTitle: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     sheetDeleteActionTitle: {
       fontSize: normalize(fontSizes.xxl),
@@ -336,29 +336,29 @@ export const createFriendStyles = (normalize) =>
     sheetBlockActionTitle: {
       fontSize: normalize(fontSizes.xl + 1),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     deleteActionTitle: {
       color: colors.alert,
     },
     blockActionTitle: {
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     sheetActionSub: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textLight40,
+      color: colors.textLight3,
     },
     sheetCancelBtn: {
       marginTop: normalize(16),
       paddingVertical: normalize(12),
-      backgroundColor: colors.textLight5,
+      backgroundColor: colors.textLight1,
       borderRadius: normalize(20),
       alignItems: 'center',
     },
     sheetCancelText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
   });

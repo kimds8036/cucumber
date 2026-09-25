@@ -68,11 +68,11 @@ const MainScreen = ({ navigation, route }) => {
       setActiveTab={setActiveTab}
     >
       <SafeAreaView
-        style={{ flex: 1, backgroundColor: colors.background }}
+        style={{ flex: 1, backgroundColor: colors.white }}
         edges={['top', 'bottom']}
       >
         <MainHeader />
-        <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <View style={{ flex: 1, backgroundColor: colors.white }}>
           {screenReady ? (
             <MainTabNavigatorContainer
               stackNavigation={navigation}
@@ -85,11 +85,11 @@ const MainScreen = ({ navigation, route }) => {
                 <View
                   key={`main-skeleton-${idx}`}
                   style={{
-                    backgroundColor: colors.background,
+                    backgroundColor: colors.white,
                     borderRadius: 12,
                     padding: 14,
                     borderWidth: 1,
-                    borderColor: colors.textLight10,
+                    borderColor: colors.textLight1,
                     marginBottom: 12,
                   }}
                 >

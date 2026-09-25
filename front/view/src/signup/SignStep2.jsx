@@ -28,7 +28,7 @@ import { GrowingUnderline } from './SchoolSearchField';
 const USERNAME_VALID_MESSAGE = '사용 가능한 아이디입니다';
 const PASSWORD_INVALID_MESSAGE = '잘못된 비밀번호입니다';
 const PASSWORD_CONFIRM_MISMATCH_MESSAGE = '비밀번호가 일치하지 않습니다';
-const PLACEHOLDER_TEXT_COLOR = colors.textSecondary;
+const PLACEHOLDER_TEXT_COLOR = colors.textLight4;
 
 function resolveUnderlineStatus(status) {
   if (status === 'valid' || status === 'match') return 'success';
@@ -102,7 +102,7 @@ function AccountGrowUnderlineField({
                 <Ionicons
                   name={visible ? 'eye-outline' : 'eye-off-outline'}
                   size={normalize(Platform.OS === 'ios' ? 18 : 24)}
-                  color={colors.textSecondary}
+                  color={colors.textLight4}
                 />
               </TouchableOpacity>
             ) : (
@@ -246,7 +246,7 @@ const SignStep2 = ({
         ? colors.primary
         : resolvedStatus === 'error'
           ? colors.alert
-          : colors.textLight40;
+          : colors.textLight3;
 
     return (
       <AccountGrowUnderlineField
@@ -288,7 +288,7 @@ const SignStep2 = ({
             value={value}
             onChangeText={onChangeText}
             placeholder={placeholder}
-            placeholderTextColor={colors.textSecondary}
+            placeholderTextColor={colors.textLight4}
             secureTextEntry={!visible}
             autoCapitalize="none"
             autoCorrect={false}
@@ -309,7 +309,7 @@ const SignStep2 = ({
             <Ionicons
               name={visible ? 'eye-off-outline' : 'eye-outline'}
               size={normalize(fontSizes.title + 4)}
-              color={colors.textSecondary}
+              color={colors.textLight4}
             />
           </TouchableOpacity>
         </View>
@@ -434,7 +434,7 @@ const SignStep2 = ({
             value={username}
             onChangeText={handleUsernameChange}
             placeholder={USERNAME_HINT}
-            placeholderTextColor={colors.textSecondary}
+            placeholderTextColor={colors.textLight4}
             autoCapitalize="none"
             autoCorrect={false}
             spellCheck={false}
@@ -499,7 +499,7 @@ const SignStep2 = ({
               <TextInput
                 style={styles.input}
                 placeholder="증명서에 기재된 학교명"
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={colors.textLight4}
                 value={claimedSchoolName}
                 onChangeText={(text) => {
                   setClaimedSchoolName(text);
@@ -512,7 +512,7 @@ const SignStep2 = ({
               <TextInput
                 style={styles.input}
                 placeholder="열람용 주소"
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={colors.textLight4}
                 value={certificateUrl}
                 onChangeText={(text) => {
                   setCertificateUrl(text);
@@ -531,7 +531,7 @@ const SignStep2 = ({
               <TextInput
                 style={styles.input}
                 placeholder="열람 번호"
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={colors.textLight4}
                 value={submissionNumber}
                 onChangeText={(text) => {
                   setSubmissionNumber(text);
@@ -565,13 +565,13 @@ function createAccountStyles(normalize, width) {
       marginBottom: normalize(10),
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.lg),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: normalize(Math.round(fontSizes.lg * 1.45)),
     },
     fieldLabelExtra: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.lg),
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     underlineField: {
       paddingBottom: normalize(8),
@@ -596,7 +596,7 @@ function createAccountStyles(normalize, width) {
       minHeight: inputMinHeight,
       height: inputIconSize,
       maxHeight: inputIconSize,
-      color: colors.textPrimary,
+      color: colors.text,
       ...Platform.select({
         android: { includeFontPadding: false, textAlignVertical: 'center' },
         ios: {},
@@ -616,7 +616,7 @@ function createAccountStyles(normalize, width) {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.xxl),
       minHeight: inputMinHeight,
-      color: colors.textPrimary,
+      color: colors.text,
       ...Platform.select({
         android: { includeFontPadding: false, textAlignVertical: 'center' },
         ios: {},

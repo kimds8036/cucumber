@@ -23,8 +23,8 @@ import { api } from '../../../utils/api';
 export function GrowingUnderline({
   active,
   normalize = (n) => n,
-  trackColor = colors.border || colors.textLight10,
-  fillColor = colors.textLight40,
+  trackColor = colors.textLight1 || colors.textLight1,
+  fillColor = colors.textLight3,
   height,
 }) {
   const lineHeight = height ?? Math.max(1.5, normalize(1.5));
@@ -225,13 +225,13 @@ const SchoolSearchField = ({
               <Feather
                 name="search"
                 size={normalize(18)}
-                color={focused ? colors.textLight70 : colors.textLight40}
+                color={focused ? colors.textLight5 : colors.textLight3}
               />
             ) : (
               <Ionicons
                 name="school-outline"
                 size={normalize(18)}
-                color={colors.textLight70}
+                color={colors.textLight5}
               />
             )}
             {isLockedSelection ? (
@@ -274,7 +274,7 @@ const SchoolSearchField = ({
                   setTimeout(() => setFocused(false), 180);
                 }}
                 placeholder={placeholder}
-                placeholderTextColor={colors.textLight40}
+                placeholderTextColor={colors.textLight3}
                 autoCorrect={false}
                 editable={!readOnly && !disabled}
                 showSoftInputOnFocus={!readOnly}
@@ -293,7 +293,7 @@ const SchoolSearchField = ({
               <MaterialIcons
                 name="cancel"
                 size={normalize(20)}
-                color={colors.textLight40}
+                color={colors.textLight3}
               />
             </TouchableOpacity>
           ) : null}
@@ -302,7 +302,7 @@ const SchoolSearchField = ({
           active={isLockedSelection || focused}
           normalize={normalize}
           fillColor={
-            isLockedSelection ? colors.textLight40 : colors.textLight20
+            isLockedSelection ? colors.textLight3 : colors.textLight2
           }
         />
       </View>
@@ -342,7 +342,7 @@ const SchoolSearchField = ({
               setTimeout(() => setFocused(false), 180);
             }}
             placeholder={placeholder}
-            placeholderTextColor={colors.textSecondary}
+            placeholderTextColor={colors.textLight4}
             autoCorrect={false}
             editable={!disabled}
             returnKeyType="search"
@@ -459,26 +459,26 @@ export function createSchoolSearchRowStyles(
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.xxl),
       minHeight: normalize(Math.round(fontSizes.xxl)),
-      color: colors.textPrimary,
+      color: colors.text,
       ...Platform.select({
         android: { includeFontPadding: false, textAlignVertical: 'center' },
         ios: {},
       }),
     },
     inputPlaceholder: {
-      color: colors.textLight40,
+      color: colors.textLight3,
     },
     fieldText: {
       flex: 1,
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.xxl),
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     fieldTextFilled: {
       flex: 0,
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.xl),
-      color: colors.textPrimary,
+      color: colors.text,
       minHeight: undefined,
     },
     selectedTextCol: {
@@ -490,7 +490,7 @@ export function createSchoolSearchRowStyles(
       fontFamily: fonts.regular,
       fontSize: normalize(12),
       lineHeight: normalize(16),
-      color: colors.textLight70,
+      color: colors.textLight5,
     },
     clearBtn: {
       justifyContent: 'center',
@@ -527,9 +527,9 @@ const makeDropdownStyles = (normalize, expandList = false) =>
       width: '100%',
       alignSelf: 'center',
       borderWidth: 1,
-      borderColor: colors.border || colors.textLight20,
+      borderColor: colors.textLight1 || colors.textLight2,
       borderRadius: normalize(16),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       overflow: 'hidden',
     },
     dropdownExpand: {
@@ -553,7 +553,7 @@ const makeDropdownStyles = (normalize, expandList = false) =>
       paddingHorizontal: normalize(14),
       fontFamily: fonts.regular,
       fontSize: normalize(13),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textAlign: 'center',
       lineHeight: normalize(18),
     },
@@ -562,23 +562,23 @@ const makeDropdownStyles = (normalize, expandList = false) =>
       paddingHorizontal: normalize(14),
     },
     rowActive: {
-      backgroundColor: colors.primaryLight20,
+      backgroundColor: colors.primaryLight3,
     },
     rowBorder: {
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.border || colors.textLight20,
+      borderBottomColor: colors.textLight1 || colors.textLight2,
     },
     rowTitle: {
       fontFamily: fonts.bold,
       fontSize: normalize(15),
-      color: colors.textPrimary,
+      color: colors.text,
     },
     rowSubtitle: {
       marginTop: normalize(3),
       fontFamily: fonts.regular,
       fontSize: normalize(11),
       lineHeight: normalize(15),
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     selectedBox: {
       marginTop: expandList ? 0 : normalize(8),
@@ -586,7 +586,7 @@ const makeDropdownStyles = (normalize, expandList = false) =>
       paddingVertical: normalize(10),
       paddingHorizontal: normalize(12),
       borderRadius: normalize(12),
-      backgroundColor: colors.primaryLight20,
+      backgroundColor: colors.primaryLight3,
       flexDirection: 'row',
       alignItems: 'center',
       gap: normalize(10),
@@ -605,7 +605,7 @@ const makeDropdownStyles = (normalize, expandList = false) =>
       fontFamily: fonts.regular,
       fontSize: normalize(11),
       lineHeight: normalize(15),
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
   });
 

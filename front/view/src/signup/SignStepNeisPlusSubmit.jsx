@@ -387,21 +387,21 @@ const localStyles = StyleSheet.create({
   stepNumber: {
     fontSize: 28,
     fontFamily: fonts.regular,
-    color: colors.background2,
+    color: colors.textLight2,
     lineHeight: 40,
   },
   stepTitle: {
     flex: 1,
     fontSize: 18,
     fontFamily: fonts.bold,
-    color: colors.textPrimary,
+    color: colors.text,
     lineHeight: 28,
   },
   stepDesc: {
     width: '100%',
     fontSize: 15,
     fontFamily: fonts.regular,
-    color: colors.textSecondary,
+    color: colors.textLight4,
     lineHeight: 22,
     marginBottom: 10,
   },
@@ -414,7 +414,7 @@ const localStyles = StyleSheet.create({
     alignSelf: 'center',
   },
   preview: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.textLight1,
   },
   attachBox: {
     borderWidth: 1.5,
@@ -430,7 +430,7 @@ const localStyles = StyleSheet.create({
   },
   changeText: {
     fontFamily: fonts.regular,
-    color: colors.textSecondary,
+    color: colors.textLight4,
     textDecorationLine: 'underline',
     textAlign: 'center',
   },
@@ -458,21 +458,21 @@ const localGuideFallback = StyleSheet.create({
   certificateGuideStepNumber: {
     fontSize: 28,
     fontFamily: fonts.regular,
-    color: colors.background2,
+    color: colors.textLight2,
     lineHeight: 40,
   },
   certificateGuideStepTitle: {
     flex: 1,
     fontSize: 18,
     fontFamily: fonts.bold,
-    color: colors.textPrimary,
+    color: colors.text,
     lineHeight: 28,
   },
   certificateGuideStepDescription: {
     width: '100%',
     fontSize: 15,
     fontFamily: fonts.regular,
-    color: colors.textSecondary,
+    color: colors.textLight4,
     lineHeight: 22,
     marginBottom: 10,
   },
@@ -501,7 +501,7 @@ const localGuideFallback = StyleSheet.create({
   nextButtonDisabled: { opacity: 0.45 },
   nextButtonText: {
     fontFamily: fonts.bold,
-    color: colors.background,
+    color: colors.white,
     fontSize: 16,
   },
 });

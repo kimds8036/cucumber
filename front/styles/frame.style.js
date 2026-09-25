@@ -21,7 +21,7 @@ export const createHeaderStyles = (width, height) => {
       paddingHorizontal: SPACING_H,
       paddingTop: normalize(8),
       paddingBottom: normalize(8),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       minHeight: normalize(56),
       paddingHorizontal: normalize(20),
     },
@@ -33,11 +33,11 @@ export const createHeaderStyles = (width, height) => {
     tabText: {
       fontSize: normalize(fontSizes.heading + 6),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     activeTabText: {
       fontFamily: fonts.bold,
-      color: colors.textWhite,
+      color: colors.white,
       fontWeight: '600',
     },
     buttonContainer: {
@@ -55,7 +55,7 @@ export const createHeaderStyles = (width, height) => {
       borderRadius: normalize(25),
       backgroundColor: colors.green,
       borderWidth: 1,
-      borderColor: colors.primaryLight50,
+      borderColor: colors.primaryLight5,
     },
     badge: {
       position: 'absolute',
@@ -78,12 +78,12 @@ export const createFooterStyles = (width, height) => {
       flexDirection: 'row',
       justifyContent: 'space-around',
       alignItems: 'stretch',
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       paddingVertical: normalize(10),
       paddingBottom: normalize(-8),
       height: normalize(65),
       borderTopWidth: 0.5,
-      borderColor: colors.textLight5,
+      borderColor: colors.textLight1,
     },
     tabButton: {
       flex: 1,
@@ -110,7 +110,7 @@ export const createFooterStyles = (width, height) => {
     tabText: {
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.bold,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginTop: normalize(4),
       fontWeight: '500',
     },
@@ -129,7 +129,7 @@ export const createSubHeaderStyles = (width, height) => {
   return StyleSheet.create({
     header: {
       paddingTop: normalize(10),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       paddingHorizontal: width * 0.07,
       flexShrink: 0,
     },
@@ -152,7 +152,7 @@ export const createSubHeaderStyles = (width, height) => {
     headerTitle: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     headerSubtitle: {
       fontSize: normalize(fontSizes.md),
@@ -170,7 +170,7 @@ export const createSubHeaderStyles = (width, height) => {
     },
     divider: {
       height: 1,
-      backgroundColor: colors.textLight20,
+      backgroundColor: colors.textLight2,
     },
   });
 };
@@ -182,7 +182,7 @@ export const createSubFooterStyles = (width, height) => {
 
   return StyleSheet.create({
     container: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       paddingHorizontal: normalize(16),
       paddingVertical: normalize(12),
     },
@@ -194,17 +194,17 @@ export const createSubFooterStyles = (width, height) => {
       justifyContent: 'center',
     },
     buttonDisabled: {
-      backgroundColor: colors.primaryLight50,
+      backgroundColor: colors.primaryLight5,
     },
     buttonText: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.background,
+      color: colors.white,
     },
     guideText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textAlign: 'center',
       marginBottom: normalize(8),
     },

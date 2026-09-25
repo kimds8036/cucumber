@@ -182,12 +182,12 @@ export default function BoardFloatingMenu({
           <TouchableWithoutFeedback>
             <View
               style={{
-                backgroundColor: colors.background,
+                backgroundColor: colors.white,
                 borderRadius: normalize(12),
                 minWidth: width * 0.45,
                 maxWidth: width * 0.7,
                 paddingVertical: normalize(4),
-                shadowColor: colors.shadow,
+                shadowColor: colors.text,
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.15,
                 shadowRadius: 5,
@@ -221,7 +221,7 @@ export default function BoardFloatingMenu({
                       style={{
                         fontSize: normalize(13),
                         fontFamily: fonts.regular,
-                        color: colors.textPrimary,
+                        color: colors.text,
                       }}
                     >
                       {item.label}
@@ -230,13 +230,13 @@ export default function BoardFloatingMenu({
                       <MaterialCommunityIcons
                         name={item.iconName}
                         size={normalize(17)}
-                        color={colors.textSecondary}
+                        color={colors.textLight4}
                       />
                     ) : (
                       <Ionicons
                         name={item.iconName}
                         size={normalize(17)}
-                        color={colors.textSecondary}
+                        color={colors.textLight4}
                       />
                     )}
                   </TouchableOpacity>
@@ -244,7 +244,7 @@ export default function BoardFloatingMenu({
                     <View
                       style={{
                         height: 1,
-                        backgroundColor: colors.textLight10,
+                        backgroundColor: colors.textLight1,
                         marginHorizontal: normalize(8),
                       }}
                     />

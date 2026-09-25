@@ -131,7 +131,7 @@ const navigationTheme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    background: colors.background,
+    background: colors.white,
   },
 };
 const linking = {
@@ -617,7 +617,7 @@ function RootNavigator() {
 
     return (
       <SafeAreaView
-        style={{ flex: 1, backgroundColor: colors.background }}
+        style={{ flex: 1, backgroundColor: colors.white }}
         edges={['top', 'bottom']}
       >
         {rejectedBody}
@@ -735,7 +735,7 @@ export default function App() {
   useEffect(() => {
     if (Platform.OS !== 'android') return undefined;
     const RNStatusBar = require('react-native').StatusBar;
-    RNStatusBar.setBackgroundColor(colors.background, true);
+    RNStatusBar.setBackgroundColor(colors.white, true);
     RNStatusBar.setBarStyle('dark-content', true);
     return undefined;
   }, []);
@@ -947,9 +947,9 @@ export default function App() {
   return (
     <SafeAreaProvider
       initialMetrics={initialWindowMetrics}
-      style={{ flex: 1, backgroundColor: colors.background }}
+      style={{ flex: 1, backgroundColor: colors.white }}
     >
-      <StatusBar style="dark" backgroundColor={colors.background} />
+      <StatusBar style="dark" backgroundColor={colors.white} />
       <OfflineGate>
         {/* Auth·스플래시 hide는 Gate 밖 — force/error 시 children 미렌더로 hideAsync가 안 불리던 버그 방지 */}
         <AuthProvider>

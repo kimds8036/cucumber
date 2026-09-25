@@ -310,7 +310,7 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
         }}
       >
         <Text
-          style={{ fontFamily: fonts.regular, color: colors.textSecondary }}
+          style={{ fontFamily: fonts.regular, color: colors.textLight4 }}
         >
           {!schoolId ? '학교 정보가 없습니다.' : '아직 우편이 없습니다'}
         </Text>
@@ -376,7 +376,7 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
             size={normalize(30)}
             top={normalize(2)}
             right={normalize(1)}
-            color={colors.background}
+            color={colors.white}
           />
         </TouchableOpacity>
       </View>

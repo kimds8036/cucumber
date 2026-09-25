@@ -65,7 +65,7 @@ const SignStepSchoolSelect = ({
           <TextInput
             style={localStyles.fieldInput}
             placeholder=""
-            placeholderTextColor={colors.textSecondary}
+            placeholderTextColor={colors.textLight4}
             value={gradeNum}
             onChangeText={(text) => {
               onGradeNumChange?.(text.replace(/\D/g, '').slice(0, 1));
@@ -78,7 +78,7 @@ const SignStepSchoolSelect = ({
         <GrowingUnderline
           active={Boolean(gradeNum)}
           normalize={normalize}
-          fillColor={colors.textLight40}
+          fillColor={colors.textLight3}
         />
       </View>
 
@@ -88,7 +88,7 @@ const SignStepSchoolSelect = ({
           <TextInput
             style={localStyles.fieldInput}
             placeholder=""
-            placeholderTextColor={colors.textSecondary}
+            placeholderTextColor={colors.textLight4}
             value={classNum}
             onChangeText={(text) => {
               onClassNumChange?.(text.replace(/\D/g, '').slice(0, 2));
@@ -101,7 +101,7 @@ const SignStepSchoolSelect = ({
         <GrowingUnderline
           active={Boolean(classNum)}
           normalize={normalize}
-          fillColor={colors.textLight40}
+          fillColor={colors.textLight3}
         />
       </View>
     </View>
@@ -156,7 +156,7 @@ function createLocalStyles(normalize, width) {
       marginBottom: normalize(10),
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.lg),
-      color: colors.textLight70,
+      color: colors.textLight5,
     },
     gradeClassRow: {
       flexDirection: 'row',
@@ -177,7 +177,7 @@ function createLocalStyles(normalize, width) {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.xxl),
       minHeight: normalize(fontSizes.xxl),
-      color: colors.textPrimary,
+      color: colors.text,
       ...Platform.select({
         android: { includeFontPadding: false, textAlignVertical: 'center' },
         ios: {},

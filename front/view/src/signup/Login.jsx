@@ -529,7 +529,7 @@ const Login = ({ navigation }) => {
                   idFocused && styles.underlineInputFocused,
                 ]}
                 placeholder="아이디"
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={colors.textLight4}
                 value={id}
                 onChangeText={setId}
                 onFocus={() => {
@@ -543,7 +543,7 @@ const Login = ({ navigation }) => {
                 <GrowingUnderline
                   active={idFocused || Boolean(id)}
                   normalize={normalize}
-                  fillColor={colors.textLight40}
+                  fillColor={colors.textLight3}
                 />
               </View>
 
@@ -554,7 +554,7 @@ const Login = ({ navigation }) => {
                   passwordFocused && styles.underlineInputFocused,
                 ]}
                 placeholder="비밀번호"
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={colors.textLight4}
                 value={password}
                 onChangeText={setPassword}
                 onFocus={() => {
@@ -569,7 +569,7 @@ const Login = ({ navigation }) => {
                 <GrowingUnderline
                   active={passwordFocused || Boolean(password)}
                   normalize={normalize}
-                  fillColor={colors.textLight40}
+                  fillColor={colors.textLight3}
                 />
               </View>
             </View>
@@ -673,7 +673,7 @@ const Login = ({ navigation }) => {
             <TouchableWithoutFeedback>
               <View
                 style={{
-                  backgroundColor: '#fff',
+                  backgroundColor: colors.white,
                   borderRadius: normalize(14),
                   padding: normalize(18),
                 }}
@@ -682,7 +682,7 @@ const Login = ({ navigation }) => {
                   style={{
                     fontSize: normalize(17),
                     fontWeight: '700',
-                    color: colors.textPrimary,
+                    color: colors.text,
                     marginBottom: normalize(10),
                   }}
                 >
@@ -702,7 +702,7 @@ const Login = ({ navigation }) => {
                   style={{
                     fontSize: normalize(14),
                     lineHeight: normalize(20),
-                    color: colors.textSecondary,
+                    color: colors.textLight4,
                   }}
                 >
                   {policyModal.body}
@@ -747,7 +747,7 @@ const Login = ({ navigation }) => {
                       setPolicyModal((prev) => ({ ...prev, visible: false }))
                     }
                   >
-                    <Text style={{ color: '#fff', fontWeight: '700' }}>
+                    <Text style={{ color: colors.white, fontWeight: '700' }}>
                       확인
                     </Text>
                   </TouchableOpacity>

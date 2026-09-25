@@ -177,7 +177,7 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
                               styles.timetableSlotSegment,
                               {
                                 flex: spacerFlex,
-                                backgroundColor: colors.background,
+                                backgroundColor: colors.white,
                               },
                             ]}
                           />
@@ -215,7 +215,7 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
               <Ionicons
                 name="chevron-back"
                 size={22}
-                color={colors.textPrimary}
+                color={colors.text}
               />
             </TouchableOpacity>
             <TouchableOpacity
@@ -237,7 +237,7 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
               <Ionicons
                 name="chevron-forward"
                 size={22}
-                color={canGoNextDay ? colors.textPrimary : colors.textLight20}
+                color={canGoNextDay ? colors.text : colors.textLight2}
               />
             </TouchableOpacity>
           </View>
@@ -251,7 +251,7 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
               <Text style={styles.studyRoomEntryText}>스터디룸 입장</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.saveBtn} onPress={handleSaveAsImage}>
-              <Feather name="download" size={20} color={colors.textPrimary} />
+              <Feather name="download" size={20} color={colors.text} />
             </TouchableOpacity>
           </View>
         </View>
@@ -267,7 +267,7 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
               <Ionicons
                 name={isRunning ? 'pause' : 'play'}
                 size={normalize(20)}
-                color={isRunning ? colors.textPrimary : colors.textWhite}
+                color={isRunning ? colors.text : colors.white}
               />
               <Text
                 style={[
@@ -353,7 +353,7 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
                         <Ionicons
                           name={isThisRunning ? 'pause' : 'play'}
                           size={normalize(18)}
-                          color={colors.textWhite}
+                          color={colors.white}
                         />
                       </TouchableOpacity>
                       <TouchableOpacity
@@ -363,7 +363,7 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
                         <Ionicons
                           name={isCollapsed ? 'chevron-down' : 'chevron-up'}
                           size={normalize(20)}
-                          color={colors.textSecondary}
+                          color={colors.textLight4}
                         />
                       </TouchableOpacity>
                     </TouchableOpacity>
@@ -397,7 +397,7 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
                                 <Ionicons
                                   name="checkmark"
                                   size={normalize(14)}
-                                  color={colors.textWhite}
+                                  color={colors.white}
                                 />
                               )}
                             </TouchableOpacity>
@@ -537,7 +537,7 @@ export function TimerLivePlannerCapture({
                               styles.timetableSlotSegment,
                               {
                                 flex: spacerFlex,
-                                backgroundColor: colors.background,
+                                backgroundColor: colors.white,
                               },
                             ]}
                           />
@@ -628,7 +628,7 @@ export function TimerLivePlannerCapture({
                             <Ionicons
                               name="checkmark"
                               size={normalize(12)}
-                              color={colors.textWhite}
+                              color={colors.white}
                             />
                           )}
                         </View>

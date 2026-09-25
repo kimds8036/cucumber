@@ -39,7 +39,7 @@ const MainFooter = ({ activeTab: activeTabProp, onTabPress: onTabPressProp }) =>
         <Octicons
           name="home-fill"
           size={normalize(30)}
-          color={activeTab === 'board' ? colors.primary : colors.textSecondary}
+          color={activeTab === 'board' ? colors.primary : colors.textLight4}
         />
         <Text
           style={[
@@ -63,7 +63,7 @@ const MainFooter = ({ activeTab: activeTabProp, onTabPress: onTabPressProp }) =>
           width={normalize(30)}
           height={normalize(30)}
           color={
-            activeTab === 'message' ? colors.primary : colors.textSecondary
+            activeTab === 'message' ? colors.primary : colors.textLight4
           }
         />
         <Text
@@ -87,7 +87,7 @@ const MainFooter = ({ activeTab: activeTabProp, onTabPress: onTabPressProp }) =>
         <FontAwesomeIcon
           icon={faSchool}
           size={normalize(33)}
-          color={activeTab === 'school' ? colors.primary : colors.textSecondary}
+          color={activeTab === 'school' ? colors.primary : colors.textLight4}
         />
         <Text
           style={[
@@ -110,7 +110,7 @@ const MainFooter = ({ activeTab: activeTabProp, onTabPress: onTabPressProp }) =>
         <MaterialIcons
           name="timer"
           size={normalize(35)}
-          color={activeTab === 'timer' ? colors.primary : colors.textSecondary}
+          color={activeTab === 'timer' ? colors.primary : colors.textLight4}
         />
         <Text
           style={[
@@ -133,7 +133,7 @@ const MainFooter = ({ activeTab: activeTabProp, onTabPress: onTabPressProp }) =>
         <Ionicons
           name="person"
           size={normalize(30)}
-          color={activeTab === 'mypage' ? colors.primary : colors.textSecondary}
+          color={activeTab === 'mypage' ? colors.primary : colors.textLight4}
         />
         <Text
           style={[

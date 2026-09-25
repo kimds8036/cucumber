@@ -91,7 +91,7 @@ export default function AppPopupModal({
           <View
             style={[
               {
-                backgroundColor: colors.background,
+                backgroundColor: colors.white,
                 borderRadius: 18,
                 paddingHorizontal: 18,
                 paddingVertical: 25,

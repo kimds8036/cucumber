@@ -237,7 +237,7 @@ const MealCalender = ({ route }) => {
           <Ionicons
             name="chevron-back"
             size={normalize(18)}
-            color={colors.textSecondary}
+            color={colors.textLight4}
           />
         </TouchableOpacity>
         <Text style={styles.monthTitle}>{monthLabel}</Text>
@@ -251,7 +251,7 @@ const MealCalender = ({ route }) => {
             name="chevron-forward"
             size={normalize(18)}
             color={
-              isViewingCurrentMonth ? colors.background : colors.textSecondary
+              isViewingCurrentMonth ? colors.white : colors.textLight4
             }
           />
         </TouchableOpacity>
@@ -330,7 +330,7 @@ const MealCalender = ({ route }) => {
                           <Text
                             style={{
                               fontSize: normalize(11),
-                              color: colors.textSecondary,
+                              color: colors.textLight4,
                               marginTop: normalize(4),
                             }}
                           >

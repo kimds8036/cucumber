@@ -357,12 +357,12 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
                 <Ionicons
                   name="search-outline"
                   size={normalize(18)}
-                  color={colors.textSecondary}
+                  color={colors.textLight4}
                 />
                 <TextInput
                   style={s.addFriendInput}
                   placeholder="@아이디 입력"
-                  placeholderTextColor={colors.textLight20}
+                  placeholderTextColor={colors.textLight2}
                   value={query}
                   onChangeText={setQuery}
                   autoFocus
@@ -372,7 +372,7 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
                     <Ionicons
                       name="close-circle"
                       size={normalize(18)}
-                      color={colors.textLight20}
+                      color={colors.textLight2}
                     />
                   </TouchableOpacity>
                 )}
@@ -390,7 +390,7 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
                 <FontAwesome5
                   name="user-plus"
                   size={normalize(16)}
-                  color={colors.textWhite}
+                  color={colors.white}
                   style={s.addFriendPrimaryBtnIcon}
                 />
                 <Text style={s.addFriendPrimaryBtnText}>추가하기</Text>
@@ -548,7 +548,7 @@ export const FriendStoryBar = memo(function FriendStoryBar({
                     <Ionicons
                       name="person-add"
                       size={normalize(9)}
-                      color={colors.textWhite}
+                      color={colors.white}
                     />
                   </View>
                 ) : (

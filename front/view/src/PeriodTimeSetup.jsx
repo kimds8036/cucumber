@@ -467,7 +467,7 @@ const PeriodTimeSetup = ({ navigation, route }) => {
 
 function createStyles(normalize) {
   return {
-    safe: { flex: 1, backgroundColor: colors.background },
+    safe: { flex: 1, backgroundColor: colors.white },
     scroll: { flex: 1 },
     content: {
       paddingBottom: normalize(24),
@@ -488,7 +488,7 @@ function createStyles(normalize) {
     periodTitle: {
       fontSize: normalize(13),
       fontWeight: '700',
-      color: colors.textPrimary,
+      color: colors.text,
     },
     deleteText: {
       fontSize: normalize(13),
@@ -502,27 +502,27 @@ function createStyles(normalize) {
     },
     timeField: {
       flex: 1,
-      backgroundColor: colors.surface,
+      backgroundColor: colors.textLight1,
       borderRadius: normalize(10),
       paddingVertical: normalize(10),
       paddingHorizontal: normalize(12),
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: colors.textLight1,
     },
     timeFieldLabel: {
       fontSize: normalize(11),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginBottom: normalize(2),
     },
     timeFieldValue: {
       fontSize: normalize(16),
       fontWeight: '700',
-      color: colors.textPrimary,
+      color: colors.text,
       fontVariant: ['tabular-nums'],
     },
     tilde: {
       fontSize: normalize(16),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       fontWeight: '600',
     },
     addBtn: {
@@ -536,9 +536,9 @@ function createStyles(normalize) {
       paddingVertical: normalize(6),
       paddingHorizontal: normalize(8),
       borderWidth: 1,
-      borderColor: colors.primaryLight70,
+      borderColor: colors.primaryLight6,
       borderRadius: normalize(20),
-      backgroundColor: colors.primaryLight10,
+      backgroundColor: colors.primaryLight2,
     },
     addBtnText: {
       fontSize: normalize(13),
@@ -558,7 +558,7 @@ function createStyles(normalize) {
       justifyContent: 'flex-end',
     },
     modalCard: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderTopLeftRadius: normalize(18),
       borderTopRightRadius: normalize(18),
       paddingTop: normalize(16),
@@ -568,7 +568,7 @@ function createStyles(normalize) {
       textAlign: 'center',
       fontSize: normalize(16),
       fontWeight: '700',
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: normalize(4),
     },
     pickerRow: {
@@ -584,12 +584,12 @@ function createStyles(normalize) {
     },
     pickerItem: {
       fontSize: normalize(18),
-      color: colors.textPrimary,
+      color: colors.text,
     },
     modalActions: {
       flexDirection: 'row',
       borderTopWidth: 1,
-      borderTopColor: colors.border,
+      borderTopColor: colors.textLight1,
     },
     modalBtn: {
       flex: 1,
@@ -598,7 +598,7 @@ function createStyles(normalize) {
     },
     modalBtnCancel: {
       fontSize: normalize(16),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       fontWeight: '600',
     },
     modalBtnOk: {
@@ -607,7 +607,7 @@ function createStyles(normalize) {
       fontWeight: '700',
     },
     modalBtnOkDisabled: {
-      color: colors.textLight40,
+      color: colors.textLight3,
     },
     pickerError: {
       marginHorizontal: normalize(20),

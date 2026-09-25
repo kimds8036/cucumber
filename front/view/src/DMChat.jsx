@@ -15,7 +15,7 @@ export default function DMChat(props) {
   if (!screenReady) {
     return (
       <View
-        style={{ flex: 1, backgroundColor: colors.background, padding: 16 }}
+        style={{ flex: 1, backgroundColor: colors.white, padding: 16 }}
       >
         <Skeleton
           width="45%"

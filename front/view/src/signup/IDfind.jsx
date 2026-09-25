@@ -168,7 +168,7 @@ const IDfind = ({ navigation }) => {
             <Ionicons
               name="chevron-back"
               size={normalize(24)}
-              color={colors.textPrimary}
+              color={colors.text}
             />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>아이디 찾기</Text>
@@ -186,7 +186,7 @@ const IDfind = ({ navigation }) => {
               <TextInput
                 style={styles.input}
                 placeholder="이름 입력"
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={colors.textLight4}
                 value={name}
                 onChangeText={(t) => {
                   setName(t);

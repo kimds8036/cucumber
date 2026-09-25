@@ -6,20 +6,20 @@ export const createMessageRoomMenuSheetStyles = (normalize) =>
   StyleSheet.create({
     modalOverlay: {
       flex: 1,
-      backgroundColor: colors.overlayLight,
+      backgroundColor: colors.textLight3,
     },
     bottomSheet: {
       position: 'absolute',
       bottom: 0,
       left: 0,
       right: 0,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderTopLeftRadius: normalize(24),
       borderTopRightRadius: normalize(24),
       paddingHorizontal: normalize(24),
       paddingBottom: normalize(40),
       paddingTop: normalize(12),
-      shadowColor: colors.shadow,
+      shadowColor: colors.text,
       shadowOffset: { width: 0, height: normalize(4) },
       shadowOpacity: 0.12,
       shadowRadius: normalize(12),
@@ -28,7 +28,7 @@ export const createMessageRoomMenuSheetStyles = (normalize) =>
     sheetHandle: {
       width: normalize(40),
       height: normalize(4),
-      backgroundColor: colors.border,
+      backgroundColor: colors.textLight1,
       borderRadius: normalize(2),
       alignSelf: 'center',
       marginBottom: normalize(20),
@@ -50,7 +50,7 @@ export const createMessageRoomMenuSheetStyles = (normalize) =>
     sheetName: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     sheetNameRow: {
       flexDirection: 'row',
@@ -60,12 +60,12 @@ export const createMessageRoomMenuSheetStyles = (normalize) =>
     sheetUsername: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     sheetSubtitle: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     sheetDeleteAction: {
       flexDirection: 'row',
@@ -83,7 +83,7 @@ export const createMessageRoomMenuSheetStyles = (normalize) =>
       justifyContent: 'center',
       gap: normalize(6),
       paddingVertical: normalize(8),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(10),
       marginBottom: normalize(10),
     },
@@ -107,6 +107,6 @@ export const createMessageRoomMenuSheetStyles = (normalize) =>
     sheetBlockActionTitle: {
       fontSize: normalize(fontSizes.xl + 1),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
   });

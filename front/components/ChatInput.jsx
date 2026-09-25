@@ -50,14 +50,14 @@ export default function ChatInput({
                   position: 'absolute',
                   top: -6,
                   right: -6,
-                  backgroundColor: '#000',
+                  backgroundColor: colors.text,
                   borderRadius: 10,
                 }}
               >
                 <Ionicons
                   name="close-circle"
                   size={normalize(18)}
-                  color="#fff"
+                  color={colors.white}
                 />
               </TouchableOpacity>
             </View>
@@ -86,7 +86,7 @@ export default function ChatInput({
           ref={inputRef}
           style={styles.bottomInput}
           placeholder={placeholder}
-          placeholderTextColor={colors.textSecondary}
+          placeholderTextColor={colors.textLight4}
           value={value}
           onChangeText={onChange}
           multiline
@@ -113,7 +113,7 @@ export default function ChatInput({
           <Ionicons
             name="arrow-up"
             size={normalize(22)}
-            color={colors.background}
+            color={colors.white}
           />
         </TouchableOpacity>
       </View>

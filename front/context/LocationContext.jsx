@@ -217,7 +217,7 @@ export function LocationGate({ children }) {
           flex: 1,
           justifyContent: 'center',
           alignItems: 'center',
-          backgroundColor: colors.background,
+          backgroundColor: colors.white,
         }}
       >
         <Skeleton width={28} height={28} borderRadius={14} />
@@ -225,7 +225,7 @@ export function LocationGate({ children }) {
           style={{
             marginTop: 16,
             fontFamily: fonts.regular,
-            color: colors.textSecondary,
+            color: colors.textLight4,
           }}
         >
           위치 권한을 확인하는 중이에요…
@@ -242,14 +242,14 @@ export function LocationGate({ children }) {
           justifyContent: 'center',
           alignItems: 'center',
           paddingHorizontal: 28,
-          backgroundColor: colors.background,
+          backgroundColor: colors.white,
         }}
       >
         <Text
           style={{
             fontFamily: fonts.bold,
             fontSize: 18,
-            color: colors.textPrimary,
+            color: colors.text,
             textAlign: 'center',
             marginBottom: 12,
           }}
@@ -260,7 +260,7 @@ export function LocationGate({ children }) {
           style={{
             fontFamily: fonts.regular,
             fontSize: 15,
-            color: colors.textSecondary,
+            color: colors.textLight4,
             textAlign: 'center',
             lineHeight: 22,
             marginBottom: 28,
@@ -273,7 +273,7 @@ export function LocationGate({ children }) {
           onPress={() => retryPermission()}
           style={{
             borderWidth: 1,
-            borderColor: colors.border,
+            borderColor: colors.textLight1,
             paddingVertical: 12,
             paddingHorizontal: 20,
             borderRadius: 12,
@@ -283,7 +283,7 @@ export function LocationGate({ children }) {
           <Text
             style={{
               fontFamily: fonts.bold,
-              color: colors.textPrimary,
+              color: colors.text,
               fontSize: 15,
             }}
           >
@@ -300,7 +300,7 @@ export function LocationGate({ children }) {
             marginBottom: 12,
           }}
         >
-          <Text style={{ fontFamily: fonts.bold, color: '#fff', fontSize: 16 }}>
+          <Text style={{ fontFamily: fonts.bold, color: colors.white, fontSize: 16 }}>
             설정 열기
           </Text>
         </TouchableOpacity>
@@ -309,7 +309,7 @@ export function LocationGate({ children }) {
             style={{
               fontFamily: fonts.regular,
               fontSize: 12,
-              color: colors.textSecondary,
+              color: colors.textLight4,
             }}
           >
             일부 기기에서는 위치 권한을 “앱 사용 중에만”으로 설정해 주세요.

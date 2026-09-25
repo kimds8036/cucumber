@@ -6,12 +6,12 @@ export const createFindStyles = (width, normalize) => {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       paddingHorizontal: width * 0.04,
     },
     headerSection: {
       paddingTop: normalize(8),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     headerTop: {
       flexDirection: 'row',
@@ -28,7 +28,7 @@ export const createFindStyles = (width, normalize) => {
     headerTitle: {
       fontSize: normalize(fontSizes.heading),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     description: {
       marginTop: normalize(12),
@@ -36,7 +36,7 @@ export const createFindStyles = (width, normalize) => {
       textAlign: 'center',
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: normalize(22),
       paddingHorizontal: normalize(8),
     },
@@ -47,7 +47,7 @@ export const createFindStyles = (width, normalize) => {
     inputLabel: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: normalize(8),
       marginLeft: normalize(20),
     },
@@ -66,9 +66,9 @@ export const createFindStyles = (width, normalize) => {
       paddingVertical: normalize(12),
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: normalize(12),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       textAlignVertical: 'center',
       ...Platform.select({
         android: { includeFontPadding: false, elevation: 0 },
@@ -76,8 +76,8 @@ export const createFindStyles = (width, normalize) => {
       }),
     },
     inputReadonly: {
-      backgroundColor: colors.textLight5,
-      color: colors.textSecondary,
+      backgroundColor: colors.textLight1,
+      color: colors.textLight4,
     },
     helperText: {
       marginTop: normalize(2),
@@ -85,15 +85,15 @@ export const createFindStyles = (width, normalize) => {
       marginLeft: normalize(20),
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     resultCard: {
       width: '98%',
       alignSelf: 'center',
       borderWidth: 1,
-      borderColor: colors.primaryLight50,
+      borderColor: colors.primaryLight5,
       borderRadius: normalize(20),
-      backgroundColor: colors.primaryLight10,
+      backgroundColor: colors.primaryLight2,
       paddingVertical: normalize(16),
       paddingHorizontal: normalize(16),
       marginTop: normalize(2),
@@ -102,18 +102,18 @@ export const createFindStyles = (width, normalize) => {
     resultTitle: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginBottom: normalize(6),
     },
     resultValue: {
       fontSize: normalize(fontSizes.title),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     footerSection: {
       paddingTop: normalize(8),
       paddingBottom: normalize(16),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     primaryButton: {
       width: '100%',
@@ -124,12 +124,12 @@ export const createFindStyles = (width, normalize) => {
       paddingVertical: normalize(14),
     },
     primaryButtonDisabled: {
-      backgroundColor: colors.textLight20,
+      backgroundColor: colors.textLight2,
     },
     primaryButtonText: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textWhite,
+      color: colors.white,
     },
     inputWithButton: {
       flexDirection: 'row',
@@ -151,7 +151,7 @@ export const createFindStyles = (width, normalize) => {
       alignItems: 'center',
     },
     verifyButtonDisabled: {
-      backgroundColor: colors.textLight20,
+      backgroundColor: colors.textLight2,
     },
     verifyButtonWide: {
       width: '98%',
@@ -161,7 +161,7 @@ export const createFindStyles = (width, normalize) => {
     verifyButtonText: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textWhite,
+      color: colors.white,
     },
     verifiedHint: {
       marginTop: normalize(4),

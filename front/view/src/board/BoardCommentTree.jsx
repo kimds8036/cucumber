@@ -100,7 +100,7 @@ export default function BoardCommentTree({
                 <MaterialCommunityIcons
                   name="pin"
                   size={normalize(12)}
-                  color={colors.textSecondary}
+                  color={colors.textLight4}
                   style={{ marginLeft: normalize(4)}}
                 />
               ) : null}
@@ -161,7 +161,7 @@ export default function BoardCommentTree({
                   <Entypo
                     name="dots-three-vertical"
                     size={normalize(14)}
-                    color={colors.textSecondary}
+                    color={colors.textLight4}
                   />
                 </TouchableOpacity>
               </View>
@@ -192,7 +192,7 @@ export default function BoardCommentTree({
                 <Ionicons
                   name="return-down-forward"
                   size={normalize(16)}
-                  color={colors.textSecondary}
+                  color={colors.textLight4}
                 />
               </View>
               {bubble}
@@ -244,7 +244,7 @@ export default function BoardCommentTree({
             <Ionicons
               name="chevron-down"
               size={normalize(18)}
-              color={colors.textSecondary}
+              color={colors.textLight4}
             />
             <Text style={styles.loadMoreText}>댓글 더보기</Text>
           </TouchableOpacity>
@@ -262,7 +262,7 @@ export default function BoardCommentTree({
             <Ionicons
               name="chevron-up"
               size={normalize(18)}
-              color={colors.textSecondary}
+              color={colors.textLight4}
             />
             <Text style={styles.loadMoreText}>댓글 접기</Text>
           </TouchableOpacity>

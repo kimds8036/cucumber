@@ -15,7 +15,7 @@ export const createBoardStyles = (width, normalize) => {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
 
     // 정렬 버튼 영역
@@ -26,15 +26,15 @@ export const createBoardStyles = (width, normalize) => {
       paddingTop: normalize(8),
       gap: normalize(8),
       borderBottomWidth: 1,
-      borderBottomColor: colors.textLight10,
+      borderBottomColor: colors.textLight1,
     },
     sortButton: {
       paddingHorizontal: normalize(16),
       paddingVertical: normalize(8),
       borderRadius: normalize(20),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderWidth: 1,
-      borderColor: colors.textLight10,
+      borderColor: colors.textLight1,
     },
     sortButtonActive: {
       backgroundColor: colors.primary,
@@ -43,10 +43,10 @@ export const createBoardStyles = (width, normalize) => {
     sortButtonText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     sortButtonTextActive: {
-      color: colors.background,
+      color: colors.white,
       fontFamily: fonts.bold,
     },
 
@@ -56,7 +56,7 @@ export const createBoardStyles = (width, normalize) => {
       paddingHorizontal: width * 0.04,
     },
     postItem: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(18),
       padding: normalize(14),
       marginBottom: normalize(12),
@@ -95,7 +95,7 @@ export const createBoardStyles = (width, normalize) => {
     postAuthor: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: metaLineHeight,
       textAlignVertical: 'center',
       ...metaTextAndroid,
@@ -103,7 +103,7 @@ export const createBoardStyles = (width, normalize) => {
     postDot: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: metaLineHeight,
       textAlignVertical: 'center',
       marginHorizontal: normalize(6),
@@ -112,7 +112,7 @@ export const createBoardStyles = (width, normalize) => {
     postTime: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: metaLineHeight,
       textAlignVertical: 'center',
       ...metaTextAndroid,
@@ -120,14 +120,14 @@ export const createBoardStyles = (width, normalize) => {
     postLocation: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.primaryLight30,
+      backgroundColor: colors.primaryLight4,
       paddingHorizontal: normalize(6),
       borderRadius: normalize(13),
     },
     postLocationText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     postLocationWrap: {
       flexShrink: 1,
@@ -146,7 +146,7 @@ export const createBoardStyles = (width, normalize) => {
       flexDirection: 'row',
       alignItems: 'center',
       gap: normalize(1),
-      backgroundColor: colors.primaryLight20,
+      backgroundColor: colors.primaryLight3,
       borderRadius: normalize(10),
       paddingHorizontal: normalize(7),
       paddingVertical: normalize(2),
@@ -170,7 +170,7 @@ export const createBoardStyles = (width, normalize) => {
     postContent: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       lineHeight: normalize(20),
       marginBottom: normalize(7),
     },
@@ -192,7 +192,7 @@ export const createBoardStyles = (width, normalize) => {
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.primaryDark,
-      backgroundColor: colors.primaryLight10,
+      backgroundColor: colors.primaryLight2,
       borderRadius: normalize(10),
       paddingHorizontal: normalize(5),
       paddingVertical: normalize(1),
@@ -204,7 +204,7 @@ export const createBoardStyles = (width, normalize) => {
       opacity: 0,
     },
     postTagMoreChip: {
-      backgroundColor: colors.primaryLight10,
+      backgroundColor: colors.primaryLight2,
       paddingHorizontal: normalize(1),
       paddingVertical: normalize(1),
       borderRadius: normalize(10),
@@ -230,14 +230,14 @@ export const createBoardStyles = (width, normalize) => {
       width: normalize(70),
       height: normalize(70),
       borderRadius: normalize(8),
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
       alignSelf: 'flex-start',
     },
 
     // 내용과 푸터 사이 경계선
     postDivider: {
       height: 1,
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
       marginBottom: normalize(10),
     },
 
@@ -261,7 +261,7 @@ export const createBoardStyles = (width, normalize) => {
     postStatText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     menuButton: {
       justifyContent: 'center',
@@ -301,17 +301,17 @@ export const createWriteStyles = (width, normalize) => {
     },
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     box: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     box2: {
       padding: normalize(10),
       paddingBottom: normalize(35),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       alignItems: 'center',
-      borderColor: colors.textLight20,
+      borderColor: colors.textLight2,
       borderTopWidth: 1,
     },
     guideContainer: {
@@ -321,13 +321,13 @@ export const createWriteStyles = (width, normalize) => {
     guideText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textAlign: 'center',
     },
     guideLink: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textDecorationLine: 'underline',
     },
     /** 본문 위 구분선 (제목/헤더 영역 아래) */
@@ -340,18 +340,18 @@ export const createWriteStyles = (width, normalize) => {
       flex: 1,
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       textAlignVertical: 'top',
       lineHeight: normalize(22),
     },
     placeholder: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     /** SubHeader 오른쪽 완료 pill (TouchableOpacity는 SubHeader가 감쌈) */
     completePill: {
-      backgroundColor: colors.primaryLight70,
+      backgroundColor: colors.primaryLight6,
       borderRadius: normalize(20),
       paddingHorizontal: normalize(14),
       paddingVertical: normalize(8),
@@ -359,23 +359,23 @@ export const createWriteStyles = (width, normalize) => {
     completePillText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     /** 본문 비어 있을 때 등록 pill */
     completePillDisabled: {
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
     },
     completePillTextDisabled: {
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     /** 해시태그 섹션 상·하단 구분선 */
     writeHashtagTopDivider: {
       height: 1,
-      backgroundColor: colors.textLight20,
+      backgroundColor: colors.textLight2,
     },
     writeHashtagBottomDivider: {
       height: 1,
-      backgroundColor: colors.textLight20,
+      backgroundColor: colors.textLight2,
     },
     writeHashtagWrapper: {
       paddingHorizontal: normalize(16),
@@ -389,12 +389,12 @@ export const createWriteStyles = (width, normalize) => {
     writeHashtagPrefix: {
       fontSize: normalize(fontSizes.heading),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     writeHashtagDashedWrap: {
       flex: 1,
       borderWidth: 0.5,
-      borderColor: colors.textSecondary,
+      borderColor: colors.textLight4,
       borderRadius: normalize(20),
       paddingHorizontal: normalize(12),
       paddingVertical: normalize(5),
@@ -405,12 +405,12 @@ export const createWriteStyles = (width, normalize) => {
       flex: 1,
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     writeHashtagCounter: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     writeHashtagTagScroll: {
       marginVertical: normalize(7),
@@ -429,7 +429,7 @@ export const createWriteStyles = (width, normalize) => {
     writeHashtagTagChip: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.primaryLight10,
+      backgroundColor: colors.primaryLight2,
       borderRadius: normalize(20),
       paddingHorizontal: normalize(12),
       paddingVertical: normalize(3),
@@ -451,13 +451,13 @@ export const createWriteStyles = (width, normalize) => {
     writeHashtagSuggestionTitle: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginBottom: normalize(6),
     },
     writeHashtagSuggestionChip: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.textLight5,
+      backgroundColor: colors.textLight1,
       borderRadius: normalize(16),
       paddingHorizontal: normalize(10),
       paddingVertical: normalize(4),
@@ -465,20 +465,20 @@ export const createWriteStyles = (width, normalize) => {
     writeHashtagSuggestionText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     topToolbarSection: {
-      backgroundColor: colors.background,
-      borderColor: colors.textLight20,
+      backgroundColor: colors.white,
+      borderColor: colors.textLight2,
       borderBottomWidth: 0.5,
     },
     topToolbarSectionTagOpen: {
       borderBottomWidth: 0.5,
-      borderBottomColor: colors.textLight10,
+      borderBottomColor: colors.textLight1,
     },
     topToolbar: {
       height: normalize(48),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       flexDirection: 'row',
       alignItems: 'center',
       paddingHorizontal: normalize(16),
@@ -491,8 +491,8 @@ export const createWriteStyles = (width, normalize) => {
       paddingHorizontal: normalize(10),
       paddingVertical: normalize(5),
       borderRadius: normalize(20),
-      backgroundColor: colors.primaryLight10,
-      borderColor: colors.primaryLight30,
+      backgroundColor: colors.primaryLight2,
+      borderColor: colors.primaryLight4,
       borderWidth: 1,
     },
     boardChipText: {
@@ -507,17 +507,17 @@ export const createWriteStyles = (width, normalize) => {
     toolbarDivider: {
       width: 0.5,
       height: normalize(16),
-      backgroundColor: colors.textSecondary,
+      backgroundColor: colors.textLight4,
     },
     boardDropdown: {
       position: 'absolute',
       top: normalize(42),
       left: normalize(16),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(8),
       zIndex: 100,
       elevation: 100,
-      shadowColor: colors.shadow,
+      shadowColor: colors.text,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,
       shadowRadius: 8,
@@ -528,7 +528,7 @@ export const createWriteStyles = (width, normalize) => {
     },
     boardDropdownText: {
       fontSize: normalize(fontSizes.md),
-      color: colors.textPrimary,
+      color: colors.text,
       fontFamily: fonts.regular,
     },
     boardDropdownTextSelected: {
@@ -557,11 +557,11 @@ export const createWriteStyles = (width, normalize) => {
       borderRadius: normalize(10),
       borderWidth: 1.5,
       borderStyle: 'dashed',
-      borderColor: colors.textLight10,
+      borderColor: colors.textLight1,
       alignItems: 'center',
       justifyContent: 'center',
       marginRight: normalize(8),
-      backgroundColor: colors.textLight5,
+      backgroundColor: colors.textLight1,
     },
     photoItemWrap: {
       marginRight: normalize(8),
@@ -576,7 +576,7 @@ export const createWriteStyles = (width, normalize) => {
       position: 'absolute',
       top: normalize(-6),
       right: normalize(-6),
-      backgroundColor: colors.textPrimary,
+      backgroundColor: colors.text,
       borderRadius: normalize(10),
     },
     hashtagTagListWithPadding: {
@@ -587,7 +587,7 @@ export const createWriteStyles = (width, normalize) => {
       marginTop: normalize(8),
     },
     tagPanelContainer: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     tagPanelWrapperCompact: {
       paddingTop: normalize(10),
@@ -613,7 +613,7 @@ export const createWriteStyles = (width, normalize) => {
       flex: 1,
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       paddingVertical: 0,
       margin: 0,
       lineHeight: normalize(18),
@@ -649,7 +649,7 @@ export const createDetailStyles = (width, normalize) => {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     scrollContent: {
       paddingBottom: normalize(24),
@@ -681,7 +681,7 @@ export const createDetailStyles = (width, normalize) => {
     detailAuthorAnonymous: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: metaLineHeight,
       textAlignVertical: 'center',
       ...metaTextAndroid,
@@ -689,7 +689,7 @@ export const createDetailStyles = (width, normalize) => {
     detailDot: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: metaLineHeight,
       textAlignVertical: 'center',
       marginHorizontal: normalize(6),
@@ -698,7 +698,7 @@ export const createDetailStyles = (width, normalize) => {
     detailTime: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: metaLineHeight,
       textAlignVertical: 'center',
       ...metaTextAndroid,
@@ -706,7 +706,7 @@ export const createDetailStyles = (width, normalize) => {
     detailLocation: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.primaryLight30,
+      backgroundColor: colors.primaryLight4,
       paddingHorizontal: normalize(10),
       borderRadius: normalize(13),
       gap: normalize(4),
@@ -714,12 +714,12 @@ export const createDetailStyles = (width, normalize) => {
     detailLocationText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     detailBody: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       lineHeight: normalize(20),
       marginBottom: normalize(10),
     },
@@ -746,7 +746,7 @@ export const createDetailStyles = (width, normalize) => {
     },
     detailTagChip: {
       flexShrink: 0,
-      backgroundColor: colors.primaryLight10,
+      backgroundColor: colors.primaryLight2,
       borderRadius: normalize(10),
       paddingHorizontal: normalize(5),
       paddingVertical: normalize(1),
@@ -758,7 +758,7 @@ export const createDetailStyles = (width, normalize) => {
     },
     detailDivider: {
       height: 1,
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
       marginBottom: normalize(10),
     },
     detailFooter: {
@@ -780,7 +780,7 @@ export const createDetailStyles = (width, normalize) => {
     detailStatText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     detailMenuBtn: {
       padding: normalize(4),
@@ -789,11 +789,11 @@ export const createDetailStyles = (width, normalize) => {
     adSection: {
       minHeight: normalize(40),
       marginHorizontal: width * 0,
-      backgroundColor: colors.primaryLight10,
+      backgroundColor: colors.primaryLight2,
       justifyContent: 'center',
       alignItems: 'center',
       borderTopWidth: 1,
-      borderTopColor: colors.textLight10,
+      borderTopColor: colors.textLight1,
     },
     adSectionRow: {
       flexDirection: 'row',
@@ -810,7 +810,7 @@ export const createDetailStyles = (width, normalize) => {
       flex: 1,
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     // 댓글 섹션 (SchoolMail.style.js smDetailComment* 와 동일 톤·간격)
     commentSection: {
@@ -820,7 +820,7 @@ export const createDetailStyles = (width, normalize) => {
     commentSectionTitle: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: normalize(12),
     },
     commentItem: {
@@ -835,7 +835,7 @@ export const createDetailStyles = (width, normalize) => {
     },
     /** 댓글·대댓글 공통 말풍선 (= smDetailCommentBubble) */
     commentBubble: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       paddingVertical: normalize(10),
       paddingHorizontal: normalize(14),
     },
@@ -847,7 +847,7 @@ export const createDetailStyles = (width, normalize) => {
     },
     /** 댓글 달기 포커스 (= smDetailCommentBubbleReplying, 그림자 없음) */
     commentBubbleReplying: {
-      backgroundColor: colors.primaryLight20,
+      backgroundColor: colors.primaryLight3,
     },
     commentReplyArrow: {
       marginRight: normalize(6),
@@ -876,7 +876,7 @@ export const createDetailStyles = (width, normalize) => {
     commentAuthor: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     commentAuthorWriter: {
       fontSize: normalize(fontSizes.lg),
@@ -885,25 +885,25 @@ export const createDetailStyles = (width, normalize) => {
     },
     commentDot: {
       fontSize: normalize(fontSizes.xl),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginHorizontal: normalize(4),
     },
     commentTime: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     commentBody: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       lineHeight: normalize(20),
       marginBottom: normalize(6),
     },
     commentBodyWithTag: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       lineHeight: normalize(20),
       marginBottom: normalize(6),
     },
@@ -939,7 +939,7 @@ export const createDetailStyles = (width, normalize) => {
     commentReplyButtonText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginTop: -normalize(2),
     },
     loadMoreRow: {
@@ -964,14 +964,14 @@ export const createDetailStyles = (width, normalize) => {
     loadMoreText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     // 하단 댓글 입력
     bottomInputRow: {
       flexDirection: 'column',
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderTopWidth: 0.5,
-      borderTopColor: colors.textLight10,
+      borderTopColor: colors.textLight1,
       paddingHorizontal: width * 0.03,
       paddingVertical: normalize(12),
       paddingBottom: Platform.OS === 'ios' ? normalize(14) : normalize(12),
@@ -1003,11 +1003,11 @@ export const createDetailStyles = (width, normalize) => {
       paddingVertical: bottomInputPaddingV,
       paddingHorizontal: normalize(16),
       borderRadius: normalize(24),
-      backgroundColor: colors.textLight5,
+      backgroundColor: colors.textLight1,
       fontSize: bottomInputFontSize,
       lineHeight: bottomInputLineHeight,
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       maxHeight: normalize(80),
       textAlignVertical: 'center',
       ...Platform.select({

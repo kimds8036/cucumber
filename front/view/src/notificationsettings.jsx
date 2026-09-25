@@ -674,8 +674,8 @@ const Settings = ({ navigation, route }) => {
             onValueChange={onToggle}
             disabled={disabled}
             pointerEvents={disabled ? 'none' : 'auto'}
-            trackColor={{ false: colors.border, true: colors.primary }}
-            thumbColor={colors.textWhite}
+            trackColor={{ false: colors.textLight1, true: colors.primary }}
+            thumbColor={colors.white}
           />
         </TouchableOpacity>
       </View>
@@ -702,7 +702,7 @@ const Settings = ({ navigation, route }) => {
       <Ionicons
         name="chevron-forward"
         size={normalize(20)}
-        color={disabled ? colors.textLight20 : colors.textSecondary}
+        color={disabled ? colors.textLight2 : colors.textLight4}
       />
     </TouchableOpacity>
   );
@@ -740,7 +740,7 @@ const Settings = ({ navigation, route }) => {
           <Ionicons
             name={showPw[fieldKey] ? 'eye-off-outline' : 'eye-outline'}
             size={normalize(20)}
-            color={colors.textSecondary}
+            color={colors.textLight4}
           />
         </TouchableOpacity>
       </View>
@@ -938,7 +938,7 @@ const Settings = ({ navigation, route }) => {
                 <Text style={styles.pwLabel}>현재 아이디</Text>
                 <View style={styles.pwInputWrap}>
                   <Text
-                    style={[styles.pwInput, { color: colors.textSecondary }]}
+                    style={[styles.pwInput, { color: colors.textLight4 }]}
                     numberOfLines={1}
                   >
                     {currentUsername}
@@ -955,8 +955,8 @@ const Settings = ({ navigation, route }) => {
                       {
                         color:
                           newUsername.trim().length > 0
-                            ? colors.textPrimary
-                            : colors.textLight20,
+                            ? colors.text
+                            : colors.textLight2,
                       },
                     ]}
                   >
@@ -1002,7 +1002,7 @@ const Settings = ({ navigation, route }) => {
                 <Text style={styles.pwLabel}>재학 학교</Text>
                 <View style={styles.pwInputWrap}>
                   <Text
-                    style={[styles.pwInput, { color: colors.textSecondary }]}
+                    style={[styles.pwInput, { color: colors.textLight4 }]}
                     numberOfLines={2}
                   >
                     {profileHydrated ? schoolName || '—' : '불러오는 중…'}

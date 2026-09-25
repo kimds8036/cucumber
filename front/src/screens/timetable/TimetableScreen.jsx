@@ -60,7 +60,7 @@ function computeVisiblePeriodCount(timetable) {
 
 const COLORS = {
   ...colors,
-  textDisabled: colors.textLight20,
+  textDisabled: colors.textLight2,
 };
 
 const normalizeSubject = (value) =>

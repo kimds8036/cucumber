@@ -59,7 +59,7 @@ const NeisPlusResubmit = ({ navigation }) => {
 const local = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
   },
   body: {
     flex: 1,

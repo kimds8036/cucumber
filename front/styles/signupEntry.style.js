@@ -5,7 +5,7 @@ export function createSignupEntryStyles(width, normalize) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       paddingHorizontal: width * 0.07,
     },
     center: {
@@ -22,7 +22,7 @@ export function createSignupEntryStyles(width, normalize) {
       fontFamily: fonts.bold,
       fontSize: normalize(18),
       letterSpacing: normalize(2),
-      color: colors.textPrimary,
+      color: colors.text,
     },
     buttonStack: {
       width: '100%',
@@ -54,10 +54,10 @@ export function createSignupEntryStyles(width, normalize) {
       backgroundColor: '#FEE500',
     },
     appleButton: {
-      backgroundColor: '#000000',
+      backgroundColor: colors.text,
     },
     phoneButton: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderWidth: 1.5,
       borderColor: colors.primary,
     },
@@ -70,14 +70,14 @@ export function createSignupEntryStyles(width, normalize) {
     },
     kakaoButtonText: {
       marginLeft: 0,
-      color: '#000000',
+      color: colors.text,
     },
     appleButtonText: {
       marginLeft: 0,
-      color: colors.textWhite,
+      color: colors.white,
     },
     phoneButtonText: {
-      color: '#000000',
+      color: colors.text,
     },
     footer: {
       paddingVertical: normalize(24),
@@ -86,11 +86,11 @@ export function createSignupEntryStyles(width, normalize) {
     footerText: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.lg),
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     footerLink: {
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
   });
 }

@@ -249,7 +249,7 @@ export default function MailReplyScreen({ navigation, route }) {
               <TextInput
                 style={styles.replyFormInput}
                 placeholder="내용을 입력하세요"
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={colors.textLight4}
                 value={replyText}
                 onChangeText={handleReplyTextChange}
                 multiline
@@ -273,7 +273,7 @@ export default function MailReplyScreen({ navigation, route }) {
                       <MaterialCommunityIcons
                         name="television-classic"
                         size={15}
-                        color={colors.textPrimary}
+                        color={colors.text}
                       />
                       <Text style={styles.replyFormChipText}>x 2</Text>
                     </TouchableOpacity>

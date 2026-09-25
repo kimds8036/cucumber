@@ -26,13 +26,13 @@ function formatDistance(km) {
 }
 
 const FRESH_THEME = {
-  chipBg: colors.primaryLight20,
+  chipBg: colors.primaryLight3,
   accent: colors.primaryDark,
 };
 
 const STALE_THEME = {
-  chipBg: colors.distanceStaleChipBg,
-  accent: colors.distanceStaleOnChip,
+  chipBg: colors.scrap,
+  accent: colors.scrapDark,
 };
 
 function BadgeDots({ accent, normalize }) {

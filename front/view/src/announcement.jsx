@@ -117,7 +117,7 @@ const Announcement = ({ navigation }) => {
               <Ionicons
                 name="chevron-forward"
                 size={normalize(20)}
-                color={colors.textSecondary}
+                color={colors.textLight4}
               />
             </TouchableOpacity>
           ))

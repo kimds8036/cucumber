@@ -212,7 +212,7 @@ const SearchScreen = ({ navigation, route }) => {
                       <Ionicons
                         name="time-outline"
                         size={normalize(15)}
-                        color={colors.textLight20}
+                        color={colors.textLight2}
                       />
                       <Text style={styles.recentText}>{search}</Text>
                       <TouchableOpacity
@@ -223,7 +223,7 @@ const SearchScreen = ({ navigation, route }) => {
                         <Ionicons
                           name="close"
                           size={normalize(15)}
-                          color={colors.textLight20}
+                          color={colors.textLight2}
                         />
                       </TouchableOpacity>
                     </TouchableOpacity>

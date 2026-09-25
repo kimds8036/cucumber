@@ -249,7 +249,7 @@ const PWfind = ({ navigation }) => {
             <Ionicons
               name="chevron-back"
               size={normalize(24)}
-              color={colors.textPrimary}
+              color={colors.text}
             />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>비밀번호 찾기</Text>
@@ -271,7 +271,7 @@ const PWfind = ({ navigation }) => {
                   <TextInput
                     style={styles.input}
                     placeholder="이름 입력"
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={colors.textLight4}
                     value={name}
                     onChangeText={handleIdentityFieldChange(setName)}
                   />
@@ -282,7 +282,7 @@ const PWfind = ({ navigation }) => {
                   <TextInput
                     style={styles.input}
                     placeholder="아이디 입력"
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={colors.textLight4}
                     value={username}
                     onChangeText={handleIdentityFieldChange(setUsername)}
                     autoCapitalize="none"
@@ -326,7 +326,7 @@ const PWfind = ({ navigation }) => {
                   <TextInput
                     style={styles.input}
                     placeholder="영문+숫자 8자 이상"
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={colors.textLight4}
                     value={newPassword}
                     onChangeText={setNewPassword}
                     secureTextEntry
@@ -339,7 +339,7 @@ const PWfind = ({ navigation }) => {
                   <TextInput
                     style={styles.input}
                     placeholder="새 비밀번호 다시 입력"
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={colors.textLight4}
                     value={newPasswordConfirm}
                     onChangeText={setNewPasswordConfirm}
                     secureTextEntry

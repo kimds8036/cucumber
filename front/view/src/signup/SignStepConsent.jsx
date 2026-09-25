@@ -102,7 +102,7 @@ const SignStepConsent = ({ normalize, selectedAgeGroup, onChange }) => {
         <Ionicons
           name="checkmark"
           size={normalize(size === 'lg' ? 13 : 11)}
-          color={colors.textWhite}
+          color={colors.white}
         />
       )}
     </View>
@@ -300,13 +300,13 @@ const makeStyles = (normalize) =>
     legalAckLine: {
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       lineHeight: normalize(22),
     },
     legalAckPlain: {
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     legalAckLink: {
       fontSize: normalize(fontSizes.md),
@@ -323,18 +323,18 @@ const makeStyles = (normalize) =>
       borderRadius: normalize(20),
       paddingHorizontal: normalize(16),
       paddingVertical: normalize(14),
-      backgroundColor: colors.primaryLight10,
+      backgroundColor: colors.primaryLight2,
     },
     allAgreeText: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     card: {
       borderWidth: 1,
-      borderColor: colors.textLight20,
+      borderColor: colors.textLight2,
       borderRadius: normalize(16),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       paddingHorizontal: normalize(14),
       paddingVertical: normalize(12),
     },
@@ -359,10 +359,10 @@ const makeStyles = (normalize) =>
     badgeText: {
       fontSize: normalize(fontSizes.sm),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     badgeOptional: {
-      backgroundColor: colors.textLight20,
+      backgroundColor: colors.textLight2,
       borderRadius: normalize(6),
       paddingHorizontal: normalize(6),
       paddingVertical: normalize(2),
@@ -370,12 +370,12 @@ const makeStyles = (normalize) =>
     badgeOptionalText: {
       fontSize: normalize(fontSizes.sm),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     cardTitle: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       flexShrink: 1,
       lineHeight: normalize(22),
     },
@@ -395,7 +395,7 @@ const makeStyles = (normalize) =>
     table: {
       marginTop: normalize(10),
       borderTopWidth: 1,
-      borderTopColor: colors.textLight10,
+      borderTopColor: colors.textLight1,
     },
     tableRow: {
       flexDirection: 'row',
@@ -403,20 +403,20 @@ const makeStyles = (normalize) =>
     },
     tableRowBorder: {
       borderTopWidth: 1,
-      borderTopColor: colors.textLight5,
+      borderTopColor: colors.textLight1,
     },
     tableKey: {
       width: normalize(58),
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       flexShrink: 0,
     },
     tableValue: {
       flex: 1,
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       lineHeight: normalize(20),
     },
     checkbox: {
@@ -424,8 +424,8 @@ const makeStyles = (normalize) =>
       height: normalize(20),
       borderRadius: normalize(6),
       borderWidth: 1.5,
-      borderColor: colors.textLight20,
-      backgroundColor: colors.background,
+      borderColor: colors.textLight2,
+      backgroundColor: colors.white,
       alignItems: 'center',
       justifyContent: 'center',
       flexShrink: 0,
@@ -442,7 +442,7 @@ const makeStyles = (normalize) =>
     refusalNotice: {
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: normalize(20),
       marginTop: normalize(2),
       textAlign: 'center',

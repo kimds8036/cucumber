@@ -71,7 +71,7 @@ const SearchSubHeader = forwardRef(function SearchSubHeader(
           <Ionicons
             name="chevron-back"
             size={normalize(20)}
-            color={colors.textPrimary}
+            color={colors.text}
           />
         </TouchableOpacity>
 
@@ -89,7 +89,7 @@ const SearchSubHeader = forwardRef(function SearchSubHeader(
             onSubmitEditing={onSubmit}
             onFocus={onFocus}
             placeholder={placeholder}
-            placeholderTextColor={colors.textSecondary}
+            placeholderTextColor={colors.textLight4}
             returnKeyType="search"
             clearButtonMode="never"
             autoCapitalize="none"
@@ -117,7 +117,7 @@ const SearchSubHeader = forwardRef(function SearchSubHeader(
                 <Ionicons
                   name="close-circle"
                   size={normalize(18)}
-                  color={colors.textLight20}
+                  color={colors.textLight2}
                 />
               </TouchableOpacity>
             ) : null}
@@ -160,7 +160,7 @@ function createSearchStyles(normalize) {
       paddingHorizontal: 0,
       fontSize,
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       textAlign: 'left',
       ...Platform.select({
         android: {

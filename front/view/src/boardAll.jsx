@@ -671,7 +671,7 @@ export function BoardAllContent({ navigation, posts }) {
                 <Text
                   style={{
                     fontFamily: fonts.regular,
-                    color: colors.textSecondary,
+                    color: colors.textLight4,
                   }}
                 >
                   {sortType === 'nearby' && !permissionGranted
@@ -695,7 +695,7 @@ export function BoardAllContent({ navigation, posts }) {
                   style={{
                     marginTop: normalize(8),
                     fontFamily: fonts.regular,
-                    color: colors.textSecondary,
+                    color: colors.textLight4,
                     fontSize: normalize(12),
                   }}
                 >
@@ -718,7 +718,7 @@ export function BoardAllContent({ navigation, posts }) {
           <FontAwesome5
             name="plus"
             size={normalize(24)}
-            color={colors.background}
+            color={colors.white}
           />
         </TouchableOpacity>
       </GuideFocusTarget>
@@ -743,12 +743,12 @@ export function BoardAllContent({ navigation, posts }) {
             <TouchableWithoutFeedback>
               <View
                 style={{
-                  backgroundColor: colors.background,
+                  backgroundColor: colors.white,
                   borderRadius: normalize(12),
                   minWidth: width * 0.45,
                   maxWidth: width * 0.7,
                   paddingVertical: normalize(4),
-                  shadowColor: colors.shadow,
+                  shadowColor: colors.text,
                   shadowOffset: { width: 0, height: 2 },
                   shadowOpacity: 0.15,
                   shadowRadius: 5,
@@ -800,7 +800,7 @@ export function BoardAllContent({ navigation, posts }) {
                         style={{
                           fontSize: normalize(13),
                           fontFamily: fonts.regular,
-                          color: colors.textPrimary,
+                          color: colors.text,
                         }}
                       >
                         {item.label}
@@ -808,7 +808,7 @@ export function BoardAllContent({ navigation, posts }) {
                       <Ionicons
                         name={item.iconName}
                         size={normalize(17)}
-                        color={colors.textSecondary}
+                        color={colors.textLight4}
                       />
                     </TouchableOpacity>
                     {index <
@@ -820,7 +820,7 @@ export function BoardAllContent({ navigation, posts }) {
                       <View
                         style={{
                           height: 1,
-                          backgroundColor: colors.textLight10,
+                          backgroundColor: colors.textLight1,
                           marginHorizontal: normalize(8),
                         }}
                       />
