@@ -1,10 +1,12 @@
 import React, { useMemo } from 'react';
 import {
+  Platform,
   View,
   Text,
   TouchableOpacity,
   useWindowDimensions,
 } from 'react-native';
+import { NativeTabBarView } from 'youth-paper-tab-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { createFooterStyles, getNormalize } from '../../styles/frame.style';
 import Octicons from '@expo/vector-icons/Octicons';
@@ -14,8 +16,9 @@ import { colors } from '../../styles/colors';
 import LogoIcon from '../../assets/Logo.svg';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useMainShellOptional } from '../../context/MainShellContext';
+import MainFooterIOS from './MainFooterIOS';
 
-const MainFooter = ({ activeTab: activeTabProp, onTabPress: onTabPressProp }) => {
+export const MainFooterLegacy = ({ activeTab: activeTabProp, onTabPress: onTabPressProp }) => {
   const shell = useMainShellOptional();
   const activeTab = activeTabProp ?? shell?.activeTab ?? 'board';
   const onTabPress = onTabPressProp ?? shell?.setActiveTab;
@@ -146,6 +149,21 @@ const MainFooter = ({ activeTab: activeTabProp, onTabPress: onTabPressProp }) =>
       </TouchableOpacity>
     </View>
   );
+};
+
+/** true면 탭 바가 하단 safe area까지 직접 채운다. 감싸는 SafeAreaView는 bottom edge를 빼야 한다. */
+export const USES_NATIVE_TAB_BAR = Platform.OS === 'ios' && !!NativeTabBarView;
+
+/** 메인 푸터를 하단에 둔 화면의 SafeAreaView edges */
+export const MAIN_FOOTER_SAFE_AREA_EDGES = USES_NATIVE_TAB_BAR
+  ? ['top']
+  : ['top', 'bottom'];
+
+const MainFooter = (props) => {
+  if (USES_NATIVE_TAB_BAR) {
+    return <MainFooterIOS {...props} />;
+  }
+  return <MainFooterLegacy {...props} />;
 };
 
 export default MainFooter;

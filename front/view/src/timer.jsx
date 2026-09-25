@@ -7,7 +7,7 @@ import { View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommonActions } from '@react-navigation/native';
 import MainHeader from '../frame/mainHeader';
-import MainFooter from '../frame/mainFooter';
+import MainFooter, { MAIN_FOOTER_SAFE_AREA_EDGES } from '../frame/mainFooter';
 import { getMainTabTitle } from '../../context/MainShellContext';
 import { createTimerStyles, getNormalize } from '../../styles/timer';
 import TimerContent from './timer/TimerContent';
@@ -33,7 +33,7 @@ const Timer = ({ navigation }) => {
     [navigation],
   );
   return (
-    <SafeAreaView style={styles.safeAreaFlex} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safeAreaFlex} edges={MAIN_FOOTER_SAFE_AREA_EDGES}>
       <View>
         <MainHeader
           headerTitle={getMainTabTitle('timer')}

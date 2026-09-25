@@ -87,7 +87,7 @@
     "socket.io-client": "^4.8.3",
     "typescript": "~6.0.3",
     "youth-paper-widget": "file:modules/youth-paper-widget",
-    "tab-bar-test": "file:modules/tab-bar-test"
+    "youth-paper-tab-bar": "file:modules/youth-paper-tab-bar"
   },
   "private": true,
   "devDependencies": {

@@ -8,7 +8,7 @@ import Svg, { ClipPath, Defs, Path, Rect } from 'react-native-svg';
 import { colors, fonts } from '../../../styles/colors';
 import { GuidePreviewProvider } from '../../../context/GuidePreviewContext';
 import MainHeader from '../../../view/frame/mainHeader';
-import MainFooter from '../../../view/frame/mainFooter';
+import { MainFooterLegacy } from '../../../view/frame/mainFooter';
 import { getMainTabTitle } from '../../../context/MainShellContext';
 import { BoardAllContent } from '../../../view/src/boardAll';
 import { MessageContent } from '../../../view/src/Message';
@@ -347,7 +347,7 @@ export default function GuideOverlayScreen({ navigation, route }) {
             <View style={{ flex: 1, backgroundColor: colors.white }}>
               <Background {...(step.backgroundProps || {})} />
             </View>
-            <MainFooter activeTab={step.activeTab} onTabPress={() => {}} />
+            <MainFooterLegacy activeTab={step.activeTab} onTabPress={() => {}} />
           </View>
         </SafeAreaView>
       </GuidePreviewProvider>

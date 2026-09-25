@@ -20,7 +20,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import MainHeader from '../frame/mainHeader';
-import MainFooter from '../frame/mainFooter';
+import MainFooter, { MAIN_FOOTER_SAFE_AREA_EDGES } from '../frame/mainFooter';
 import { getMainTabTitle } from '../../context/MainShellContext';
 import { colors, fonts } from '../../styles/colors';
 import { createBoardStyles, getNormalize } from '../../styles/board.style';
@@ -803,7 +803,7 @@ const BoardAll = ({ navigation }) => {
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createBoardStyles(width, normalize), [width]);
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={MAIN_FOOTER_SAFE_AREA_EDGES}>
       <MainHeader headerTitle={getMainTabTitle('board')} />
       <BoardAllContent navigation={navigation} />
       <MainFooter

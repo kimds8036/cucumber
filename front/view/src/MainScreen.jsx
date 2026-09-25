@@ -9,6 +9,7 @@ import Skeleton from '../../components/common/Skeleton';
 import { trackScreenView } from '../../utils/analytics';
 import { MAIN_TAB_TO_ANALYTICS_SCREEN } from '../../constants/analyticsScreens';
 import { MainTabNavigatorContainer } from './MainTabNavigator';
+import { MAIN_FOOTER_SAFE_AREA_EDGES } from '../frame/mainFooter';
 
 const MAIN_TABS = new Set(['board', 'message', 'school', 'timer', 'mypage']);
 
@@ -69,7 +70,7 @@ const MainScreen = ({ navigation, route }) => {
     >
       <SafeAreaView
         style={{ flex: 1, backgroundColor: colors.white }}
-        edges={['top', 'bottom']}
+        edges={MAIN_FOOTER_SAFE_AREA_EDGES}
       >
         <MainHeader />
         <View style={{ flex: 1, backgroundColor: colors.white }}>

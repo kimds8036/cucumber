@@ -1,5 +1,5 @@
 {
-  "name": "tab-bar-test",
+  "name": "youth-paper-tab-bar",
   "version": "1.0.0",
   "main": "src/index.js",
   "peerDependencies": {

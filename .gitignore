@@ -28,6 +28,8 @@ front/modules/youth-paper-widget/android/.gradle/
 front/modules/youth-paper-widget/android/.gradle/**
 !front/modules/youth-paper-widget/ios/
 !front/modules/youth-paper-widget/ios/**
+!front/modules/youth-paper-tab-bar/ios/
+!front/modules/youth-paper-tab-bar/ios/**
 **/.kotlin/
 **/*.jks
 **/*.p8

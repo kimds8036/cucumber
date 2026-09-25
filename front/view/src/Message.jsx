@@ -19,7 +19,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MainHeader from '../frame/mainHeader';
-import MainFooter from '../frame/mainFooter';
+import MainFooter, { MAIN_FOOTER_SAFE_AREA_EDGES } from '../frame/mainFooter';
 import { getMainTabTitle } from '../../context/MainShellContext';
 import { createMessageStyles, getNormalize } from '../../styles/message.style';
 import { createMessageRoomMenuSheetStyles } from '../../styles/messageRoomMenuSheet.style';
@@ -1398,7 +1398,7 @@ export function MessageContent({ navigation }) {
 // 단독 메시지 화면 (헤더+푸터 포함, 필요 시 사용)
 const Message = ({ navigation }) => {
   return (
-    <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+    <SafeAreaView style={{ flex: 1 }} edges={MAIN_FOOTER_SAFE_AREA_EDGES}>
       <MainHeader headerTitle={getMainTabTitle('message')} />
       <MessageContent navigation={navigation} />
       <MainFooter
