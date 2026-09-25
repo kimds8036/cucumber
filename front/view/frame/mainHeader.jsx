@@ -7,7 +7,6 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { createHeaderStyles, getNormalize } from '../../styles/frame.style';
-import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { colors } from '../../styles/colors';
 import { useNotification } from '../../context/NotificationContext';
 import CommuteHeaderIndicator from '../../components/CommuteHeaderIndicator';
@@ -61,18 +60,20 @@ const MainHeader = ({ headerTitle: headerTitleProp, navigation: navigationProp }
         <CommuteHeaderIndicator />
         <TouchableOpacity
           style={headerStyles.iconButton}
+          hitSlop={normalize(10)}
           onPress={() => openScreen('Search')}
         >
-          <Ionicons name="search" size={normalize(22)} color={colors.primary} />
+          <Ionicons name="search-outline" size={normalize(26)} color={colors.text} />
         </TouchableOpacity>
         <TouchableOpacity
           style={headerStyles.iconButton}
+          hitSlop={normalize(10)}
           onPress={() => openScreen('Notification')}
         >
-          <FontAwesome5
-            name="bell"
-            size={normalize(22)}
-            color={colors.primary}
+          <Ionicons
+            name="notifications-outline"
+            size={normalize(26)}
+            color={colors.text}
           />
           {hasUnread && <View style={headerStyles.badge} />}
         </TouchableOpacity>
