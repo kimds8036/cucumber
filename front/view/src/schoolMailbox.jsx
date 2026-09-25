@@ -7,7 +7,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Feather from '@expo/vector-icons/Feather';
+import FloatingButton from '../../components/common/FloatingButton';
 import { Ionicons } from '@expo/vector-icons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import SubHeader from '../frame/subHeader';
@@ -358,9 +358,8 @@ const SchoolMailboxScreen = ({ navigation, route, embedded = false }) => {
           showsVerticalScrollIndicator={false}
         />
 
-        <TouchableOpacity
-          style={styles.floatingButton}
-          activeOpacity={0.8}
+        <FloatingButton
+          aboveFooter
           onPress={() =>
             navigation?.navigate('SendSchoolMail', {
               schoolName,
@@ -368,15 +367,7 @@ const SchoolMailboxScreen = ({ navigation, route, embedded = false }) => {
               sourceScreen,
             })
           }
-        >
-          <Feather
-            name="send"
-            size={normalize(30)}
-            top={normalize(2)}
-            right={normalize(1)}
-            color={colors.white}
-          />
-        </TouchableOpacity>
+        />
       </View>
   );
 

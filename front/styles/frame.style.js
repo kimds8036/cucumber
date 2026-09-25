@@ -58,6 +58,9 @@ export const createHeaderStyles = (width, height) => {
   });
 };
 
+/** MainFooter 컨테이너 높이. 기준폭 375 */
+export const FOOTER_HEIGHT = 65;
+
 export const createFooterStyles = (width, height) => {
   const scale = width / 375;
   const normalize = (size) => Math.round(scale * size);
@@ -70,7 +73,7 @@ export const createFooterStyles = (width, height) => {
       backgroundColor: colors.white,
       paddingVertical: normalize(10),
       paddingBottom: normalize(-8),
-      height: normalize(65),
+      height: normalize(FOOTER_HEIGHT),
       borderTopWidth: 0.5,
       borderColor: colors.textLight1,
     },

@@ -24,7 +24,7 @@ import MainFooter from '../frame/mainFooter';
 import { getMainTabTitle } from '../../context/MainShellContext';
 import { colors, fonts } from '../../styles/colors';
 import { createBoardStyles, getNormalize } from '../../styles/board.style';
-import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import FloatingButton from '../../components/common/FloatingButton';
 import { api } from '../../utils/api';
 import { normalizeTagsFromApi } from '../../utils/normalizePostTags';
 import { equippedBadgeFromApiRow } from '../../constants/badges';
@@ -35,8 +35,6 @@ import SortChips from '../../components/common/SortChips';
 import Skeleton from '../../components/common/Skeleton';
 import { useLocationContext } from '../../context/LocationContext';
 import { useGuidePreview } from '../../context/GuidePreviewContext';
-import { GuideFocusTarget } from '../../components/guide/GuideFocusTarget';
-import { GUIDE_FOCUS_TARGETS as T } from '../../src/screens/UserGuide/guideFocusTargets';
 import { getGuideBoardPosts } from '../../src/screens/UserGuide/guidePreviewData';
 import { filterPostsExcludingUser } from '../../utils/blockUser';
 import { invalidateProfileCountsCache } from '../../utils/profileCountsCache';
@@ -670,20 +668,9 @@ export function BoardAllContent({ navigation, posts }) {
         />
       </View>
 
-      {/* 글쓰기 플로팅 버튼 */}
-      <GuideFocusTarget name={T.BOARD_WRITE_FAB}>
-        <TouchableOpacity
-          style={styles.floatingButton}
-          activeOpacity={0.8}
-          onPress={() => navigation.navigate('BoardWrite', { from: 'Main' })}
-        >
-          <FontAwesome5
-            name="plus"
-            size={normalize(24)}
-            color={colors.white}
-          />
-        </TouchableOpacity>
-      </GuideFocusTarget>
+      <FloatingButton
+        onPress={() => navigation.navigate('BoardWrite', { from: 'Main' })}
+      />
 
       {/* 플로팅 메뉴 (boardAll 인라인 - boardDetail과 동일한 UI) */}
       <Modal

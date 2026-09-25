@@ -15,7 +15,7 @@ import {
   FlatList,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import FloatingButton from '../../components/common/FloatingButton';
 import SubHeader from '../frame/subHeader';
 import {
   createSchoolBoardStyles,
@@ -425,19 +425,12 @@ const SchoolBoardAll = ({ navigation, route }) => {
       ) : null}
 
       {section === 'board' ? (
-      <TouchableOpacity
-        style={styles.floatingButton}
-        activeOpacity={0.8}
-        onPress={() =>
-          navigation.navigate('BoardWrite', { boardContext: 'school' })
-        }
-      >
-        <FontAwesome5
-          name="plus"
-          size={normalize(24)}
-          color={colors.white}
+        <FloatingButton
+          aboveFooter
+          onPress={() =>
+            navigation.navigate('BoardWrite', { boardContext: 'school' })
+          }
         />
-      </TouchableOpacity>
       ) : null}
     </SafeAreaView>
   );

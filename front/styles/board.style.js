@@ -235,20 +235,6 @@ export const createBoardStyles = (width, normalize) => {
       justifyContent: 'center',
       alignItems: 'center',
     },
-
-    // 플로팅 버튼
-    floatingButton: {
-      position: 'absolute',
-      right: normalize(20),
-      bottom: normalize(20),
-      width: normalize(50),
-      height: normalize(50),
-      borderRadius: normalize(28),
-      backgroundColor: colors.primary,
-      justifyContent: 'center',
-      alignItems: 'center',
-      ...shadow.lg,
-    },
   });
 };
 

@@ -547,17 +547,5 @@ export const createSchoolMailStyles = (width, normalize) => {
       color: colors.textLight4,
     },
 
-    floatingButton: {
-      position: 'absolute',
-      right: normalize(20),
-      bottom: normalize(50),
-      width: normalize(50),
-      height: normalize(50),
-      borderRadius: normalize(28),
-      backgroundColor: colors.primary,
-      justifyContent: 'center',
-      alignItems: 'center',
-      ...shadow.lg,
-    },
   });
 };

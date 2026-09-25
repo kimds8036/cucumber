@@ -11,10 +11,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import SubHeader from '../frame/subHeader';
+import FloatingButton from '../../components/common/FloatingButton';
 import { colors, fonts, fontSizes } from '../../styles/colors';
-import { shadow } from '../../styles/tokens';
 import { api } from '../../utils/api';
 
 function statusMeta(status) {
@@ -174,20 +173,6 @@ const MyInquiries = ({
         borderRadius: normalize(4),
         backgroundColor: colors.primary,
       },
-      floatingButton: {
-        position: 'absolute',
-        right: normalize(20),
-        bottom: normalize(20),
-        width: normalize(50),
-        height: normalize(50),
-        borderRadius: normalize(28),
-        backgroundColor: colors.primary,
-        justifyContent: 'center',
-        alignItems: 'center',
-        ...shadow.lg,
-        marginBottom: normalize(30),
-        marginRight: normalize(10),
-      },
     }),
     [normalize],
   );
@@ -282,17 +267,7 @@ const MyInquiries = ({
           }
         />
       )}
-      <TouchableOpacity
-        style={styles.floatingButton}
-        activeOpacity={0.8}
-        onPress={openCompose}
-      >
-        <FontAwesome5
-          name="plus"
-          size={normalize(24)}
-          color={colors.white}
-        />
-      </TouchableOpacity>
+      <FloatingButton aboveFooter onPress={openCompose} />
     </Root>
   );
 };

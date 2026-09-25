@@ -25,7 +25,7 @@ import { createMessageStyles, getNormalize } from '../../styles/message.style';
 import { createMessageRoomMenuSheetStyles } from '../../styles/messageRoomMenuSheet.style';
 import { colors, fonts, fontSizes } from '../../styles/colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import Feather from '@expo/vector-icons/Feather';
+import FloatingButton from '../../components/common/FloatingButton';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import Entypo from '@expo/vector-icons/Entypo';
 import { StackActions } from '@react-navigation/native';
@@ -1271,22 +1271,9 @@ export function MessageContent({ navigation }) {
         )}
       </View>
 
-      {/* 개인 우편함: 우측 하단 글쓰기(비행기) 플로팅 버튼 */}
       {messageType === 'mail' ? (
         <GuideFocusTarget name={T.MESSAGE_MAIL_WRITE_FAB}>
-          <TouchableOpacity
-            style={styles.floatingButton}
-            activeOpacity={0.8}
-            onPress={() => navigation?.navigate('SendMail')}
-          >
-            <Feather
-              name="send"
-              size={normalize(30)}
-              top={normalize(2)}
-              right={normalize(1)}
-              color={colors.white}
-            />
-          </TouchableOpacity>
+          <FloatingButton onPress={() => navigation?.navigate('SendMail')} />
         </GuideFocusTarget>
       ) : null}
 

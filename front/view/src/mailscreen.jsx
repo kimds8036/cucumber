@@ -26,6 +26,7 @@ import {
   navigateToResendPersonalMail,
 } from '../../utils/personalMail';
 import ReportModal from '../../components/common/ReportModal.jsx';
+import FloatingButton from '../../components/common/FloatingButton';
 
 function parseUtcToLocal(createdAt) {
   if (!createdAt) return null;
@@ -512,13 +513,10 @@ function MailInbox({ onOpen, onBack, navigation }) {
           </TouchableOpacity>
         )}
       </ScrollView>
-      <TouchableOpacity
-        style={styles.floatingButton}
-        activeOpacity={0.8}
+      <FloatingButton
+        aboveFooter
         onPress={() => navigation?.navigate('SendMail')}
-      >
-        <Text style={styles.floatingButtonText}>+</Text>
-      </TouchableOpacity>
+      />
 
       <Modal
         visible={inboxMenuVisible}
