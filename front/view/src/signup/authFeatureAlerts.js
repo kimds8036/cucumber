@@ -1,4 +1,4 @@
-import { Alert } from 'react-native';
+import { appAlert } from '../../../utils/appAlert';
 import { AGE_INELIGIBLE_MESSAGE } from './signupBirthDatePolicy';
 
 export const SUPPORT_EMAIL = 'support@youthpaper.app';
@@ -10,7 +10,7 @@ export const COMING_SOON_AUTH_FEATURE_MESSAGE =
   '아이디/비밀번호 찾기 기능은 정식 출시 후 제공될 예정입니다. 고객센터(이메일)로 문의해 주세요.';
 
 export function showComingSoonAuthFeatureAlert() {
-  Alert.alert('안내', `${COMING_SOON_AUTH_FEATURE_MESSAGE}\n\n${SUPPORT_EMAIL}`, [
+  appAlert.alert('안내', `${COMING_SOON_AUTH_FEATURE_MESSAGE}\n\n${SUPPORT_EMAIL}`, [
     { text: '확인' },
   ]);
 }
@@ -22,7 +22,7 @@ const SIGNUP_MANUAL_REVIEW_SUFFIX = `\n\n다음 단계로 진행되지 않는 �
 
 /** @deprecated 가입 플로우는 Sign.jsx C→보호자 인증 경로를 사용. 잔여 호출부용. */
 export function showUnder14BlockAlert(onConfirm) {
-  Alert.alert(
+  appAlert.alert(
     '안내 (Youth Paper)',
     UNDER_14_BLOCK_MESSAGE + SIGNUP_MANUAL_REVIEW_SUFFIX,
     [{ text: '확인', onPress: onConfirm }],
@@ -32,28 +32,28 @@ export function showUnder14BlockAlert(onConfirm) {
 export const INELIGIBLE_AGE_MESSAGE = AGE_INELIGIBLE_MESSAGE;
 
 export function showIneligibleAgeAlert(onConfirm) {
-  Alert.alert('안내', INELIGIBLE_AGE_MESSAGE, [
+  appAlert.alert('안내', INELIGIBLE_AGE_MESSAGE, [
     { text: '확인', onPress: onConfirm },
   ]);
 }
 
 /** @deprecated 성인(A)도 가입 허용 — 호출하지 말 것. D는 showTooYoungForSignupAlert 사용 */
 export function showTooOldForSignupAlert(onConfirm, _ref = new Date()) {
-  Alert.alert('안내', AGE_INELIGIBLE_MESSAGE, [
+  appAlert.alert('안내', AGE_INELIGIBLE_MESSAGE, [
     { text: '돌아가기', onPress: onConfirm },
   ]);
 }
 
 /** D 케이스 — 가입 하한 미만 */
 export function showTooYoungForSignupAlert(onConfirm, _ref = new Date()) {
-  Alert.alert('안내', AGE_INELIGIBLE_MESSAGE, [
+  appAlert.alert('안내', AGE_INELIGIBLE_MESSAGE, [
     { text: '돌아가기', onPress: onConfirm },
   ]);
 }
 
 /** 보호자 본인인증 실패·거부 시 가입 중단 */
 export function showGuardianVerificationFailedAlert(onConfirm) {
-  Alert.alert(
+  appAlert.alert(
     '보호자 인증 미완료',
     '보호자 본인인증이 완료되지 않아 가입을 진행할 수 없어요.',
     [{ text: '돌아가기', onPress: onConfirm }],

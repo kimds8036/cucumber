@@ -11,13 +11,14 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   useWindowDimensions,
-  Alert,
   InteractionManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import Feather from '@expo/vector-icons/Feather';
 import { createSignupStyles } from '../../../styles/login.style';
+import { appAlert } from '../../../utils/appAlert';
+import AuthSignupStepHeader from './AuthSignupStepHeader';
+import AuthSignupComplete from './AuthSignupComplete';
 import { colors } from '../../../styles/colors';
 import SignStepGuardianConsentModal from './SignStepGuardianConsentModal';
 import SignupStudentIdentityIntroModal from './SignupStudentIdentityIntroModal';
@@ -154,6 +155,8 @@ const SignApple = ({ navigation }) => {
   );
   const [inicisManualOpening, setInicisManualOpening] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [welcomeAfterSignup, setWelcomeAfterSignup] = useState(false);
+  const pendingAppleTokenRef = useRef(null);
   const [screenReady, setScreenReady] = useState(false);
   const [sessionHydrated, setSessionHydrated] = useState(false);
   const [footerHeight, setFooterHeight] = useState(88);
@@ -697,7 +700,7 @@ const SignApple = ({ navigation }) => {
     if (!useReal) {
       await new Promise((resolve) => setTimeout(resolve, 400));
       applyGuardianVerifySuccess({ clientToken: null, profile: {} });
-      Alert.alert('알림', '보호자 본인인증이 완료되었습니다. (테스트 mock)');
+      appAlert.alert('알림', '보호자 본인인증이 완료되었습니다. (테스트 mock)');
       return;
     }
 
@@ -913,7 +916,7 @@ const SignApple = ({ navigation }) => {
     try {
       const { identityToken, profile, isMock } = await loginWithApple();
       if (!identityToken) {
-        Alert.alert('알림', 'Apple 인증에 실패했습니다. 다시 시도해 주세요.');
+        appAlert.alert('알림', 'Apple 인증에 실패했습니다. 다시 시도해 주세요.');
         await abortSignupImmediate();
         return;
       }
@@ -946,7 +949,7 @@ const SignApple = ({ navigation }) => {
         } catch (oauthErr) {
           const code = oauthErr?.response?.data?.code;
           if (code && code !== 'NEEDS_SIGNUP') {
-            Alert.alert(
+            appAlert.alert(
               '알림',
               oauthErr?.response?.data?.message ||
                 'Apple 로그인에 실패했습니다.',
@@ -974,7 +977,7 @@ const SignApple = ({ navigation }) => {
       setCurrentStep(STEP.BIRTH_DATE);
     } catch (error) {
       if (error?.code === 'APPLE_UNAVAILABLE') {
-        Alert.alert(
+        appAlert.alert(
           'Apple 로그인',
           error.message ||
             'Apple 로그인은 iOS에서만 사용할 수 있습니다.',
@@ -990,7 +993,7 @@ const SignApple = ({ navigation }) => {
         return;
       }
       if (error?.code !== 'CANCELLED') {
-        Alert.alert(
+        appAlert.alert(
           '알림',
           error?.message || 'Apple 인증에 실패했습니다. 다시 시도해 주세요.',
         );
@@ -1013,7 +1016,7 @@ const SignApple = ({ navigation }) => {
 
     if (!SIGNUP_REDESIGN_SKIP_VALIDATION) {
       if (!isValidBirthDateString(nextBirthDate)) {
-        Alert.alert('알림', '생년월일을 올바르게 입력해 주세요.');
+        appAlert.alert('알림', '생년월일을 올바르게 입력해 주세요.');
         return;
       }
     } else {
@@ -1034,7 +1037,7 @@ const SignApple = ({ navigation }) => {
 
     const birthCase = classifyBirthDateCase(nextBirthDate);
     if (birthCase === 'invalid') {
-      Alert.alert('알림', '생년월일을 올바르게 입력해 주세요.');
+      appAlert.alert('알림', '생년월일을 올바르게 입력해 주세요.');
       return;
     }
     if (birthCase === 'D') {
@@ -1153,17 +1156,17 @@ const SignApple = ({ navigation }) => {
     }
 
     if (!selectedSchool?.id || selectedSchool?.manual) {
-      Alert.alert('알림', '재학 중인 학교를 목록에서 선택해 주세요.');
+      appAlert.alert('알림', '재학 중인 학교를 목록에서 선택해 주세요.');
       return;
     }
     const grade = Number(schoolGradeNum);
     if (!Number.isFinite(grade) || grade < 1) {
-      Alert.alert('알림', '학년을 입력해 주세요.');
+      appAlert.alert('알림', '학년을 입력해 주세요.');
       return;
     }
     const classNum = Number(schoolClassNum);
     if (!Number.isFinite(classNum) || classNum < 1) {
-      Alert.alert('알림', '반을 입력해 주세요.');
+      appAlert.alert('알림', '반을 입력해 주세요.');
       return;
     }
 
@@ -1291,13 +1294,17 @@ const SignApple = ({ navigation }) => {
     try {
       if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
         await clearFlowSession();
-        await login({ studentVerificationStatus: 'UNVERIFIED' });
+        if (currentStep === STEP.STUDENT_VERIFY && studentVerified) {
+          await login({ studentVerificationStatus: 'UNVERIFIED' });
+        } else {
+          setWelcomeAfterSignup(true);
+        }
         return;
       }
 
       const appleToken = idSource.identityToken || identityData.identityToken;
       if (!appleToken) {
-        Alert.alert('알림', 'Apple 인증이 필요합니다. 다시 시도해 주세요.');
+        appAlert.alert('알림', 'Apple 인증이 필요합니다. 다시 시도해 주세요.');
         setCurrentStep(STEP.APPLE_AUTH);
         return;
       }
@@ -1311,12 +1318,17 @@ const SignApple = ({ navigation }) => {
       await api.post('/api/auth/signup', payload);
       await consumePendingInviteCode();
       await clearFlowSession();
-      await finishSignupAndEnterApp(appleToken);
+      pendingAppleTokenRef.current = appleToken;
+      if (currentStep === STEP.STUDENT_VERIFY && studentVerified) {
+        await finishSignupAndEnterApp(appleToken);
+      } else {
+        setWelcomeAfterSignup(true);
+      }
     } catch (error) {
       if (alertSignupDuplicateAndOfferLogin(error, navigation)) {
         return;
       }
-      Alert.alert(
+      appAlert.alert(
         '회원가입 실패',
         error.response?.data?.message || '회원가입 중 오류가 발생했습니다.',
       );
@@ -1325,6 +1337,25 @@ const SignApple = ({ navigation }) => {
     }
   };
   completeSignupRef.current = handleComplete;
+
+  const enterAfterWelcome = async () => {
+    setSubmitting(true);
+    try {
+      if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
+        await login({ studentVerificationStatus: 'UNVERIFIED' });
+        return;
+      }
+      await finishSignupAndEnterApp(pendingAppleTokenRef.current);
+    } catch (error) {
+      appAlert.alert(
+        '로그인 실패',
+        error.response?.data?.message ||
+          '가입은 완료되었습니다. 로그인 화면에서 다시 시도해 주세요.',
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const getStepTitle = () => {
     switch (currentStep) {
@@ -1409,14 +1440,15 @@ const SignApple = ({ navigation }) => {
     if (currentStep === STEP.STUDENT_VERIFY && studentVerified)
       return '제출하기';
     if (currentStep === STEP.CERTIFICATE_SUBMIT) return '제출하기';
+    if (currentStep === STEP.SCHOOL_SELECT) return '가입 완료';
     return '다음 단계';
   };
 
-  const showPrimaryFooter = [
-    STEP.BIRTH_DATE,
-    STEP.SCHOOL_SELECT,
-    STEP.CERTIFICATE_SUBMIT,
-  ].includes(currentStep);
+  const showPrimaryFooter =
+    !welcomeAfterSignup &&
+    [STEP.BIRTH_DATE, STEP.SCHOOL_SELECT, STEP.CERTIFICATE_SUBMIT].includes(
+      currentStep,
+    );
 
   const hideFooterForOverlay =
     showGuardianConsentModal ||
@@ -1425,7 +1457,8 @@ const SignApple = ({ navigation }) => {
     blockingAlert.visible;
 
   const isSignupCompleteScreen =
-    currentStep === STEP.STUDENT_VERIFY && studentVerified;
+    welcomeAfterSignup ||
+    (currentStep === STEP.STUDENT_VERIFY && studentVerified);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -1520,35 +1553,26 @@ const SignApple = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {!isSignupCompleteScreen ? (
-        <View style={styles.headerSection}>
-          <View style={styles.header}>
-            <View style={styles.headerTop}>
-              <TouchableOpacity
-                style={styles.backButton}
-                onPress={requestAbortSignup}
-                disabled={submitting}
-                accessibilityRole="button"
-                accessibilityLabel="가입 중단"
-              >
-                <Feather
-                  name="x"
-                  size={normalize(20)}
-                  color={colors.textPrimary}
-                />
-              </TouchableOpacity>
-              <Text style={styles.headerTitle}>{getStepTitle()}</Text>
-            </View>
-            <View style={styles.progressBarContainer}>
-              <View
-                style={[styles.progressBar, { width: `${progressWidth}%` }]}
-              />
-            </View>
-          </View>
-        </View>
+        <AuthSignupStepHeader
+          styles={styles}
+          normalize={normalize}
+          title={getStepTitle()}
+          progressWidth={progressWidth}
+          onAbort={requestAbortSignup}
+          abortDisabled={submitting}
+        />
       ) : null}
 
       <View style={styles.contentSection}>
-        {currentStep === STEP.APPLE_AUTH && !SIGNUP_REDESIGN_SKIP_VALIDATION && (
+        {welcomeAfterSignup ? (
+          <AuthSignupComplete
+            onConfirm={() => void enterAfterWelcome()}
+            submitting={submitting}
+          />
+        ) : null}
+        {!welcomeAfterSignup &&
+          currentStep === STEP.APPLE_AUTH &&
+          !SIGNUP_REDESIGN_SKIP_VALIDATION && (
           <View
             style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
           >
@@ -1561,7 +1585,7 @@ const SignApple = ({ navigation }) => {
           </View>
         )}
 
-        {currentStep === STEP.BIRTH_DATE && (
+        {!welcomeAfterSignup && currentStep === STEP.BIRTH_DATE && (
           <SignStepBirthDateCalendar
             normalize={normalize}
             initialBirthDate={birthDate}
@@ -1570,7 +1594,7 @@ const SignApple = ({ navigation }) => {
           />
         )}
 
-        {currentStep === STEP.SCHOOL_SELECT && (
+        {!welcomeAfterSignup && currentStep === STEP.SCHOOL_SELECT && (
           <SignStepSchoolSelect
             styles={styles}
             normalize={normalize}
@@ -1584,7 +1608,7 @@ const SignApple = ({ navigation }) => {
           />
         )}
 
-        {currentStep === STEP.STUDENT_VERIFY && (
+        {!welcomeAfterSignup && currentStep === STEP.STUDENT_VERIFY && (
           <SignStepStudentIdVerify
             styles={styles}
             normalize={normalize}
@@ -1598,7 +1622,7 @@ const SignApple = ({ navigation }) => {
           />
         )}
 
-        {currentStep === STEP.ALT_VERIFY_CHOICE && (
+        {!welcomeAfterSignup && currentStep === STEP.ALT_VERIFY_CHOICE && (
           <SignStepAltVerifyChoice
             normalize={normalize}
             onSelectNeisPlus={() => setCurrentStep(STEP.NEIS_PLUS_SUBMIT)}
@@ -1606,7 +1630,7 @@ const SignApple = ({ navigation }) => {
           />
         )}
 
-        {currentStep === STEP.CERTIFICATE_GUIDE && (
+        {!welcomeAfterSignup && currentStep === STEP.CERTIFICATE_GUIDE && (
           <SignStepCertificateGuide
             styles={styles}
             onProceed={() => setCurrentStep(STEP.CERTIFICATE_SUBMIT)}
@@ -1614,7 +1638,7 @@ const SignApple = ({ navigation }) => {
           />
         )}
 
-        {currentStep === STEP.CERTIFICATE_SUBMIT && (
+        {!welcomeAfterSignup && currentStep === STEP.CERTIFICATE_SUBMIT && (
           <SignStepCertificate
             styles={styles}
             normalize={normalize}
@@ -1624,7 +1648,7 @@ const SignApple = ({ navigation }) => {
           />
         )}
 
-        {currentStep === STEP.NEIS_PLUS_SUBMIT && (
+        {!welcomeAfterSignup && currentStep === STEP.NEIS_PLUS_SUBMIT && (
           <SignStepNeisPlusSubmit
             styles={styles}
             normalize={normalize}

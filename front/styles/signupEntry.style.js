@@ -1,28 +1,38 @@
 import { StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
+import { shadow } from './tokens';
 
 export function createSignupEntryStyles(width, normalize) {
   return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-      paddingHorizontal: width * 0.07,
-    },
     center: {
       flex: 1,
       justifyContent: 'center',
-      alignItems: 'center',
+      paddingVertical: normalize(12),
+      paddingHorizontal: Math.max(normalize(20), Math.round(width * 0.055)),
     },
-    logoWrap: {
+    brand: {
       alignItems: 'center',
-      marginBottom: normalize(48),
+      marginBottom: normalize(28),
     },
-    wordmark: {
+    title: {
       marginTop: normalize(12),
       fontFamily: fonts.bold,
-      fontSize: normalize(18),
-      letterSpacing: normalize(2),
+      fontSize: normalize(fontSizes.heading),
       color: colors.textPrimary,
+    },
+    titleEn: {
+      marginTop: normalize(2),
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.md),
+      color: colors.textSecondary,
+      letterSpacing: 0.4,
+    },
+    subtitle: {
+      marginTop: normalize(8),
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.lg),
+      color: colors.textSecondary,
+      textAlign: 'center',
     },
     buttonStack: {
       width: '100%',
@@ -40,7 +50,7 @@ export function createSignupEntryStyles(width, normalize) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: normalize(6),
+      gap: normalize(8),
     },
     kakaoIcon: {
       width: normalize(18),
@@ -52,14 +62,15 @@ export function createSignupEntryStyles(width, normalize) {
     },
     kakaoButton: {
       backgroundColor: '#FEE500',
+      ...shadow.sm,
     },
     appleButton: {
       backgroundColor: '#000000',
+      ...shadow.sm,
     },
     phoneButton: {
       backgroundColor: colors.background,
-      borderWidth: 1.5,
-      borderColor: colors.primary,
+      ...shadow.sm,
     },
     socialButtonDisabled: {
       opacity: 0.45,
@@ -77,10 +88,10 @@ export function createSignupEntryStyles(width, normalize) {
       color: colors.textWhite,
     },
     phoneButtonText: {
-      color: '#000000',
+      color: colors.textPrimary,
     },
     footer: {
-      paddingVertical: normalize(24),
+      paddingVertical: normalize(20),
       alignItems: 'center',
     },
     footerText: {
@@ -90,7 +101,7 @@ export function createSignupEntryStyles(width, normalize) {
     },
     footerLink: {
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.primaryDark,
     },
   });
 }

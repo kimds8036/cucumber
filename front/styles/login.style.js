@@ -15,9 +15,44 @@ export const createLoginStyles = (width, normalize) => {
     },
     bodyScroll: {
       flexGrow: 1,
-      paddingHorizontal: normalize(28),
-      paddingTop: normalize(80),
-      paddingBottom: normalize(28),
+      justifyContent: 'center',
+      paddingHorizontal: Math.max(normalize(20), Math.round(width * 0.055)),
+      paddingTop: normalize(16),
+      paddingBottom: normalize(20),
+    },
+    bodyScrollKeyboard: {
+      justifyContent: 'flex-start',
+      paddingTop: normalize(8),
+    },
+    brand: {
+      alignItems: 'center',
+      marginBottom: normalize(22),
+    },
+    brandTitle: {
+      marginTop: normalize(10),
+      fontSize: normalize(fontSizes.heading),
+      fontFamily: fonts.bold,
+      color: colors.textPrimary,
+    },
+    brandEn: {
+      marginTop: normalize(2),
+      fontSize: normalize(fontSizes.md),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      letterSpacing: 0.3,
+    },
+    brandSub: {
+      marginTop: normalize(8),
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    fieldGap: {
+      marginBottom: normalize(12),
+    },
+    loginCta: {
+      marginTop: normalize(8),
     },
     screenTitle: {
       fontSize: normalize(fontSizes.heading),
@@ -70,13 +105,13 @@ export const createLoginStyles = (width, normalize) => {
       flexDirection: 'row',
       justifyContent: 'center',
       alignItems: 'center',
-      marginTop: normalize(18),
+      marginTop: normalize(16),
     },
     socialDividerRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginTop: normalize(40),
-      marginBottom: normalize(22),
+      marginTop: normalize(22),
+      marginBottom: normalize(16),
     },
     socialDividerLine: {
       flex: 1,
@@ -109,8 +144,7 @@ export const createLoginStyles = (width, normalize) => {
       backgroundColor: '#000000',
     },
     signupFooter: {
-      marginTop: 'auto',
-      paddingTop: normalize(40),
+      paddingTop: normalize(20),
       alignItems: 'center',
     },
     signupFooterText: {
@@ -120,7 +154,64 @@ export const createLoginStyles = (width, normalize) => {
     },
     signupFooterLink: {
       fontFamily: fonts.bold,
+      color: colors.primaryDark,
+    },
+    policyOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.38)',
+      justifyContent: 'center',
+      paddingHorizontal: normalize(24),
+    },
+    policyCard: {
+      backgroundColor: colors.background,
+      borderRadius: normalize(20),
+      padding: normalize(20),
+    },
+    policyTitle: {
+      fontSize: normalize(17),
+      fontFamily: fonts.bold,
       color: colors.textPrimary,
+      marginBottom: normalize(10),
+    },
+    policyHighlight: {
+      fontSize: normalize(15),
+      fontFamily: fonts.bold,
+      color: colors.alertDark,
+      marginBottom: normalize(10),
+    },
+    policyBody: {
+      fontSize: normalize(14),
+      fontFamily: fonts.regular,
+      lineHeight: normalize(20),
+      color: colors.textSecondary,
+    },
+    policyActions: {
+      marginTop: normalize(16),
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      alignItems: 'center',
+    },
+    policyOutlineBtn: {
+      borderWidth: 1.5,
+      borderColor: colors.primaryDark,
+      borderRadius: normalize(10),
+      paddingVertical: normalize(8),
+      paddingHorizontal: normalize(14),
+      marginRight: normalize(8),
+    },
+    policyOutlineText: {
+      color: colors.primaryDark,
+      fontFamily: fonts.bold,
+    },
+    policyFillBtn: {
+      backgroundColor: colors.primaryDark,
+      borderRadius: normalize(10),
+      paddingVertical: normalize(8),
+      paddingHorizontal: normalize(14),
+    },
+    policyFillText: {
+      color: colors.textWhite,
+      fontFamily: fonts.bold,
     },
 
     container: {
@@ -238,9 +329,9 @@ export const createSignupStyles = (width, normalize) => {
       ...debugBorder,
     },
     headerSection: {
-      paddingTop: normalize(8),
-      paddingBottom: normalize(4),
-      backgroundColor: colors.background,
+      paddingTop: normalize(4),
+      paddingBottom: normalize(2),
+      backgroundColor: 'transparent',
       zIndex: 10,
       ...debugBorder,
     },
@@ -253,21 +344,21 @@ export const createSignupStyles = (width, normalize) => {
     footerSection: {
       paddingTop: normalize(8),
       paddingBottom: normalize(16),
-      backgroundColor: colors.background,
+      backgroundColor: 'transparent',
       zIndex: 10,
       ...debugBorder,
     },
 
     // 헤더 영역
     header: {
-      backgroundColor: colors.background,
+      backgroundColor: 'transparent',
       ...debugBorder,
     },
     headerTop: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      minHeight: normalize(30),
+      minHeight: normalize(26),
       position: 'relative',
       paddingHorizontal: normalize(40),
       ...debugBorder,
@@ -279,21 +370,21 @@ export const createSignupStyles = (width, normalize) => {
     },
     headerTitle: {
       width: '100%',
-      fontSize: normalize(fontSizes.heading),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.textSecondary,
       textAlign: 'center',
-      lineHeight: normalize(26),
+      lineHeight: normalize(22),
     },
 
     // 진행바
     progressBarContainer: {
       width: '100%',
-      height: normalize(6),
-      backgroundColor: colors.textLight20,
+      height: normalize(4),
+      backgroundColor: colors.textLight10,
       borderRadius: normalize(999),
       overflow: 'hidden',
-      marginTop: normalize(12),
+      marginTop: normalize(8),
       ...debugBorder,
     },
     progressBar: {
@@ -433,32 +524,34 @@ export const createSignupStyles = (width, normalize) => {
 
     // 입력 필드
     inputLabel: {
-      fontSize: normalize(fontSizes.xxl),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
-      marginBottom: normalize(8),
-      marginLeft: normalize(20),
+      color: colors.textSecondary,
+      marginBottom: normalize(6),
+      marginLeft: normalize(2),
       ...debugBorder,
     },
     inputWrapper: {
       width: '100%',
-      alignItems: 'center',
+      alignItems: 'stretch',
       ...debugBorder,
     },
     input: {
-      width: '98%',
-      minHeight: normalize(48),
-      borderRadius: normalize(24),
-      paddingHorizontal: normalize(20),
+      width: '100%',
+      minHeight: normalize(52),
+      borderRadius: normalize(16),
+      borderWidth: 1.5,
+      borderColor: colors.textLight20,
+      paddingHorizontal: normalize(14),
       paddingVertical: normalize(12),
-      fontSize: normalize(fontSizes.xxl),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
-      backgroundColor: colors.textLight5,
+      backgroundColor: colors.surface,
       textAlignVertical: 'center',
       ...Platform.select({
         android: { includeFontPadding: false, elevation: 0 },
-        ios: shadow.sm,
+        ios: {},
       }),
     },
     /** SignStep2 — 라벨 위 간격 */
@@ -624,10 +717,10 @@ export const createSignupStyles = (width, normalize) => {
       marginLeft: 0,
     },
     verifyButton: {
-      paddingHorizontal: normalize(20),
-      minHeight: normalize(48),
-      backgroundColor: colors.primary,
-      borderRadius: normalize(24),
+      paddingHorizontal: normalize(14),
+      minHeight: normalize(36),
+      backgroundColor: colors.primaryDark,
+      borderRadius: normalize(12),
       justifyContent: 'center',
       alignItems: 'center',
       ...debugBorder,
@@ -639,11 +732,11 @@ export const createSignupStyles = (width, normalize) => {
     },
     // 보호자 본인인증 전용 스타일 (Step1과 동일 톤)
     guardianInputLabel: {
-      fontSize: normalize(fontSizes.xxl),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
-      marginBottom: normalize(8),
-      marginLeft: normalize(20),
+      color: colors.textSecondary,
+      marginBottom: normalize(6),
+      marginLeft: normalize(2),
     },
     guardianInputWrapper: {
       width: '100%',
@@ -681,10 +774,10 @@ export const createSignupStyles = (width, normalize) => {
       marginLeft: normalize(4),
     },
     guardianVerifyButton: {
-      paddingHorizontal: normalize(20),
-      minHeight: normalize(50),
-      backgroundColor: colors.primary,
-      borderRadius: normalize(24),
+      paddingHorizontal: normalize(14),
+      minHeight: normalize(36),
+      backgroundColor: colors.primaryDark,
+      borderRadius: normalize(12),
       justifyContent: 'center',
       alignItems: 'center',
     },

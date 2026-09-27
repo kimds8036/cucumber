@@ -12,6 +12,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  Pressable,
 } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -52,18 +53,23 @@ import {
   subscribeTimerRuntime,
 } from '../../utils/timerRuntimeStore';
 import { formatHMS } from './timer/timerHelpers';
-import { api } from '../../utils/api';
+import { api, getApiUserFacingMessage } from '../../utils/api';
 import { getTimerDayKey, loadDayFromDb } from '../../utils/timerStorage';
 import { preloadStudyRoomAssets } from '../../utils/preloadStudyRoomAssets';
 import { useFriend } from '../../context/FriendContext';
 import { useSocket } from '../../context/SocketContext';
 import { useMainShellOptional } from '../../context/MainShellContext';
+import { useToast } from '../../context/ToastContext';
+import { appAlert } from '../../utils/appAlert';
+import StudyRoomProfileTip from '../../components/timerAni/StudyRoomProfileTip';
 
 const CHAIR_DESK = require('../../assets/timer_ani/chair_desk.png');
 /** 경로 속도 (px / ms) — 클수록 빠름 */
 const WALK_PX_PER_MS = 0.3;
 /** 타이머 OFF 후 스터디룸에서 자리·방 유지 유예 */
 const LEAVE_GRACE_MS = 5000;
+/** 퇴장 걷기 전 프로필 팁이 들어갈 때까지 대기 */
+const PROFILE_TIP_CLOSE_WAIT_MS = 200;
 
 function pickGenderSafe() {
   try {
@@ -255,6 +261,7 @@ function OtherStudyActor({
   elapsedMs,
   isSelf = false,
   onSeatedVisualChange,
+  onPressCharacter,
 }) {
   // 등장~퇴장 동안 성별 고정 (idle 시 meta 비움/재랜덤으로 스프라이트 바뀌는 것 방지)
   const lockedGenderRef = useRef(null);
@@ -528,6 +535,19 @@ function OtherStudyActor({
           }}
         />
       </Animated.View>
+      {!showWalk && !isSelf && typeof onPressCharacter === 'function' ? (
+        <Pressable
+          onPress={onPressCharacter}
+          style={{
+            position: 'absolute',
+            left: seat.seatX,
+            top: seat.seatY,
+            width: boxW,
+            height: boxH,
+            zIndex: (seat?.z || 1) + 10,
+          }}
+        />
+      ) : null}
       {!showWalk ? (
         <SeatLabels
           seat={seat}
@@ -556,6 +576,15 @@ export default function TimerAniLab({ navigation }) {
 
   const { refreshStudyingFriends } = useFriend();
   const { socket } = useSocket();
+  const { showToast } = useToast();
+  const [profileTipKey, setProfileTipKey] = useState(null);
+  const [profileTipOpen, setProfileTipOpen] = useState(false);
+  const [requestedFriendIds, setRequestedFriendIds] = useState(() => new Set());
+  const pendingTipKeyRef = useRef(null);
+  const profileTipKeyRef = useRef(null);
+  const profileTipOpenRef = useRef(false);
+  const pendingExitKeysRef = useRef(new Set());
+  const pendingExitTimersRef = useRef(/** @type {Record<string, ReturnType<typeof setTimeout>>} */ ({}));
   const [stage, setStage] = useState({ w: 0, h: 0 });
   const [bgSource, setBgSource] = useState(() => getClassroomBgForDate());
   /** 서버 배정 방 ID */
@@ -599,6 +628,8 @@ export default function TimerAniLab({ navigation }) {
   );
 
   roomPresenceRef.current = roomPresence;
+  profileTipKeyRef.current = profileTipKey;
+  profileTipOpenRef.current = profileTipOpen;
 
   const stageReady = stage.w > 80 && stage.h > 80;
   const roomReady = stageReady && meReady;
@@ -676,6 +707,12 @@ export default function TimerAniLab({ navigation }) {
           metaPatch[uid] = {
             username: String(f.username || f.name || '친구').replace(/^@/, ''),
             startedAtMs: null,
+            profileColorId:
+              f.profileColorId ??
+              f.profile_color_id ??
+              f.profileColor?.id ??
+              f.profileColor?.colorNumber ??
+              null,
           };
         });
         setFriendIds(ids);
@@ -998,6 +1035,10 @@ export default function TimerAniLab({ navigation }) {
         clearTimeout(leaveGraceTimersRef.current[uid]);
       });
       leaveGraceTimersRef.current = {};
+      Object.keys(pendingExitTimersRef.current).forEach((key) => {
+        clearTimeout(pendingExitTimersRef.current[key]);
+      });
+      pendingExitTimersRef.current = {};
     },
     [],
   );
@@ -1111,6 +1152,39 @@ export default function TimerAniLab({ navigation }) {
     }
   }, [roomReady, studyingBootstrapDone, selfPresent, selfSeat?.index, selfUid]);
 
+  const beginPendingExit = useCallback((key) => {
+    pendingExitKeysRef.current.delete(key);
+    const t = pendingExitTimersRef.current[key];
+    if (t) {
+      clearTimeout(t);
+      delete pendingExitTimersRef.current[key];
+    }
+    setOtherModes((prev) => {
+      if (!prev[key] || prev[key] === 'hidden' || prev[key] === 'exit') {
+        return prev;
+      }
+      return { ...prev, [key]: 'exit' };
+    });
+  }, []);
+
+  const holdExitUntilTipIn = useCallback((key) => {
+    pendingExitKeysRef.current.add(key);
+    if (profileTipOpenRef.current && profileTipKeyRef.current === key) {
+      pendingTipKeyRef.current = null;
+      setProfileTipOpen(false);
+    }
+    if (pendingExitTimersRef.current[key]) return;
+    pendingExitTimersRef.current[key] = setTimeout(() => {
+      delete pendingExitTimersRef.current[key];
+      if (!pendingExitKeysRef.current.has(key)) return;
+      if (profileTipKeyRef.current === key) {
+        setProfileTipOpen(false);
+        setProfileTipKey(null);
+      }
+      beginPendingExit(key);
+    }, PROFILE_TIP_CLOSE_WAIT_MS);
+  }, [beginPendingExit]);
+
   // 타인 모드 동기 — 진입 시 이미 공부 중이면 착석, 이후에 켠 사람만 입장 걷기
   useEffect(() => {
     if (!roomReady || !studyingBootstrapDone) return;
@@ -1118,6 +1192,7 @@ export default function TimerAniLab({ navigation }) {
 
     const seed = initialStudyingSeedRef.current;
     const roomOtherKeys = room.members.filter((k) => k !== me.key);
+    const keysToHold = [];
 
     setOtherModes((prev) => {
       const next = { ...prev };
@@ -1136,12 +1211,21 @@ export default function TimerAniLab({ navigation }) {
         const still =
           roomOtherKeys.includes(key) && roomPresence?.[uid] === true;
         if (!still && next[key] !== 'hidden' && next[key] !== 'exit') {
+          if (
+            profileTipKeyRef.current === key ||
+            pendingExitKeysRef.current.has(key)
+          ) {
+            keysToHold.push(key);
+            return;
+          }
           next[key] = 'exit';
         }
       });
 
       return next;
     });
+
+    keysToHold.forEach((key) => holdExitUntilTipIn(key));
 
     setOtherStartedAt((prev) => {
       const next = { ...prev };
@@ -1161,6 +1245,7 @@ export default function TimerAniLab({ navigation }) {
     roomPresence,
     me.key,
     othersMeta,
+    holdExitUntilTipIn,
   ]);
 
   const onSelfEnterDone = useCallback(() => setSelfMode('seated'), []);
@@ -1203,6 +1288,74 @@ export default function TimerAniLab({ navigation }) {
     },
     [assignments, seatByIndex],
   );
+
+  const closeProfileTip = useCallback(() => {
+    pendingTipKeyRef.current = null;
+    setProfileTipOpen(false);
+  }, []);
+
+  const handleProfileTipDismissed = useCallback(() => {
+    const closedKey = profileTipKeyRef.current;
+    const next = pendingTipKeyRef.current;
+    pendingTipKeyRef.current = null;
+    if (closedKey && pendingExitKeysRef.current.has(closedKey)) {
+      beginPendingExit(closedKey);
+    }
+    if (next && next !== closedKey && !pendingExitKeysRef.current.has(next)) {
+      setProfileTipKey(next);
+      setProfileTipOpen(true);
+      return;
+    }
+    setProfileTipKey(null);
+  }, [beginPendingExit]);
+
+  const handlePressOtherCharacter = useCallback((key, mode) => {
+    if (mode !== 'seated') return;
+    if (pendingExitKeysRef.current.has(key)) return;
+    if (profileTipOpen && profileTipKey === key) {
+      pendingTipKeyRef.current = null;
+      setProfileTipOpen(false);
+      return;
+    }
+    if (profileTipOpen && profileTipKey && profileTipKey !== key) {
+      pendingTipKeyRef.current = key;
+      setProfileTipOpen(false);
+      return;
+    }
+    setProfileTipKey(key);
+    setProfileTipOpen(true);
+  }, [profileTipOpen, profileTipKey]);
+
+  useEffect(() => {
+    if (!profileTipKey) return;
+    if (otherModes[profileTipKey] !== 'seated') {
+      closeProfileTip();
+    }
+  }, [otherModes, profileTipKey, closeProfileTip]);
+
+  const tipUid = profileTipKey ? profileTipKey.replace(/^u:/, '') : null;
+  const tipMeta = tipUid ? othersMeta[tipUid] : null;
+  const tipSeat = profileTipKey ? resolveOtherSeat(profileTipKey) : null;
+
+  const handleAddFriendFromTip = useCallback(async () => {
+    const username = String(tipMeta?.username || '')
+      .trim()
+      .replace(/^@/, '');
+    if (!username || !tipUid) return;
+    try {
+      await api.post('/api/friends/requests', { username });
+      setRequestedFriendIds((prev) => new Set(prev).add(tipUid));
+      showToast?.({ message: '친구 요청을 보냈어요' });
+    } catch (error) {
+      appAlert.alert(
+        '친구 요청 실패',
+        getApiUserFacingMessage(
+          error,
+          '친구 요청 중 문제가 발생했어요. 잠시 후 다시 시도해 주세요.',
+        ),
+      );
+    }
+  }, [tipMeta?.username, tipUid, showToast]);
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -1329,6 +1482,9 @@ export default function TimerAniLab({ navigation }) {
                   onEnterDone={() =>
                     setOtherModes((prev) => ({ ...prev, [key]: 'seated' }))
                   }
+                  onPressCharacter={() =>
+                    handlePressOtherCharacter(key, mode)
+                  }
                   onExitDone={() => {
                     knownOthersRef.current.delete(key);
                     initialStudyingSeedRef.current?.delete(uid);
@@ -1358,6 +1514,21 @@ export default function TimerAniLab({ navigation }) {
               );
             })
           : null}
+
+        {tipSeat && profileTipKey ? (
+          <StudyRoomProfileTip
+            visible={profileTipOpen}
+            seat={tipSeat}
+            stageW={stage.w}
+            username={String(tipMeta?.username || '학생').replace(/^@/, '')}
+            userId={tipUid}
+            profileColorId={tipMeta?.profileColorId}
+            isFriend={tipUid ? friendIds.has(tipUid) : false}
+            requestSent={tipUid ? requestedFriendIds.has(tipUid) : false}
+            onAddFriend={handleAddFriendFromTip}
+            onDismissed={handleProfileTipDismissed}
+          />
+        ) : null}
       </View>
 
       <TouchableOpacity

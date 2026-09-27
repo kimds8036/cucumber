@@ -1,6 +1,5 @@
 import { Platform, StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
-import { shadow } from './tokens';
 
 export const createFindStyles = (width, normalize) => {
   return StyleSheet.create({
@@ -11,7 +10,8 @@ export const createFindStyles = (width, normalize) => {
     },
     headerSection: {
       paddingTop: normalize(8),
-      backgroundColor: colors.background,
+      paddingHorizontal: width * 0.04,
+      backgroundColor: 'transparent',
     },
     headerTop: {
       flexDirection: 'row',
@@ -26,9 +26,9 @@ export const createFindStyles = (width, normalize) => {
       padding: normalize(8),
     },
     headerTitle: {
-      fontSize: normalize(fontSizes.heading),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.textSecondary,
     },
     description: {
       marginTop: normalize(12),
@@ -43,36 +43,37 @@ export const createFindStyles = (width, normalize) => {
     contentSection: {
       flex: 1,
       paddingTop: normalize(8),
+      paddingHorizontal: width * 0.04,
     },
     inputLabel: {
-      fontSize: normalize(fontSizes.xxl),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
-      marginBottom: normalize(8),
-      marginLeft: normalize(20),
+      color: colors.textSecondary,
+      marginBottom: normalize(6),
+      marginLeft: normalize(2),
     },
     inputWrapper: {
       width: '100%',
-      alignItems: 'center',
-      marginBottom: normalize(8),
+      alignItems: 'stretch',
+      marginBottom: normalize(12),
     },
     input: {
-      width: '98%',
-      minHeight: normalize(50),
-      borderWidth: 1,
-      borderColor: colors.primary,
-      borderRadius: normalize(24),
-      paddingHorizontal: normalize(20),
+      width: '100%',
+      minHeight: normalize(52),
+      borderWidth: 1.5,
+      borderColor: colors.textLight20,
+      borderRadius: normalize(16),
+      paddingHorizontal: normalize(14),
       paddingVertical: normalize(12),
-      fontSize: normalize(fontSizes.xxl),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textPrimary,
-      marginBottom: normalize(12),
-      backgroundColor: colors.background,
+      marginBottom: 0,
+      backgroundColor: colors.surface,
       textAlignVertical: 'center',
       ...Platform.select({
         android: { includeFontPadding: false, elevation: 0 },
-        ios: shadow.sm,
+        ios: {},
       }),
     },
     inputReadonly: {
@@ -113,11 +114,12 @@ export const createFindStyles = (width, normalize) => {
     footerSection: {
       paddingTop: normalize(8),
       paddingBottom: normalize(16),
-      backgroundColor: colors.background,
+      paddingHorizontal: width * 0.04,
+      backgroundColor: 'transparent',
     },
     primaryButton: {
       width: '100%',
-      backgroundColor: colors.primary,
+      backgroundColor: colors.primaryDark,
       borderRadius: normalize(24),
       justifyContent: 'center',
       alignItems: 'center',
@@ -145,7 +147,7 @@ export const createFindStyles = (width, normalize) => {
     verifyButton: {
       paddingHorizontal: normalize(18),
       height: normalize(50),
-      backgroundColor: colors.primary,
+      backgroundColor: colors.primaryDark,
       borderRadius: normalize(24),
       justifyContent: 'center',
       alignItems: 'center',
@@ -154,9 +156,11 @@ export const createFindStyles = (width, normalize) => {
       backgroundColor: colors.textLight20,
     },
     verifyButtonWide: {
-      width: '98%',
-      alignSelf: 'center',
+      width: '100%',
+      alignSelf: 'stretch',
       marginBottom: normalize(12),
+      minHeight: normalize(52),
+      borderRadius: normalize(16),
     },
     verifyButtonText: {
       fontSize: normalize(fontSizes.xxl),
@@ -169,7 +173,7 @@ export const createFindStyles = (width, normalize) => {
       marginLeft: normalize(20),
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.primary,
+      color: colors.primaryDark,
     },
   });
 };

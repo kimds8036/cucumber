@@ -10,13 +10,13 @@ import {
   Text,
   TouchableOpacity,
   useWindowDimensions,
-  Alert,
   InteractionManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { createSignupStyles } from '../../../styles/login.style';
+import { appAlert } from '../../../utils/appAlert';
 import { colors } from '../../../styles/colors';
 import SignStepConsent from './SignStepConsent';
 import SignStepAgeGate from './SignStepAgeGate';
@@ -744,7 +744,7 @@ const Sign = ({ navigation }) => {
     if (!useReal) {
       await new Promise((resolve) => setTimeout(resolve, 400));
       applyGuardianVerifySuccess({ clientToken: null, profile: {} });
-      Alert.alert('알림', '보호자 본인인증이 완료되었습니다. (테스트 mock)');
+      appAlert.alert('알림', '보호자 본인인증이 완료되었습니다. (테스트 mock)');
       return;
     }
 
@@ -961,7 +961,7 @@ const Sign = ({ navigation }) => {
       return;
     }
     if (inicisOverlayVisible) {
-      Alert.alert(
+      appAlert.alert(
         '본인인증 중단',
         '본인인증을 중단하고 이전 단계로 돌아갈까요?',
         [
@@ -1078,7 +1078,7 @@ const Sign = ({ navigation }) => {
 
     if (!shouldSkipSignupValidation()) {
       if (!isValidBirthDateString(nextBirthDate)) {
-        Alert.alert('알림', '생년월일을 올바르게 입력해 주세요.');
+        appAlert.alert('알림', '생년월일을 올바르게 입력해 주세요.');
         return;
       }
     } else {
@@ -1097,7 +1097,7 @@ const Sign = ({ navigation }) => {
 
     const birthCase = classifyBirthDateCase(nextBirthDate);
     if (birthCase === 'invalid') {
-      Alert.alert('알림', '생년월일을 올바르게 입력해 주세요.');
+      appAlert.alert('알림', '생년월일을 올바르게 입력해 주세요.');
       return;
     }
     if (birthCase === 'D') {
@@ -1195,19 +1195,19 @@ const Sign = ({ navigation }) => {
       !stepInfoData.password ||
       !stepInfoData.passwordConfirm
     ) {
-      Alert.alert('알림', '아이디와 비밀번호를 입력해 주세요.');
+      appAlert.alert('알림', '아이디와 비밀번호를 입력해 주세요.');
       return;
     }
     if (!isValidUsername(stepInfoData.username)) {
-      Alert.alert('알림', USERNAME_ERROR);
+      appAlert.alert('알림', USERNAME_ERROR);
       return;
     }
     if (!isValidPassword(stepInfoData.password)) {
-      Alert.alert('알림', PASSWORD_ERROR);
+      appAlert.alert('알림', PASSWORD_ERROR);
       return;
     }
     if (stepInfoData.password !== stepInfoData.passwordConfirm) {
-      Alert.alert('알림', '비밀번호 확인이 일치하지 않습니다.');
+      appAlert.alert('알림', '비밀번호 확인이 일치하지 않습니다.');
       return;
     }
     setFormData((prev) => ({
@@ -1285,17 +1285,17 @@ const Sign = ({ navigation }) => {
     }
 
     if (!selectedSchool?.id || selectedSchool?.manual) {
-      Alert.alert('알림', '재학 중인 학교를 목록에서 선택해 주세요.');
+      appAlert.alert('알림', '재학 중인 학교를 목록에서 선택해 주세요.');
       return;
     }
     const grade = Number(schoolGradeNum);
     if (!Number.isFinite(grade) || grade < 1) {
-      Alert.alert('알림', '학년을 입력해 주세요.');
+      appAlert.alert('알림', '학년을 입력해 주세요.');
       return;
     }
     const classNum = Number(schoolClassNum);
     if (!Number.isFinite(classNum) || classNum < 1) {
-      Alert.alert('알림', '반을 입력해 주세요.');
+      appAlert.alert('알림', '반을 입력해 주세요.');
       return;
     }
 
@@ -1363,13 +1363,13 @@ const Sign = ({ navigation }) => {
         certificateUrl: certificateViewUrl,
         accessNumber: certificateAccessCode,
       }));
-      Alert.alert('테스트모드', '재학증명서 제출 검증을 건너뛰었습니다.');
+      appAlert.alert('테스트모드', '재학증명서 제출 검증을 건너뛰었습니다.');
       return;
     }
 
     if (!shouldSkipSignupValidation()) {
       if (!certificateViewUrl || !certificateAccessCode) {
-        Alert.alert('알림', '열람용 주소와 열람 번호를 모두 입력해 주세요.');
+        appAlert.alert('알림', '열람용 주소와 열람 번호를 모두 입력해 주세요.');
         return;
       }
     }
@@ -1389,7 +1389,7 @@ const Sign = ({ navigation }) => {
         SIGNUP_TEST_MOCK_ACCOUNT.password,
     };
     if (!shouldSkipSignupValidation() && (!finalData.username || !finalData.password)) {
-      Alert.alert('알림', '계정 정보가 없습니다. 이전 단계를 확인해 주세요.');
+      appAlert.alert('알림', '계정 정보가 없습니다. 이전 단계를 확인해 주세요.');
       return;
     }
 
@@ -1411,7 +1411,7 @@ const Sign = ({ navigation }) => {
       if (alertSignupDuplicateAndOfferLogin(error, navigation)) {
         return;
       }
-      Alert.alert(
+      appAlert.alert(
         '회원가입 실패',
         error.response?.data?.message || '회원가입 중 오류가 발생했습니다.',
       );
@@ -1525,7 +1525,7 @@ const Sign = ({ navigation }) => {
 
     if (shouldSkipSignupValidation()) {
       if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST && !SIGNUP_REDESIGN_SKIP_VALIDATION) {
-        Alert.alert(
+        appAlert.alert(
           '학생증 제출 완료!',
           '관리자 승인 후 서비스를 이용할 수 있습니다',
           [{ text: '확인', onPress: () => resetTo('Login') }],
@@ -1542,11 +1542,11 @@ const Sign = ({ navigation }) => {
     }
 
     if (!token) {
-      Alert.alert('알림', '학생인증 정보가 없습니다. 다시 제출해 주세요.');
+      appAlert.alert('알림', '학생인증 정보가 없습니다. 다시 제출해 주세요.');
       return;
     }
     if (!identityData.inicisClientToken && !inicisClientTokenRef.current) {
-      Alert.alert(
+      appAlert.alert(
         '본인인증 필요',
         '학생 본인인증 정보가 없습니다. 이전 단계에서 본인인증을 다시 완료해 주세요.',
       );
@@ -1662,7 +1662,7 @@ const Sign = ({ navigation }) => {
       SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST &&
       !SIGNUP_REDESIGN_SKIP_VALIDATION
     ) {
-      Alert.alert('테스트모드', '회원가입 제출 API 호출을 건너뛰었습니다.');
+      appAlert.alert('테스트모드', '회원가입 제출 API 호출을 건너뛰었습니다.');
       return;
     }
 
@@ -1676,7 +1676,7 @@ const Sign = ({ navigation }) => {
       !shouldSkipSignupValidation() &&
       (!finalData.username || !finalData.password)
     ) {
-      Alert.alert('알림', '계정 정보가 없습니다. 이전 단계를 확인해 주세요.');
+      appAlert.alert('알림', '계정 정보가 없습니다. 이전 단계를 확인해 주세요.');
       return;
     }
 
@@ -1707,7 +1707,7 @@ const Sign = ({ navigation }) => {
         (!Number.isFinite(payload.graduationYear) ||
           payload.graduationYear < 1900)
       ) {
-        Alert.alert(
+        appAlert.alert(
           '가입 정보 확인',
           '생년월일 기준으로 학년·졸업년도를 자동 계산하지 못했습니다.\n' +
             '중·고등학생 생년월일(만 14~19세)로 다시 시도해 주세요.',
@@ -1721,7 +1721,7 @@ const Sign = ({ navigation }) => {
       if (alertSignupDuplicateAndOfferLogin(error, navigation)) {
         return;
       }
-      Alert.alert(
+      appAlert.alert(
         '회원가입 실패',
         error.response?.data?.message || '회원가입 중 오류가 발생했습니다.',
       );

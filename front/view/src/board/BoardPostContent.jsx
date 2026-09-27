@@ -6,6 +6,9 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { colors, fonts } from '../../../styles/colors';
 import DistanceBadge from '../../../components/DistanceBadge';
 import EquippedBadge from '../../../components/EquippedBadge';
+import PostImageSlider, {
+  collectPostImageUris,
+} from '../../../components/board/PostImageSlider';
 
 export default function BoardPostContent({
   post,
@@ -27,6 +30,7 @@ export default function BoardPostContent({
 }) {
   const distanceValid =
     typeof post.distanceKm === 'number' && !Number.isNaN(post.distanceKm);
+  const imageUris = collectPostImageUris(post);
   return (
     <View style={styles.contentSection}>
       <View style={styles.detailHeader}>
@@ -81,30 +85,37 @@ export default function BoardPostContent({
       <Text style={[styles.detailBody, { marginBottom: normalize(7) }]}>
         {post.content}
       </Text>
-      {Array.isArray(post.images) && post.images.length > 0 ? (
+      {imageUris.length === 1 ? (
         <View style={styles.detailImagesWrap}>
-          {post.images.map((uri, idx) => (
-            <TouchableOpacity
-              key={`${uri}-${idx}`}
-              activeOpacity={0.85}
-              onPress={() => onImagePress(uri)}
-              style={{ width: '100%' }}
-            >
-              <Image
-                source={{ uri }}
-                style={[
-                  styles.detailImage,
-                  imageRatios[uri]
-                    ? { aspectRatio: imageRatios[uri] }
-                    : styles.detailImageFallback,
-                  idx === post.images.length - 1 && styles.detailImageLast,
-                ]}
-                onLoad={(e) => onImageLoad(uri, e)}
-                resizeMode="cover"
-              />
-            </TouchableOpacity>
-          ))}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => onImagePress?.(imageUris[0])}
+            style={{ width: '100%' }}
+          >
+            <Image
+              source={{ uri: imageUris[0] }}
+              style={[
+                styles.detailImage,
+                imageRatios?.[imageUris[0]]
+                  ? { aspectRatio: imageRatios[imageUris[0]] }
+                  : styles.detailImageFallback,
+                styles.detailImageLast,
+              ]}
+              onLoad={(e) => onImageLoad?.(imageUris[0], e)}
+              resizeMode="cover"
+            />
+          </TouchableOpacity>
         </View>
+      ) : null}
+      {imageUris.length > 1 ? (
+        <PostImageSlider
+          uris={imageUris}
+          height={normalize(200)}
+          borderRadius={normalize(10)}
+          onPress={(uri) => onImagePress?.(uri)}
+          onFirstImageLoad={onImageLoad}
+          style={styles.detailImagesWrap}
+        />
       ) : null}
       {Array.isArray(post.tags) && post.tags.length > 0 ? (
         <View style={styles.detailTagsWrap}>

@@ -385,6 +385,7 @@ function createStyles(normalize) {
       borderRadius: normalize(2),
       marginTop: normalize(10),
       marginBottom: normalize(12),
+      backgroundColor: colors.textLight20,
     },
     scrollContent: {
       paddingHorizontal: normalize(20),
@@ -393,9 +394,9 @@ function createStyles(normalize) {
     },
     bulkCard: {
       borderWidth: 1.5,
-      borderColor: colors.primary,
+      borderColor: colors.textLight20,
       borderRadius: normalize(20),
-      backgroundColor: colors.primaryLight10,
+      backgroundColor: colors.surface,
       paddingHorizontal: normalize(16),
       paddingVertical: normalize(14),
     },
@@ -519,7 +520,7 @@ function createStyles(normalize) {
       marginTop: normalize(8),
       height: normalize(52),
       borderRadius: normalize(26),
-      backgroundColor: colors.primary,
+      backgroundColor: colors.primaryDark,
       alignItems: 'center',
       justifyContent: 'center',
     },

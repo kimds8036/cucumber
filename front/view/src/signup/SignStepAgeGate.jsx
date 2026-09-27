@@ -3,14 +3,13 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Modal,
-  Pressable,
   FlatList,
   StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
 import SignupStepScroll from './SignupStepScroll';
+import AppPopupModal from '../../../components/common/AppPopupModal';
 
 /** 드롭다운 연도 범위 (가입 가능 여부는 Sign.jsx에서 판정) */
 const PICKER_YEAR_SPAN = 80;
@@ -195,14 +194,12 @@ const SignStepAgeGate = ({
         </View>
       </SignupStepScroll>
 
-      <Modal
+      <AppPopupModal
         visible={Boolean(openField)}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setOpenField(null)}
+        onClose={() => setOpenField(null)}
+        dismissOnBackdrop
+        cardStyle={local.sheet}
       >
-        <Pressable style={local.overlay} onPress={() => setOpenField(null)}>
-          <Pressable style={local.sheet} onPress={(e) => e.stopPropagation()}>
             <Text style={local.sheetTitle}>{activeMeta?.title}</Text>
             <FlatList
               data={activeMeta?.options || []}
@@ -259,26 +256,17 @@ const SignStepAgeGate = ({
             >
               <Text style={local.cancelText}>닫기</Text>
             </TouchableOpacity>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      </AppPopupModal>
     </View>
   );
 };
 
 const makeLocalStyles = (normalize) =>
   StyleSheet.create({
-    overlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.35)',
-      justifyContent: 'center',
-      paddingHorizontal: normalize(28),
-    },
     sheet: {
-      backgroundColor: colors.background,
-      borderRadius: normalize(20),
-      paddingTop: normalize(18),
-      paddingBottom: normalize(12),
+      paddingHorizontal: 0,
+      paddingTop: normalize(8),
+      paddingBottom: normalize(8),
       maxHeight: '70%',
       overflow: 'hidden',
     },
@@ -300,7 +288,7 @@ const makeLocalStyles = (normalize) =>
       justifyContent: 'space-between',
     },
     optionRowSelected: {
-      backgroundColor: colors.primaryLight20,
+      backgroundColor: colors.surface,
     },
     optionText: {
       fontSize: normalize(fontSizes.xxl),
@@ -309,7 +297,7 @@ const makeLocalStyles = (normalize) =>
     },
     optionTextSelected: {
       fontFamily: fonts.bold,
-      color: colors.primary,
+      color: colors.primaryDark,
     },
     cancelBtn: {
       marginTop: normalize(4),

@@ -5,12 +5,12 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ScrollView,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
+import { appAlert } from '../../../utils/appAlert';
 
 const MAX_PHOTOS = 2;
 
@@ -39,7 +39,7 @@ export default function StudentIdPhotoAttachFields({
       if (busy) return;
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert('권한 필요', '사진 첨부를 위해 앨범 접근 권한이 필요합니다.');
+        appAlert.alert('권한 필요', '사진 첨부를 위해 앨범 접근 권한이 필요합니다.');
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -51,7 +51,7 @@ export default function StudentIdPhotoAttachFields({
       if (result.canceled || !result.assets?.[0]) return;
       const asset = result.assets[0];
       if (!asset.base64) {
-        Alert.alert('첨부 실패', '이미지를 다시 선택해 주세요.');
+        appAlert.alert('첨부 실패', '이미지를 다시 선택해 주세요.');
         return;
       }
       const payload = {
@@ -70,7 +70,7 @@ export default function StudentIdPhotoAttachFields({
     (assets) => {
       const valid = (assets || []).filter((a) => a?.base64 && a?.uri);
       if (valid.length === 0) {
-        Alert.alert('첨부 실패', '이미지를 다시 선택해 주세요.');
+        appAlert.alert('첨부 실패', '이미지를 다시 선택해 주세요.');
         return;
       }
       const toPayload = (asset) => ({
@@ -96,7 +96,7 @@ export default function StudentIdPhotoAttachFields({
     if (busy || !canAddMore) return;
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('권한 필요', '사진 첨부를 위해 앨범 접근 권한이 필요합니다.');
+      appAlert.alert('권한 필요', '사진 첨부를 위해 앨범 접근 권한이 필요합니다.');
       return;
     }
     const remaining = MAX_PHOTOS - photoCount;

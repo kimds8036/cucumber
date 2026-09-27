@@ -323,13 +323,6 @@ const SchoolSearchField = ({
             </TouchableOpacity>
           ) : null}
         </View>
-        <GrowingUnderline
-          active={isLockedSelection || focused}
-          normalize={normalize}
-          fillColor={
-            isLockedSelection ? colors.textLight40 : colors.textLight20
-          }
-        />
       </View>
     );
   };
@@ -478,13 +471,22 @@ export function createSchoolSearchRowStyles(
   return StyleSheet.create({
     rowWrap: {
       marginHorizontal: side,
+      borderWidth: 1.5,
+      borderColor: colors.textLight20,
+      borderRadius: normalize(16),
+      backgroundColor: colors.surface,
+      minHeight: normalize(52),
+      justifyContent: 'center',
     },
-    rowWrapSelected: {},
+    rowWrapSelected: {
+      borderColor: colors.primaryDark,
+      backgroundColor: colors.background,
+    },
     row: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: normalize(10),
-      paddingHorizontal: normalize(2),
+      paddingVertical: normalize(8),
+      paddingHorizontal: normalize(12),
       gap: normalize(8),
     },
     rowCompact: {

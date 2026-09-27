@@ -97,7 +97,7 @@ function createStyles(
       ...(cancelParentPadding && !embedded
         ? { marginHorizontal: -parentInset }
         : null),
-      backgroundColor: colors.background,
+      backgroundColor: 'transparent',
       zIndex: 10,
       flexShrink: 0,
     },
@@ -115,7 +115,7 @@ function createStyles(
       width: '100%',
       height: normalize(52),
       borderRadius: normalize(26),
-      backgroundColor: colors.primary,
+      backgroundColor: colors.primaryDark,
       alignItems: 'center',
       justifyContent: 'center',
     },

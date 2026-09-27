@@ -1,15 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
   Keyboard,
   TouchableWithoutFeedback,
   useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CommonActions } from '@react-navigation/native';
 import { colors } from '../../../styles/colors';
@@ -18,6 +15,10 @@ import Skeleton from '../../../components/common/Skeleton';
 import { api } from '../../../utils/api';
 import RecoveryInicisFields from './RecoveryInicisFields';
 import SignupStepScroll from './SignupStepScroll';
+import AuthScreenShell from './AuthScreenShell';
+import AuthTextField from './AuthTextField';
+import AuthPrimaryButton from './AuthPrimaryButton';
+import { appAlert } from '../../../utils/appAlert';
 
 const IDfind = ({ navigation }) => {
   const { width } = useWindowDimensions();
@@ -68,15 +69,15 @@ const IDfind = ({ navigation }) => {
   const handleFindUsername = async (tokenOverride) => {
     const clientToken = tokenOverride || inicisClientToken;
     if (!name.trim()) {
-      Alert.alert('알림', '이름을 입력해 주세요.');
+      appAlert.alert('알림', '이름을 입력해 주세요.');
       return;
     }
     if (!clientToken) {
-      Alert.alert('알림', '본인인증을 먼저 완료해 주세요.');
+      appAlert.alert('알림', '본인인증을 먼저 완료해 주세요.');
       return;
     }
     if (!tokenOverride && !isIdentityVerified) {
-      Alert.alert('알림', '본인인증을 먼저 완료해 주세요.');
+      appAlert.alert('알림', '본인인증을 먼저 완료해 주세요.');
       return;
     }
 
@@ -89,7 +90,7 @@ const IDfind = ({ navigation }) => {
       const data = res.data?.data;
       if (data?.socialOnly) {
         const label = data.providerLabel || '소셜';
-        Alert.alert(
+        appAlert.alert(
           '소셜 로그인 가입 계정',
           `${label}로 가입한 계정입니다.\n아이디·비밀번호 찾기를 사용할 수 없습니다.\n${label} 로그인으로 이용해 주세요.`,
           [{ text: '로그인하기', onPress: goToLogin }],
@@ -98,18 +99,18 @@ const IDfind = ({ navigation }) => {
       }
       const foundUsername = data?.username;
       if (!foundUsername) {
-        Alert.alert('알림', '아이디를 확인하지 못했습니다.');
+        appAlert.alert('알림', '아이디를 확인하지 못했습니다.');
         return;
       }
 
-      Alert.alert('아이디 확인', `회원님의 아이디는\n\n${foundUsername}\n\n입니다.`, [
+      appAlert.alert('아이디 확인', `회원님의 아이디는\n\n${foundUsername}\n\n입니다.`, [
         { text: '로그인하기', onPress: goToLogin },
       ]);
     } catch (error) {
       const msg =
         error?.response?.data?.message ||
         '아이디 찾기 중 오류가 발생했습니다.';
-      Alert.alert('알림', msg);
+      appAlert.alert('알림', msg);
       resetIdentity();
     } finally {
       setSubmitting(false);
@@ -118,7 +119,7 @@ const IDfind = ({ navigation }) => {
 
   if (!screenReady) {
     return (
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <AuthScreenShell>
         <View style={styles.headerSection}>
           <View style={styles.headerTop}>
             <Skeleton
@@ -153,12 +154,12 @@ const IDfind = ({ navigation }) => {
             borderRadius={normalize(14)}
           />
         </View>
-      </SafeAreaView>
+      </AuthScreenShell>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <AuthScreenShell>
       <View style={styles.headerSection}>
         <View style={styles.headerTop}>
           <TouchableOpacity
@@ -181,20 +182,19 @@ const IDfind = ({ navigation }) => {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.contentSection}>
           <SignupStepScroll normalize={normalize} bottomOffset={100}>
-            <Text style={styles.inputLabel}>이름</Text>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                placeholder="이름 입력"
-                placeholderTextColor={colors.textSecondary}
-                value={name}
-                onChangeText={(t) => {
-                  setName(t);
-                  if (isIdentityVerified) resetIdentity();
-                }}
-                editable={!submitting}
-              />
-            </View>
+            <AuthTextField
+              label="이름"
+              icon="user"
+              placeholder="이름 입력"
+              value={name}
+              autoCapitalize="words"
+              onChangeText={(t) => {
+                setName(t);
+                if (isIdentityVerified) resetIdentity();
+              }}
+              editable={!submitting}
+              style={{ marginBottom: 16 }}
+            />
 
             <RecoveryInicisFields
               styles={styles}
@@ -211,21 +211,14 @@ const IDfind = ({ navigation }) => {
       </TouchableWithoutFeedback>
 
       <View style={styles.footerSection}>
-        <TouchableOpacity
-          style={[
-            styles.primaryButton,
-            (!isIdentityVerified || submitting) && styles.primaryButtonDisabled,
-          ]}
-          activeOpacity={0.9}
-          disabled={!isIdentityVerified || submitting}
+        <AuthPrimaryButton
+          label={submitting ? '확인 중...' : '아이디 확인'}
           onPress={() => handleFindUsername()}
-        >
-          <Text style={styles.primaryButtonText}>
-            {submitting ? '확인 중...' : '아이디 확인'}
-          </Text>
-        </TouchableOpacity>
+          disabled={!isIdentityVerified}
+          loading={submitting}
+        />
       </View>
-    </SafeAreaView>
+    </AuthScreenShell>
   );
 };
 
