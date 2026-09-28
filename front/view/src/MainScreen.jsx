@@ -21,7 +21,7 @@ function hasDeepLinkTab(route) {
 const MainScreen = ({ navigation, route }) => {
   const deepLinkReady = hasDeepLinkTab(route);
   const [activeTab, setActiveTab] = useState(
-    deepLinkReady ? route.params.screen || route.params.initialTab : 'board',
+    deepLinkReady ? route.params.screen || route.params.initialTab : 'timer',
   );
   // 위젯 딥링크가 있으면 탭을 즉시 마운트해 linking state가 board로 덮이지 않게 함
   const [screenReady, setScreenReady] = useState(deepLinkReady);

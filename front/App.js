@@ -139,6 +139,7 @@ const linking = {
   config: {
     screens: {
       Main: {
+        initialRouteName: 'timer',
         screens: {
           board: 'board-tab',
           message: 'message',

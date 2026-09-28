@@ -88,7 +88,7 @@ export default function MainTabNavigator({
 
   return (
     <Tab.Navigator
-      initialRouteName="board"
+      initialRouteName="timer"
       tabBar={(props) => (
         <MainTabBar
           {...props}
