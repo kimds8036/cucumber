@@ -91,6 +91,13 @@ export const createTimerStyles = (width, normalize) => {
     },
 
     // 친구 스토리 스타일
+    friendStoryRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+    },
+    friendStoryScrollView: {
+      flex: 1,
+    },
     friendStoryScroll: {
       flexDirection: 'row',
       alignItems: 'flex-start',
@@ -100,6 +107,7 @@ export const createTimerStyles = (width, normalize) => {
       alignItems: 'center',
       marginRight: normalize(14),
       width: normalize(56),
+      flexShrink: 0,
     },
     friendStoryAddCircle: {
       width: normalize(56),
@@ -852,13 +860,18 @@ export const createTimerFriendModalStyles = (normalize) =>
   StyleSheet.create({
     pokeOverlay: {
       flex: 1,
-      backgroundColor: colors.textLight3,
+      backgroundColor: colors.transparent,
     },
     pokeWrapper: {
       position: 'absolute',
       bottom: 0,
       left: 0,
       right: 0,
+    },
+    pokeCard: {
+      paddingHorizontal: normalize(18),
+      paddingTop: normalize(18),
+      paddingBottom: normalize(14),
     },
     pokePopup: {
       backgroundColor: colors.white,
@@ -868,6 +881,20 @@ export const createTimerFriendModalStyles = (normalize) =>
       paddingBottom: normalize(40),
       paddingTop: normalize(12),
       ...friendModalSheetShadow(normalize),
+    },
+    pokeHint: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textLight4,
+      textAlign: 'center',
+      lineHeight: normalize(20),
+      includeFontPadding: false,
+      marginBottom: normalize(14),
+    },
+    pokeHintHighlight: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.bold,
+      color: colors.primaryDark,
     },
     pokeHandle: {
       width: normalize(40),
@@ -948,7 +975,7 @@ export const createTimerFriendModalStyles = (normalize) =>
     pokeOutsideDesc: {
       fontSize: normalize(fontSizes.title),
       fontFamily: fonts.bold,
-      color: colors.white,
+      color: colors.text,
       lineHeight: normalize(24),
       includeFontPadding: false,
       textAlign: 'center',
@@ -956,12 +983,12 @@ export const createTimerFriendModalStyles = (normalize) =>
     pokeOutsideDescHighlight: {
       fontSize: normalize(fontSizes.title),
       fontFamily: fonts.bold,
-      color: colors.greenDark,
+      color: colors.primaryDark,
     },
     pokeOutsideDescRest: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.white,
+      color: colors.text,
     },
     pokeDivider: {
       height: 1,

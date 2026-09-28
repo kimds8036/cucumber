@@ -5,8 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  Share,
-  Platform,
   useWindowDimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -33,7 +31,6 @@ import {
   maybeRefreshAutoTimetableOnAppOpen,
 } from '../../utils/timetableSync';
 import { hydratePeriodTimesFromServer } from '../../utils/widget/periodTimeSettings';
-import { buildInviteShareContent } from '../../utils/shareLinks';
 
 const isSameProfileInfo = (a, b) => {
   if (!a || !b) return false;
@@ -104,28 +101,6 @@ const MyPage = ({ navigation }) => {
       { text: '취소', style: 'cancel' },
       { text: '로그아웃', style: 'destructive', onPress: () => handleLogout() },
     ]);
-  };
-
-  const handleInviteFriends = async () => {
-    try {
-      const res = await api.get('/api/invite/me');
-      const landingUrl = res.data?.data?.landingUrl;
-      if (!landingUrl) {
-        Alert.alert('친구 초대', '초대 링크를 만들지 못했습니다.');
-        return;
-      }
-      const share = buildInviteShareContent(landingUrl);
-      await Share.share(
-        Platform.OS === 'ios'
-          ? { message: share.message, url: share.url }
-          : { message: share.message, title: share.title },
-      );
-    } catch (e) {
-      Alert.alert(
-        '친구 초대',
-        e.response?.data?.message || '초대 링크를 공유하지 못했습니다.',
-      );
-    }
   };
 
   const handleDeleteAccount = () => {
@@ -565,11 +540,6 @@ const MyPage = ({ navigation }) => {
             title="회초리"
             subtitle="버그·기능 제안·불편 사항을 개발팀에 전달해요"
             onPress={() => navigation.navigate('DeveloperWhack')}
-          />
-          <MenuItem
-            icon="person-add-outline"
-            title="친구 초대하기"
-            onPress={handleInviteFriends}
           />
           <MenuItem
             icon="ribbon-outline"

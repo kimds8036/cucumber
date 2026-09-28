@@ -177,10 +177,10 @@ function adminUrl(subpath) {
   }
 
   const STUDENT_ID_REJECT_PRESET = [
-    '학생증 사진이 흐리거나 잘린 경우',
-    '이름이 일치하지 않음',
-    '학교 정보가 일치하지 않음',
-    '학생증이 아닌 사진',
+    'blurry',
+    'name_mismatch',
+    'school_mismatch',
+    'not_student_id',
   ];
   let pendingStudentIdRejectId = null;
 

@@ -22,11 +22,12 @@ import { getProfileHexByColorId } from '../utils/profileColor';
 import { useGuidePreview } from '../context/GuidePreviewContext';
 import EquippedBadge from './EquippedBadge';
 import { getGuideMyPageStats } from '../src/screens/UserGuide/guidePreviewData';
-import { colors } from '../styles/colors';
+import { colors, fonts } from '../styles/colors';
 import { useFriend } from '../context/FriendContext';
 import { useAuth } from '../context/AuthContext';
 import { useMainShellOptional } from '../context/MainShellContext';
 import StudentVerificationRejectedModal from './auth/StudentVerificationRejectedModal';
+import AppPopupModal from './common/AppPopupModal';
 
 const PROFILE_COUNTS_CACHE_TTL_MS = 10 * 60 * 1000;
 const ENROLLMENT_TOOLTIP_MS = 3000;
@@ -50,6 +51,7 @@ const ProfileCard = ({
   const [rejectionNoticeVisible, setRejectionNoticeVisible] = useState(false);
   const [cropDraft, setCropDraft] = useState(null);
   const [savingAvatar, setSavingAvatar] = useState(false);
+  const [avatarMenuVisible, setAvatarMenuVisible] = useState(false);
   const seededCounts =
     userInfo?.postCount != null && userInfo?.scrapCount != null;
   const [counts, setCounts] = useState({
@@ -202,6 +204,43 @@ const ProfileCard = ({
     setCropDraft(null);
   }, [savingAvatar]);
 
+  const openAvatarPicker = useCallback(() => {
+    if (isGuidePreview || savingAvatar) return;
+    if (userInfo?.avatarUrl) {
+      setAvatarMenuVisible(true);
+      return;
+    }
+    pickAvatar();
+  }, [isGuidePreview, savingAvatar, userInfo?.avatarUrl, pickAvatar]);
+
+  const handleChangePhoto = useCallback(() => {
+    setAvatarMenuVisible(false);
+    setTimeout(() => {
+      pickAvatar();
+    }, 280);
+  }, [pickAvatar]);
+
+  const handleResetAvatar = useCallback(async () => {
+    if (isGuidePreview || savingAvatar) return;
+    setSavingAvatar(true);
+    try {
+      await api.delete('/api/auth/me/avatar');
+      onAvatarChange?.(null);
+      await patchMypageProfileCache({ avatarUrl: null });
+      setAvatarMenuVisible(false);
+    } catch (error) {
+      appAlert.alert(
+        '변경 실패',
+        getApiUserFacingMessage(
+          error,
+          '기본 프로필로 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.',
+        ),
+      );
+    } finally {
+      setSavingAvatar(false);
+    }
+  }, [isGuidePreview, savingAvatar, onAvatarChange]);
+
   const handleCropConfirm = useCallback(
     async (cropRegion) => {
       if (!cropDraft?.base64 || savingAvatar) return;
@@ -237,9 +276,11 @@ const ProfileCard = ({
       <View style={styles.profileHeader}>
         <View style={styles.profileAvatarWrap}>
           <Pressable
-            onPress={pickAvatar}
+            onPress={openAvatarPicker}
             style={styles.profileCircle}
-            accessibilityLabel="프로필 사진 설정"
+            accessibilityLabel={
+              userInfo?.avatarUrl ? '프로필 사진 변경' : '프로필 사진 설정'
+            }
           >
             {userInfo?.avatarUrl ? (
               <Image
@@ -255,9 +296,14 @@ const ProfileCard = ({
               />
             )}
           </Pressable>
-          <View pointerEvents="none" style={styles.profileAvatarCam}>
+          <Pressable
+            onPress={openAvatarPicker}
+            style={styles.profileAvatarCam}
+            hitSlop={8}
+            accessibilityLabel="프로필 사진 변경"
+          >
             <Ionicons name="camera" size={normalize(12)} color={colors.white} />
-          </View>
+          </Pressable>
         </View>
 
         <View
@@ -514,6 +560,72 @@ const ProfileCard = ({
         onCancel={handleCropCancel}
         onConfirm={handleCropConfirm}
       />
+      <AppPopupModal
+        visible={avatarMenuVisible}
+        onClose={() => setAvatarMenuVisible(false)}
+        dismissOnBackdrop={!savingAvatar}
+        cardStyle={{ paddingVertical: 22 }}
+      >
+        <Text
+          style={{
+            fontSize: 18,
+            color: colors.text,
+            fontFamily: fonts.bold,
+            textAlign: 'center',
+            marginBottom: 16,
+          }}
+        >
+          프로필 사진
+        </Text>
+        <View style={{ gap: 8 }}>
+          <TouchableOpacity
+            style={{
+              height: 42,
+              borderRadius: 10,
+              backgroundColor: colors.primary,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: savingAvatar ? 0.6 : 1,
+            }}
+            onPress={handleChangePhoto}
+            disabled={savingAvatar}
+            activeOpacity={0.85}
+          >
+            <Text
+              style={{
+                fontSize: 14,
+                fontFamily: fonts.bold,
+                color: colors.white,
+              }}
+            >
+              사진 변경
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={{
+              height: 42,
+              borderRadius: 10,
+              backgroundColor: colors.textLight5,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: savingAvatar ? 0.6 : 1,
+            }}
+            onPress={handleResetAvatar}
+            disabled={savingAvatar}
+            activeOpacity={0.85}
+          >
+            <Text
+              style={{
+                fontSize: 14,
+                fontFamily: fonts.bold,
+                color: colors.textLight4,
+              }}
+            >
+              {savingAvatar ? '변경 중...' : '기본 프로필 변경'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </AppPopupModal>
     </View>
   );
 };

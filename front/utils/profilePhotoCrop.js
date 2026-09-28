@@ -1,21 +1,28 @@
+function finitePositive(value, fallback) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
 export function getCoverBaseSize(imageWidth, imageHeight, frameSize) {
-  const w = Number(imageWidth) || 1;
-  const h = Number(imageHeight) || 1;
-  const f = Number(frameSize) || 1;
+  const w = finitePositive(imageWidth, 1);
+  const h = finitePositive(imageHeight, 1);
+  const f = finitePositive(frameSize, 1);
   const scale = f / Math.min(w, h);
   return {
-    baseW: w * scale,
-    baseH: h * scale,
+    baseW: Math.max(1, Math.round(w * scale)),
+    baseH: Math.max(1, Math.round(h * scale)),
   };
 }
 
 export function clampPan(tx, ty, scale, baseW, baseH, frameSize) {
-  const s = Math.max(1, Number(scale) || 1);
+  const s = Math.max(1, finitePositive(scale, 1));
   const maxX = Math.max(0, (baseW * s - frameSize) / 2);
   const maxY = Math.max(0, (baseH * s - frameSize) / 2);
+  const x = Number(tx);
+  const y = Number(ty);
   return {
-    x: Math.min(maxX, Math.max(-maxX, tx)),
-    y: Math.min(maxY, Math.max(-maxY, ty)),
+    x: Math.min(maxX, Math.max(-maxX, Number.isFinite(x) ? x : 0)),
+    y: Math.min(maxY, Math.max(-maxY, Number.isFinite(y) ? y : 0)),
   };
 }
 
@@ -27,13 +34,16 @@ export function cropRegionFromTransform({
   baseH,
   frameSize,
 }) {
-  const s = Math.max(1, Number(scale) || 1);
-  const ox = -frameSize / 2 + (baseW * s) / 2 - tx;
-  const oy = -frameSize / 2 + (baseH * s) / 2 - ty;
+  const s = Math.max(1, finitePositive(scale, 1));
+  const w = finitePositive(baseW, 1);
+  const h = finitePositive(baseH, 1);
+  const f = finitePositive(frameSize, 1);
+  const ox = -f / 2 + (w * s) / 2 - (Number(tx) || 0);
+  const oy = -f / 2 + (h * s) / 2 - (Number(ty) || 0);
   return {
-    x: Math.min(1, Math.max(0, ox / s / baseW)),
-    y: Math.min(1, Math.max(0, oy / s / baseH)),
-    width: Math.min(1, Math.max(0.02, frameSize / s / baseW)),
-    height: Math.min(1, Math.max(0.02, frameSize / s / baseH)),
+    x: Math.min(1, Math.max(0, ox / s / w)),
+    y: Math.min(1, Math.max(0, oy / s / h)),
+    width: Math.min(1, Math.max(0.02, f / s / w)),
+    height: Math.min(1, Math.max(0.02, f / s / h)),
   };
 }

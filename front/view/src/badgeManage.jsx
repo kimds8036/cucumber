@@ -7,6 +7,7 @@ import {
   useWindowDimensions,
   ActivityIndicator,
   Animated,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -207,7 +208,14 @@ const BadgeManage = ({ navigation }) => {
       {loading ? (
         <ActivityIndicator style={{ marginTop: normalize(40) }} color={colors.primary} />
       ) : (
-        <View style={{ paddingHorizontal: pad, paddingTop: normalize(16) }}>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{
+            paddingHorizontal: pad,
+            paddingTop: normalize(16),
+            paddingBottom: normalize(28),
+          }}
+        >
           <Text
             style={{
               color: colors.textLight4,
@@ -237,7 +245,18 @@ const BadgeManage = ({ navigation }) => {
               />
             ))}
           </View>
-        </View>
+          <Text
+            style={{
+              marginTop: normalize(8),
+              color: colors.textLight4,
+              fontSize: normalize(12),
+              lineHeight: normalize(18),
+              textAlign: 'center',
+            }}
+          >
+            이미 받은 배지는 지급 조건이 바뀌어도 회수되지 않아요.
+          </Text>
+        </ScrollView>
       )}
     </SafeAreaView>
   );

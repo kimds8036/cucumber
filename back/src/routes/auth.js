@@ -635,6 +635,38 @@ router.patch('/me/avatar', authenticate, validate(avatarValidators), async (req,
   }
 });
 
+router.delete('/me/avatar', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const [prevRows] = await pool.execute(
+      `SELECT avatar_public_id FROM users WHERE id = ? LIMIT 1`,
+      [userId],
+    );
+    const prevPublicId = prevRows[0]?.avatar_public_id || null;
+
+    await pool.execute(
+      `UPDATE users SET avatar_url = NULL, avatar_public_id = NULL WHERE id = ?`,
+      [userId],
+    );
+
+    if (prevPublicId) {
+      await destroyUserAvatar(prevPublicId);
+    }
+
+    return res.json({
+      success: true,
+      message: '기본 프로필로 바꿨어요.',
+      data: { avatarUrl: null },
+    });
+  } catch (error) {
+    console.error('프로필 사진 삭제 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '기본 프로필로 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.',
+    });
+  }
+});
+
 // 내 아이디(username) 변경
 router.patch('/me/username', authenticate, validate(updateUsernameValidators), async (req, res) => {
   try {

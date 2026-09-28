@@ -269,6 +269,8 @@ export const createProfileCardStyles = (normalize) =>
       justifyContent: 'center',
       borderWidth: 2,
       borderColor: colors.white,
+      zIndex: 2,
+      elevation: 2,
     },
     profileInfo: {
       flex: 1,
