@@ -41,6 +41,7 @@ router.get('/list', authenticate, async (req, res) => {
          u.name_enc,
          u.username,
          u.color_id,
+         u.avatar_url,
          c.hex_code AS profile_color_hex,
          u.school_id,
          s.name AS school_name,
@@ -69,6 +70,7 @@ router.get('/list', authenticate, async (req, res) => {
         name: r.name,
         username: r.username ? `@${r.username}` : '',
         colorId: r.color_id,
+        avatarUrl: r.avatar_url || null,
         profileColor: {
           id: r.color_id,
           hexCode: r.profile_color_hex,
@@ -141,6 +143,7 @@ router.get('/requests/received', authenticate, async (req, res) => {
          u.name_enc,
          u.username,
          u.color_id,
+         u.avatar_url,
          c.hex_code AS profile_color_hex,
          u.school_id,
          s.name AS school_name,
@@ -165,6 +168,7 @@ router.get('/requests/received', authenticate, async (req, res) => {
         name: r.name,
         username: r.username ? `@${r.username}` : '',
         colorId: r.color_id,
+        avatarUrl: r.avatar_url || null,
         profileColor: {
           id: r.color_id,
           hexCode: r.profile_color_hex,

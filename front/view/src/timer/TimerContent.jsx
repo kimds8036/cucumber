@@ -167,6 +167,7 @@ export function TimerContent() {
               f.profileColor?.id,
             colorIndex: index % FRIEND_ICON_COLORS.length,
             isSuggestion: false,
+            avatarUrl: f.avatarUrl || f.avatar_url || null,
           })),
         );
         setSuggestions(
@@ -188,6 +189,7 @@ export function TimerContent() {
                 s.profileColor?.id,
               colorIndex: index % FRIEND_ICON_COLORS.length,
               isSuggestion: true,
+              avatarUrl: s.avatarUrl || s.avatar_url || null,
             };
           }),
         );

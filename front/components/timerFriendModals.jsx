@@ -25,7 +25,7 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { GuideFocusTarget } from './guide/GuideFocusTarget';
 import { GUIDE_FOCUS_TARGETS as T } from '../src/screens/UserGuide/guideFocusTargets';
-import ProfileIcon from '../assets/Profile.svg';
+import UserAvatar, { pickAvatarUrl } from './UserAvatar';
 import { colors } from '../styles/colors';
 import { createTimerFriendModalStyles, getNormalize } from '../styles/timer';
 import Skeleton from './common/Skeleton';
@@ -97,15 +97,15 @@ export const PokeModal = ({
           {/* 친구 정보 */}
           <View style={s.pokeFriendRow}>
             <View style={s.pokeAvatar}>
-              <ProfileIcon
-                width={normalize(45)}
-                height={normalize(45)}
-                color={getProfileInnerColor(
+              <UserAvatar
+                uri={pickAvatarUrl(friend)}
+                size={normalize(45)}
+                colorId={
                   friend.colorId ??
                     friend.profileColorId ??
                     friend.profile_color_id ??
-                    friend.colorIndex,
-                )}
+                    friend.colorIndex
+                }
               />
               {isStudying ? (
                 <View style={s.pokeStudyingBadge} />
@@ -505,12 +505,6 @@ export const FriendStoryBar = memo(function FriendStoryBar({
           const isSuggestion = Boolean(friend.isSuggestion);
           const isActive =
             !isSuggestion && studyingFriends[friend.id] === true;
-          const iconColor = getProfileInnerColor(
-            friend.colorId ??
-              friend.profileColorId ??
-              friend.profile_color_id ??
-              friend.colorIndex,
-          );
           return (
             <TouchableOpacity
               key={
@@ -531,10 +525,15 @@ export const FriendStoryBar = memo(function FriendStoryBar({
                   debugFriendStoryBorder('#5E5CE6'),
                 ]}
               >
-                <ProfileIcon
-                  width={normalize(56)}
-                  height={normalize(56)}
-                  color={iconColor}
+                <UserAvatar
+                  uri={pickAvatarUrl(friend)}
+                  size={normalize(56)}
+                  colorId={
+                    friend.colorId ??
+                      friend.profileColorId ??
+                      friend.profile_color_id ??
+                      friend.colorIndex
+                  }
                 />
                 {isSuggestion ? (
                   <View

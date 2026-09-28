@@ -50,6 +50,7 @@ const isSameProfileInfo = (a, b) => {
     a.profileColorNumber === b.profileColorNumber &&
     a.friendCount === b.friendCount &&
     a.equippedBadge?.key === b.equippedBadge?.key &&
+    a.avatarUrl === b.avatarUrl &&
     a.postCount === b.postCount &&
     a.scrapCount === b.scrapCount
   );
@@ -243,6 +244,7 @@ const MyPage = ({ navigation }) => {
           profileColorNumber: me.profileColor?.colorNumber ?? null,
           friendCount: me.friendCount ?? stats?.friendCount ?? 0,
           equippedBadge: me.equippedBadge ?? null,
+          avatarUrl: me.avatarUrl || null,
           postCount: Number(stats?.postCount ?? 0),
           scrapCount: Number(stats?.scrapCount ?? 0),
         };
@@ -496,6 +498,9 @@ const MyPage = ({ navigation }) => {
             userInfo={userInfo}
             navigation={navigation}
             onNavigateToTimetableChoice={handleNavigateToTimetableEdit}
+            onAvatarChange={(avatarUrl) => {
+              setUserInfo((prev) => (prev ? { ...prev, avatarUrl } : prev));
+            }}
             timetableSection={
               timetableLoading ? (
                 <View style={styles.ttSkeletonCard}>

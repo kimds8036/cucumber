@@ -19,12 +19,8 @@ import { useFriend } from '../../context/FriendContext';
 import { colors } from '../../styles/colors';
 import SubHeader from '../frame/subHeader';
 import { createFriendStyles } from '../../styles/friend.style';
-import ProfileIcon from '../../assets/Profile.svg';
+import UserAvatar, { pickAvatarUrl } from '../../components/UserAvatar';
 import { getNormalize } from '../../styles/frame.style';
-import {
-  getProfileInnerColor,
-  getProfileInnerColorBySeed,
-} from '../../utils/profileIconColor';
 import Skeleton from '../../components/common/Skeleton';
 
 // ── 컴포넌트 ─────────────────────────────────────────
@@ -104,6 +100,7 @@ const FriendsScreen = ({ navigation }) => {
               f.profile_color_id ??
               f.profileColor?.id,
             profileColorHex: f.profileColor?.hexCode ?? null,
+            avatarUrl: pickAvatarUrl(f),
           })),
         );
 
@@ -121,6 +118,7 @@ const FriendsScreen = ({ navigation }) => {
               r.profile_color_id ??
               r.profileColor?.id,
             profileColorHex: r.profileColor?.hexCode ?? null,
+            avatarUrl: pickAvatarUrl(r),
           })),
         );
       } catch (error) {
@@ -394,13 +392,11 @@ const FriendsScreen = ({ navigation }) => {
                       {friendRequests.map((req) => (
                         <View key={req.id} style={styles.requestCard}>
                           <View style={styles.reqAvatar}>
-                            <ProfileIcon
-                              width={normalize(40)}
-                              height={normalize(40)}
-                              color={
-                                getProfileInnerColor(req.profileColorId) ||
-                                getProfileInnerColorBySeed(req.id)
-                              }
+                            <UserAvatar
+                              uri={req.avatarUrl}
+                              size={normalize(40)}
+                              colorId={req.profileColorId}
+                              seed={req.id}
                             />
                           </View>
                           <Text style={styles.reqName} numberOfLines={1}>
@@ -450,13 +446,11 @@ const FriendsScreen = ({ navigation }) => {
                   filtered.map((friend) => (
                     <View key={friend.id} style={styles.friendRow}>
                       <View style={styles.avatar}>
-                        <ProfileIcon
-                          width={normalize(35)}
-                          height={normalize(35)}
-                          color={
-                            getProfileInnerColor(friend.profileColorId) ||
-                            getProfileInnerColorBySeed(friend.id)
-                          }
+                        <UserAvatar
+                          uri={friend.avatarUrl}
+                          size={normalize(35)}
+                          colorId={friend.profileColorId}
+                          seed={friend.id}
                         />
                       </View>
                       <View style={styles.friendInfo}>
@@ -512,13 +506,11 @@ const FriendsScreen = ({ navigation }) => {
                 <>
                   <View style={styles.sheetFriendInfo}>
                     <View style={styles.sheetAvatar}>
-                      <ProfileIcon
-                        width={normalize(45)}
-                        height={normalize(45)}
-                        color={
-                          getProfileInnerColor(selectedFriend.profileColorId) ||
-                          getProfileInnerColorBySeed(selectedFriend.id)
-                        }
+                      <UserAvatar
+                        uri={selectedFriend.avatarUrl}
+                        size={normalize(45)}
+                        colorId={selectedFriend.profileColorId}
+                        seed={selectedFriend.id}
                       />
                     </View>
                     <View>

@@ -68,6 +68,7 @@ export const createFriendStyles = (normalize) =>
       borderRadius: normalize(26),
       justifyContent: 'center',
       alignItems: 'center',
+      overflow: 'hidden',
       marginBottom: normalize(8),
     },
     reqAvatarText: {
@@ -158,6 +159,7 @@ export const createFriendStyles = (normalize) =>
       borderRadius: normalize(23),
       justifyContent: 'center',
       alignItems: 'center',
+      overflow: 'hidden',
       marginRight: normalize(12),
     },
     avatarText: {
@@ -250,6 +252,7 @@ export const createFriendStyles = (normalize) =>
       borderRadius: normalize(26),
       justifyContent: 'center',
       alignItems: 'center',
+      overflow: 'hidden',
     },
     sheetAvatarText: {
       fontSize: normalize(22),

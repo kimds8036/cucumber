@@ -61,6 +61,7 @@ export async function patchMypageProfileCache(patch = {}) {
           classNumber ?? next.classNumber,
         );
       }
+      if (patch.avatarUrl !== undefined) next.avatarUrl = patch.avatarUrl;
       await AsyncStorage.setItem(
         MYPAGE_PROFILE_CACHE_KEY,
         JSON.stringify({ ts: Date.now(), userInfo: next }),

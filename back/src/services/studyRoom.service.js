@@ -381,6 +381,8 @@ export async function getStudyRoomSnapshotForUser(userId) {
     `SELECT
        u.id AS userId,
        u.username AS username,
+       u.avatar_url AS avatarUrl,
+       u.color_id AS profileColorId,
        (
          SELECT DATE_FORMAT(ss.started_at, '%Y-%m-%d %H:%i:%s.%f')
          FROM study_sessions ss
@@ -408,6 +410,8 @@ export async function getStudyRoomSnapshotForUser(userId) {
     .map((r) => ({
       userId: r.userId,
       username: r.username || '',
+      avatarUrl: r.avatarUrl || r.avatar_url || null,
+      profileColorId: r.profileColorId ?? r.profile_color_id ?? null,
       startedAt: isoFromMysqlKstNaiveString(r.started_at_fmt),
       closedTotalMs: Number(r.closed_total_ms) || 0,
       isStudying: true,

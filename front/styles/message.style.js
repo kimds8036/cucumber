@@ -91,6 +91,7 @@ export const createMessageStyles = (width, normalize) => {
       borderRadius: normalize(20),
       justifyContent: 'center',
       alignItems: 'center',
+      overflow: 'hidden',
       marginRight: normalize(12),
     },
     listItemBody: {

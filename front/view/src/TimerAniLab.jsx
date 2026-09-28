@@ -713,6 +713,7 @@ export default function TimerAniLab({ navigation }) {
               f.profileColor?.id ??
               f.profileColor?.colorNumber ??
               null,
+            avatarUrl: f.avatarUrl || f.avatar_url || null,
           };
         });
         setFriendIds(ids);
@@ -739,6 +740,8 @@ export default function TimerAniLab({ navigation }) {
           gender: undefined,
           startedAtMs: Number.isFinite(startedMs) ? startedMs : null,
           closedTotalMs: Number(item.closedTotalMs) || 0,
+          avatarUrl: item.avatarUrl || item.avatar_url || null,
+          profileColorId: item.profileColorId ?? null,
         };
       }
       if (roomId != null) setServerRoomId(String(roomId));
@@ -850,6 +853,13 @@ export default function TimerAniLab({ navigation }) {
               item.closedTotalMs != null
                 ? Number(item.closedTotalMs) || 0
                 : prev[uid]?.closedTotalMs || 0,
+            avatarUrl:
+              item.avatarUrl ||
+              item.avatar_url ||
+              prev[uid]?.avatarUrl ||
+              null,
+            profileColorId:
+              item.profileColorId ?? prev[uid]?.profileColorId ?? null,
           },
         }));
       });
@@ -887,6 +897,13 @@ export default function TimerAniLab({ navigation }) {
               payload.closedTotalMs != null
                 ? Number(payload.closedTotalMs) || 0
                 : prev[uid]?.closedTotalMs || 0,
+            avatarUrl:
+              payload.avatarUrl ||
+              payload.avatar_url ||
+              prev[uid]?.avatarUrl ||
+              null,
+            profileColorId:
+              payload.profileColorId ?? prev[uid]?.profileColorId ?? null,
           },
         }));
         setOtherStartedAt((prev) => {
@@ -1523,6 +1540,7 @@ export default function TimerAniLab({ navigation }) {
             username={String(tipMeta?.username || '학생').replace(/^@/, '')}
             userId={tipUid}
             profileColorId={tipMeta?.profileColorId}
+            avatarUrl={tipMeta?.avatarUrl}
             isFriend={tipUid ? friendIds.has(tipUid) : false}
             requestSent={tipUid ? requestedFriendIds.has(tipUid) : false}
             onAddFriend={handleAddFriendFromTip}

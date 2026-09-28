@@ -7,12 +7,8 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import ProfileIcon from '../icons/ProfileIcon';
+import UserAvatar from '../UserAvatar';
 import { colors, fonts } from '../../styles/colors';
-import {
-  getProfileInnerColor,
-  getProfileInnerColorBySeed,
-} from '../../utils/profileIconColor';
 
 const TIP_W = 128;
 const TIP_H = 88;
@@ -29,6 +25,7 @@ export default function StudyRoomProfileTip({
   username,
   userId,
   profileColorId,
+  avatarUrl,
   isFriend,
   requestSent,
   onAddFriend,
@@ -78,9 +75,6 @@ export default function StudyRoomProfileTip({
     Math.max(4, (Number(stageW) || TIP_W + 8) - TIP_W - 4),
   );
   const top = Math.max(4, seat.seatY - TIP_H + 2);
-  const iconColor =
-    getProfileInnerColor(profileColorId) ||
-    getProfileInnerColorBySeed(userId);
   const addDisabled = isFriend || requestSent;
   const addLabel = isFriend ? '이미 친구' : requestSent ? '요청함' : '친구추가하기';
 
@@ -96,7 +90,12 @@ export default function StudyRoomProfileTip({
       <View style={tipStyles.card}>
         <View style={tipStyles.row}>
           <View style={tipStyles.avatar}>
-            <ProfileIcon size={28} color={iconColor} />
+            <UserAvatar
+              uri={avatarUrl}
+              size={32}
+              colorId={profileColorId}
+              seed={userId}
+            />
           </View>
           <Text style={tipStyles.id} numberOfLines={1}>
             {username || '학생'}

@@ -32,6 +32,7 @@ import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import Entypo from '@expo/vector-icons/Entypo';
 import { StackActions } from '@react-navigation/native';
 import ProfileIcon from '../../assets/Profile.svg';
+import UserAvatar, { pickAvatarUrl } from '../../components/UserAvatar';
 import { api } from '../../utils/api';
 import * as socketManager from './socketManager';
 import { useToast } from '../../context/ToastContext';
@@ -410,6 +411,7 @@ export function MessageContent({ navigation }) {
         name: item.other_user_name || item.name || '친구',
         subtitle: item.other_user_school_name || '',
         profileColorId: colorIdx,
+        avatarUrl: pickAvatarUrl(item),
       };
     }
     if (kind === 'note') {
@@ -644,6 +646,7 @@ export function MessageContent({ navigation }) {
           other_user_name: r.other_user_name,
           other_user_school_name: r.other_user_school_name,
           other_user_color_id: r.other_user_color_id,
+          avatarUrl: pickAvatarUrl(r),
           sortTime: parseUtcToLocal(at)?.getTime() ?? 0,
         };
       });
@@ -1056,10 +1059,10 @@ export function MessageContent({ navigation }) {
                       >
                         <View style={styles.listItemLeft}>
                           <View style={[styles.profileCircle]}>
-                            <ProfileIcon
-                              width={normalize(35)}
-                              height={normalize(35)}
-                              color={iconColor}
+                            <UserAvatar
+                              uri={item.avatarUrl}
+                              size={normalize(35)}
+                              colorId={colorIdx}
                             />
                           </View>
                           <View style={styles.listItemBody}>
@@ -1370,13 +1373,21 @@ export function MessageContent({ navigation }) {
             <>
               <View style={roomMenuSheetStyles.sheetRoomInfo}>
                 <View style={roomMenuSheetStyles.sheetAvatar}>
-                  <ProfileIcon
-                    width={normalize(45)}
-                    height={normalize(45)}
-                    color={getProfileInnerColor(
-                      roomMenuSheetMeta.profileColorId,
-                    )}
-                  />
+                  {roomMenuTarget.kind === 'dm' ? (
+                    <UserAvatar
+                      uri={roomMenuSheetMeta.avatarUrl}
+                      size={normalize(45)}
+                      colorId={roomMenuSheetMeta.profileColorId}
+                    />
+                  ) : (
+                    <ProfileIcon
+                      width={normalize(45)}
+                      height={normalize(45)}
+                      color={getProfileInnerColor(
+                        roomMenuSheetMeta.profileColorId,
+                      )}
+                    />
+                  )}
                 </View>
                 <View>
                   <Text style={roomMenuSheetStyles.sheetName}>
