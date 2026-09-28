@@ -200,8 +200,8 @@ function adminUrl(subpath) {
     legalDocuments: { title: '약관·방침', sub: '이용약관 · 개인정보처리방침 편집' },
     hallOfFame: { title: '회초리', sub: '제보 묶음 · 답변 관리' },
     adminAccounts: { title: '관리자 계정', sub: '계정·역할 관리 (최고관리자)' },
-    studentIds: { title: '가입 학생증', sub: '회원가입 학생증 수동 검수 — 승인 / 거절' },
-    manualSignup: { title: '수동 가입', sub: '학생 요청 시 관리자가 계정 직접 생성' },
+    studentIds: { title: '학생 인증(학생증)', sub: '인앱 학생증 수동 검수 — 승인 / 거절' },
+    manualSignup: { title: '수동 가입', sub: '관리자가 계정 직접 생성 (학교 선택 · 미인증 가능)' },
     certificates: { title: '재학증명서', sub: '네이버 재학증명서 URL·열람번호 검수 — 승인 / 거절' },
     reverificationIds: { title: '재인증 학생증', sub: '학년도 재인증·학교 전환 검수 — 승인 / 거절' },
     logs: { title: '변경 이력 (Audit Log)', sub: '모든 판정 및 상태 변경 기록' },
@@ -248,12 +248,21 @@ function adminUrl(subpath) {
     if (!v) return '-';
     const d = new Date(v);
     if (Number.isNaN(d.getTime())) return '-';
-    const yy = String(d.getFullYear()).slice(2);
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    const hh = String(d.getHours()).padStart(2, '0');
-    const mi = String(d.getMinutes()).padStart(2, '0');
-    return `${yy}.${mm}.${dd} ${hh}:${mi}`;
+    try {
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Seoul',
+        year: '2-digit',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).formatToParts(d);
+      const p = (type) => parts.find((x) => x.type === type)?.value || '00';
+      return `${p('year')}.${p('month')}.${p('day')} ${p('hour')}:${p('minute')}`;
+    } catch {
+      return '-';
+    }
   }
 
   function esc(v) {
@@ -496,7 +505,7 @@ function adminUrl(subpath) {
   function purposeLabel(purpose) {
     if (purpose === 'reverification') return '재인증';
     if (purpose === 'resubmit') return '거절 재제출';
-    return '가입';
+    return '최초 인증';
   }
 
   function renderSchoolTransition(s) {

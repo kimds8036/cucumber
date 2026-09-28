@@ -20,6 +20,10 @@ import {
 } from '../services/commentCount.service.js';
 import { createManualUserAccount } from '../services/adminManualSignup.service.js';
 import { applyUserSchoolUpdate } from '../services/userSchoolTransition.service.js';
+import {
+  adminHardDeleteUser,
+  adminSoftWithdrawUser,
+} from '../services/adminUserLifecycle.service.js';
 
 const router = express.Router();
 
@@ -913,6 +917,14 @@ router.get('/users', requireAdminApi, async (req, res) => {
          u.is_banned,
          u.is_whitelisted,
          u.is_shadow_muted,
+         sid.status AS latest_student_id_status,
+         cert.status AS latest_certificate_status,
+         EXISTS(
+           SELECT 1 FROM identity_verifications iv
+           WHERE iv.linked_user_id = u.id
+             AND iv.purpose = 'guardian_consent'
+             AND iv.status = 'consumed'
+         ) AS has_guardian_consent,
          (SELECT COUNT(*) FROM user_blocks ub WHERE ub.user_id = u.id) AS block_count,
          (SELECT COUNT(*) FROM user_blocks ub2 WHERE ub2.blocked_user_id = u.id) AS blocked_by_count,
          (SELECT COUNT(*) FROM posts p WHERE p.user_id = u.id AND p.is_deleted = FALSE) AS post_count,
@@ -922,13 +934,51 @@ router.get('/users', requireAdminApi, async (req, res) => {
          ) AS reported_count
        FROM users u
        LEFT JOIN schools sch ON sch.school_id = u.school_id
+       LEFT JOIN signup_student_id_submissions sid
+         ON sid.id = (
+           SELECT s2.id FROM signup_student_id_submissions s2
+           WHERE s2.user_id = u.id
+           ORDER BY s2.created_at DESC, s2.id DESC
+           LIMIT 1
+         )
+       LEFT JOIN signup_certificate_submissions cert
+         ON cert.id = (
+           SELECT c2.id FROM signup_certificate_submissions c2
+           WHERE c2.user_id = u.id
+           ORDER BY c2.created_at DESC, c2.id DESC
+           LIMIT 1
+         )
        WHERE ${whereSql}
        ${havingSql}
        ORDER BY u.id DESC
        LIMIT 100`,
       Number.isFinite(minReportedNum) && minReportedNum > 0 ? [...params, minReportedNum] : params
     );
-    res.json({ success: true, data: { users: rows } });
+
+    const users = rows.map((u) => {
+      let studentVerificationStatus = 'UNVERIFIED';
+      if (u.student_verified) {
+        studentVerificationStatus = 'APPROVED';
+      } else {
+        const sid = String(u.latest_student_id_status || '').toLowerCase();
+        const cert = String(u.latest_certificate_status || '').toLowerCase();
+        const latest =
+          sid || cert
+            ? // prefer whichever exists; if both, prefer student id (same as service when equal not known)
+              sid || cert
+            : '';
+        if (latest === 'pending') studentVerificationStatus = 'PENDING';
+        else if (latest === 'rejected') studentVerificationStatus = 'REJECTED';
+        else studentVerificationStatus = 'UNVERIFIED';
+      }
+      return {
+        ...u,
+        has_guardian_consent: Boolean(u.has_guardian_consent),
+        student_verification_status: studentVerificationStatus,
+      };
+    });
+
+    res.json({ success: true, data: { users } });
   } catch (error) {
     console.error('관리자 사용자 목록 조회 오류:', error);
     res.status(500).json({ success: false, message: '관리자 사용자 목록 조회 중 오류가 발생했습니다.' });
@@ -1250,6 +1300,92 @@ router.post('/users/:userId/shadow-mute', requireAdminApi, requireAdminRole(ADMI
     connection.release();
   }
 });
+
+/** 관리자 soft 탈퇴 (PII 익명화) */
+router.post(
+  '/users/:userId/withdraw',
+  requireAdminApi,
+  requireAdminRole(ADMIN_ROLES.SUPER, ADMIN_ROLES.MODERATOR),
+  async (req, res) => {
+    const adminUserId = req.user.userId;
+    const userId = Number(req.params.userId);
+    if (!Number.isFinite(userId) || userId <= 0) {
+      return res.status(400).json({ success: false, message: '유효하지 않은 사용자 ID입니다.' });
+    }
+    const note = String(req.body?.note || '').trim() || '관리자 soft 탈퇴';
+    try {
+      await adminSoftWithdrawUser(userId);
+      const connection = await pool.getConnection();
+      try {
+        await writeAuditLog(connection, {
+          adminUserId,
+          actionType: 'user_admin_withdraw',
+          targetType: 'user',
+          targetId: userId,
+          note,
+        });
+      } finally {
+        connection.release();
+      }
+      return res.json({ success: true, message: '계정을 soft 탈퇴 처리했습니다.' });
+    } catch (error) {
+      if (error?.code === 'USER_NOT_FOUND') {
+        return res.status(404).json({ success: false, message: '사용자를 찾을 수 없습니다.' });
+      }
+      if (error?.code === 'ALREADY_WITHDRAWN') {
+        return res.status(400).json({ success: false, message: '이미 탈퇴된 계정입니다.' });
+      }
+      console.error('[admin/users/withdraw]', error);
+      return res.status(500).json({ success: false, message: '탈퇴 처리 중 오류가 발생했습니다.' });
+    }
+  },
+);
+
+/** 테스트 계정 hard delete — 아이디 확인 필수, SUPER만 */
+router.delete(
+  '/users/:userId/hard',
+  requireAdminApi,
+  requireAdminRole(ADMIN_ROLES.SUPER),
+  async (req, res) => {
+    const adminUserId = req.user.userId;
+    const userId = Number(req.params.userId);
+    if (!Number.isFinite(userId) || userId <= 0) {
+      return res.status(400).json({ success: false, message: '유효하지 않은 사용자 ID입니다.' });
+    }
+    const confirmUsername =
+      String(req.body?.confirmUsername || req.query?.confirmUsername || '').trim();
+    const note = String(req.body?.note || '').trim() || '관리자 hard delete';
+    try {
+      const result = await adminHardDeleteUser(userId, { confirmUsername });
+      const connection = await pool.getConnection();
+      try {
+        await writeAuditLog(connection, {
+          adminUserId,
+          actionType: 'user_admin_hard_delete',
+          targetType: 'user',
+          targetId: userId,
+          note: `${note} · @${result.username}`,
+        });
+      } finally {
+        connection.release();
+      }
+      return res.json({
+        success: true,
+        message: '계정을 영구 삭제했습니다.',
+        data: result,
+      });
+    } catch (error) {
+      if (error?.code === 'USER_NOT_FOUND') {
+        return res.status(404).json({ success: false, message: '사용자를 찾을 수 없습니다.' });
+      }
+      if (error?.code === 'CONFIRM_REQUIRED' || error?.code === 'CONFIRM_MISMATCH') {
+        return res.status(400).json({ success: false, message: error.message });
+      }
+      console.error('[admin/users/hard]', error);
+      return res.status(500).json({ success: false, message: '영구 삭제 중 오류가 발생했습니다.' });
+    }
+  },
+);
 
 router.get('/users/:userId/sanctions', requireAdminApi, async (req, res) => {
   const userId = Number(req.params.userId);

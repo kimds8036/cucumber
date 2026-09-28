@@ -41,7 +41,10 @@ import {
   mergeTestReturnedMailNotification,
   navigateToResendPersonalMail,
 } from '../../utils/personalMail';
-import { normalizeNotificationDisplay } from '../../utils/notificationDisplay';
+import {
+  normalizeNotificationDisplay,
+  resolveStudentRejectReasonFromNotification,
+} from '../../utils/notificationDisplay';
 
 const PAGE_SIZE = 20;
 const INITIAL_PREFETCH_PAGES = 3;
@@ -104,12 +107,17 @@ const normalizeWatchers = (watchers) => normalizeStudySummaryWatchers(watchers);
 const mapRowToNotificationItem = (n) => {
   const icon = mapTypeToIcon(n.type, n.category);
   const display = normalizeNotificationDisplay(n);
+  const rejectReasonText =
+    n.relatedType === 'student_verification_rejected'
+      ? resolveStudentRejectReasonFromNotification(n)
+      : '';
   return {
     id: n.id,
     type: n.type,
     category: n.category,
     title: display.title,
-    content: display.content,
+    content: rejectReasonText || display.content,
+    body: n.body != null ? String(n.body) : '',
     time: formatTime(n.createdAt),
     createdAt: n.createdAt,
     isRead: !!n.isRead,
@@ -825,15 +833,11 @@ const NotificationScreen = ({ navigation }) => {
         navigation?.navigate('InquiryDetail', { inquiryId: n.relatedId });
         return;
       }
-      if (n.relatedType === 'student_verification_approved') {
-        preserveListOnNextFocusRef.current = false;
-        popToMainRoot(navigation);
-        return;
-      }
-      if (n.relatedType === 'student_verification_rejected') {
-        // 거절 게이트는 Auth 상태가 담당 — 알림함에서 나가면 거절 화면으로 복귀
-        preserveListOnNextFocusRef.current = false;
-        popToMainRoot(navigation);
+      if (
+        n.relatedType === 'student_verification_approved' ||
+        n.relatedType === 'student_verification_rejected'
+      ) {
+        // 목록에서 사유만 확인 — 탭해도 팝업/이동 없음
         return;
       }
       if (n.relatedType === 'post' && n.relatedId) {

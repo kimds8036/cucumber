@@ -6,13 +6,13 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   useWindowDimensions,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts } from '../../../styles/colors';
 import { api } from '../../../utils/api';
+import { appAlert } from '../../../utils/appAlert';
 import { normalizeBirthDateForCompare } from './signupBirthDatePolicy';
 import SubmittingLockModal from '../../../components/common/SubmittingLockModal';
 import SignupPrimaryFooter from './SignupPrimaryFooter';
@@ -61,7 +61,7 @@ const SignStepNeisPlusSubmit = ({
     if (busy) return;
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('권한 필요', '사진 첨부를 위해 앨범 접근 권한이 필요합니다.');
+      appAlert.alert('권한 필요', '사진 첨부를 위해 앨범 접근 권한이 필요합니다.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -73,7 +73,7 @@ const SignStepNeisPlusSubmit = ({
     if (result.canceled || !result.assets?.[0]) return;
     const asset = result.assets[0];
     if (!asset.base64) {
-      Alert.alert('첨부 실패', '이미지를 다시 선택해 주세요.');
+      appAlert.alert('첨부 실패', '이미지를 다시 선택해 주세요.');
       return;
     }
     setPickedUri(asset.uri);
@@ -104,7 +104,7 @@ const SignStepNeisPlusSubmit = ({
     }
 
     if (!pickedBase64) {
-      Alert.alert('알림', 'NEIS+ 학적 화면 사진을 첨부해 주세요.');
+      appAlert.alert('알림', 'NEIS+ 학적 화면 사진을 첨부해 주세요.');
       return;
     }
 
@@ -124,7 +124,7 @@ const SignStepNeisPlusSubmit = ({
       }
 
       if (!identity?.name?.trim() || !identity?.birthDate || !schoolId) {
-        Alert.alert('알림', '본인·학교 정보가 없습니다. 이전 단계를 확인해 주세요.');
+        appAlert.alert('알림', '본인·학교 정보가 없습니다. 이전 단계를 확인해 주세요.');
         return;
       }
 
@@ -146,7 +146,7 @@ const SignStepNeisPlusSubmit = ({
 
       const data = res.data?.data;
       if (!res.data?.success || !data?.passed) {
-        Alert.alert(
+        appAlert.alert(
           '제출 실패',
           res.data?.message || 'NEIS+ 사진을 다시 첨부해 주세요.',
         );
@@ -168,7 +168,7 @@ const SignStepNeisPlusSubmit = ({
       const timedOut = e?.code === 'ECONNABORTED';
       const networkLike =
         timedOut || !e?.response || e?.message === 'Network Error';
-      Alert.alert(
+      appAlert.alert(
         '제출 오류',
         e?.response?.status === 429
           ? e?.response?.data?.message ||

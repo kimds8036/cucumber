@@ -6,6 +6,10 @@ import React, {
   useState,
 } from 'react';
 
+/**
+ * @typedef {'national'|'student'} BoardFeedMode
+ */
+
 export const MAIN_TAB_TITLES = {
   board: '게시판',
   message: '메시지',
@@ -29,9 +33,37 @@ export function MainShellProvider({
   const [headerTitle, setHeaderTitleState] = useState(() =>
     getMainTabTitle(activeTab),
   );
+  /** @type {[BoardFeedMode, function]} */
+  const [boardFeedMode, setBoardFeedModeState] = useState('national');
+  const [studentVerifyRequest, setStudentVerifyRequest] = useState(null);
+  /** CTA/준비물/학생증 화면 등 학생인증 UI가 열려 있으면 true (탭 CTA 재표시 방지) */
+  const [studentVerifyUiOpen, setStudentVerifyUiOpen] = useState(false);
 
   const setHeaderTitle = useCallback((title) => {
     setHeaderTitleState(title);
+  }, []);
+
+  const setBoardFeedMode = useCallback((mode) => {
+    setBoardFeedModeState(mode === 'student' ? 'student' : 'national');
+  }, []);
+
+  /** 우리학교 등에서 학생인증 플로우 요청 (MainScreen Bridge가 구독) */
+  const requestStudentVerification = useCallback((payload = {}) => {
+    // CTA 모달 dismiss 직후 재표시·이중 Modal 경쟁을 막기 위해 즉시 잠금
+    setStudentVerifyUiOpen(true);
+    setStudentVerifyRequest({
+      id: Date.now(),
+      reason: payload.reason || 'school',
+      statusHint: payload.statusHint || null,
+    });
+  }, []);
+
+  const clearStudentVerificationRequest = useCallback(() => {
+    setStudentVerifyRequest(null);
+  }, []);
+
+  const endStudentVerificationUi = useCallback(() => {
+    setStudentVerifyUiOpen(false);
   }, []);
 
   const value = useMemo(
@@ -41,8 +73,28 @@ export function MainShellProvider({
       setHeaderTitle,
       activeTab,
       setActiveTab,
+      boardFeedMode,
+      setBoardFeedMode,
+      studentVerifyRequest,
+      studentVerifyUiOpen,
+      requestStudentVerification,
+      clearStudentVerificationRequest,
+      endStudentVerificationUi,
     }),
-    [navigation, headerTitle, setHeaderTitle, activeTab, setActiveTab],
+    [
+      navigation,
+      headerTitle,
+      setHeaderTitle,
+      activeTab,
+      setActiveTab,
+      boardFeedMode,
+      setBoardFeedMode,
+      studentVerifyRequest,
+      studentVerifyUiOpen,
+      requestStudentVerification,
+      clearStudentVerificationRequest,
+      endStudentVerificationUi,
+    ],
   );
 
   return (

@@ -38,7 +38,8 @@ function extractToken(req) {
 async function loadUserAuthState(userId) {
   const [rows] = await pool.execute(
     `SELECT is_deleted, is_banned, is_suspended, suspended_until,
-            token_version, reverification_status, reverification_deadline, school_id
+            token_version, reverification_status, reverification_deadline, school_id,
+            student_verified
      FROM users
      WHERE id = ?
      LIMIT 1`,
@@ -205,6 +206,8 @@ export const authenticate = async (req, res, next) => {
       ...decoded,
       schoolId: row.school_id,
       school_id: row.school_id,
+      studentVerified: Boolean(row.student_verified),
+      student_verified: Boolean(row.student_verified),
     };
     next();
   } catch (error) {
@@ -213,6 +216,17 @@ export const authenticate = async (req, res, next) => {
       message: '인증 처리 중 오류가 발생했습니다.',
     });
   }
+};
+
+/** 학교·학생 전용 레이어 — student_verified 필수 (가입_개편) */
+export const requireStudentVerified = (req, res, next) => {
+  if (req.user?.type === 'admin_session') return next();
+  if (req.user?.studentVerified || req.user?.student_verified) return next();
+  return res.status(403).json({
+    success: false,
+    message: '학생 인증이 필요한 기능입니다. 학생증으로 인증해 주세요.',
+    code: API_ERROR_CODES.STUDENT_VERIFICATION_REQUIRED,
+  });
 };
 
 export const optionalAuthenticate = (req, res, next) => {

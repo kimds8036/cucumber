@@ -245,11 +245,39 @@ export const createProfileCardStyles = (normalize) =>
       borderRadius: normalize(28),
       justifyContent: 'center',
       alignItems: 'center',
+      overflow: 'hidden',
+      backgroundColor: colors.surface,
+    },
+    profileAvatarImage: {
+      width: normalize(70),
+      height: normalize(70),
+      borderRadius: normalize(28),
+    },
+    profileAvatarWrap: {
       marginRight: normalize(12),
+      position: 'relative',
+    },
+    profileAvatarCam: {
+      position: 'absolute',
+      right: 0,
+      bottom: 0,
+      width: normalize(22),
+      height: normalize(22),
+      borderRadius: normalize(11),
+      backgroundColor: colors.primaryDark,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 2,
+      borderColor: colors.background,
     },
     profileInfo: {
       flex: 1,
       position: 'relative',
+      justifyContent: 'center',
+      minHeight: normalize(70),
+    },
+    profileInfoUnverified: {
+      justifyContent: 'center',
     },
     profileNameRow: {
       flexDirection: 'row',
@@ -284,6 +312,37 @@ export const createProfileCardStyles = (normalize) =>
       fontFamily: fonts.regular,
       color: colors.textLight4,
       lineHeight: normalize(20),
+      marginTop: normalize(2),
+    },
+    verifyCtaBtn: {
+      marginTop: normalize(4),
+      alignSelf: 'flex-start',
+      maxWidth: '100%',
+      paddingVertical: normalize(2),
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    verifyCtaBtnRejected: {
+      gap: normalize(4),
+    },
+    verifyCtaIcon: {
+      marginTop: normalize(1),
+    },
+    verifyCtaText: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      lineHeight: normalize(20),
+      textDecorationLine: 'underline',
+      textDecorationColor: colors.textLight20 || colors.border,
+    },
+    verifyCtaTextPending: {
+      textDecorationLine: 'none',
+      color: colors.textLight40 || colors.textSecondary,
+    },
+    verifyCtaTextRejected: {
+      color: colors.scrapDark || '#A46E17',
+      textDecorationColor: 'rgba(164, 110, 23, 0.35)',
     },
     profileEnrollmentBlock: {
       position: 'relative',
@@ -682,6 +741,44 @@ export const createNotificationSettingsStyles = (normalize) => {
       color: colors.white,
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
+    },
+
+    /** 학년·반 변경 카드 */
+    academicCard: {
+      paddingTop: normalize(4),
+      paddingBottom: normalize(4),
+    },
+    academicGateCard: {
+      paddingTop: normalize(16),
+      paddingBottom: normalize(8),
+    },
+    academicGateText: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textSecondary,
+      lineHeight: normalize(fontSizes.lg + 6),
+      marginBottom: normalize(14),
+    },
+    academicGateButton: {
+      marginTop: 0,
+      marginBottom: normalize(8),
+    },
+    academicSchoolField: {
+      paddingTop: normalize(12),
+      paddingBottom: normalize(8),
+    },
+    academicGradeClassRow: {
+      flexDirection: 'row',
+      gap: normalize(12),
+      paddingBottom: normalize(8),
+    },
+    academicGradeClassCol: {
+      flex: 1,
+      minWidth: 0,
+    },
+    academicSubmitButton: {
+      marginTop: normalize(4),
+      marginBottom: normalize(12),
     },
   });
 };

@@ -16,26 +16,42 @@ export const validatePassword = (password) => {
   return passwordRegex.test(password);
 };
 
-/** 가입 상한 만 나이 — 매년 (올해 - N)년 1월 1일 기준으로 롤링 */
+/**
+ * 중·고 학적 추론용 상한(만 나이). 가입 자체는 상한 없음
+ */
 export const SIGNUP_MAX_AGE = 21;
+
+/** 가입 하한(만 나이) — 초등 입학 연령대 */
+export const SIGNUP_MIN_AGE = 6;
+
+export function computeAge(birthDate, ref = new Date()) {
+  const birth = new Date(birthDate);
+  if (Number.isNaN(birth.getTime())) return null;
+  let age = ref.getFullYear() - birth.getFullYear();
+  const beforeBirthday =
+    ref.getMonth() < birth.getMonth() ||
+    (ref.getMonth() === birth.getMonth() && ref.getDate() < birth.getDate());
+  if (beforeBirthday) age -= 1;
+  return age;
+}
 
 export function getSignupBirthDateBoundaries(ref = new Date()) {
   const Y = ref.getFullYear();
-  const pad = (n) => String(n).padStart(2, '0');
   return {
     minDate: `${Y - SIGNUP_MAX_AGE}-01-01`,
-    tooYoungCutoff: `${Y - 12}-01-01`,
+    tooYoungCutoff: `${Y - SIGNUP_MIN_AGE + 1}-01-01`,
     minYear: Y - SIGNUP_MAX_AGE,
     maxAge: SIGNUP_MAX_AGE,
+    minAge: SIGNUP_MIN_AGE,
   };
 }
 
 /**
- * 가입 생년월일 검증 (프론트 signupBirthDatePolicy와 동일 롤링)
+ * 가입 생년월일 검증 — 만 SIGNUP_MIN_AGE 미만만 거부. 성인(연장)은 허용.
  * @param {string} birthDate YYYY-MM-DD
- * @param {{ allowOverMaxAge?: boolean }} [options] 성인 테스트 시 상한만 완화
+ * @param {{ allowOverMaxAge?: boolean }} [options] 하위 호환(무시)
  */
-export const validateBirthDate = (birthDate, options = {}) => {
+export const validateBirthDate = (birthDate, _options = {}) => {
   const raw = String(birthDate || '').trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return false;
   const [y, m, d] = raw.split('-').map(Number);
@@ -48,8 +64,7 @@ export const validateBirthDate = (birthDate, options = {}) => {
     return false;
   }
 
-  const { minDate, tooYoungCutoff } = getSignupBirthDateBoundaries();
-  if (raw >= tooYoungCutoff) return false;
-  if (raw < minDate && !options.allowOverMaxAge) return false;
+  const age = computeAge(raw);
+  if (age == null || age < SIGNUP_MIN_AGE) return false;
   return true;
 };

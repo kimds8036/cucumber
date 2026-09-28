@@ -15,7 +15,7 @@ import {
 } from '../utils/auth.js';
 import { validatePhone, validateUsername, validatePassword, validateBirthDate } from '../utils/validation.js';
 import { blockWhenFlag } from '../middleware/systemFlags.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, requireStudentVerified } from '../middleware/auth.js';
 import { applySignupInvite } from '../services/invite.service.js';
 import { publicBadgePayload } from '../services/badge.service.js';
 import { validate } from '../middleware/validate.js';
@@ -24,7 +24,8 @@ import { validate } from '../middleware/validate.js';
 //   extractTextFromImageBase64,
 //   verifyStudentIdOcrForSignup,
 // } from '../services/studentIdOcr.service.js';
-import { uploadSignupStudentIdPhoto } from '../services/signupStudentIdPhoto.service.js';
+import { uploadSignupStudentIdPhoto, packStudentIdCloudinaryPayload } from '../services/signupStudentIdPhoto.service.js';
+import { uploadUserAvatarImage, destroyUserAvatar } from '../services/userAvatar.service.js';
 import {
   inferExpectedSchoolLevel,
   inferGradeFromBirthDate,
@@ -85,6 +86,7 @@ import {
 import {
   notifyCertificateReviewPending,
   notifyStudentIdReviewPending,
+  notifySignupCreated,
 } from '../services/discordWebhook.service.js';
 import {
   verifyKakaoAccessToken,
@@ -379,10 +381,8 @@ const signupValidators = [
     .withMessage('생년월일을 입력해주세요.'),
   body('schoolId').optional({ values: 'falsy' }).isString().trim().isLength({ min: 1, max: 50 }),
   body('claimedSchoolName').optional({ values: 'falsy' }).isString().trim().isLength({ max: 100 }),
-  body('grade').exists({ checkNull: true }).withMessage('학년을 선택해주세요.')
-    .bail().toInt().isInt({ min: 1, max: 6 }).withMessage('학년이 올바르지 않습니다.'),
-  body('classNumber').exists({ checkNull: true }).withMessage('반을 선택해주세요.')
-    .bail().toInt().isInt({ min: 1, max: 50 }).withMessage('반이 올바르지 않습니다.'),
+  body('grade').optional({ values: 'falsy' }).toInt().isInt({ min: 1, max: 6 }).withMessage('학년이 올바르지 않습니다.'),
+  body('classNumber').optional({ values: 'falsy' }).toInt().isInt({ min: 1, max: 50 }).withMessage('반이 올바르지 않습니다.'),
   body('colorId').optional({ values: 'falsy' }).toInt().isInt({ min: 1, max: 4 }),
   body('verificationMethod').optional({ values: 'falsy' }).isString().isIn(['student_id', 'certificate']),
   body('certificateViewUrl').optional({ values: 'falsy' }).isString().isLength({ max: 500 }),
@@ -454,11 +454,13 @@ router.get('/me', authenticate, async (req, res) => {
          u.username,
          u.name_enc,
          u.color_id,
+         u.avatar_url,
          u.equipped_badge_key,
          u.school_id,
          u.grade,
          u.class_number,
          u.color_id,
+         u.created_at,
          c.hex_code AS profile_color_hex,
          c.color_number AS profile_color_number,
          u.student_verified,
@@ -500,6 +502,10 @@ router.get('/me', authenticate, async (req, res) => {
         username: user.username,
         name: user.name,
         colorId: user.color_id,
+        avatarUrl: user.avatar_url || null,
+        createdAt: user.created_at
+          ? new Date(user.created_at).toISOString()
+          : null,
         school: {
           id: user.school_id,
           name: user.school_name,
@@ -575,6 +581,56 @@ router.post('/check-username-available', authenticate, async (req, res) => {
     return res.status(500).json({
       success: false,
       message: '아이디 확인 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+const avatarValidators = [
+  body('imageBase64').exists({ checkFalsy: true }).withMessage('사진이 필요합니다.')
+    .bail().isString().withMessage('사진이 필요합니다.'),
+  body('cropRegion').optional({ nullable: true }).isObject().withMessage('자르기 영역이 올바르지 않습니다.'),
+];
+
+router.patch('/me/avatar', authenticate, validate(avatarValidators), async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const imageBase64 = String(req.body?.imageBase64 || '');
+    const cropRegion = req.body?.cropRegion ?? null;
+
+    const uploaded = await uploadUserAvatarImage({ imageBase64, cropRegion });
+
+    const [prevRows] = await pool.execute(
+      `SELECT avatar_public_id FROM users WHERE id = ? LIMIT 1`,
+      [userId],
+    );
+    const prevPublicId = prevRows[0]?.avatar_public_id || null;
+
+    await pool.execute(
+      `UPDATE users SET avatar_url = ?, avatar_public_id = ? WHERE id = ?`,
+      [uploaded.avatarUrl, uploaded.avatarPublicId, userId],
+    );
+
+    if (prevPublicId && prevPublicId !== uploaded.avatarPublicId) {
+      await destroyUserAvatar(prevPublicId);
+    }
+
+    return res.json({
+      success: true,
+      message: '프로필 사진을 저장했어요.',
+      data: { avatarUrl: uploaded.avatarUrl },
+    });
+  } catch (error) {
+    const code = error?.code;
+    if (code === 'IMAGE_REQUIRED') {
+      return res.status(400).json({ success: false, message: '사진을 선택해 주세요.' });
+    }
+    if (code === 'IMAGE_TOO_LARGE') {
+      return res.status(400).json({ success: false, message: '사진 용량이 너무 커요. 다른 사진을 골라 주세요.' });
+    }
+    console.error('프로필 사진 저장 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '프로필 사진 저장 중 오류가 발생했습니다.',
     });
   }
 });
@@ -665,7 +721,7 @@ router.patch('/me/username', authenticate, validate(updateUsernameValidators), a
 });
 
 // 내 학년·반 변경 (학교 변경 불가)
-router.patch('/me/academic', authenticate, validate(updateAcademicValidators), async (req, res) => {
+router.patch('/me/academic', authenticate, requireStudentVerified, validate(updateAcademicValidators), async (req, res) => {
   try {
     const userId = req.user.userId;
     const grade = Number(req.body?.grade);
@@ -939,11 +995,29 @@ router.post('/check-phone-available', signupPhoneBackendLimiter, async (req, res
       phoneLookupBindParams(phone),
     );
 
+    if (existing.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          phone,
+          available: true,
+          providers: [],
+          providerLabel: null,
+        },
+      });
+    }
+
+    const existingUserId = Number(existing[0].id);
+    const providers = await listOauthProvidersForUser(pool, existingUserId);
+    const providerLabel = formatSocialProvidersLabel(providers) || null;
+
     return res.json({
       success: true,
       data: {
         phone,
-        available: existing.length === 0,
+        available: false,
+        providers,
+        providerLabel,
       },
     });
   } catch (error) {
@@ -1344,8 +1418,12 @@ router.post(
         if (existingLink) {
           return res.status(409).json({
             success: false,
-            message: '이미 가입된 카카오 계정입니다. 로그인해주세요.',
+            message: '이미 가입된 카카오 계정입니다. 카카오 로그인을 이용해 주세요.',
             code: 'KAKAO_ALREADY_LINKED',
+            data: {
+              providers: ['kakao'],
+              providerLabel: '카카오',
+            },
           });
         }
       } catch (oauthErr) {
@@ -1379,8 +1457,12 @@ router.post(
         if (existingLink) {
           return res.status(409).json({
             success: false,
-            message: '이미 가입된 Apple 계정입니다. 로그인해주세요.',
+            message: '이미 가입된 Apple 계정입니다. Apple 로그인을 이용해 주세요.',
             code: 'APPLE_ALREADY_LINKED',
+            data: {
+              providers: ['apple'],
+              providerLabel: 'Apple',
+            },
           });
         }
       } catch (oauthErr) {
@@ -1398,15 +1480,13 @@ router.post(
     // [SIGNUP_REDESIGN_SKIP] 필수 필드·약관·토큰 검증
     if (!skipValidation) {
       // 소셜: 공개 아이디·비번은 승인 후 SignProfileUsername — 가입 시 생략
+      // 학교·학년·반: 가입 시 선택 아님 — 인앱 학생증 인증 때 설정 (가입_개편)
       const accountRequired = !isSocialSignup;
       if (
         (accountRequired && (!username || !password)) ||
         !name ||
         !phone ||
-        !birthDate ||
-        !resolvedSchoolId ||
-        !grade ||
-        !classNumber
+        !birthDate
       ) {
         return res.status(400).json({
           success: false,
@@ -1421,11 +1501,6 @@ router.post(
             message: '증명서 열람 주소와 열람 번호를 입력해주세요.',
           });
         }
-      } else if (!schoolId?.trim()) {
-        return res.status(400).json({
-          success: false,
-          message: '재학 중인 학교를 선택해 주세요.',
-        });
       }
 
       const requiredConsentOk =
@@ -1443,13 +1518,7 @@ router.post(
         });
       }
 
-      if (!isCertificateSignup && !studentVerificationToken?.trim()) {
-        return res.status(400).json({
-          success: false,
-          message: '학생증 촬영을 먼저 완료해 주세요.',
-          code: 'STUDENT_VERIFICATION_TOKEN_REQUIRED',
-        });
-      }
+      // 학생증 토큰은 선택 — 미제출 가입 후 인앱에서 인증 유도 (가입_개편)
     }
 
     const resolvedColorId = Number(rawColorId) || pickRandomProfileColorId();
@@ -1457,20 +1526,42 @@ router.post(
     const expectedLevel = inferExpectedSchoolLevel(normalizedBirthDate);
     const inferredGrade = inferGradeFromBirthDate(normalizedBirthDate, expectedLevel);
     let resolvedGrade = Number(grade);
-    if (!Number.isFinite(resolvedGrade) || resolvedGrade < 1 || resolvedGrade > 3) {
+    if (!Number.isFinite(resolvedGrade) || resolvedGrade < 1 || resolvedGrade > 6) {
       resolvedGrade = inferredGrade || 1;
+    }
+    if (
+      expectedLevel &&
+      expectedLevel !== 'elementary' &&
+      resolvedGrade > 3
+    ) {
+      resolvedGrade = Math.min(3, resolvedGrade);
     }
     const resolvedClassNumber = Number(classNumber) || 1;
 
-    let effectiveSchoolId = resolvedSchoolId;
+    let effectiveSchoolId = resolvedSchoolId
+      ? String(resolvedSchoolId).trim() || null
+      : null;
     if (skipValidation) {
       const trimmedSchool = String(effectiveSchoolId || '').trim();
       if (!trimmedSchool || trimmedSchool === 'REDESIGN_SKIP' || trimmedSchool === 'CERT_PENDING') {
-        const [fallbackSchools] = await pool.execute('SELECT school_id FROM schools LIMIT 1');
-        if (fallbackSchools.length > 0) {
-          effectiveSchoolId = fallbackSchools[0].school_id;
-        }
+        // 스킵 모드: 학교 없이 가입 가능 (NULL)
+        effectiveSchoolId = null;
       }
+    }
+    if (effectiveSchoolId && !isCertificateSignup) {
+      const [schoolOk] = await pool.execute(
+        'SELECT school_id FROM schools WHERE school_id = ? LIMIT 1',
+        [effectiveSchoolId],
+      );
+      if (!schoolOk.length) {
+        return res.status(400).json({
+          success: false,
+          message: '유효하지 않은 학교입니다.',
+        });
+      }
+    }
+    if (isCertificateSignup && !effectiveSchoolId) {
+      effectiveSchoolId = null;
     }
 
     let signupUsername = skipValidation
@@ -1596,8 +1687,13 @@ router.post(
     if (existingByUsername.length > 0) {
       return res.status(409).json({
         success: false,
-        message: '이미 사용 중인 아이디입니다. 로그인해주세요.',
+        message:
+          '이미 사용 중인 아이디입니다.\n\n아이디와 비밀번호로 로그인해 주세요.',
         code: 'USERNAME_ALREADY_REGISTERED',
+        data: {
+          providers: [],
+          providerLabel: null,
+        },
       });
     }
     const [existingByPhone] = await pool.execute(
@@ -1610,11 +1706,15 @@ router.post(
       const existingUserId = Number(existingByPhone[0].id);
       const providers = await listOauthProvidersForUser(pool, existingUserId);
       const label = formatSocialProvidersLabel(providers);
+      const loginHow =
+        Array.isArray(providers) && providers.length > 0
+          ? providers.length === 1
+            ? `${label} 로그인을 이용해 주세요.`
+            : `${label.replace(/·/g, ' 또는 ')} 로그인을 이용해 주세요.`
+          : '아이디와 비밀번호로 로그인해 주세요.';
       return res.status(409).json({
         success: false,
-        message: label
-          ? `이미 ${label}로 가입된 전화번호입니다. 로그인해주세요.`
-          : '이미 가입된 전화번호입니다. 로그인해주세요.',
+        message: `이미 가입된 전화번호입니다.\n\n${loginHow}`,
         code: 'PHONE_ALREADY_REGISTERED',
         data: {
           providers,
@@ -1726,14 +1826,18 @@ router.post(
       }
 
       let studentIdManualVerification = null;
-      if (!isCertificateSignup && !skipValidation) {
+      if (
+        !isCertificateSignup &&
+        !skipValidation &&
+        studentVerificationToken?.trim()
+      ) {
         try {
           studentIdManualVerification = await consumeStudentIdManualVerificationToken(
             studentVerificationToken,
             {
               name: anchorName,
               birthDate: anchorBirthDate,
-              schoolId: String(schoolId || effectiveSchoolId).trim(),
+              schoolId: String(schoolId || effectiveSchoolId || '').trim() || undefined,
               phone: anchorPhone,
             },
             connection,
@@ -1953,12 +2057,14 @@ router.post(
         },
       );
 
-      scheduleSchoolTermSync(effectiveSchoolId);
-      try {
-        const { scheduleSchoolStats } = await import('../services/cronSchedule.hooks.js');
-        scheduleSchoolStats(effectiveSchoolId);
-      } catch (e) {
-        console.warn('[signup] school-stats reserve', e?.message || e);
+      if (effectiveSchoolId) {
+        scheduleSchoolTermSync(effectiveSchoolId);
+        try {
+          const { scheduleSchoolStats } = await import('../services/cronSchedule.hooks.js');
+          scheduleSchoolStats(effectiveSchoolId);
+        } catch (e) {
+          console.warn('[signup] school-stats reserve', e?.message || e);
+        }
       }
 
       if (isCertificateSignup && reviewSubmissionId) {
@@ -1976,9 +2082,19 @@ router.post(
           schoolId: studentIdManualVerification.schoolId,
           purpose: 'signup',
           submissionId: reviewSubmissionId,
+          birthDate: resolvedSignupBirthDate || normalizedBirthDate || null,
           cloudinaryUrl: studentIdManualVerification.cloudinaryUrl,
         });
       }
+
+      notifySignupCreated({
+        userId,
+        username: signupUsername,
+        signupMethod: signupMethod || 'phone',
+        birthDate: normalizedBirthDate || null,
+        schoolId: effectiveSchoolId || null,
+        studentVerified: Boolean(studentVerifiedOnInsert),
+      });
 
       res.status(201).json({ 
         success: true, 
@@ -2510,7 +2626,7 @@ router.post('/withdraw', authenticate, async (req, res) => {
 router.post('/signup/upload-student-id', signupOcrLimiter, async (req, res) => {
   try {
     const skipValidation = isSignupRedesignSkipValidation();
-    const { name, birthDate, imageBase64, cropRegion, phone: rawPhone, schoolId } =
+    const { name, birthDate, imageBase64, imageBase64Secondary, cropRegion, phone: rawPhone, schoolId } =
       req.body || {};
 
     // [SIGNUP_REDESIGN_SKIP] 이미지·학교 필수 검증 우회
@@ -2562,12 +2678,19 @@ router.post('/signup/upload-student-id', signupOcrLimiter, async (req, res) => {
 
     let uploaded;
     try {
-      uploaded = await uploadSignupStudentIdPhoto({ imageBase64, cropRegion });
+      const primary = await uploadSignupStudentIdPhoto({ imageBase64, cropRegion });
+      let secondary = null;
+      if (imageBase64Secondary) {
+        secondary = await uploadSignupStudentIdPhoto({
+          imageBase64: imageBase64Secondary,
+        });
+      }
+      uploaded = packStudentIdCloudinaryPayload(primary, secondary);
     } catch (uploadErr) {
       console.error('[signup/upload-student-id] Cloudinary 오류:', uploadErr);
       return res.status(500).json({
         success: false,
-        message: '학생증 이미지 업로드에 실패했습니다. 다시 촬영해 주세요.',
+        message: '학생증 이미지 업로드에 실패했습니다. 다시 첨부해 주세요.',
       });
     }
 
@@ -2610,7 +2733,8 @@ router.post('/signup/upload-student-id', signupOcrLimiter, async (req, res) => {
 router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { imageBase64, cropRegion, schoolId: bodySchoolId } = req.body || {};
+    const { imageBase64, imageBase64Secondary, cropRegion, schoolId: bodySchoolId, grade, classNumber } =
+      req.body || {};
 
     if (!imageBase64) {
       return res.status(400).json({
@@ -2632,12 +2756,6 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
         message: '이미 학생 인증이 완료된 계정입니다.',
       });
     }
-    if (!isReverificationResubmit && verification.status !== 'REJECTED') {
-      return res.status(400).json({
-        success: false,
-        message: '재제출은 거절된 경우에만 가능합니다.',
-      });
-    }
     if (isReverificationResubmit && verification.reverificationSubmissionPending) {
       return res.status(400).json({
         success: false,
@@ -2648,6 +2766,19 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
       return res.status(400).json({
         success: false,
         message: '이미 제출된 학생증이 검수 대기 중입니다.',
+      });
+    }
+
+    const canFirstSubmit =
+      !isReverificationResubmit && verification.status === 'UNVERIFIED';
+    if (
+      !isReverificationResubmit &&
+      verification.status !== 'REJECTED' &&
+      !canFirstSubmit
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: '학생증 제출이 가능한 상태가 아닙니다.',
       });
     }
 
@@ -2663,13 +2794,42 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
     }
     const user = userRows[0];
 
-    const submissionPurpose = isReverificationResubmit ? 'reverification' : 'resubmit';
+    const submissionPurpose = isReverificationResubmit
+      ? 'reverification'
+      : canFirstSubmit
+        ? 'signup'
+        : 'resubmit';
     const targetSchoolId = String(bodySchoolId || user.school_id || '').trim();
     if (!targetSchoolId) {
       return res.status(400).json({
         success: false,
         message: '재학 학교를 선택해 주세요.',
       });
+    }
+
+    const resolvedGrade = Number(grade);
+    const resolvedClassNumber = Number(classNumber);
+    const hasEnrollment =
+      Number.isFinite(resolvedGrade) &&
+      resolvedGrade >= 1 &&
+      resolvedGrade <= 6 &&
+      Number.isFinite(resolvedClassNumber) &&
+      resolvedClassNumber >= 1 &&
+      resolvedClassNumber <= 50;
+
+    // 제출 시 학교·학년·반을 프로필에 반영 (검수 전에도 학적 입력 저장)
+    if (targetSchoolId && hasEnrollment) {
+      await pool.execute(
+        `UPDATE users
+         SET school_id = ?, grade = ?, class_number = ?
+         WHERE id = ? AND is_deleted = FALSE`,
+        [targetSchoolId, resolvedGrade, resolvedClassNumber, userId],
+      );
+    } else if (targetSchoolId) {
+      await pool.execute(
+        `UPDATE users SET school_id = ? WHERE id = ? AND is_deleted = FALSE`,
+        [targetSchoolId, userId],
+      );
     }
 
     const [schoolRows] = await pool.execute(
@@ -2687,7 +2847,14 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
 
     let uploaded;
     try {
-      uploaded = await uploadSignupStudentIdPhoto({ imageBase64, cropRegion });
+      const primary = await uploadSignupStudentIdPhoto({ imageBase64, cropRegion });
+      let secondary = null;
+      if (imageBase64Secondary) {
+        secondary = await uploadSignupStudentIdPhoto({
+          imageBase64: imageBase64Secondary,
+        });
+      }
+      uploaded = packStudentIdCloudinaryPayload(primary, secondary);
     } catch (uploadErr) {
       console.error('[resubmit-student-id] Cloudinary 오류:', uploadErr);
       return res.status(500).json({
@@ -2728,6 +2895,7 @@ router.post('/resubmit-student-id', authenticate, signupOcrLimiter, async (req, 
       schoolName: schoolRows[0]?.name,
       purpose: submissionPurpose,
       submissionId: sidInsert.insertId,
+      birthDate: user.birth_date || null,
       cloudinaryUrl: uploaded.cloudinaryUrl,
     });
 

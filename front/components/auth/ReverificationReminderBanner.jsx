@@ -34,7 +34,7 @@ export default function ReverificationReminderBanner({
 
   const isRequired = status === 'required';
   const title = isRequired
-    ? '학생증 재인증이 필요합니다'
+    ? '학생 재인증이 필요합니다'
     : '새 학년도 재인증 안내';
   const body = isRequired
     ? '올해 학생증으로 재인증을 완료해 주세요.'

@@ -217,7 +217,7 @@ const SignupConsentSheet = ({ visible, provider, onClose, onConfirm }) => {
           <Feather
             name="check"
             size={normalize(18)}
-            color={checked ? colors.white : colors.textLight2}
+            color={checked ? colors.textWhite : colors.textLight20}
           />
         </View>
       );
@@ -228,7 +228,7 @@ const SignupConsentSheet = ({ visible, provider, onClose, onConfirm }) => {
         <Feather
           name="check"
           size={normalize(18)}
-          color={checked ? colors.primary : colors.textLight2}
+          color={checked ? colors.primary : colors.textLight20}
         />
       </View>
     );
@@ -365,14 +365,14 @@ function createStyles(normalize) {
   return StyleSheet.create({
     modalOverlay: {
       flex: 1,
-      backgroundColor: colors.textLight3,
+      backgroundColor: colors.overlayLight,
     },
     sheet: {
       position: 'absolute',
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: colors.white,
+      backgroundColor: colors.background,
       borderTopLeftRadius: normalize(24),
       borderTopRightRadius: normalize(24),
       maxHeight: '88%',
@@ -385,6 +385,7 @@ function createStyles(normalize) {
       borderRadius: normalize(2),
       marginTop: normalize(10),
       marginBottom: normalize(12),
+      backgroundColor: colors.textLight20,
     },
     scrollContent: {
       paddingHorizontal: normalize(20),
@@ -393,9 +394,9 @@ function createStyles(normalize) {
     },
     bulkCard: {
       borderWidth: 1.5,
-      borderColor: colors.primary,
+      borderColor: colors.textLight20,
       borderRadius: normalize(20),
-      backgroundColor: colors.primaryLight2,
+      backgroundColor: colors.surface,
       paddingHorizontal: normalize(16),
       paddingVertical: normalize(14),
     },
@@ -410,7 +411,7 @@ function createStyles(normalize) {
     bulkTitle: {
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.xl),
-      color: colors.text,
+      color: colors.textPrimary,
     },
     bulkSubtitleRow: {
       flexDirection: 'row',
@@ -421,7 +422,7 @@ function createStyles(normalize) {
     bulkSubtitlePlain: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.md),
-      color: colors.textLight4,
+      color: colors.textSecondary,
     },
     bulkLink: {
       fontFamily: fonts.bold,
@@ -434,9 +435,9 @@ function createStyles(normalize) {
     },
     itemCard: {
       borderWidth: 1,
-      borderColor: colors.textLight2,
+      borderColor: colors.textLight20,
       borderRadius: normalize(16),
-      backgroundColor: colors.white,
+      backgroundColor: colors.background,
       paddingHorizontal: normalize(14),
       paddingVertical: normalize(12),
     },
@@ -459,7 +460,7 @@ function createStyles(normalize) {
       paddingVertical: normalize(2),
     },
     badgeOptional: {
-      backgroundColor: colors.textLight2,
+      backgroundColor: colors.textLight20,
       borderRadius: normalize(6),
       paddingHorizontal: normalize(6),
       paddingVertical: normalize(2),
@@ -467,14 +468,14 @@ function createStyles(normalize) {
     badgeText: {
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.sm),
-      color: colors.text,
+      color: colors.textPrimary,
     },
     itemLabel: {
       flex: 1,
       flexShrink: 1,
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.lg),
-      color: colors.text,
+      color: colors.textPrimary,
       lineHeight: normalize(22),
     },
     checkbox: {
@@ -482,8 +483,8 @@ function createStyles(normalize) {
       height: normalize(20),
       borderRadius: normalize(10),
       borderWidth: 1.5,
-      borderColor: colors.textLight2,
-      backgroundColor: colors.white,
+      borderColor: colors.textLight20,
+      backgroundColor: colors.background,
       alignItems: 'center',
       justifyContent: 'center',
       flexShrink: 0,
@@ -510,7 +511,7 @@ function createStyles(normalize) {
       marginTop: normalize(4),
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.md),
-      color: colors.textLight4,
+      color: colors.textSecondary,
       lineHeight: normalize(20),
       textAlign: 'center',
     },
@@ -519,20 +520,20 @@ function createStyles(normalize) {
       marginTop: normalize(8),
       height: normalize(52),
       borderRadius: normalize(26),
-      backgroundColor: colors.primary,
+      backgroundColor: colors.primaryDark,
       alignItems: 'center',
       justifyContent: 'center',
     },
     primaryButtonDisabled: {
-      backgroundColor: colors.textLight1,
+      backgroundColor: colors.disabled,
     },
     primaryButtonText: {
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.xxl),
-      color: colors.white,
+      color: colors.textWhite,
     },
     primaryButtonTextDisabled: {
-      color: colors.textLight4,
+      color: colors.textSecondary,
     },
   });
 }

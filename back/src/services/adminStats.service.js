@@ -59,6 +59,9 @@ export async function reconcileAdminStats() {
     pending_inquiries: `SELECT COUNT(*) AS c FROM inquiries WHERE status = 'pending' AND is_deleted = FALSE`,
     today_answered_inquiries: `SELECT COUNT(*) AS c FROM inquiries WHERE answered_at IS NOT NULL AND DATE(CONVERT_TZ(answered_at, '+00:00', '+09:00')) = ?`,
     delayed_reports_3d: `SELECT COUNT(*) AS c FROM reports WHERE status = 'pending' AND created_at < DATE_SUB(NOW(), INTERVAL 3 DAY)`,
+    today_new_signups: `SELECT COUNT(*) AS c FROM users WHERE is_deleted = FALSE AND DATE(CONVERT_TZ(created_at, '+00:00', '+09:00')) = ?`,
+    unverified_users: `SELECT COUNT(*) AS c FROM users WHERE is_deleted = FALSE AND student_verified = FALSE`,
+    pending_student_id_reviews: `SELECT COUNT(*) AS c FROM signup_student_id_submissions WHERE status = 'pending' AND submission_purpose IN ('signup', 'resubmit')`,
   };
 
   const results = {};
@@ -75,12 +78,6 @@ export async function reconcileAdminStats() {
 }
 
 export async function getAdminDashboardStats({ refresh = false } = {}) {
-  if (!refresh) {
-    const cached = await readCachedSummary();
-    if (cached) return cached;
-  }
-
-  const today = kstToday();
   const keys = [
     'today_new_reports',
     'pending_reports',
@@ -90,7 +87,19 @@ export async function getAdminDashboardStats({ refresh = false } = {}) {
     'pending_inquiries',
     'today_answered_inquiries',
     'delayed_reports_3d',
+    'today_new_signups',
+    'unverified_users',
+    'pending_student_id_reviews',
   ];
+
+  if (!refresh) {
+    const cached = await readCachedSummary();
+    if (cached && keys.every((k) => Object.prototype.hasOwnProperty.call(cached, k))) {
+      return cached;
+    }
+  }
+
+  const today = kstToday();
 
   const fromDb = {};
   let missing = false;
@@ -118,6 +127,9 @@ export function mapDashboardStatsToApi(stats) {
     pendingInquiries: stats.pending_inquiries || 0,
     todayAnsweredInquiries: stats.today_answered_inquiries || 0,
     delayedReports3d: stats.delayed_reports_3d || 0,
+    todayNewSignups: stats.today_new_signups || 0,
+    unverifiedUsers: stats.unverified_users || 0,
+    pendingStudentIdReviews: stats.pending_student_id_reviews || 0,
   };
 }
 

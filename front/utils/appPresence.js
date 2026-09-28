@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { api, getDeviceId, getOrCreateDeviceId } from './api';
+import { recordReviewPromptActiveDay } from './appReview';
 
 /** @ prefix 없이 — 로그아웃 시 clearUserSessionStorage(@*)에 안 지워짐 */
 const INSTALL_ID_KEY = 'yp_app_install_id';
@@ -59,6 +60,8 @@ export async function reportInstallOpen() {
 /** 메인 게시판 포커스 — 로그인 유저 last_seen (5분 스로틀) */
 export async function reportLastSeen() {
   try {
+    // 리뷰 유도용 누적 이용일 (연속 불필요)
+    await recordReviewPromptActiveDay().catch(() => {});
     const now = Date.now();
     const prevRaw = await AsyncStorage.getItem(LAST_SEEN_AT_KEY);
     const prev = prevRaw ? Number(prevRaw) : 0;

@@ -3,11 +3,11 @@ import {
   View,
   StyleSheet,
   useWindowDimensions,
-  Alert,
 } from 'react-native';
 import { colors } from '../../../styles/colors';
 import { getNormalize } from '../../../styles/frame.style';
 import { createSignupStyles } from '../../../styles/login.style';
+import { appAlert } from '../../../utils/appAlert';
 import { useAuth } from '../../../context/AuthContext';
 import SubHeader from '../../frame/subHeader';
 import SignStepNeisPlusSubmit from './SignStepNeisPlusSubmit';
@@ -39,7 +39,7 @@ const NeisPlusResubmit = ({ navigation }) => {
           insetBody={false}
           onSubmitted={async (data) => {
             await refreshStudentVerification();
-            Alert.alert(
+            appAlert.alert(
               '제출 완료',
               data?.message ||
                 'NEIS+ 사진이 제출되었습니다. 관리자 승인을 기다려 주세요.',

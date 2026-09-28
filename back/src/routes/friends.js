@@ -41,6 +41,7 @@ router.get('/list', authenticate, async (req, res) => {
          u.name_enc,
          u.username,
          u.color_id,
+         u.avatar_url,
          c.hex_code AS profile_color_hex,
          u.school_id,
          s.name AS school_name,
@@ -69,6 +70,7 @@ router.get('/list', authenticate, async (req, res) => {
         name: r.name,
         username: r.username ? `@${r.username}` : '',
         colorId: r.color_id,
+        avatarUrl: r.avatar_url || null,
         profileColor: {
           id: r.color_id,
           hexCode: r.profile_color_hex,
@@ -115,7 +117,7 @@ router.get('/studying-status', authenticate, async (req, res) => {
   }
 });
 
-/** 타이머 친구 바 — 하루 최대 2명의 비친구 추천 */
+/** 타이머 친구 바 — 하루 최대 5명(우선 3: 동교·동학년→학교급, 나머지 랜덤) */
 router.get('/timer-suggestions', authenticate, async (req, res) => {
   try {
     const data = await listTimerFriendSuggestions(req.user.userId);
@@ -141,6 +143,7 @@ router.get('/requests/received', authenticate, async (req, res) => {
          u.name_enc,
          u.username,
          u.color_id,
+         u.avatar_url,
          c.hex_code AS profile_color_hex,
          u.school_id,
          s.name AS school_name,
@@ -165,6 +168,7 @@ router.get('/requests/received', authenticate, async (req, res) => {
         name: r.name,
         username: r.username ? `@${r.username}` : '',
         colorId: r.color_id,
+        avatarUrl: r.avatar_url || null,
         profileColor: {
           id: r.color_id,
           hexCode: r.profile_color_hex,

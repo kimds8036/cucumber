@@ -1,12 +1,11 @@
-import pool from '../config/database.js';
 import { hashPassword } from '../utils/auth.js';
 import {
   inferExpectedSchoolLevel,
   inferGradeFromBirthDate,
   pickRandomProfileColorId,
-  computeAge,
 } from '../utils/signupEnrollment.js';
 import {
+  validateBirthDate,
   validatePassword,
   validatePhone,
   validateUsername,
@@ -20,13 +19,7 @@ import {
   USER_PII_INSERT_COLUMNS,
 } from './userPii.service.js';
 import { normalizeLocalKrPhone } from '../utils/phone.js';
-
-function validateStudentBirthDate(birthDate) {
-  const normalized = normalizeBirthDateInput(birthDate);
-  if (!normalized) return false;
-  const age = computeAge(normalized);
-  return age != null && age >= 10 && age <= 25;
-}
+import pool from '../config/database.js';
 
 export function normalizeManualSignupInput(raw) {
   const username = String(raw?.username || '').trim();
@@ -34,11 +27,13 @@ export function normalizeManualSignupInput(raw) {
   const name = String(raw?.name || '').trim();
   const phone = normalizeLocalKrPhone(raw?.phone);
   const birthDate = normalizeBirthDateInput(raw?.birthDate) || '';
-  const schoolId = String(raw?.schoolId || '').trim();
+  const schoolIdRaw = String(raw?.schoolId || '').trim();
+  const schoolId = schoolIdRaw || null;
   const grade = Number(raw?.grade);
   const classNumber = Number(raw?.classNumber);
   const colorId = Number(raw?.colorId) || pickRandomProfileColorId();
-  const studentVerified = raw?.studentVerified !== false;
+  // 기본: 앱 오픈가입과 같이 미인증(UNVERIFIED). 학교 지정 시에만 인증 완료 허용.
+  const studentVerified = raw?.studentVerified === true;
   const adminNote = String(raw?.adminNote || '').trim();
 
   const expectedLevel = inferExpectedSchoolLevel(birthDate);
@@ -46,9 +41,15 @@ export function normalizeManualSignupInput(raw) {
   if (!Number.isFinite(resolvedGrade) || resolvedGrade < 1) {
     resolvedGrade = inferGradeFromBirthDate(birthDate, expectedLevel) || 1;
   }
-  const resolvedClassNumber = Number.isFinite(classNumber) && classNumber >= 1
-    ? classNumber
-    : 1;
+  if (
+    expectedLevel &&
+    expectedLevel !== 'elementary' &&
+    resolvedGrade > 3
+  ) {
+    resolvedGrade = Math.min(3, resolvedGrade);
+  }
+  const resolvedClassNumber =
+    Number.isFinite(classNumber) && classNumber >= 1 ? classNumber : 1;
 
   return {
     username,
@@ -80,16 +81,23 @@ export function validateManualSignupInput(input) {
   if (!input.phone || !validatePhone(input.phone)) {
     errors.push('올바른 휴대폰 번호를 입력해 주세요.');
   }
-  if (!validateStudentBirthDate(input.birthDate)) {
-    errors.push('생년월일(YYYY-MM-DD)을 확인해 주세요. (만 10~25세)');
+  if (!validateBirthDate(input.birthDate)) {
+    errors.push('생년월일(YYYY-MM-DD)을 확인해 주세요. (만 6세 이상)');
   }
-  if (!input.schoolId) {
-    errors.push('학교를 선택해 주세요.');
+  if (input.studentVerified && !input.schoolId) {
+    errors.push('학생 인증 완료로 생성하려면 학교를 선택해 주세요.');
   }
-  if (!Number.isFinite(input.grade) || input.grade < 1 || input.grade > 6) {
-    errors.push('학년을 선택해 주세요.');
+  if (
+    input.schoolId &&
+    (!Number.isFinite(input.grade) || input.grade < 1 || input.grade > 6)
+  ) {
+    errors.push('학년을 선택해 주세요. (초등 1~6, 중·고 1~3)');
   }
-  if (!Number.isFinite(input.classNumber) || input.classNumber < 1 || input.classNumber > 50) {
+  if (
+    !Number.isFinite(input.classNumber) ||
+    input.classNumber < 1 ||
+    input.classNumber > 50
+  ) {
     errors.push('반 번호를 입력해 주세요.');
   }
   if (!Number.isFinite(input.colorId) || input.colorId < 1 || input.colorId > 4) {
@@ -104,6 +112,7 @@ export function validateManualSignupInput(input) {
 
 /**
  * 관리자 수동 회원 생성 (앱 가입과 동일 users 스키마·bcrypt·PII 암호화)
+ * 학교 없이 UNVERIFIED 생성 가능 (가입 개편과 동일).
  */
 export async function createManualUserAccount(rawInput, { adminUserId, connection: extConn } = {}) {
   const input = normalizeManualSignupInput(rawInput);
@@ -121,14 +130,16 @@ export async function createManualUserAccount(rawInput, { adminUserId, connectio
   try {
     if (ownConnection) await connection.beginTransaction();
 
-    const [schoolRows] = await connection.execute(
-      'SELECT school_id FROM schools WHERE school_id = ? LIMIT 1',
-      [input.schoolId],
-    );
-    if (!schoolRows.length) {
-      const err = new Error('선택한 학교를 찾을 수 없습니다.');
-      err.code = 'SCHOOL_NOT_FOUND';
-      throw err;
+    if (input.schoolId) {
+      const [schoolRows] = await connection.execute(
+        'SELECT school_id FROM schools WHERE school_id = ? LIMIT 1',
+        [input.schoolId],
+      );
+      if (!schoolRows.length) {
+        const err = new Error('선택한 학교를 찾을 수 없습니다.');
+        err.code = 'SCHOOL_NOT_FOUND';
+        throw err;
+      }
     }
 
     const [colorRows] = await connection.execute(

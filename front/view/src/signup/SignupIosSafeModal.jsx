@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Modal } from 'react-native';
+import { Modal, View, StyleSheet } from 'react-native';
 
 /**
  * iOS에서 Modal을 즉시 언마운트하면 투명 터치 차단 레이어가 남을 수 있어,
  * visible=false 애니메이션 완료(onDismiss) 후에만 언마운트한다.
+ * visible=false 동안 pointerEvents none 으로 고스트 터치 차단을 줄인다.
  */
 const SignupIosSafeModal = ({
   visible,
@@ -44,9 +45,21 @@ const SignupIosSafeModal = ({
 
   return (
     <Modal visible={visible} onDismiss={handleDismiss} {...modalProps}>
-      {children}
+      <View
+        style={styles.fill}
+        pointerEvents={visible ? 'auto' : 'none'}
+        collapsable={false}
+      >
+        {children}
+      </View>
     </Modal>
   );
 };
+
+const styles = StyleSheet.create({
+  fill: {
+    flex: 1,
+  },
+});
 
 export default SignupIosSafeModal;

@@ -50,6 +50,7 @@ const isSameProfileInfo = (a, b) => {
     a.profileColorNumber === b.profileColorNumber &&
     a.friendCount === b.friendCount &&
     a.equippedBadge?.key === b.equippedBadge?.key &&
+    a.avatarUrl === b.avatarUrl &&
     a.postCount === b.postCount &&
     a.scrapCount === b.scrapCount
   );
@@ -60,7 +61,7 @@ const MyPage = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createMyPageStyles(normalize), [normalize]);
-  const { logout } = useAuth();
+  const { logout, studentVerificationStatus } = useAuth();
   const TIMETABLE_CACHE_KEY = '@mypage_timetable_cache_v1';
   const TIMETABLE_CACHE_KEY_PREFIX = '@mypage_timetable_cache_v1:';
   const TIMETABLE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -243,6 +244,7 @@ const MyPage = ({ navigation }) => {
           profileColorNumber: me.profileColor?.colorNumber ?? null,
           friendCount: me.friendCount ?? stats?.friendCount ?? 0,
           equippedBadge: me.equippedBadge ?? null,
+          avatarUrl: me.avatarUrl || null,
           postCount: Number(stats?.postCount ?? 0),
           scrapCount: Number(stats?.scrapCount ?? 0),
         };
@@ -374,6 +376,16 @@ const MyPage = ({ navigation }) => {
   );
 
   const handleNavigateToTimetableEdit = () => {
+    // 미인증: 나이스 자동선택 불가 → 직접 선택(편집)으로 직행
+    if (studentVerificationStatus !== 'APPROVED') {
+      navigation.navigate('EditTimetable', {
+        existingTimetable:
+          timetable != null && typeof timetable === 'object' ? timetable : {},
+        timetableCacheKey,
+        returnToMypage: true,
+      });
+      return;
+    }
     navigation.navigate('TimetabelChoice', { timetableCacheKey });
   };
 
@@ -486,6 +498,9 @@ const MyPage = ({ navigation }) => {
             userInfo={userInfo}
             navigation={navigation}
             onNavigateToTimetableChoice={handleNavigateToTimetableEdit}
+            onAvatarChange={(avatarUrl) => {
+              setUserInfo((prev) => (prev ? { ...prev, avatarUrl } : prev));
+            }}
             timetableSection={
               timetableLoading ? (
                 <View style={styles.ttSkeletonCard}>

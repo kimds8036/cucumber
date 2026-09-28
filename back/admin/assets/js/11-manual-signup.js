@@ -22,9 +22,9 @@ function resetManualSignupForm() {
   const colorEl = document.getElementById('manual-signup-color');
   if (colorEl) colorEl.value = String(Math.floor(Math.random() * 4) + 1);
   const studentVerified = document.getElementById('manual-signup-student-verified');
-  if (studentVerified) studentVerified.checked = true;
+  if (studentVerified) studentVerified.checked = false;
   const schoolPick = document.getElementById('manual-signup-school-pick');
-  if (schoolPick) schoolPick.innerHTML = '<span class="txt-muted">학교를 검색해 선택하세요.</span>';
+  if (schoolPick) schoolPick.innerHTML = '<span class="txt-muted">선택 사항 — 없으면 미인증(UNVERIFIED)으로 생성됩니다.</span>';
   const result = document.getElementById('manual-signup-result');
   if (result) result.innerHTML = '';
 }
@@ -82,7 +82,7 @@ function pickManualSignupSchool(school) {
 function clearManualSignupSchool() {
   manualSignupSchool = null;
   const host = document.getElementById('manual-signup-school-pick');
-  if (host) host.innerHTML = '<span class="txt-muted">학교를 검색해 선택하세요.</span>';
+  if (host) host.innerHTML = '<span class="txt-muted">선택 사항 — 없으면 미인증(UNVERIFIED)으로 생성됩니다.</span>';
 }
 
 async function submitManualSignup() {
@@ -103,37 +103,42 @@ async function submitManualSignup() {
     alert('비밀번호 확인이 일치하지 않습니다.');
     return;
   }
-  if (!manualSignupSchool?.id) {
-    alert('학교를 검색해 선택해 주세요.');
+  if (studentVerified && !manualSignupSchool?.id) {
+    alert('학생 인증 완료로 생성하려면 학교를 선택해 주세요.');
     return;
   }
 
   try {
+    const body = {
+      username,
+      password,
+      name,
+      phone,
+      birthDate,
+      grade: Number(grade) || 1,
+      classNumber: Number(classNumber) || 1,
+      colorId: Number(colorId),
+      studentVerified: Boolean(studentVerified),
+      adminNote,
+    };
+    if (manualSignupSchool?.id) body.schoolId = manualSignupSchool.id;
+
     const { data } = await api('/users/manual', {
       method: 'POST',
-      body: JSON.stringify({
-        username,
-        password,
-        name,
-        phone,
-        birthDate,
-        schoolId: manualSignupSchool.id,
-        grade: Number(grade),
-        classNumber: Number(classNumber),
-        colorId: Number(colorId),
-        studentVerified,
-        adminNote,
-      }),
+      body: JSON.stringify(body),
     });
 
     if (resultHost) {
+      const verLabel = data.studentVerified
+        ? '학생 인증 완료'
+        : '미인증(UNVERIFIED)';
       resultHost.innerHTML = `
         <div class="detail-panel open" style="margin-top:12px">
           <div class="section-title">계정 생성 완료</div>
           <p>UID: <strong>#${data.userId}</strong></p>
           <p>아이디: <strong>${esc(data.username)}</strong></p>
-          <p>학생 인증: ${data.studentVerified ? '완료' : '미완료(검수 대기)'}</p>
-          <p class="section-hint">비밀번호는 이 화면에 다시 표시되지 않습니다. 학생에게 안전하게 전달하세요.</p>
+          <p>학생 인증: ${esc(verLabel)}</p>
+          <p class="section-hint">비밀번호는 이 화면에 다시 표시되지 않습니다. 사용자에게 안전하게 전달하세요.</p>
         </div>`;
     }
   } catch (error) {
@@ -147,8 +152,8 @@ function renderManualSignupPanel() {
 
   host.innerHTML = `
     <div class="detail-panel open">
-      <div class="section-title">학생 계정 수동 생성</div>
-      <p class="section-hint">앱 회원가입과 동일한 users 테이블·bcrypt 해시·PII 암호화를 사용합니다. 전화 인증은 완료 처리됩니다.</p>
+      <div class="section-title">계정 수동 생성</div>
+      <p class="section-hint">앱 가입과 동일 users·bcrypt·PII 암호화. 만 6세 이상. 학교는 선택(없으면 UNVERIFIED).</p>
       <div class="form-grid" style="margin-top:12px">
         <label>로그인 아이디 (3~20자, 영문·숫자·_)
           <input id="manual-signup-username" class="note-input" autocomplete="off" />
@@ -165,14 +170,17 @@ function renderManualSignupPanel() {
         <label>휴대폰 (010-0000-0000)
           <input id="manual-signup-phone" class="note-input" placeholder="010-1234-5678" />
         </label>
-        <label>생년월일
+        <label>생년월일 (만 6세+)
           <input id="manual-signup-birth" class="note-input" placeholder="YYYY-MM-DD" />
         </label>
-        <label>학년
+        <label>학년 (초등 1~6 / 중·고 1~3)
           <select id="manual-signup-grade" class="note-input">
             <option value="1">1학년</option>
             <option value="2">2학년</option>
             <option value="3">3학년</option>
+            <option value="4">4학년</option>
+            <option value="5">5학년</option>
+            <option value="6">6학년</option>
           </select>
         </label>
         <label>반
@@ -186,17 +194,17 @@ function renderManualSignupPanel() {
         </label>
       </div>
       <label style="display:block;margin-top:12px">
-        <input type="checkbox" id="manual-signup-student-verified" checked />
-        학생 인증 완료 처리 (student_verified)
+        <input type="checkbox" id="manual-signup-student-verified" />
+        학생 인증 완료 처리 (학교 선택 필수)
       </label>
       <div style="margin-top:16px">
-        <div class="section-title" style="font-size:13px">학교</div>
+        <div class="section-title" style="font-size:13px">학교 (선택)</div>
         <div class="filter-row">
           <input id="manual-signup-school-q" class="note-input" placeholder="학교명 검색" style="min-width:220px" />
           <button type="button" class="btn btn-sm" onclick="searchManualSignupSchools()">검색</button>
         </div>
         <div id="manual-signup-school-results" style="margin-top:8px"></div>
-        <div id="manual-signup-school-pick" class="txt-muted" style="margin-top:8px">학교를 검색해 선택하세요.</div>
+        <div id="manual-signup-school-pick" class="txt-muted" style="margin-top:8px">선택 사항 — 없으면 미인증(UNVERIFIED)으로 생성됩니다.</div>
       </div>
       <label style="display:block;margin-top:16px">생성 사유 (감사 로그)
         <textarea id="manual-signup-note" class="note-input" style="min-height:72px" placeholder="예: 오프라인 서류 확인 후 수동 가입"></textarea>

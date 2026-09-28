@@ -6,6 +6,7 @@ import { colors, fonts, fontSizes } from '../styles/colors';
 import { normalizeTagsFromApi } from '../utils/normalizePostTags';
 import DistanceBadge from './DistanceBadge';
 import EquippedBadge from './EquippedBadge';
+import { collectPostImageUris } from './board/PostImageSlider';
 
 /**
  * BoardPostCard
@@ -36,8 +37,8 @@ const BoardPostCard = ({
   distanceStale = false,
   distanceLoading = false,
 }) => {
-  const hasThumb =
-    typeof post.thumbnail === 'string' && post.thumbnail.trim().length > 0;
+  const thumbUri = collectPostImageUris(post)[0] || '';
+  const hasThumb = thumbUri.length > 0;
   const [containerWidth, setContainerWidth] = useState(0);
   const [tagWidths, setTagWidths] = useState([]);
   const [measureFallback, setMeasureFallback] = useState(false);
@@ -375,7 +376,7 @@ const BoardPostCard = ({
 
         {hasThumb ? (
           <Image
-            source={{ uri: post.thumbnail.trim() }}
+            source={{ uri: thumbUri }}
             style={styles.postThumb}
             resizeMode="cover"
           />

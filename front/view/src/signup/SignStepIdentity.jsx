@@ -2,12 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
-import { colors } from '../../../styles/colors';
+import { colors, fonts, fontSizes } from '../../../styles/colors';
+import AuthTextField from './AuthTextField';
+import { appAlert } from '../../../utils/appAlert';
 import { api } from '../../../utils/api';
 import { buildBirthDate } from './SignStepAgeGate';
 import {
@@ -18,6 +18,7 @@ import { e164ToLocalKr, normalizeLocalKrPhone } from '../../../utils/phoneFormat
 import SignupStepScroll from './SignupStepScroll';
 import SchoolSearchField from './SchoolSearchField';
 import SignupHelperText from './SignupHelperText';
+import { buildDuplicateAccountAlertMessage } from './signupDuplicateGuard';
 
 const SMS_RESEND_COOLDOWN_SEC = 60;
 
@@ -90,7 +91,7 @@ const SignStepIdentity = ({
       verificationCode: '',
     });
     if (reason === 'identity_changed') {
-      Alert.alert(
+      appAlert.alert(
         '알림',
         '이름 또는 전화번호가 변경되어 전화번호 인증을 다시 진행해 주세요.',
       );
@@ -143,15 +144,15 @@ const SignStepIdentity = ({
   const handleSendCode = async () => {
     if (isBusy || isVerified) return;
     if (!name.trim()) {
-      Alert.alert('알림', '이름을 입력해 주세요.');
+      appAlert.alert('알림', '이름을 입력해 주세요.');
       return;
     }
     if (!birthDate) {
-      Alert.alert('알림', '생년월일을 올바르게 입력해 주세요.');
+      appAlert.alert('알림', '생년월일을 올바르게 입력해 주세요.');
       return;
     }
     if (!phoneNumber) {
-      Alert.alert('알림', '전화번호를 입력해 주세요.');
+      appAlert.alert('알림', '전화번호를 입력해 주세요.');
       return;
     }
     if (resendCooldownSec > 0) return;
@@ -160,7 +161,7 @@ const SignStepIdentity = ({
     try {
       const normalized = normalizeLocalKrPhone(phoneNumber);
       if (!normalized || normalized.replace(/\D/g, '').length < 10) {
-        Alert.alert('알림', '전화번호를 올바르게 입력해 주세요.');
+        appAlert.alert('알림', '전화번호를 올바르게 입력해 주세요.');
         return;
       }
 
@@ -168,7 +169,13 @@ const SignStepIdentity = ({
         phone: normalized,
       });
       if (!dupRes.data?.data?.available) {
-        Alert.alert('알림', '이미 가입된 전화번호입니다.');
+        appAlert.alert(
+          '이미 가입된 계정',
+          buildDuplicateAccountAlertMessage({
+            providers: dupRes.data?.data?.providers,
+            code: 'PHONE_ALREADY_REGISTERED',
+          }),
+        );
         return;
       }
 
@@ -177,10 +184,10 @@ const SignStepIdentity = ({
       setIsCodeSent(true);
       setResendCooldownSec(SMS_RESEND_COOLDOWN_SEC);
       notifyChange({ isCodeSent: true, phoneNumber: normalized });
-      Alert.alert('알림', '인증 코드가 발송되었습니다.');
+      appAlert.alert('알림', '인증 코드가 발송되었습니다.');
     } catch (error) {
       console.warn('[SignStepIdentity] sendCode', error?.code || error);
-      Alert.alert('오류', mapFirebaseError(error));
+      appAlert.alert('오류', mapFirebaseError(error));
     } finally {
       setSendingCode(false);
     }
@@ -189,15 +196,15 @@ const SignStepIdentity = ({
   const handleVerifyCode = async () => {
     if (isBusy || isVerified) return;
     if (!name.trim() || !birthDate) {
-      Alert.alert('알림', '이름과 생년월일을 먼저 입력해 주세요.');
+      appAlert.alert('알림', '이름과 생년월일을 먼저 입력해 주세요.');
       return;
     }
     if (!phoneNumber || !verificationCode) {
-      Alert.alert('알림', '전화번호와 인증번호를 입력해 주세요.');
+      appAlert.alert('알림', '전화번호와 인증번호를 입력해 주세요.');
       return;
     }
     if (!confirmResultRef.current) {
-      Alert.alert('알림', '먼저 인증번호를 요청해 주세요.');
+      appAlert.alert('알림', '먼저 인증번호를 요청해 주세요.');
       return;
     }
 
@@ -228,7 +235,7 @@ const SignStepIdentity = ({
         birthDate,
         phoneNumber: verifiedPhone,
       });
-      Alert.alert('알림', '전화번호 인증이 완료되었습니다.');
+      appAlert.alert('알림', '전화번호 인증이 완료되었습니다.');
     } catch (error) {
       console.warn(
         '[SignStepIdentity] verifyCode',
@@ -238,7 +245,7 @@ const SignStepIdentity = ({
         error?.response?.data?.message ||
         mapFirebaseError(error) ||
         '인증번호 확인 중 오류가 발생했습니다.';
-      Alert.alert('오류', msg);
+      appAlert.alert('오류', msg);
     } finally {
       setVerifyingCode(false);
     }
@@ -254,69 +261,66 @@ const SignStepIdentity = ({
   return (
     <View style={{ flex: 1 }}>
       <SignupStepScroll normalize={normalize} bottomOffset={bottomOffset}>
-        <Text style={styles.inputLabel}>이름</Text>
-        <View style={styles.inputWrapper}>
-          <TextInput
-            style={styles.input}
-            value={name}
-            onChangeText={(t) => {
-              setName(t);
-              notifyChange({ name: t.trim(), birthDate });
-            }}
-            placeholderTextColor={colors.textLight4}
-            editable={!isBusy}
-          />
-        </View>
+        <AuthTextField
+          label="이름"
+          icon="user"
+          value={name}
+          placeholder="이름"
+          onChangeText={(t) => {
+            setName(t);
+            notifyChange({ name: t.trim(), birthDate });
+          }}
+          autoCapitalize="words"
+          editable={!isBusy}
+          style={{ marginBottom: 14 }}
+        />
 
-        <Text style={[styles.inputLabel, { marginTop: 12 }]}>생년월일</Text>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
+        <Text style={styles.inputLabel}>생년월일</Text>
+        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
           <View style={{ flex: 1.2 }}>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                value={year}
-                onChangeText={(t) => {
-                  const v = t.replace(/\D/g, '').slice(0, 4);
-                  setYear(v);
-                  notifyChange({ birthDate: buildBirthDate(v, month, day) });
-                }}
-                keyboardType="number-pad"
-                maxLength={4}
-                editable={!isBusy}
-              />
-            </View>
+            <AuthTextField
+              compact
+              value={year}
+              placeholder="년"
+              onChangeText={(t) => {
+                const v = t.replace(/\D/g, '').slice(0, 4);
+                setYear(v);
+                notifyChange({ birthDate: buildBirthDate(v, month, day) });
+              }}
+              keyboardType="number-pad"
+              maxLength={4}
+              editable={!isBusy}
+            />
           </View>
           <View style={{ flex: 1 }}>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                value={month}
-                onChangeText={(t) => {
-                  const v = t.replace(/\D/g, '').slice(0, 2);
-                  setMonth(v);
-                  notifyChange({ birthDate: buildBirthDate(year, v, day) });
-                }}
-                keyboardType="number-pad"
-                maxLength={2}
-                editable={!isBusy}
-              />
-            </View>
+            <AuthTextField
+              compact
+              value={month}
+              placeholder="월"
+              onChangeText={(t) => {
+                const v = t.replace(/\D/g, '').slice(0, 2);
+                setMonth(v);
+                notifyChange({ birthDate: buildBirthDate(year, v, day) });
+              }}
+              keyboardType="number-pad"
+              maxLength={2}
+              editable={!isBusy}
+            />
           </View>
           <View style={{ flex: 1 }}>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                value={day}
-                onChangeText={(t) => {
-                  const v = t.replace(/\D/g, '').slice(0, 2);
-                  setDay(v);
-                  notifyChange({ birthDate: buildBirthDate(year, month, v) });
-                }}
-                keyboardType="number-pad"
-                maxLength={2}
-                editable={!isBusy}
-              />
-            </View>
+            <AuthTextField
+              compact
+              value={day}
+              placeholder="일"
+              onChangeText={(t) => {
+                const v = t.replace(/\D/g, '').slice(0, 2);
+                setDay(v);
+                notifyChange({ birthDate: buildBirthDate(year, month, v) });
+              }}
+              keyboardType="number-pad"
+              maxLength={2}
+              editable={!isBusy}
+            />
           </View>
         </View>
 
@@ -328,20 +332,19 @@ const SignStepIdentity = ({
           disabled={isBusy || isVerified}
         />
 
-        <Text style={[styles.inputLabel, { marginTop: 16 }]}>전화번호</Text>
-        <View style={[styles.inputWrapper, styles.inputRow]}>
-          <View style={styles.inputWithButton}>
-            <TextInput
-              style={[styles.input, styles.inputFlex]}
-              value={phoneNumber}
-              onChangeText={(t) => {
-                setPhoneNumber(t);
-                notifyChange({ phoneNumber: t });
-              }}
-              keyboardType="phone-pad"
-              placeholderTextColor={colors.textLight4}
-              editable={!isVerified && !isBusy}
-            />
+        <AuthTextField
+          label="전화번호"
+          icon="phone"
+          value={phoneNumber}
+          placeholder="01012345678"
+          onChangeText={(t) => {
+            setPhoneNumber(t);
+            notifyChange({ phoneNumber: t });
+          }}
+          keyboardType="phone-pad"
+          editable={!isVerified && !isBusy}
+          style={{ marginTop: 16, marginBottom: 14 }}
+          rightAddon={
             <TouchableOpacity
               style={[
                 styles.verifyButton,
@@ -349,7 +352,7 @@ const SignStepIdentity = ({
                   isBusy ||
                   isVerified ||
                   resendCooldownSec > 0) && {
-                  backgroundColor: colors.textLight1,
+                  backgroundColor: colors.textLight20,
                 },
               ]}
               onPress={handleSendCode}
@@ -361,39 +364,46 @@ const SignStepIdentity = ({
               }
             >
               {sendingCode ? (
-                <ActivityIndicator size="small" color={colors.white} />
+                <ActivityIndicator size="small" color={colors.background} />
               ) : (
-                <Text style={styles.verifyButtonText}>{sendButtonLabel()}</Text>
+                <Text
+                  style={[
+                    styles.verifyButtonText,
+                    { fontSize: normalize(fontSizes.lg), fontFamily: fonts.bold },
+                  ]}
+                >
+                  {sendButtonLabel()}
+                </Text>
               )}
             </TouchableOpacity>
-          </View>
-        </View>
+          }
+        />
 
-        <Text style={[styles.inputLabel, { marginTop: 12 }]}>인증번호</Text>
-        <View style={styles.inputWrapper}>
-          <TextInput
-            style={styles.input}
-            value={verificationCode}
-            onChangeText={(t) => {
-              setVerificationCode(t);
-              notifyChange({ verificationCode: t });
-            }}
-            keyboardType="number-pad"
-            editable={isCodeSent && !isVerified && !isBusy}
-          />
-        </View>
+        <AuthTextField
+          label="인증번호"
+          icon="hash"
+          value={verificationCode}
+          placeholder="인증번호"
+          onChangeText={(t) => {
+            setVerificationCode(t);
+            notifyChange({ verificationCode: t });
+          }}
+          keyboardType="number-pad"
+          editable={isCodeSent && !isVerified && !isBusy}
+          style={{ marginBottom: 10 }}
+        />
         {isCodeSent && !isVerified ? (
           <TouchableOpacity
             style={[
               styles.verifyButton,
-              { marginTop: 8 },
+              { marginTop: 4, minHeight: normalize(48), borderRadius: normalize(16) },
               isBusy && { opacity: 0.6 },
             ]}
             onPress={handleVerifyCode}
             disabled={isBusy}
           >
             {verifyingCode ? (
-              <ActivityIndicator size="small" color={colors.white} />
+              <ActivityIndicator size="small" color={colors.background} />
             ) : (
               <Text style={styles.verifyButtonText}>인증 확인</Text>
             )}

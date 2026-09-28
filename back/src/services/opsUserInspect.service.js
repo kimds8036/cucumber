@@ -272,8 +272,14 @@ export async function inspectOpsUser(queryRaw) {
     const [[byId]] = await pool.execute(
       `SELECT
          u.id, u.username, u.name_enc, u.school_id, u.grade, u.class_number,
-         u.last_seen_at,
-         sch.name AS school_name
+         u.student_verified, u.last_seen_at,
+         sch.name AS school_name,
+         EXISTS(
+           SELECT 1 FROM identity_verifications iv
+           WHERE iv.linked_user_id = u.id
+             AND iv.purpose = 'guardian_consent'
+             AND iv.status = 'consumed'
+         ) AS has_guardian_consent
        FROM users u
        LEFT JOIN schools sch ON sch.school_id = u.school_id
        WHERE u.id = ? AND u.is_deleted = FALSE
@@ -286,8 +292,14 @@ export async function inspectOpsUser(queryRaw) {
     const [[byName]] = await pool.execute(
       `SELECT
          u.id, u.username, u.name_enc, u.school_id, u.grade, u.class_number,
-         u.last_seen_at,
-         sch.name AS school_name
+         u.student_verified, u.last_seen_at,
+         sch.name AS school_name,
+         EXISTS(
+           SELECT 1 FROM identity_verifications iv
+           WHERE iv.linked_user_id = u.id
+             AND iv.purpose = 'guardian_consent'
+             AND iv.status = 'consumed'
+         ) AS has_guardian_consent
        FROM users u
        LEFT JOIN schools sch ON sch.school_id = u.school_id
        WHERE u.username = ? AND u.is_deleted = FALSE
@@ -333,6 +345,8 @@ export async function inspectOpsUser(queryRaw) {
       schoolName: row.school_name || null,
       grade: row.grade,
       classNumber: row.class_number,
+      studentVerified: Boolean(row.student_verified),
+      hasGuardianConsent: Boolean(row.has_guardian_consent),
       lastSeenAt: row.last_seen_at
         ? new Date(row.last_seen_at).toISOString()
         : null,

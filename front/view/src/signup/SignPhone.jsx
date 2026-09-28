@@ -10,13 +10,13 @@ import {
   Text,
   TouchableOpacity,
   useWindowDimensions,
-  Alert,
   InteractionManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import Feather from '@expo/vector-icons/Feather';
 import { createSignupStyles } from '../../../styles/login.style';
+import { appAlert } from '../../../utils/appAlert';
+import AuthSignupStepHeader from './AuthSignupStepHeader';
 import { colors } from '../../../styles/colors';
 import SignStepGuardianConsentModal from './SignStepGuardianConsentModal';
 import SignupStudentIdentityIntroModal from './SignupStudentIdentityIntroModal';
@@ -32,11 +32,13 @@ import SignStepNeisPlusSubmit from './SignStepNeisPlusSubmit';
 import SignStepCertificateGuide from './SignStepCertificateGuide';
 import SignStepCertificate from './SignStepCertificate';
 import SignupPrimaryFooter from './SignupPrimaryFooter';
+import AuthSignupComplete from './AuthSignupComplete';
 import Skeleton from '../../../components/common/Skeleton';
 import usePreventSignupStackExit from './usePreventSignupStackExit';
 import {
   buildAbortSignupConfirmAlert,
   leaveSignupToEntry,
+  waitForSignupModalsToClear,
 } from './signupAbort';
 import { api, setAuthToken } from '../../../utils/api';
 import { peekPendingInviteCode, consumePendingInviteCode } from '../../../utils/inviteReferral';
@@ -50,12 +52,10 @@ import {
   isInicisClientEnabled,
   openPendingInicisBrowser,
   dismissInicisBrowserSafely,
-  waitForPresentationLayerRelease,
 } from '../../../services/inicisAuth';
 import { useAuth } from '../../../context/AuthContext';
 import { useAppNavigation } from '../../../navigation/useAppNavigation';
 import {
-  showTooOldForSignupAlert,
   showTooYoungForSignupAlert,
 } from './authFeatureAlerts';
 import {
@@ -69,7 +69,6 @@ import {
   pickRandomProfileColorId,
 } from './signupEnrollmentUtils';
 import { SIGNUP_REDESIGN_SKIP_VALIDATION } from './signupRedesignFlags';
-import { ALLOW_ADULT_SIGNUP_IN_DEV } from './signupAdultTestMode';
 import {
   alertSignupDuplicateAndOfferLogin,
   assertPhoneAvailableForSignup,
@@ -161,6 +160,8 @@ const SignPhone = ({ navigation }) => {
   );
   const [inicisManualOpening, setInicisManualOpening] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [welcomeAfterSignup, setWelcomeAfterSignup] = useState(false);
+  const pendingEnterRef = useRef(null);
   const [screenReady, setScreenReady] = useState(false);
   const [footerHeight, setFooterHeight] = useState(88);
   const [blockingAlert, setBlockingAlert] = useState({
@@ -176,8 +177,10 @@ const SignPhone = ({ navigation }) => {
   const birthDateInputRef = useRef('');
   const inicisClientTokenRef = useRef(null);
   const inicisFlowActiveRef = useRef(false);
+  const inicisOverlayVisibleRef = useRef(false);
   const inicisResumeStepRef = useRef(STEP.BIRTH_DATE);
   const guardianModalPendingActionRef = useRef(null);
+  const completeSignupRef = useRef(null);
 
   const identity = useMemo(
     () => ({
@@ -297,7 +300,13 @@ const SignPhone = ({ navigation }) => {
     }
     if (snapshot.certificateData) setCertificateData(snapshot.certificateData);
     if (snapshot.stepInfoData) setStepInfoData(snapshot.stepInfoData);
-    if (snapshot.currentStep) setCurrentStep(snapshot.currentStep);
+    if (snapshot.currentStep) {
+      const step =
+        snapshot.currentStep === STEP.SCHOOL_SELECT
+          ? STEP.ACCOUNT
+          : snapshot.currentStep;
+      setCurrentStep(step);
+    }
   }, []);
 
   const clearFlowSession = useCallback(async () => {
@@ -410,12 +419,30 @@ const SignPhone = ({ navigation }) => {
     await dismissInicisBrowserSafely();
     inicisFlowActiveRef.current = false;
     if (isMountedRef.current) {
+      inicisOverlayVisibleRef.current = false;
       setInicisOverlayVisible(false);
       setInicisManualOpening(false);
       setShowStudentIdentityIntroModal(false);
       setShowGuardianConsentModal(false);
     }
-    await waitForPresentationLayerRelease();
+    await waitForSignupModalsToClear();
+  }, []);
+
+  /** 인앱 브라우저 직전: Modal을 완전히 내려 SFSafari 충돌 방지 */
+  const prepareInicisBrowserOpen = useCallback(async () => {
+    if (isMountedRef.current) {
+      inicisOverlayVisibleRef.current = false;
+      setInicisOverlayVisible(false);
+    }
+    await waitForSignupModalsToClear();
+  }, []);
+
+  /** 브라우저 닫힌 뒤 폴링 중 오버레이 재표시 */
+  const restoreInicisOverlayAfterBrowser = useCallback(async () => {
+    if (isMountedRef.current && inicisFlowActiveRef.current) {
+      inicisOverlayVisibleRef.current = true;
+      setInicisOverlayVisible(true);
+    }
   }, []);
 
   const showInicisAlertAfterOverlay = useCallback(
@@ -565,13 +592,20 @@ const SignPhone = ({ navigation }) => {
     return true;
   }, []);
 
-  const executeInicisFlow = useCallback(async (purpose) => {
-    const pending = await getPendingInicisSession();
-    if (pending?.purpose === purpose) {
-      return resumePendingInicisFlow(purpose);
-    }
-    return runInicisIdentityFlow(purpose);
-  }, []);
+  const executeInicisFlow = useCallback(
+    async (purpose) => {
+      const browserUi = {
+        prepareOpenBrowser: prepareInicisBrowserOpen,
+        afterBrowserClosed: restoreInicisOverlayAfterBrowser,
+      };
+      const pending = await getPendingInicisSession();
+      if (pending?.purpose === purpose) {
+        return resumePendingInicisFlow(purpose, browserUi);
+      }
+      return runInicisIdentityFlow(purpose, browserUi);
+    },
+    [prepareInicisBrowserOpen, restoreInicisOverlayAfterBrowser],
+  );
 
   const runStudentIdentityVerificationCore = useCallback(async () => {
     if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
@@ -646,7 +680,7 @@ const SignPhone = ({ navigation }) => {
     if (!useReal) {
       await new Promise((resolve) => setTimeout(resolve, 400));
       applyGuardianVerifySuccess({ clientToken: null, profile: {} });
-      Alert.alert('알림', '보호자 본인인증이 완료되었습니다. (테스트 mock)');
+      appAlert.alert('알림', '보호자 본인인증이 완료되었습니다. (테스트 mock)');
       return;
     }
 
@@ -666,10 +700,15 @@ const SignPhone = ({ navigation }) => {
 
   const runStudentIdentityVerification = useCallback(
     async (resumeStep = STEP.BIRTH_DATE) => {
-      if (inicisFlowActiveRef.current) return;
+      if (inicisFlowActiveRef.current) {
+        if (inicisOverlayVisibleRef.current) return;
+        cancelInicisFlow();
+        inicisFlowActiveRef.current = false;
+      }
       inicisResumeStepRef.current = resumeStep;
       inicisFlowActiveRef.current = true;
       setInicisOverlayTitle(INICIS_OVERLAY_TITLE.STUDENT);
+      inicisOverlayVisibleRef.current = true;
       setInicisOverlayVisible(true);
 
       let evaluation = null;
@@ -717,10 +756,15 @@ const SignPhone = ({ navigation }) => {
   }, [endInicisOverlay]);
 
   const runGuardianAndStudentVerification = useCallback(async () => {
-    if (inicisFlowActiveRef.current) return;
+    if (inicisFlowActiveRef.current) {
+      if (inicisOverlayVisibleRef.current) return;
+      cancelInicisFlow();
+      inicisFlowActiveRef.current = false;
+    }
     inicisResumeStepRef.current = STEP.BIRTH_DATE;
     inicisFlowActiveRef.current = true;
     setInicisOverlayTitle(INICIS_OVERLAY_TITLE.GUARDIAN);
+    inicisOverlayVisibleRef.current = true;
     setInicisOverlayVisible(true);
 
     try {
@@ -747,6 +791,11 @@ const SignPhone = ({ navigation }) => {
     const pending = await getPendingInicisSession();
     if (!pending) return;
 
+    const browserUi = {
+      prepareOpenBrowser: prepareInicisBrowserOpen,
+      afterBrowserClosed: restoreInicisOverlayAfterBrowser,
+    };
+
     inicisResumeStepRef.current = STEP.BIRTH_DATE;
     inicisFlowActiveRef.current = true;
 
@@ -756,7 +805,7 @@ const SignPhone = ({ navigation }) => {
       setInicisOverlayTitle(INICIS_OVERLAY_TITLE.GUARDIAN);
       setInicisOverlayVisible(true);
       try {
-        const result = await resumePendingInicisFlow('guardian_consent');
+        const result = await resumePendingInicisFlow('guardian_consent', browserUi);
         if (result) {
           applyGuardianVerifySuccess(result);
           await promptStudentIdentityAfterGuardian();
@@ -778,7 +827,7 @@ const SignPhone = ({ navigation }) => {
       let evaluation = null;
       let flowError = null;
       try {
-        const result = await resumePendingInicisFlow('student_signup');
+        const result = await resumePendingInicisFlow('student_signup', browserUi);
         if (result) {
           evaluation = evaluateStudentVerifyResult(result);
         }
@@ -818,7 +867,10 @@ const SignPhone = ({ navigation }) => {
     if (inicisManualOpening) return;
     setInicisManualOpening(true);
     try {
-      await openPendingInicisBrowser();
+      await openPendingInicisBrowser({
+        prepareOpenBrowser: prepareInicisBrowserOpen,
+        afterBrowserClosed: restoreInicisOverlayAfterBrowser,
+      });
     } catch (error) {
       showInicisAlertAfterOverlay(
         '알림',
@@ -830,7 +882,7 @@ const SignPhone = ({ navigation }) => {
         setInicisManualOpening(false);
       }
     }
-  }, [inicisManualOpening, showInicisAlertAfterOverlay]);
+  }, [inicisManualOpening, prepareInicisBrowserOpen, restoreInicisOverlayAfterBrowser, showInicisAlertAfterOverlay]);
 
   const handleInicisOverlayCancel = useCallback(async () => {
     // Entry 이동은 run* 의 CANCELLED 분기에서만 — 여기서 abort 하면 이중 reset
@@ -856,15 +908,14 @@ const SignPhone = ({ navigation }) => {
 
     if (!SIGNUP_REDESIGN_SKIP_VALIDATION) {
       if (!isValidBirthDateString(nextBirthDate)) {
-        Alert.alert('알림', '생년월일을 올바르게 입력해 주세요.');
+        appAlert.alert('알림', '생년월일을 올바르게 입력해 주세요.');
         return;
       }
     } else {
       const birthCase = classifyBirthDateCase(nextBirthDate);
       if (
         birthCase === 'D' ||
-        birthCase === 'invalid' ||
-        (birthCase === 'A' && !ALLOW_ADULT_SIGNUP_IN_DEV)
+        birthCase === 'invalid'
       ) {
         return;
       }
@@ -878,11 +929,7 @@ const SignPhone = ({ navigation }) => {
 
     const birthCase = classifyBirthDateCase(nextBirthDate);
     if (birthCase === 'invalid') {
-      Alert.alert('알림', '생년월일을 올바르게 입력해 주세요.');
-      return;
-    }
-    if (birthCase === 'A' && !ALLOW_ADULT_SIGNUP_IN_DEV) {
-      showTooOldForSignupAlert(goToLogin);
+      appAlert.alert('알림', '생년월일을 올바르게 입력해 주세요.');
       return;
     }
     if (birthCase === 'D') {
@@ -943,7 +990,6 @@ const SignPhone = ({ navigation }) => {
   const handleGuardianConsentLater = () => {
     guardianModalPendingActionRef.current = null;
     setShowGuardianConsentModal(false);
-    goToLogin();
   };
 
   const handleStudentIdentityIntroStart = () => {
@@ -977,7 +1023,13 @@ const SignPhone = ({ navigation }) => {
           stepInfoData.passwordConfirm ||
           SIGNUP_TEST_MOCK_ACCOUNT.passwordConfirm,
       }));
-      setCurrentStep(STEP.SCHOOL_SELECT);
+      completeSignupRef.current?.({
+        ...formData,
+        ...SIGNUP_TEST_MOCK_ACCOUNT,
+        ...stepInfoData,
+        username: stepInfoData.username || SIGNUP_TEST_MOCK_ACCOUNT.username,
+        password: stepInfoData.password || SIGNUP_TEST_MOCK_ACCOUNT.password,
+      });
       return;
     }
 
@@ -986,56 +1038,66 @@ const SignPhone = ({ navigation }) => {
       !stepInfoData.password ||
       !stepInfoData.passwordConfirm
     ) {
-      Alert.alert('알림', '아이디와 비밀번호를 입력해 주세요.');
+      appAlert.alert('알림', '아이디와 비밀번호를 입력해 주세요.');
       return;
     }
     if (!isValidUsername(stepInfoData.username)) {
-      Alert.alert('알림', USERNAME_ERROR);
+      appAlert.alert('알림', USERNAME_ERROR);
       return;
     }
     if (!isValidPassword(stepInfoData.password)) {
-      Alert.alert('알림', PASSWORD_ERROR);
+      appAlert.alert('알림', PASSWORD_ERROR);
       return;
     }
     if (stepInfoData.password !== stepInfoData.passwordConfirm) {
-      Alert.alert('알림', '비밀번호 확인이 일치하지 않습니다.');
+      appAlert.alert('알림', '비밀번호 확인이 일치하지 않습니다.');
       return;
     }
     setFormData((prev) => ({
       ...prev,
       ...stepInfoData,
     }));
-    setCurrentStep(STEP.SCHOOL_SELECT);
+    // 재학정보 화면 스킵 → 바로 가입 완료
+    completeSignupRef.current?.({
+      ...formData,
+      ...stepInfoData,
+    });
   };
 
   const proceedFromSchoolSelect = useCallback(() => {
     const grade = Number(schoolGradeNum);
     const classNum = Number(schoolClassNum);
-    setFormData((prev) => ({
-      ...prev,
+    const nextForm = {
+      ...formData,
+      ...stepInfoData,
       schoolId: selectedSchool.id,
       schoolName: selectedSchool.name,
       grade: String(grade),
       classNum: String(classNum),
       graduationYear: String(schoolEnrollmentPreview.graduationYear || ''),
-      schoolLevel: schoolEnrollmentPreview.schoolLevel || prev.schoolLevel,
-    }));
-    setCurrentStep(STEP.STUDENT_VERIFY);
+      schoolLevel: schoolEnrollmentPreview.schoolLevel || formData.schoolLevel,
+    };
+    setFormData(nextForm);
+    completeSignupRef.current?.(nextForm);
   }, [
+    formData,
     schoolClassNum,
     schoolEnrollmentPreview,
     schoolGradeNum,
     selectedSchool,
+    stepInfoData,
   ]);
 
   const handleSchoolSelectNext = () => {
     if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
       const grade = Number(schoolGradeNum) || 2;
       const classNum = Number(schoolClassNum) || 1;
-      setFormData((prev) => ({
-        ...prev,
-        schoolId: selectedSchool?.id || prev.schoolId || 'REDESIGN_SKIP',
-        schoolName: selectedSchool?.name || prev.schoolName || '개편테스트학교',
+      const nextForm = {
+        ...formData,
+        ...stepInfoData,
+        schoolId: selectedSchool?.id || formData.schoolId || 'REDESIGN_SKIP',
+        schoolName:
+          selectedSchool?.name || formData.schoolName || '개편테스트학교',
         grade: String(grade),
         classNum: String(classNum),
         graduationYear: String(
@@ -1043,23 +1105,24 @@ const SignPhone = ({ navigation }) => {
             new Date().getFullYear() + 2,
         ),
         schoolLevel: schoolEnrollmentPreview.schoolLevel || 'high',
-      }));
-      setCurrentStep(STEP.STUDENT_VERIFY);
+      };
+      setFormData(nextForm);
+      completeSignupRef.current?.(nextForm);
       return;
     }
 
     if (!selectedSchool?.id || selectedSchool?.manual) {
-      Alert.alert('알림', '재학 중인 학교를 목록에서 선택해 주세요.');
+      appAlert.alert('알림', '재학 중인 학교를 목록에서 선택해 주세요.');
       return;
     }
     const grade = Number(schoolGradeNum);
     if (!Number.isFinite(grade) || grade < 1) {
-      Alert.alert('알림', '학년을 입력해 주세요.');
+      appAlert.alert('알림', '학년을 입력해 주세요.');
       return;
     }
     const classNum = Number(schoolClassNum);
     if (!Number.isFinite(classNum) || classNum < 1) {
-      Alert.alert('알림', '반을 입력해 주세요.');
+      appAlert.alert('알림', '반을 입력해 주세요.');
       return;
     }
 
@@ -1104,7 +1167,6 @@ const SignPhone = ({ navigation }) => {
   const buildSignupPayload = (finalData, verificationToken) => {
     const resolvedBirthDate =
       normalizeBirthDateForCompare(identity.birthDate) || identity.birthDate;
-    const enrollment = buildEnrollmentFromBirthDate(resolvedBirthDate);
 
     return {
       username: finalData.username || SIGNUP_TEST_MOCK_ACCOUNT.username,
@@ -1112,15 +1174,11 @@ const SignPhone = ({ navigation }) => {
       name: (identity.name || '').trim(),
       phone: String(identity.phoneNumber || '').replace(/\D/g, ''),
       birthDate: resolvedBirthDate,
-      schoolId: finalData.schoolId,
-      grade: Number(finalData.grade) || enrollment.grade || 1,
-      classNumber: Number(finalData.classNum) || 1,
-      graduationYear:
-        Number(finalData.graduationYear) || enrollment.graduationYear,
+      // 재학정보 가입 시 미입력 — 인앱 학생인증 때 설정
       colorId: pickRandomProfileColorId(),
       verificationMethod: 'student_id',
       consents: consentData.consents || {},
-      studentVerificationToken: verificationToken,
+      studentVerificationToken: verificationToken || undefined,
       studentInicisClientToken:
         identityData.inicisClientToken || inicisClientTokenRef.current || null,
       guardianInicisClientToken: guardianInicisClientToken || null,
@@ -1135,20 +1193,29 @@ const SignPhone = ({ navigation }) => {
       await setAuthToken(token, { persist: true });
     }
     await login({
-      studentVerificationStatus: status || 'PENDING',
+      studentVerificationStatus: status || 'UNVERIFIED',
       rejectReason: rejectReason || null,
     });
   };
 
-  const handleComplete = async () => {
-    const finalData = { ...formData, ...stepInfoData };
-    const verificationToken = studentVerificationToken || MOCK_STUDENT_TOKEN;
+  const handleComplete = async (overrideFormData = null) => {
+    const finalData = overrideFormData
+      ? { ...overrideFormData }
+      : { ...formData, ...stepInfoData };
+    const verificationToken =
+      studentVerificationToken ||
+      (SIGNUP_REDESIGN_SKIP_VALIDATION ? MOCK_STUDENT_TOKEN : undefined);
 
     setSubmitting(true);
     try {
       if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
         await clearFlowSession();
-        await login({ studentVerificationStatus: 'PENDING' });
+        pendingEnterRef.current = { skip: true };
+        if (currentStep === STEP.STUDENT_VERIFY && studentVerified) {
+          await login({ studentVerificationStatus: 'UNVERIFIED' });
+        } else {
+          setWelcomeAfterSignup(true);
+        }
         return;
       }
 
@@ -1157,14 +1224,43 @@ const SignPhone = ({ navigation }) => {
       await api.post('/api/auth/signup', payload);
       await consumePendingInviteCode();
       await clearFlowSession();
-      await finishSignupAndEnterApp(payload.username, payload.password);
+      pendingEnterRef.current = {
+        username: payload.username,
+        password: payload.password,
+      };
+      if (currentStep === STEP.STUDENT_VERIFY && studentVerified) {
+        await finishSignupAndEnterApp(payload.username, payload.password);
+      } else {
+        setWelcomeAfterSignup(true);
+      }
     } catch (error) {
       if (alertSignupDuplicateAndOfferLogin(error, navigation)) {
         return;
       }
-      Alert.alert(
+      appAlert.alert(
         '회원가입 실패',
         error.response?.data?.message || '회원가입 중 오류가 발생했습니다.',
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  completeSignupRef.current = handleComplete;
+
+  const enterAfterWelcome = async () => {
+    const pending = pendingEnterRef.current;
+    if (!pending) return;
+    setSubmitting(true);
+    try {
+      if (pending.skip) {
+        await login({ studentVerificationStatus: 'UNVERIFIED' });
+        return;
+      }
+      await finishSignupAndEnterApp(pending.username, pending.password);
+    } catch (error) {
+      appAlert.alert(
+        '로그인 실패',
+        error.response?.data?.message || '가입은 완료되었습니다. 로그인 화면에서 다시 시도해 주세요.',
       );
     } finally {
       setSubmitting(false);
@@ -1180,7 +1276,7 @@ const SignPhone = ({ navigation }) => {
       case STEP.SCHOOL_SELECT:
         return '재학 정보 입력';
       case STEP.STUDENT_VERIFY:
-        return studentVerified ? '가입 마무리' : '학생증 인증';
+        return studentVerified ? '가입 마무리' : '학생인증';
       case STEP.ALT_VERIFY_CHOICE:
         return '다른 방법으로 인증';
       case STEP.CERTIFICATE_GUIDE:
@@ -1226,8 +1322,8 @@ const SignPhone = ({ navigation }) => {
     if (currentStep === STEP.BIRTH_DATE) {
       if (!isValidBirthDateString(birthDate)) return true;
       const birthCase = classifyBirthDateCase(birthDate);
-      if (birthCase === 'D') return true;
-      if (birthCase === 'A' && !ALLOW_ADULT_SIGNUP_IN_DEV) return true;
+      // D(너무 어림)만 차단. A(성인)는 카카오와 동일하게 가입 허용.
+      if (birthCase === 'D' || birthCase === 'invalid') return true;
       return false;
     }
     if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
@@ -1271,15 +1367,20 @@ const SignPhone = ({ navigation }) => {
     }
     if (currentStep === STEP.STUDENT_VERIFY && studentVerified) return '제출하기';
     if (currentStep === STEP.CERTIFICATE_SUBMIT) return '제출하기';
+    if (currentStep === STEP.ACCOUNT || currentStep === STEP.SCHOOL_SELECT) {
+      return '가입 완료';
+    }
     return '다음 단계';
   };
 
-  const showPrimaryFooter = [
-    STEP.BIRTH_DATE,
-    STEP.ACCOUNT,
-    STEP.SCHOOL_SELECT,
-    STEP.CERTIFICATE_SUBMIT,
-  ].includes(currentStep);
+  const showPrimaryFooter =
+    !welcomeAfterSignup &&
+    [
+      STEP.BIRTH_DATE,
+      STEP.ACCOUNT,
+      STEP.SCHOOL_SELECT,
+      STEP.CERTIFICATE_SUBMIT,
+    ].includes(currentStep);
 
   const hideFooterForOverlay =
     showGuardianConsentModal ||
@@ -1288,7 +1389,8 @@ const SignPhone = ({ navigation }) => {
     blockingAlert.visible;
 
   const isSignupCompleteScreen =
-    currentStep === STEP.STUDENT_VERIFY && studentVerified;
+    welcomeAfterSignup ||
+    (currentStep === STEP.STUDENT_VERIFY && studentVerified);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -1352,35 +1454,24 @@ const SignPhone = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {!isSignupCompleteScreen ? (
-        <View style={styles.headerSection}>
-          <View style={styles.header}>
-            <View style={styles.headerTop}>
-              <TouchableOpacity
-                style={styles.backButton}
-                onPress={requestAbortSignup}
-                disabled={submitting}
-                accessibilityRole="button"
-                accessibilityLabel="가입 중단"
-              >
-                <Feather
-                  name="x"
-                  size={normalize(20)}
-                  color={colors.text}
-                />
-              </TouchableOpacity>
-              <Text style={styles.headerTitle}>{getStepTitle()}</Text>
-            </View>
-            <View style={styles.progressBarContainer}>
-              <View
-                style={[styles.progressBar, { width: `${progressWidth}%` }]}
-              />
-            </View>
-          </View>
-        </View>
+        <AuthSignupStepHeader
+          styles={styles}
+          normalize={normalize}
+          title={getStepTitle()}
+          progressWidth={progressWidth}
+          onAbort={requestAbortSignup}
+          abortDisabled={submitting}
+        />
       ) : null}
 
       <View style={styles.contentSection}>
-        {currentStep === STEP.BIRTH_DATE && (
+        {welcomeAfterSignup ? (
+          <AuthSignupComplete
+            onConfirm={() => void enterAfterWelcome()}
+            submitting={submitting}
+          />
+        ) : null}
+        {!welcomeAfterSignup && currentStep === STEP.BIRTH_DATE && (
           <SignStepBirthDateCalendar
             normalize={normalize}
             initialBirthDate={birthDate}
@@ -1389,7 +1480,7 @@ const SignPhone = ({ navigation }) => {
           />
         )}
 
-        {currentStep === STEP.ACCOUNT && (
+        {!welcomeAfterSignup && currentStep === STEP.ACCOUNT && (
           <SignStep2
             styles={styles}
             normalize={normalize}
@@ -1402,7 +1493,7 @@ const SignPhone = ({ navigation }) => {
           />
         )}
 
-        {currentStep === STEP.SCHOOL_SELECT && (
+        {!welcomeAfterSignup && currentStep === STEP.SCHOOL_SELECT && (
           <SignStepSchoolSelect
             styles={styles}
             normalize={normalize}
@@ -1416,7 +1507,7 @@ const SignPhone = ({ navigation }) => {
           />
         )}
 
-        {currentStep === STEP.STUDENT_VERIFY && (
+        {!welcomeAfterSignup && currentStep === STEP.STUDENT_VERIFY && (
           <SignStepStudentIdVerify
             styles={styles}
             normalize={normalize}
@@ -1430,7 +1521,7 @@ const SignPhone = ({ navigation }) => {
           />
         )}
 
-        {currentStep === STEP.ALT_VERIFY_CHOICE && (
+        {!welcomeAfterSignup && currentStep === STEP.ALT_VERIFY_CHOICE && (
           <SignStepAltVerifyChoice
             normalize={normalize}
             onSelectNeisPlus={() => setCurrentStep(STEP.NEIS_PLUS_SUBMIT)}
@@ -1438,7 +1529,7 @@ const SignPhone = ({ navigation }) => {
           />
         )}
 
-        {currentStep === STEP.CERTIFICATE_GUIDE && (
+        {!welcomeAfterSignup && currentStep === STEP.CERTIFICATE_GUIDE && (
           <SignStepCertificateGuide
             styles={styles}
             onProceed={() => setCurrentStep(STEP.CERTIFICATE_SUBMIT)}
@@ -1446,7 +1537,7 @@ const SignPhone = ({ navigation }) => {
           />
         )}
 
-        {currentStep === STEP.CERTIFICATE_SUBMIT && (
+        {!welcomeAfterSignup && currentStep === STEP.CERTIFICATE_SUBMIT && (
           <SignStepCertificate
             styles={styles}
             normalize={normalize}
@@ -1456,7 +1547,7 @@ const SignPhone = ({ navigation }) => {
           />
         )}
 
-        {currentStep === STEP.NEIS_PLUS_SUBMIT && (
+        {!welcomeAfterSignup && currentStep === STEP.NEIS_PLUS_SUBMIT && (
           <SignStepNeisPlusSubmit
             styles={styles}
             normalize={normalize}

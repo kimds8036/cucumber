@@ -20,7 +20,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MainHeader from '../frame/mainHeader';
 import MainFooter, { MAIN_FOOTER_SAFE_AREA_EDGES } from '../frame/mainFooter';
-import { getMainTabTitle } from '../../context/MainShellContext';
+import { getMainTabTitle, useMainShellOptional } from '../../context/MainShellContext';
+import { useAuth } from '../../context/AuthContext';
+import StudentVerificationCtaModal from '../../components/auth/StudentVerificationCtaModal';
 import { createMessageStyles, getNormalize } from '../../styles/message.style';
 import { createMessageRoomMenuSheetStyles } from '../../styles/messageRoomMenuSheet.style';
 import { colors, fonts, fontSizes } from '../../styles/colors';
@@ -30,6 +32,7 @@ import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import Entypo from '@expo/vector-icons/Entypo';
 import { StackActions } from '@react-navigation/native';
 import ProfileIcon from '../../assets/Profile.svg';
+import UserAvatar, { pickAvatarUrl } from '../../components/UserAvatar';
 import { api } from '../../utils/api';
 import * as socketManager from './socketManager';
 import { useToast } from '../../context/ToastContext';
@@ -353,6 +356,11 @@ const SwipeableRow = ({ children, onDelete }) => {
 // 메인 화면(MainScreen)에서 헤더/푸터 없이 메인 영역만 렌더할 때 사용
 export function MessageContent({ navigation }) {
   const { isGuidePreview, guideMessageTab } = useGuidePreview();
+  const { studentVerificationStatus } = useAuth();
+  const shell = useMainShellOptional();
+  const isStudentApproved = studentVerificationStatus === 'APPROVED';
+  const [mailCtaVisible, setMailCtaVisible] = useState(false);
+  const pendingMailVerifyRef = useRef(false);
   // TODO: /api/ads 연동 후 useAdSlots(AD_PLACEMENTS.FEED_NOTE_MAIL)
   const adSlots = [];
   const { width } = useWindowDimensions();
@@ -404,6 +412,7 @@ export function MessageContent({ navigation }) {
         name: item.other_user_name || item.name || '친구',
         subtitle: item.other_user_school_name || '',
         profileColorId: colorIdx,
+        avatarUrl: pickAvatarUrl(item),
       };
     }
     if (kind === 'note') {
@@ -560,6 +569,13 @@ export function MessageContent({ navigation }) {
     );
   }, []);
 
+  const handleMessageTypeChange = (type) => {
+    if (type === 'mail' && !isStudentApproved && !isGuidePreview) {
+      setMailCtaVisible(true);
+      return;
+    }
+    setMessageType(type);
+  };
 
   const fetchRooms = useCallback(async () => {
     if (isGuidePreview) {
@@ -624,6 +640,7 @@ export function MessageContent({ navigation }) {
           other_user_name: r.other_user_name,
           other_user_school_name: r.other_user_school_name,
           other_user_color_id: r.other_user_color_id,
+          avatarUrl: pickAvatarUrl(r),
           sortTime: parseUtcToLocal(at)?.getTime() ?? 0,
         };
       });
@@ -642,6 +659,11 @@ export function MessageContent({ navigation }) {
   const fetchMails = useCallback(async () => {
     if (isGuidePreview) {
       setMails(getGuideMails());
+      setLoadingMail(false);
+      return;
+    }
+    if (!isStudentApproved) {
+      setMails([]);
       setLoadingMail(false);
       return;
     }
@@ -789,7 +811,7 @@ export function MessageContent({ navigation }) {
     } finally {
       setLoadingMail(false);
     }
-  }, [isGuidePreview]);
+  }, [isGuidePreview, isStudentApproved]);
 
   useEffect(() => {
     if (!isGuidePreview) return;
@@ -908,7 +930,7 @@ export function MessageContent({ navigation }) {
       <TopAdBanner />
       <SortChips
         value={messageType}
-        onChange={setMessageType}
+        onChange={handleMessageTypeChange}
         options={[
           { value: 'note', label: '쪽지' },
           { value: 'mail', label: '우편' },
@@ -994,10 +1016,10 @@ export function MessageContent({ navigation }) {
                       >
                         <View style={styles.listItemLeft}>
                           <View style={[styles.profileCircle]}>
-                            <ProfileIcon
-                              width={normalize(35)}
-                              height={normalize(35)}
-                              color={iconColor}
+                            <UserAvatar
+                              uri={item.avatarUrl}
+                              size={normalize(35)}
+                              colorId={colorIdx}
                             />
                           </View>
                           <View style={styles.listItemBody}>
@@ -1295,13 +1317,21 @@ export function MessageContent({ navigation }) {
             <>
               <View style={roomMenuSheetStyles.sheetRoomInfo}>
                 <View style={roomMenuSheetStyles.sheetAvatar}>
-                  <ProfileIcon
-                    width={normalize(45)}
-                    height={normalize(45)}
-                    color={getProfileInnerColor(
-                      roomMenuSheetMeta.profileColorId,
-                    )}
-                  />
+                  {roomMenuTarget.kind === 'dm' ? (
+                    <UserAvatar
+                      uri={roomMenuSheetMeta.avatarUrl}
+                      size={normalize(45)}
+                      colorId={roomMenuSheetMeta.profileColorId}
+                    />
+                  ) : (
+                    <ProfileIcon
+                      width={normalize(45)}
+                      height={normalize(45)}
+                      color={getProfileInnerColor(
+                        roomMenuSheetMeta.profileColorId,
+                      )}
+                    />
+                  )}
                 </View>
                 <View>
                   <Text style={roomMenuSheetStyles.sheetName}>
@@ -1389,6 +1419,27 @@ export function MessageContent({ navigation }) {
         onBlocked={() => {
           reportBlockSuccessRef.current?.();
           reportBlockSuccessRef.current = null;
+        }}
+      />
+
+      <StudentVerificationCtaModal
+        visible={mailCtaVisible}
+        status={studentVerificationStatus || 'UNVERIFIED'}
+        onClose={() => {
+          pendingMailVerifyRef.current = false;
+          setMailCtaVisible(false);
+        }}
+        onPressVerify={() => {
+          pendingMailVerifyRef.current = true;
+          setMailCtaVisible(false);
+        }}
+        onDismissed={() => {
+          if (!pendingMailVerifyRef.current) return;
+          pendingMailVerifyRef.current = false;
+          shell?.requestStudentVerification?.({
+            reason: 'personal_mail',
+            statusHint: studentVerificationStatus,
+          });
         }}
       />
     </>

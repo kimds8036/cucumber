@@ -393,13 +393,12 @@ export default function BoardDetail({ navigation, route }) {
   });
 
   const postImages = Array.isArray(post?.images) ? post.images : [];
-  const hasAllImageRatios =
-    postImages.length === 0 ||
-    postImages.every((uri) => Boolean(imageRatios[uri]));
+  const hasFirstImageRatio =
+    postImages.length === 0 || Boolean(imageRatios[postImages[0]]);
   const isWaitingImageLayout =
     !isInitialLoading &&
     postImages.length > 0 &&
-    !hasAllImageRatios &&
+    !hasFirstImageRatio &&
     !imageRevealBypass;
   const showInitialSkeleton = isInitialLoading || isWaitingImageLayout;
 
@@ -408,7 +407,7 @@ export default function BoardDetail({ navigation, route }) {
       setImageRevealBypass(false);
       return;
     }
-    if (postImages.length === 0 || hasAllImageRatios) {
+    if (postImages.length === 0 || hasFirstImageRatio) {
       setImageRevealBypass(false);
       return;
     }
@@ -416,7 +415,7 @@ export default function BoardDetail({ navigation, route }) {
       setImageRevealBypass(true);
     }, 1200);
     return () => clearTimeout(timer);
-  }, [isInitialLoading, hasAllImageRatios, postImages.length, post?.id]);
+  }, [isInitialLoading, hasFirstImageRatio, postImages.length, post?.id]);
 
   return (
     <View

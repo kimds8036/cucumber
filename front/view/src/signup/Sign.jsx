@@ -10,13 +10,13 @@ import {
   Text,
   TouchableOpacity,
   useWindowDimensions,
-  Alert,
   InteractionManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { createSignupStyles } from '../../../styles/login.style';
+import { appAlert } from '../../../utils/appAlert';
 import { colors } from '../../../styles/colors';
 import SignStepConsent from './SignStepConsent';
 import SignStepAgeGate from './SignStepAgeGate';
@@ -45,8 +45,8 @@ import {
   cancelInicisFlow,
   openPendingInicisBrowser,
   dismissInicisBrowserSafely,
-  waitForPresentationLayerRelease,
 } from '../../../services/inicisAuth';
+import { waitForSignupModalsToClear } from './signupAbort';
 import {
   isValidUsername,
   isValidPassword,
@@ -57,7 +57,6 @@ import { useAuth } from '../../../context/AuthContext';
 import { useAppNavigation } from '../../../navigation/useAppNavigation';
 import Skeleton from '../../../components/common/Skeleton';
 import {
-  showTooOldForSignupAlert,
   showTooYoungForSignupAlert,
   GRADE_MISMATCH_HELP_TITLE,
   GRADE_MISMATCH_HELP_MESSAGE,
@@ -228,23 +227,43 @@ const Sign = ({ navigation }) => {
 
   const inicisResumeStepRef = useRef(STEP.BIRTH_DATE);
   const inicisFlowActiveRef = useRef(false);
+  const inicisOverlayVisibleRef = useRef(false);
   const isMountedRef = useRef(true);
   const initialResumeInicisRef = useRef(route.params?.resumeInicis === true);
   const resumeInicisFromPendingRef = useRef(async () => {});
   const birthDateInputRef = useRef('');
   const inicisClientTokenRef = useRef(null);
   const guardianModalPendingActionRef = useRef(null);
+  const completeSignupRef = useRef(null);
 
   const endInicisOverlay = useCallback(async () => {
     await dismissInicisBrowserSafely();
     inicisFlowActiveRef.current = false;
     if (isMountedRef.current) {
+      inicisOverlayVisibleRef.current = false;
       setInicisOverlayVisible(false);
       setInicisManualOpening(false);
       setShowStudentIdentityIntroModal(false);
       setShowGuardianConsentModal(false);
     }
-    await waitForPresentationLayerRelease();
+    await waitForSignupModalsToClear();
+  }, []);
+
+  /** 인앱 브라우저 직전: Modal을 완전히 내려 SFSafari 충돌 방지 */
+  const prepareInicisBrowserOpen = useCallback(async () => {
+    if (isMountedRef.current) {
+      inicisOverlayVisibleRef.current = false;
+      setInicisOverlayVisible(false);
+    }
+    await waitForSignupModalsToClear();
+  }, []);
+
+  /** 브라우저 닫힌 뒤 폴링 중 오버레이 재표시 */
+  const restoreInicisOverlayAfterBrowser = useCallback(async () => {
+    if (isMountedRef.current && inicisFlowActiveRef.current) {
+      inicisOverlayVisibleRef.current = true;
+      setInicisOverlayVisible(true);
+    }
   }, []);
 
   const closeBlockingAlert = useCallback(() => {
@@ -424,7 +443,10 @@ const Sign = ({ navigation }) => {
     if (inicisManualOpening) return;
     setInicisManualOpening(true);
     try {
-      await openPendingInicisBrowser();
+      await openPendingInicisBrowser({
+        prepareOpenBrowser: prepareInicisBrowserOpen,
+        afterBrowserClosed: restoreInicisOverlayAfterBrowser,
+      });
     } catch (error) {
       showInicisAlertAfterOverlay(
         '알림',
@@ -436,7 +458,7 @@ const Sign = ({ navigation }) => {
         setInicisManualOpening(false);
       }
     }
-  }, [inicisManualOpening, showInicisAlertAfterOverlay]);
+  }, [inicisManualOpening, prepareInicisBrowserOpen, restoreInicisOverlayAfterBrowser, showInicisAlertAfterOverlay]);
 
   const handleInicisOverlayCancel = useCallback(async () => {
     const wasGuardian = inicisOverlayTitle === INICIS_OVERLAY_TITLE.GUARDIAN;
@@ -642,13 +664,20 @@ const Sign = ({ navigation }) => {
     return true;
   }, []);
 
-  const executeInicisFlow = useCallback(async (purpose) => {
-    const pending = await getPendingInicisSession();
-    if (pending?.purpose === purpose) {
-      return resumePendingInicisFlow(purpose);
-    }
-    return runInicisIdentityFlow(purpose);
-  }, []);
+  const executeInicisFlow = useCallback(
+    async (purpose) => {
+      const browserUi = {
+        prepareOpenBrowser: prepareInicisBrowserOpen,
+        afterBrowserClosed: restoreInicisOverlayAfterBrowser,
+      };
+      const pending = await getPendingInicisSession();
+      if (pending?.purpose === purpose) {
+        return resumePendingInicisFlow(purpose, browserUi);
+      }
+      return runInicisIdentityFlow(purpose, browserUi);
+    },
+    [prepareInicisBrowserOpen, restoreInicisOverlayAfterBrowser],
+  );
 
   const runStudentIdentityVerificationCore = useCallback(async () => {
     if (shouldSkipSignupValidation()) {
@@ -715,7 +744,7 @@ const Sign = ({ navigation }) => {
     if (!useReal) {
       await new Promise((resolve) => setTimeout(resolve, 400));
       applyGuardianVerifySuccess({ clientToken: null, profile: {} });
-      Alert.alert('알림', '보호자 본인인증이 완료되었습니다. (테스트 mock)');
+      appAlert.alert('알림', '보호자 본인인증이 완료되었습니다. (테스트 mock)');
       return;
     }
 
@@ -727,10 +756,15 @@ const Sign = ({ navigation }) => {
 
   const runStudentIdentityVerification = useCallback(
     async (resumeStep = STEP.BIRTH_DATE) => {
-      if (inicisFlowActiveRef.current) return;
+      if (inicisFlowActiveRef.current) {
+        if (inicisOverlayVisibleRef.current) return;
+        cancelInicisFlow();
+        inicisFlowActiveRef.current = false;
+      }
       inicisResumeStepRef.current = resumeStep;
       inicisFlowActiveRef.current = true;
       setInicisOverlayTitle(INICIS_OVERLAY_TITLE.STUDENT);
+      inicisOverlayVisibleRef.current = true;
       setInicisOverlayVisible(true);
 
       let evaluation = null;
@@ -774,10 +808,15 @@ const Sign = ({ navigation }) => {
   }, [endInicisOverlay]);
 
   const runGuardianAndStudentVerification = useCallback(async () => {
-    if (inicisFlowActiveRef.current) return;
+    if (inicisFlowActiveRef.current) {
+      if (inicisOverlayVisibleRef.current) return;
+      cancelInicisFlow();
+      inicisFlowActiveRef.current = false;
+    }
     inicisResumeStepRef.current = STEP.BIRTH_DATE;
     inicisFlowActiveRef.current = true;
     setInicisOverlayTitle(INICIS_OVERLAY_TITLE.GUARDIAN);
+    inicisOverlayVisibleRef.current = true;
     setInicisOverlayVisible(true);
 
     try {
@@ -814,6 +853,11 @@ const Sign = ({ navigation }) => {
     const pending = await getPendingInicisSession();
     if (!pending) return;
 
+    const browserUi = {
+      prepareOpenBrowser: prepareInicisBrowserOpen,
+      afterBrowserClosed: restoreInicisOverlayAfterBrowser,
+    };
+
     inicisResumeStepRef.current = STEP.BIRTH_DATE;
     inicisFlowActiveRef.current = true;
 
@@ -823,7 +867,7 @@ const Sign = ({ navigation }) => {
       setInicisOverlayTitle(INICIS_OVERLAY_TITLE.GUARDIAN);
       setInicisOverlayVisible(true);
       try {
-        const result = await resumePendingInicisFlow('guardian_consent');
+        const result = await resumePendingInicisFlow('guardian_consent', browserUi);
         if (result) {
           applyGuardianVerifySuccess(result);
           await promptStudentIdentityAfterGuardian();
@@ -843,7 +887,7 @@ const Sign = ({ navigation }) => {
       let evaluation = null;
       let flowError = null;
       try {
-        const result = await resumePendingInicisFlow('student_signup');
+        const result = await resumePendingInicisFlow('student_signup', browserUi);
         if (result) {
           evaluation = evaluateStudentVerifyResult(result);
         }
@@ -917,7 +961,7 @@ const Sign = ({ navigation }) => {
       return;
     }
     if (inicisOverlayVisible) {
-      Alert.alert(
+      appAlert.alert(
         '본인인증 중단',
         '본인인증을 중단하고 이전 단계로 돌아갈까요?',
         [
@@ -1034,7 +1078,7 @@ const Sign = ({ navigation }) => {
 
     if (!shouldSkipSignupValidation()) {
       if (!isValidBirthDateString(nextBirthDate)) {
-        Alert.alert('알림', '생년월일을 올바르게 입력해 주세요.');
+        appAlert.alert('알림', '생년월일을 올바르게 입력해 주세요.');
         return;
       }
     } else {
@@ -1053,11 +1097,7 @@ const Sign = ({ navigation }) => {
 
     const birthCase = classifyBirthDateCase(nextBirthDate);
     if (birthCase === 'invalid') {
-      Alert.alert('알림', '생년월일을 올바르게 입력해 주세요.');
-      return;
-    }
-    if (birthCase === 'A' && !ALLOW_ADULT_SIGNUP_IN_DEV) {
-      showTooOldForSignupAlert(goToLogin);
+      appAlert.alert('알림', '생년월일을 올바르게 입력해 주세요.');
       return;
     }
     if (birthCase === 'D') {
@@ -1118,7 +1158,6 @@ const Sign = ({ navigation }) => {
   const handleGuardianConsentLater = () => {
     guardianModalPendingActionRef.current = null;
     setShowGuardianConsentModal(false);
-    goToLogin();
   };
 
   const handleAccountNext = () => {
@@ -1141,7 +1180,13 @@ const Sign = ({ navigation }) => {
           stepInfoData.passwordConfirm ||
           SIGNUP_TEST_MOCK_ACCOUNT.passwordConfirm,
       }));
-      setCurrentStep(STEP.SCHOOL_SELECT);
+      completeSignupRef.current?.({
+        ...formData,
+        ...SIGNUP_TEST_MOCK_ACCOUNT,
+        ...stepInfoData,
+        username: stepInfoData.username || SIGNUP_TEST_MOCK_ACCOUNT.username,
+        password: stepInfoData.password || SIGNUP_TEST_MOCK_ACCOUNT.password,
+      });
       return;
     }
 
@@ -1150,26 +1195,30 @@ const Sign = ({ navigation }) => {
       !stepInfoData.password ||
       !stepInfoData.passwordConfirm
     ) {
-      Alert.alert('알림', '아이디와 비밀번호를 입력해 주세요.');
+      appAlert.alert('알림', '아이디와 비밀번호를 입력해 주세요.');
       return;
     }
     if (!isValidUsername(stepInfoData.username)) {
-      Alert.alert('알림', USERNAME_ERROR);
+      appAlert.alert('알림', USERNAME_ERROR);
       return;
     }
     if (!isValidPassword(stepInfoData.password)) {
-      Alert.alert('알림', PASSWORD_ERROR);
+      appAlert.alert('알림', PASSWORD_ERROR);
       return;
     }
     if (stepInfoData.password !== stepInfoData.passwordConfirm) {
-      Alert.alert('알림', '비밀번호 확인이 일치하지 않습니다.');
+      appAlert.alert('알림', '비밀번호 확인이 일치하지 않습니다.');
       return;
     }
     setFormData((prev) => ({
       ...prev,
       ...stepInfoData,
     }));
-    setCurrentStep(STEP.SCHOOL_SELECT);
+    // 재학정보 화면 스킵 → 바로 가입 완료
+    completeSignupRef.current?.({
+      ...formData,
+      ...stepInfoData,
+    });
   };
 
   const proceedFromSchoolSelect = useCallback(() => {
@@ -1178,8 +1227,9 @@ const Sign = ({ navigation }) => {
     const schoolLevel = schoolEnrollmentPreview.schoolLevel;
     const classNum = Number(schoolClassNum);
 
-    setFormData((prev) => ({
-      ...prev,
+    const nextForm = {
+      ...formData,
+      ...stepInfoData,
       schoolId: selectedSchool.id,
       schoolName: selectedSchool.name,
       grade: String(grade),
@@ -1187,16 +1237,19 @@ const Sign = ({ navigation }) => {
       graduationYear:
         graduationYear != null && graduationYear !== ''
           ? String(graduationYear)
-          : prev.graduationYear || '',
-      schoolLevel: schoolLevel || prev.schoolLevel,
-    }));
-    setCurrentStep(STEP.STUDENT_VERIFY);
+          : formData.graduationYear || '',
+      schoolLevel: schoolLevel || formData.schoolLevel,
+    };
+    setFormData(nextForm);
+    completeSignupRef.current?.(nextForm);
   }, [
+    formData,
     schoolEnrollmentPreview.graduationYear,
     schoolEnrollmentPreview.schoolLevel,
     schoolClassNum,
     schoolGradeNum,
     selectedSchool,
+    stepInfoData,
   ]);
 
   const handleSchoolSelectNext = () => {
@@ -1207,44 +1260,49 @@ const Sign = ({ navigation }) => {
       if (selectedSchool?.id && !selectedSchool?.manual) {
         proceedFromSchoolSelect();
       } else {
-        setFormData((prev) => ({
-          ...prev,
-          schoolId: selectedSchool?.id || prev.schoolId || 'REDESIGN_SKIP',
-          schoolName: selectedSchool?.name || prev.schoolName || '개편테스트학교',
+        const nextForm = {
+          ...formData,
+          ...stepInfoData,
+          schoolId: selectedSchool?.id || formData.schoolId || 'REDESIGN_SKIP',
+          schoolName:
+            selectedSchool?.name || formData.schoolName || '개편테스트학교',
           grade: String(grade),
           classNum: String(classNum),
           graduationYear: String(
             schoolEnrollmentPreview.graduationYear ||
-              prev.graduationYear ||
+              formData.graduationYear ||
               new Date().getFullYear() + 2,
           ),
           schoolLevel:
-            schoolEnrollmentPreview.schoolLevel || prev.schoolLevel || 'high',
-        }));
-        setCurrentStep(STEP.STUDENT_VERIFY);
+            schoolEnrollmentPreview.schoolLevel ||
+            formData.schoolLevel ||
+            'high',
+        };
+        setFormData(nextForm);
+        completeSignupRef.current?.(nextForm);
       }
       return;
     }
 
     if (!selectedSchool?.id || selectedSchool?.manual) {
-      Alert.alert('알림', '재학 중인 학교를 목록에서 선택해 주세요.');
+      appAlert.alert('알림', '재학 중인 학교를 목록에서 선택해 주세요.');
       return;
     }
     const grade = Number(schoolGradeNum);
     if (!Number.isFinite(grade) || grade < 1) {
-      Alert.alert('알림', '학년을 입력해 주세요.');
+      appAlert.alert('알림', '학년을 입력해 주세요.');
       return;
     }
     const classNum = Number(schoolClassNum);
     if (!Number.isFinite(classNum) || classNum < 1) {
-      Alert.alert('알림', '반을 입력해 주세요.');
+      appAlert.alert('알림', '반을 입력해 주세요.');
       return;
     }
 
     setBlockingAlert({
       visible: true,
       title: '학적 정보 확인',
-      message: `${selectedSchool.name} ${grade}학년 ${classNum}반이 맞나요?\n\n학생증 인증으로 넘어가기 전에 꼭 확인해 주세요.`,
+      message: `${selectedSchool.name} ${grade}학년 ${classNum}반이 맞나요?`,
       buttons: [
         {
           text: '맞아요',
@@ -1305,13 +1363,13 @@ const Sign = ({ navigation }) => {
         certificateUrl: certificateViewUrl,
         accessNumber: certificateAccessCode,
       }));
-      Alert.alert('테스트모드', '재학증명서 제출 검증을 건너뛰었습니다.');
+      appAlert.alert('테스트모드', '재학증명서 제출 검증을 건너뛰었습니다.');
       return;
     }
 
     if (!shouldSkipSignupValidation()) {
       if (!certificateViewUrl || !certificateAccessCode) {
-        Alert.alert('알림', '열람용 주소와 열람 번호를 모두 입력해 주세요.');
+        appAlert.alert('알림', '열람용 주소와 열람 번호를 모두 입력해 주세요.');
         return;
       }
     }
@@ -1331,7 +1389,7 @@ const Sign = ({ navigation }) => {
         SIGNUP_TEST_MOCK_ACCOUNT.password,
     };
     if (!shouldSkipSignupValidation() && (!finalData.username || !finalData.password)) {
-      Alert.alert('알림', '계정 정보가 없습니다. 이전 단계를 확인해 주세요.');
+      appAlert.alert('알림', '계정 정보가 없습니다. 이전 단계를 확인해 주세요.');
       return;
     }
 
@@ -1353,7 +1411,7 @@ const Sign = ({ navigation }) => {
       if (alertSignupDuplicateAndOfferLogin(error, navigation)) {
         return;
       }
-      Alert.alert(
+      appAlert.alert(
         '회원가입 실패',
         error.response?.data?.message || '회원가입 중 오류가 발생했습니다.',
       );
@@ -1467,7 +1525,7 @@ const Sign = ({ navigation }) => {
 
     if (shouldSkipSignupValidation()) {
       if (SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST && !SIGNUP_REDESIGN_SKIP_VALIDATION) {
-        Alert.alert(
+        appAlert.alert(
           '학생증 제출 완료!',
           '관리자 승인 후 서비스를 이용할 수 있습니다',
           [{ text: '확인', onPress: () => resetTo('Login') }],
@@ -1484,11 +1542,11 @@ const Sign = ({ navigation }) => {
     }
 
     if (!token) {
-      Alert.alert('알림', '학생증 인증 정보가 없습니다. 다시 제출해 주세요.');
+      appAlert.alert('알림', '학생인증 정보가 없습니다. 다시 제출해 주세요.');
       return;
     }
     if (!identityData.inicisClientToken && !inicisClientTokenRef.current) {
-      Alert.alert(
+      appAlert.alert(
         '본인인증 필요',
         '학생 본인인증 정보가 없습니다. 이전 단계에서 본인인증을 다시 완료해 주세요.',
       );
@@ -1541,14 +1599,17 @@ const Sign = ({ navigation }) => {
           '',
       ).replace(/\D/g, ''),
       birthDate: resolvedBirthDate || identity.birthDate,
-      schoolId: finalData.schoolId,
-      grade,
-      classNumber,
-      graduationYear,
+      // 재학정보 가입 시 미입력 — 인앱 학생인증 때 설정
       colorId: pickRandomProfileColorId(),
       verificationMethod,
       consents: consentData.consents || {},
     };
+    if (finalData.schoolId) {
+      payload.schoolId = finalData.schoolId;
+      payload.grade = grade;
+      payload.classNumber = classNumber;
+      if (graduationYear) payload.graduationYear = graduationYear;
+    }
 
     const inviteCode = options.inviteCode;
     if (inviteCode) payload.inviteCode = inviteCode;
@@ -1586,43 +1647,43 @@ const Sign = ({ navigation }) => {
       await setAuthToken(token, { persist: true });
     }
     await login({
-      studentVerificationStatus: status || 'PENDING',
+      studentVerificationStatus: status || 'UNVERIFIED',
       rejectReason: rejectReason || null,
     });
   };
 
-  const handleComplete = async () => {
-    const finalData = { ...formData, ...stepInfoData };
+  const handleComplete = async (overrideFormData = null) => {
+    const finalData = overrideFormData
+      ? { ...overrideFormData }
+      : { ...formData, ...stepInfoData };
 
     if (
       shouldSkipSignupValidation() &&
       SKIP_SIGNUP_VALIDATION_UNTIL_OCR_TEST &&
       !SIGNUP_REDESIGN_SKIP_VALIDATION
     ) {
-      Alert.alert('테스트모드', '회원가입 제출 API 호출을 건너뛰었습니다.');
+      appAlert.alert('테스트모드', '회원가입 제출 API 호출을 건너뛰었습니다.');
       return;
     }
 
     const verificationToken =
       studentVerificationToken ||
-      SIGNUP_TEST_MOCK_STUDENT_VERIFICATION.studentVerificationToken;
+      (shouldSkipSignupValidation()
+        ? SIGNUP_TEST_MOCK_STUDENT_VERIFICATION.studentVerificationToken
+        : undefined);
 
-    if (!shouldSkipSignupValidation() && !verificationToken) {
-      Alert.alert('알림', '학생증 촬영·제출을 먼저 완료해 주세요.');
-      return;
-    }
     if (
       !shouldSkipSignupValidation() &&
       (!finalData.username || !finalData.password)
     ) {
-      Alert.alert('알림', '계정 정보가 없습니다. 이전 단계를 확인해 주세요.');
+      appAlert.alert('알림', '계정 정보가 없습니다. 이전 단계를 확인해 주세요.');
       return;
     }
 
     setSubmitting(true);
     try {
       if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
-        await login({ studentVerificationStatus: 'PENDING' });
+        await login({ studentVerificationStatus: 'UNVERIFIED' });
         return;
       }
 
@@ -1646,7 +1707,7 @@ const Sign = ({ navigation }) => {
         (!Number.isFinite(payload.graduationYear) ||
           payload.graduationYear < 1900)
       ) {
-        Alert.alert(
+        appAlert.alert(
           '가입 정보 확인',
           '생년월일 기준으로 학년·졸업년도를 자동 계산하지 못했습니다.\n' +
             '중·고등학생 생년월일(만 14~19세)로 다시 시도해 주세요.',
@@ -1660,7 +1721,7 @@ const Sign = ({ navigation }) => {
       if (alertSignupDuplicateAndOfferLogin(error, navigation)) {
         return;
       }
-      Alert.alert(
+      appAlert.alert(
         '회원가입 실패',
         error.response?.data?.message || '회원가입 중 오류가 발생했습니다.',
       );
@@ -1668,6 +1729,7 @@ const Sign = ({ navigation }) => {
       setSubmitting(false);
     }
   };
+  completeSignupRef.current = handleComplete;
 
   const getStepTitle = () => {
     switch (currentStep) {
@@ -1680,7 +1742,7 @@ const Sign = ({ navigation }) => {
       case STEP.SCHOOL_SELECT:
         return '재학 정보 입력';
       case STEP.STUDENT_VERIFY:
-        return studentVerified ? '가입 마무리' : '학생증 인증';
+        return studentVerified ? '가입 마무리' : '학생인증';
       case STEP.ALT_VERIFY_CHOICE:
         return '인증 방법 선택';
       case STEP.CERTIFICATE_GUIDE:

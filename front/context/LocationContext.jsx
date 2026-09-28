@@ -18,7 +18,6 @@ import {
 import * as Location from 'expo-location';
 import { useAuth } from './AuthContext';
 import { colors, fonts } from '../styles/colors';
-import Skeleton from '../components/common/Skeleton';
 import {
   clearLastLocation,
   loadLastLocation,
@@ -29,8 +28,9 @@ const LocationContext = createContext(null);
 
 export function LocationProvider({ children }) {
   const { isLoggedIn } = useAuth();
-  const [isReady, setIsReady] = useState(false);
-  const [permissionGranted, setPermissionGranted] = useState(false);
+  const [isReady, setIsReady] = useState(true);
+  /** null: 아직 모름(게이트 숨김) / true / false */
+  const [permissionGranted, setPermissionGranted] = useState(null);
   const [coords, setCoordsState] = useState(null);
   const [coordsIsFresh, setCoordsIsFresh] = useState(false);
   const coordsRef = useRef(null);
@@ -50,37 +50,16 @@ export function LocationProvider({ children }) {
   );
 
   useEffect(() => {
-    permissionGrantedRef.current = permissionGranted;
+    permissionGrantedRef.current = permissionGranted === true;
   }, [permissionGranted]);
 
-  const runLocationFlow = useCallback(async () => {
-    const hadCoords = coordsRef.current != null;
-    if (!hadCoords) {
-      setIsReady(false);
-    }
-
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== Location.PermissionStatus.GRANTED) {
-      setPermissionGranted(false);
-      setCoordsState(null);
-      coordsRef.current = null;
-      setCoordsIsFresh(false);
-      await clearLastLocation();
-      setIsReady(true);
-      return;
-    }
-
-    setPermissionGranted(true);
-
+  const hydrateCoordsIfGranted = useCallback(async () => {
     if (!coordsRef.current) {
       const cached = await loadLastLocation();
       if (cached) {
         applyCoords(cached, { fresh: false });
       }
     }
-
-    setIsReady(true);
-
     try {
       const pos = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
@@ -100,10 +79,41 @@ export function LocationProvider({ children }) {
     }
   }, [applyCoords]);
 
+  const runLocationFlow = useCallback(
+    async ({ requestIfNeeded = false } = {}) => {
+      const existing = await Location.getForegroundPermissionsAsync();
+      let status = existing.status;
+
+      if (
+        status !== Location.PermissionStatus.GRANTED &&
+        requestIfNeeded
+      ) {
+        const asked = await Location.requestForegroundPermissionsAsync();
+        status = asked.status;
+      }
+
+      if (status !== Location.PermissionStatus.GRANTED) {
+        setPermissionGranted(false);
+        setCoordsState(null);
+        coordsRef.current = null;
+        setCoordsIsFresh(false);
+        await clearLastLocation();
+        setIsReady(true);
+        return false;
+      }
+
+      setPermissionGranted(true);
+      setIsReady(true);
+      await hydrateCoordsIfGranted();
+      return true;
+    },
+    [hydrateCoordsIfGranted],
+  );
+
   useEffect(() => {
     if (!isLoggedIn) {
       setIsReady(true);
-      setPermissionGranted(false);
+      setPermissionGranted(null);
       setCoordsState(null);
       coordsRef.current = null;
       setCoordsIsFresh(false);
@@ -114,19 +124,41 @@ export function LocationProvider({ children }) {
     let cancelled = false;
 
     (async () => {
-      const cached = await loadLastLocation();
+      const existing = await Location.getForegroundPermissionsAsync();
       if (cancelled) return;
-      if (cached) {
-        applyCoords(cached, { fresh: false });
+
+      if (existing.status === Location.PermissionStatus.GRANTED) {
+        setPermissionGranted(true);
         setIsReady(true);
+        const cached = await loadLastLocation();
+        if (!cancelled && cached) {
+          applyCoords(cached, { fresh: false });
+        }
+        if (!cancelled) {
+          await hydrateCoordsIfGranted();
+        }
+        return;
       }
-      await runLocationFlow();
+
+      if (existing.status === Location.PermissionStatus.UNDETERMINED) {
+        const asked = await Location.requestForegroundPermissionsAsync();
+        if (cancelled) return;
+        if (asked.status === Location.PermissionStatus.GRANTED) {
+          setPermissionGranted(true);
+          setIsReady(true);
+          await hydrateCoordsIfGranted();
+          return;
+        }
+      }
+
+      setPermissionGranted(false);
+      setIsReady(true);
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [isLoggedIn, runLocationFlow, applyCoords]);
+  }, [isLoggedIn, applyCoords, hydrateCoordsIfGranted]);
 
   const refreshLocation = useCallback(async () => {
     if (!isLoggedIn || !permissionGrantedRef.current) return;
@@ -158,7 +190,14 @@ export function LocationProvider({ children }) {
         return;
       }
       if (nextState === 'active') {
-        refreshLocation();
+        Location.getForegroundPermissionsAsync()
+          .then(({ status }) => {
+            if (status === Location.PermissionStatus.GRANTED) {
+              setPermissionGranted(true);
+              refreshLocation();
+            }
+          })
+          .catch(() => {});
       }
     });
 
@@ -166,7 +205,7 @@ export function LocationProvider({ children }) {
   }, [isLoggedIn, refreshLocation]);
 
   const retryPermission = useCallback(async () => {
-    await runLocationFlow();
+    await runLocationFlow({ requestIfNeeded: true });
   }, [runLocationFlow]);
 
   const value = useMemo(
@@ -204,11 +243,10 @@ export function useLocationContext() {
 }
 
 /**
- * 로그인 후 메인 앱 진입 시 위치 권한이 없으면 앱 사용을 막습니다.
- * 권한이 허용되면 좌표 수신 전에도 메인으로 진입합니다(캐시·비동기 GPS).
+ * 권한이 거부된 뒤에만 안내 화면. 확인 중이거나 허용이면 바로 홈.
  */
 export function LocationGate({ children }) {
-  const { isReady, permissionGranted, retryPermission } = useLocationContext();
+  const { permissionGranted, retryPermission } = useLocationContext();
 
   if (!isReady) {
     return (
@@ -217,7 +255,7 @@ export function LocationGate({ children }) {
           flex: 1,
           justifyContent: 'center',
           alignItems: 'center',
-          backgroundColor: colors.white,
+          backgroundColor: colors.background,
         }}
       >
         <Skeleton width={28} height={28} borderRadius={14} />
@@ -225,7 +263,7 @@ export function LocationGate({ children }) {
           style={{
             marginTop: 16,
             fontFamily: fonts.regular,
-            color: colors.textLight4,
+            color: colors.textSecondary,
           }}
         >
           위치 권한을 확인하는 중이에요…
@@ -234,8 +272,7 @@ export function LocationGate({ children }) {
     );
   }
 
-  if (!permissionGranted) {
-    return (
+  return (
       <View
         style={{
           flex: 1,
@@ -316,8 +353,5 @@ export function LocationGate({ children }) {
           </Text>
         ) : null}
       </View>
-    );
-  }
-
-  return children;
+  );
 }

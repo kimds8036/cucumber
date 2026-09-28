@@ -1,21 +1,120 @@
-import React, { useEffect, useState } from 'react';
-import { BackHandler, Platform, ToastAndroid, View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  BackHandler,
+  Platform,
+  ToastAndroid,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import MainHeader from '../frame/mainHeader';
-import { MainShellProvider } from '../../context/MainShellContext';
+import {
+  MainShellProvider,
+  useMainShell,
+} from '../../context/MainShellContext';
 import { colors } from '../../styles/colors';
+import { getNormalize } from '../../styles/frame.style';
 import Skeleton from '../../components/common/Skeleton';
 import { trackScreenView } from '../../utils/analytics';
 import { MAIN_TAB_TO_ANALYTICS_SCREEN } from '../../constants/analyticsScreens';
 import { MainTabNavigatorContainer } from './MainTabNavigator';
 import { MAIN_FOOTER_SAFE_AREA_EDGES } from '../frame/mainFooter';
+import StudentIdResubmit from './signup/StudentIdResubmit';
+import SignupPrepMaterialsModal from './signup/SignupPrepMaterialsModal';
+import { useAuth } from '../../context/AuthContext';
 
 const MAIN_TABS = new Set(['board', 'message', 'school', 'timer', 'mypage']);
 
 function hasDeepLinkTab(route) {
   const tab = route?.params?.screen ?? route?.params?.initialTab;
   return MAIN_TABS.has(tab);
+}
+
+/** MainShell 인증 요청 → 준비물 팝업(현재 화면) → 학생인증 화면 */
+function StudentVerifyRequestBridge({ children }) {
+  const {
+    studentVerifyRequest,
+    clearStudentVerificationRequest,
+    endStudentVerificationUi,
+  } = useMainShell();
+  const { studentVerificationStatus } = useAuth();
+  const { width } = useWindowDimensions();
+  const normalize = useMemo(() => getNormalize(width), [width]);
+  const [prepMode, setPrepMode] = useState(null);
+  const [verifyMode, setVerifyMode] = useState(null);
+  /** 준비물 확인 후 학생증 화면으로 넘길지 (페이드 완료 후) */
+  const prepConfirmOpenRef = useRef(false);
+  const pendingVerifyModeRef = useRef(null);
+
+  useEffect(() => {
+    if (!studentVerifyRequest) return;
+    const status =
+      studentVerifyRequest.statusHint || studentVerificationStatus;
+    const mode =
+      status === 'REJECTED'
+        ? 'rejected'
+        : status === 'APPROVED'
+          ? 'reverification'
+          : 'verify';
+    prepConfirmOpenRef.current = false;
+    pendingVerifyModeRef.current = null;
+    setPrepMode(mode);
+    clearStudentVerificationRequest();
+  }, [
+    studentVerifyRequest,
+    studentVerificationStatus,
+    clearStudentVerificationRequest,
+  ]);
+
+  const closeVerifyFlow = () => {
+    prepConfirmOpenRef.current = false;
+    pendingVerifyModeRef.current = null;
+    setVerifyMode(null);
+    setPrepMode(null);
+    endStudentVerificationUi();
+  };
+
+  return (
+    <>
+      {verifyMode ? (
+        <StudentIdResubmit
+          mode={verifyMode}
+          navigation={{
+            goBack: closeVerifyFlow,
+          }}
+        />
+      ) : (
+        children
+      )}
+      <SignupPrepMaterialsModal
+        visible={Boolean(prepMode)}
+        variant="verify"
+        normalize={normalize}
+        onConfirm={() => {
+          // App.js와 동일: 팝업 페이드가 끝난 뒤 화면 전환 (iOS Modal 중첩 방지)
+          pendingVerifyModeRef.current = prepMode;
+          prepConfirmOpenRef.current = true;
+          setPrepMode(null);
+        }}
+        onCancel={() => {
+          prepConfirmOpenRef.current = false;
+          pendingVerifyModeRef.current = null;
+          setPrepMode(null);
+        }}
+        onDismissed={() => {
+          if (prepConfirmOpenRef.current && pendingVerifyModeRef.current) {
+            const mode = pendingVerifyModeRef.current;
+            prepConfirmOpenRef.current = false;
+            pendingVerifyModeRef.current = null;
+            setVerifyMode(mode);
+            return;
+          }
+          endStudentVerificationUi();
+        }}
+      />
+    </>
+  );
 }
 
 const MainScreen = ({ navigation, route }) => {
@@ -68,51 +167,53 @@ const MainScreen = ({ navigation, route }) => {
       activeTab={activeTab}
       setActiveTab={setActiveTab}
     >
-      <SafeAreaView
-        style={{ flex: 1, backgroundColor: colors.white }}
-        edges={MAIN_FOOTER_SAFE_AREA_EDGES}
-      >
-        <MainHeader />
-        <View style={{ flex: 1, backgroundColor: colors.white }}>
-          {screenReady ? (
-            <MainTabNavigatorContainer
-              stackNavigation={navigation}
-              route={route}
-              onActiveTabChange={setActiveTab}
-            />
-          ) : (
-            <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }}>
-              {[0, 1, 2].map((idx) => (
-                <View
-                  key={`main-skeleton-${idx}`}
-                  style={{
-                    backgroundColor: colors.white,
-                    borderRadius: 12,
-                    padding: 14,
-                    borderWidth: 1,
-                    borderColor: colors.textLight1,
-                    marginBottom: 12,
-                  }}
-                >
-                  <Skeleton
-                    width="55%"
-                    height={14}
-                    borderRadius={7}
-                    style={{ marginBottom: 10 }}
-                  />
-                  <Skeleton
-                    width="100%"
-                    height={12}
-                    borderRadius={6}
-                    style={{ marginBottom: 8 }}
-                  />
-                  <Skeleton width="85%" height={12} borderRadius={6} />
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
-      </SafeAreaView>
+      <StudentVerifyRequestBridge>
+        <SafeAreaView
+          style={{ flex: 1, backgroundColor: colors.white }}
+          edges={MAIN_FOOTER_SAFE_AREA_EDGES}
+        >
+          <MainHeader />
+          <View style={{ flex: 1, backgroundColor: colors.white }}>
+            {screenReady ? (
+              <MainTabNavigatorContainer
+                stackNavigation={navigation}
+                route={route}
+                onActiveTabChange={setActiveTab}
+              />
+            ) : (
+              <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }}>
+                {[0, 1, 2].map((idx) => (
+                  <View
+                    key={`main-skeleton-${idx}`}
+                    style={{
+                      backgroundColor: colors.white,
+                      borderRadius: 12,
+                      padding: 14,
+                      borderWidth: 1,
+                      borderColor: colors.textLight1,
+                      marginBottom: 12,
+                    }}
+                  >
+                    <Skeleton
+                      width="55%"
+                      height={14}
+                      borderRadius={7}
+                      style={{ marginBottom: 10 }}
+                    />
+                    <Skeleton
+                      width="100%"
+                      height={12}
+                      borderRadius={6}
+                      style={{ marginBottom: 8 }}
+                    />
+                    <Skeleton width="85%" height={12} borderRadius={6} />
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        </SafeAreaView>
+      </StudentVerifyRequestBridge>
     </MainShellProvider>
   );
 };

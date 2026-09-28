@@ -128,15 +128,15 @@ router.get('/posts', optionalAuthenticate, validate(postsSearchValidators), asyn
     const offsetNum = (pageNum - 1) * limitNum;
     const like = `%${q}%`;
 
-    // 현재 사용자 학교 ID 조회 (있으면 학교 게시판/학교 우편을 해당 학교로 제한)
+    // 현재 사용자 학교 ID 조회 (학생 인증 완료 시에만 학교 게시판/우편 포함)
     let userSchoolId = null;
     const userId = req.user?.userId ?? null;
     if (userId) {
       const [users] = await pool.execute(
-        'SELECT school_id FROM users WHERE id = ?',
+        'SELECT school_id, student_verified FROM users WHERE id = ?',
         [userId],
       );
-      if (users.length > 0) {
+      if (users.length > 0 && users[0].student_verified) {
         userSchoolId = users[0].school_id;
       }
     }

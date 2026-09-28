@@ -232,8 +232,8 @@ export function resolvePushNavigation(data = {}, remoteMessage = null) {
 
   if (relatedType === 'student_verification_rejected') {
     return {
-      name: 'Notification',
-      params: data,
+      name: 'Main',
+      params: { initialTab: 'board', openRejectionNotice: true },
     };
   }
 

@@ -72,17 +72,20 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppLockProvider } from './context/AppLockContext';
 import { LocationProvider, LocationGate } from './context/LocationContext';
-import StudentVerificationGate from './components/auth/StudentVerificationGate';
 import StudentVerificationRejected from './components/auth/StudentVerificationRejected';
+import StudentVerificationRejectedModal from './components/auth/StudentVerificationRejectedModal';
+import { navigationRef } from './navigation/navigationRef';
 import CertificateResubmit from './view/src/signup/CertificateResubmit';
 import CertificateGuideResubmit from './view/src/signup/CertificateGuideResubmit';
 import AltVerifyChoiceResubmit from './view/src/signup/AltVerifyChoiceResubmit';
 import NeisPlusResubmit from './view/src/signup/NeisPlusResubmit';
+import SignupPrepMaterialsModal from './view/src/signup/SignupPrepMaterialsModal';
 import AccountBlockedScreen from './components/auth/AccountBlockedScreen';
 import ReverificationGate from './components/auth/ReverificationGate';
 import ReverificationReminderBanner from './components/auth/ReverificationReminderBanner';
 import ReverificationPendingBanner from './components/auth/ReverificationPendingBanner';
 import ForceUpdateGate from './components/common/ForceUpdateGate';
+import InAppReviewPrompt from './components/common/InAppReviewPrompt';
 import OfflineGate from './components/common/OfflineGate';
 import AppErrorBoundary from './components/common/AppErrorBoundary';
 import LaunchAdModal from './components/ads/LaunchAdModal';
@@ -94,7 +97,6 @@ import { FriendProvider } from './context/FriendContext';
 import { ToastProvider } from './context/ToastContext';
 import ToastHost from './components/common/ToastHost';
 import AlertHost from './components/common/AlertHost';
-import { navigationRef } from './navigation/navigationRef';
 import { getPendingInicisSession } from './services/inicisAuth';
 import {
   clearSignupPendingSession,
@@ -257,6 +259,7 @@ function MainStack({ initialRouteName = 'Main' }) {
         name="NotificationSettings"
         component={NotificationSettings}
       />
+      <Stack.Screen name="StudentIdVerify" component={StudentIdResubmit} />
       <Stack.Screen name="PeriodTimeSettings" component={PeriodTimeSettings} />
       <Stack.Screen name="PeriodTimeSetup" component={PeriodTimeSetup} />
       <Stack.Screen name="SetPinScreen" component={SetPinScreen} />
@@ -323,10 +326,11 @@ function RootNavigator() {
     postLoginRoute,
     setPostLoginRoute,
     studentVerificationStatus,
+    rejectReason,
     reverificationStatus,
     reverificationDeadline,
     reverificationSubmissionPending,
-    needsProfileUsername,
+    // needsProfileUsername, // 프로필 아이디 게이트 비활성 중
     refreshStudentVerification,
   } = useAuth();
   const [showResubmit, setShowResubmit] = useState(false);
@@ -336,7 +340,38 @@ function RootNavigator() {
   const [showNeisPlusResubmit, setShowNeisPlusResubmit] = useState(false);
   const [showRejectedInquiry, setShowRejectedInquiry] = useState(false);
   const [resubmitMode, setResubmitMode] = useState('rejected');
+  const [prepBeforeResubmit, setPrepBeforeResubmit] = useState(false);
+  const [showRejectionNotice, setShowRejectionNotice] = useState(false);
+  const [rejectionNoticeReason, setRejectionNoticeReason] = useState(null);
   const pollRef = useRef(null);
+  const prepConfirmOpenRef = useRef(false);
+
+  const beginStudentIdResubmit = (mode) => {
+    setResubmitMode(mode);
+    prepConfirmOpenRef.current = false;
+    setPrepBeforeResubmit(true);
+  };
+
+  const prepMaterialsModal = (
+    <SignupPrepMaterialsModal
+      visible={prepBeforeResubmit}
+      variant="verify"
+      onConfirm={() => {
+        // 팝업 페이드가 끝난 뒤 화면 전환 (트리 교체로 페이드가 끊기지 않게)
+        prepConfirmOpenRef.current = true;
+        setPrepBeforeResubmit(false);
+      }}
+      onCancel={() => {
+        prepConfirmOpenRef.current = false;
+        setPrepBeforeResubmit(false);
+      }}
+      onDismissed={() => {
+        if (!prepConfirmOpenRef.current) return;
+        prepConfirmOpenRef.current = false;
+        setShowResubmit(true);
+      }}
+    />
+  );
 
   /**
    * __DEV__ 전용: 로그인 후 학생증 재제출 화면만 바로 미리보기
@@ -454,11 +489,19 @@ function RootNavigator() {
       handleVerificationPush(remoteMessage);
       const data = remoteMessage?.data || {};
       const relatedType = String(data?.relatedType || '').trim();
-      // 검수 게이트 중에는 MainStack 이 없어 navigate 생략 — 상태 갱신만으로 진입/거절 화면 전환
-      if (
-        relatedType === 'student_verification_approved' ||
-        relatedType === 'student_verification_rejected'
-      ) {
+      if (relatedType === 'student_verification_approved') {
+        return;
+      }
+      if (relatedType === 'student_verification_rejected') {
+        const fromPush = String(
+          remoteMessage?.notification?.body ||
+            remoteMessage?.data?.body ||
+            '',
+        ).trim();
+        setRejectionNoticeReason(fromPush || null);
+        void refreshStudentVerification().finally(() => {
+          setShowRejectionNotice(true);
+        });
         return;
       }
       if (!navigationRef.isReady()) return;
@@ -527,21 +570,20 @@ function RootNavigator() {
     );
   }
 
-  // 거절 플로우: SafeAreaView 는 여기 1곳만 (화면 전환 시 remount 점프 방지)
+  // 거절 대안·재제출 화면: 사용자가 연 경우에만 전면 표시
+  // REJECTED/PENDING 도 메인 진입 (가입_개편 — 인앱 인증 유도)
   const inRejectedAltFlow =
     showRejectedInquiry ||
     showAltVerifyChoice ||
     showNeisPlusResubmit ||
     showCertificateGuide ||
-    showCertificateResubmit ||
-    studentVerificationStatus === 'REJECTED';
+    showCertificateResubmit;
 
   if (inRejectedAltFlow) {
     let rejectedBody = (
       <StudentVerificationRejected
         onResubmitStudentId={() => {
-          setResubmitMode('rejected');
-          setShowResubmit(true);
+          beginStudentIdResubmit('rejected');
         }}
         onResubmitCertificate={() => setShowAltVerifyChoice(true)}
         onInquiry={() => setShowRejectedInquiry(true)}
@@ -622,16 +664,12 @@ function RootNavigator() {
         edges={['top', 'bottom']}
       >
         {rejectedBody}
+        {prepMaterialsModal}
       </SafeAreaView>
     );
   }
 
-  if (
-    studentVerificationStatus === 'PENDING' &&
-    !reverificationSubmissionPending
-  ) {
-    return <StudentVerificationGate />;
-  }
+  // PENDING 전면 Gate 제거 — 미인증도 라이트 기능으로 메인 진입 (가입_개편)
 
   if (reverificationStatus === 'graduated_blocked') {
     return <AccountBlockedScreen variant="graduated" />;
@@ -643,12 +681,14 @@ function RootNavigator() {
 
   if (reverificationStatus === 'restricted') {
     return (
-      <ReverificationGate
-        onResubmit={() => {
-          setResubmitMode('reverification');
-          setShowResubmit(true);
-        }}
-      />
+      <>
+        <ReverificationGate
+          onResubmit={() => {
+            beginStudentIdResubmit('reverification');
+          }}
+        />
+        {prepMaterialsModal}
+      </>
     );
   }
 
@@ -660,12 +700,13 @@ function RootNavigator() {
   const mainInitialRoute =
     postLoginRoute === 'GuideOverlay' ? 'GuideOverlay' : 'Main';
 
-  if (
-    studentVerificationStatus === 'APPROVED' &&
-    needsProfileUsername
-  ) {
-    return <SignProfileUsername />;
-  }
+  // 프로필 아이디 설정 전체화면 게이트 — 임시 비활성
+  // if (
+  //   studentVerificationStatus === 'APPROVED' &&
+  //   needsProfileUsername
+  // ) {
+  //   return <SignProfileUsername />;
+  // }
 
   return (
     <View style={{ flex: 1 }}>
@@ -675,8 +716,7 @@ function RootNavigator() {
           status={reverificationStatus}
           deadline={reverificationDeadline}
           onResubmit={() => {
-            setResubmitMode('reverification');
-            setShowResubmit(true);
+            beginStudentIdResubmit('reverification');
           }}
         />
       ) : null}
@@ -684,6 +724,24 @@ function RootNavigator() {
         <WidgetDeepLinkHandler />
         <MainStack initialRouteName={mainInitialRoute} />
       </LocationGate>
+      <InAppReviewPrompt />
+      <StudentVerificationRejectedModal
+        visible={showRejectionNotice}
+        rejectReason={rejectionNoticeReason || rejectReason}
+        canResubmit={studentVerificationStatus === 'REJECTED'}
+        onClose={() => {
+          setShowRejectionNotice(false);
+        }}
+        onDismissed={() => {
+          setRejectionNoticeReason(null);
+        }}
+        onPressResubmit={() => {
+          if (studentVerificationStatus !== 'REJECTED') return;
+          setShowRejectionNotice(false);
+          beginStudentIdResubmit('rejected');
+        }}
+      />
+      {prepMaterialsModal}
     </View>
   );
 }

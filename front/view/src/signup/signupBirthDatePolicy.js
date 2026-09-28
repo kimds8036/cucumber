@@ -46,41 +46,50 @@ function formatDateParts(year, month, day) {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-/** 가입 가능 생년월일 경계 (매년 롤링, 상한 만 21세) */
+/**
+ * 중·고 학적 추론용 상한(만 나이). 가입 차단에는 쓰지 않음 — 전 연령(상한 없음)
+ */
 export const SIGNUP_MAX_AGE = 21;
+
+/** 가입 하한(만 나이). 초등 입학 연령대부터 허용. 미만은 D */
+export const SIGNUP_MIN_AGE = 6;
 
 export function getBirthDateBoundaries(ref = new Date()) {
   const Y = ref.getFullYear();
-  // 올해 기준 (Y - 21)년 1월 1일 이후 출생 → 만 21세까지 허용
+  // 학적 추론용 전통 재학 상한 경계(가입 차단 아님)
   const minDate = formatDateParts(Y - SIGNUP_MAX_AGE, 1, 1);
   const maxDate = formatDateParts(Y - 13, 12, 31);
-  const tooYoungCutoff = formatDateParts(Y - 12, 1, 1);
+  // 만 SIGNUP_MIN_AGE 미만 차단용 — (Y - MIN_AGE + 1)년 1월 1일 이후 출생은 대체로 미달
+  const tooYoungCutoff = formatDateParts(Y - SIGNUP_MIN_AGE + 1, 1, 1);
   return {
     Y,
     minDate,
     maxDate,
     tooYoungCutoff,
     minYear: Y - SIGNUP_MAX_AGE,
-    maxYear: Y - 13,
+    maxYear: Y - SIGNUP_MIN_AGE,
     maxAge: SIGNUP_MAX_AGE,
+    minAge: SIGNUP_MIN_AGE,
   };
 }
 
 /**
  * 생년월일 가입 케이스 판정
- * A: 너무 연장 / B: 만14+ / C: 만14미만(보호자) / D: 너무 어림 / invalid
+ * A: 전통 재학 연령 초과(가입 허용)
+ * B: 만14+ / C: 만14미만(보호자) / D: 만 SIGNUP_MIN_AGE 미만(가입 불가)
  * @returns {BirthDateCase}
  */
 export function classifyBirthDateCase(birthDate, ref = new Date()) {
   if (!isValidBirthDateString(birthDate)) return 'invalid';
 
-  const { minDate, tooYoungCutoff } = getBirthDateBoundaries(ref);
-
-  if (birthDate < minDate) return 'A';
-  if (birthDate >= tooYoungCutoff) return 'D';
-
   const age = computeAge(birthDate, ref);
   if (age == null) return 'invalid';
+  // 미래 생년월일·하한 미만
+  if (age < SIGNUP_MIN_AGE) return 'D';
+
+  const { minDate } = getBirthDateBoundaries(ref);
+  if (birthDate < minDate) return 'A';
+
   if (age < 14) return 'C';
   return 'B';
 }
@@ -97,7 +106,7 @@ export function getTooYoungEligibilityMessage(_ref = new Date()) {
 }
 
 export function getIneligibleAgeDetailMessage(birthCase, ref = new Date()) {
-  if (birthCase === 'A' || birthCase === 'D') return AGE_INELIGIBLE_MESSAGE;
+  if (birthCase === 'D') return AGE_INELIGIBLE_MESSAGE;
   return '';
 }
 

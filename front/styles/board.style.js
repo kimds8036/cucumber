@@ -680,6 +680,7 @@ export const createDetailStyles = (width, normalize) => {
     detailImagesWrap: {
       width: '100%',
       marginBottom: normalize(7),
+      overflow: 'hidden',
     },
     detailImage: {
       width: '100%',

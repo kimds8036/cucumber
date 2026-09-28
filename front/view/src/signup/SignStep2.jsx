@@ -1,17 +1,10 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import {
   View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  Pressable,
-  Keyboard,
   StyleSheet,
   Platform,
   useWindowDimensions,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, fontSizes } from '../../../styles/colors';
 import {
   USERNAME_HINT,
   PASSWORD_HINT,
@@ -22,106 +15,12 @@ import {
 } from '../../../utils/signupValidation';
 import SignupLockedField from './SignupLockedField';
 import SignupStepScroll from './SignupStepScroll';
-import SignupHelperText from './SignupHelperText';
-import { GrowingUnderline } from './SchoolSearchField';
+import AuthTextField from './AuthTextField';
 
 const USERNAME_VALID_MESSAGE = '사용 가능한 아이디입니다';
-const PASSWORD_INVALID_MESSAGE = '잘못된 비밀번호입니다';
+const PASSWORD_INVALID_MESSAGE =
+  '영문과 숫자를 포함해 8자 이상으로 입력해 주세요.';
 const PASSWORD_CONFIRM_MISMATCH_MESSAGE = '비밀번호가 일치하지 않습니다';
-const PLACEHOLDER_TEXT_COLOR = colors.textLight4;
-
-function resolveUnderlineStatus(status) {
-  if (status === 'valid' || status === 'match') return 'success';
-  if (status === 'invalid' || status === 'mismatch') return 'error';
-  return 'idle';
-}
-
-function AccountGrowUnderlineField({
-  accountStyles,
-  normalize,
-  label,
-  labelExtra,
-  value,
-  onChangeText,
-  placeholder,
-  placeholderTextColor,
-  secureTextEntry,
-  visible,
-  onToggleVisible,
-  fillColor,
-  growActive,
-  feedback,
-  autoCapitalize,
-}) {
-  const [focused, setFocused] = useState(false);
-
-  return (
-    <View style={accountStyles.fieldBlock}>
-      {labelExtra ? (
-        <Text style={accountStyles.fieldLabel}>
-          {label}{' '}
-          <Text style={accountStyles.fieldLabelExtra}>{labelExtra}</Text>
-        </Text>
-      ) : (
-        <Text style={accountStyles.fieldLabel}>{label}</Text>
-      )}
-      <View style={accountStyles.underlineField}>
-        {onChangeText ? (
-          <View style={accountStyles.inputRow}>
-            <TextInput
-              style={accountStyles.fieldInput}
-              value={value}
-              onChangeText={onChangeText}
-              placeholder={placeholder}
-              placeholderTextColor={placeholderTextColor}
-              secureTextEntry={secureTextEntry}
-              autoCapitalize={autoCapitalize}
-              autoCorrect={false}
-              spellCheck={false}
-              keyboardType={Platform.select({
-                ios: 'ascii-capable',
-                android: 'email-address',
-              })}
-              textContentType={secureTextEntry ? 'newPassword' : 'username'}
-              autoComplete={secureTextEntry ? 'password-new' : 'username'}
-              multiline={false}
-              scrollEnabled={false}
-              onFocus={() => setFocused(true)}
-              onBlur={() => setFocused(false)}
-            />
-            {onToggleVisible ? (
-              <TouchableOpacity
-                style={accountStyles.inputIconButton}
-                onPress={onToggleVisible}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  visible ? '비밀번호 숨기기' : '비밀번호 보기'
-                }
-              >
-                <Ionicons
-                  name={visible ? 'eye-outline' : 'eye-off-outline'}
-                  size={normalize(Platform.OS === 'ios' ? 18 : 24)}
-                  color={colors.textLight4}
-                />
-              </TouchableOpacity>
-            ) : (
-              <View style={accountStyles.inputIconSlot} />
-            )}
-          </View>
-        ) : (
-          <Text style={accountStyles.lockedValue}>{value}</Text>
-        )}
-      </View>
-      <GrowingUnderline
-        active={focused || growActive}
-        normalize={normalize}
-        fillColor={fillColor}
-      />
-      {feedback}
-    </View>
-  );
-}
 
 const SignStep2 = ({
   styles,
@@ -139,8 +38,6 @@ const SignStep2 = ({
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const [claimedSchoolName, setClaimedSchoolName] = useState('');
   const [certificateUrl, setCertificateUrl] = useState('');
   const [submissionNumber, setSubmissionNumber] = useState('');
@@ -202,203 +99,88 @@ const SignStep2 = ({
     return password === passwordConfirm ? 'match' : 'mismatch';
   }, [password, passwordConfirm]);
 
-  const renderAccountFieldFeedback = (status, { successText, errorText }) => {
-    const isOk = status === 'valid' || status === 'match';
-    const isError = status === 'invalid' || status === 'mismatch';
-    const showMessage =
-      status !== 'idle' && (isError || (isOk && Boolean(successText)));
-
-    return (
-      <View style={accountStyles.fieldFeedbackSlot}>
-        {showMessage ? (
-          <Text
-            style={[
-              accountStyles.fieldFeedback,
-              isOk
-                ? accountStyles.fieldFeedbackSuccess
-                : accountStyles.fieldFeedbackError,
-            ]}
-          >
-            {isOk ? successText : errorText}
-          </Text>
-        ) : null}
-      </View>
-    );
-  };
-
-  const renderAccountUnderlineField = ({
-    label,
-    labelExtra,
-    value,
-    onChangeText,
-    placeholder,
-    placeholderTextColor = PLACEHOLDER_TEXT_COLOR,
-    secureTextEntry = false,
-    visible,
-    onToggleVisible,
-    underlineStatus = 'idle',
-    feedback = null,
-    autoCapitalize = 'none',
-  }) => {
-    const resolvedStatus = resolveUnderlineStatus(underlineStatus);
-    const fillColor =
-      resolvedStatus === 'success'
-        ? colors.primary
-        : resolvedStatus === 'error'
-          ? colors.alert
-          : colors.textLight3;
-
-    return (
-      <AccountGrowUnderlineField
-        accountStyles={accountStyles}
-        normalize={normalize}
-        label={label}
-        labelExtra={labelExtra}
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={placeholderTextColor}
-        secureTextEntry={secureTextEntry}
-        visible={visible}
-        onToggleVisible={onToggleVisible}
-        fillColor={fillColor}
-        growActive={Boolean(value) || resolvedStatus !== 'idle'}
-        feedback={feedback}
-        autoCapitalize={autoCapitalize}
-      />
-    );
-  };
-
-  const renderPasswordField = ({
-    label,
-    value,
-    onChangeText,
-    visible,
-    onToggleVisible,
-    wrapperStyle,
-    inputStyle,
-    placeholder = PASSWORD_HINT,
-  }) => (
-    <>
-      <Text style={[styles.inputLabel, styles.inputLabelSpaced]}>{label}</Text>
-      <View style={[styles.inputWrapper, wrapperStyle]}>
-        <View style={[styles.input, styles.passwordInputFrame, inputStyle]}>
-          <TextInput
-            style={styles.passwordInput}
-            value={value}
-            onChangeText={onChangeText}
-            placeholder={placeholder}
-            placeholderTextColor={colors.textLight4}
-            secureTextEntry={!visible}
-            autoCapitalize="none"
-            autoCorrect={false}
-            spellCheck={false}
-            keyboardType={Platform.select({
-              ios: 'ascii-capable',
-              android: 'email-address',
-            })}
-            textContentType="newPassword"
-            autoComplete="password-new"
-          />
-          <TouchableOpacity
-            onPress={onToggleVisible}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            accessibilityRole="button"
-            accessibilityLabel={visible ? '비밀번호 숨기기' : '비밀번호 보기'}
-          >
-            <Ionicons
-              name={visible ? 'eye-off-outline' : 'eye-outline'}
-              size={normalize(fontSizes.title + 4)}
-              color={colors.textLight4}
-            />
-          </TouchableOpacity>
-        </View>
-      </View>
-    </>
-  );
-
-  const renderFieldFeedback = (
-    status,
-    { validText, invalidText, hintText },
-  ) => {
-    if (status === 'idle') {
-      return hintText ? (
-        <SignupHelperText normalize={normalize} tight>
-          {hintText}
-        </SignupHelperText>
-      ) : null;
-    }
-    const isOk = status === 'valid' || status === 'match';
-    return (
-      <SignupHelperText
-        normalize={normalize}
-        variant={isOk ? 'success' : 'error'}
-        tight
-      >
-        {isOk ? validText : invalidText}
-      </SignupHelperText>
-    );
-  };
+  const fieldGap = accountStyles.fieldGap;
+  const asciiKeyboard = Platform.select({
+    ios: 'ascii-capable',
+    android: 'email-address',
+  });
 
   if (accountOnly) {
     return (
-      <Pressable
-        style={[styles.stepFlex, accountStyles.body]}
-        onPress={Keyboard.dismiss}
-      >
-        {renderAccountUnderlineField({
-          label: '이름',
-          labelExtra: '(본인인증으로 확인된 이름으로 변경할 수 없습니다)',
-          value: verifiedName || '',
-        })}
-        {renderAccountUnderlineField({
-          label: '아이디',
-          value: username,
-          onChangeText: handleUsernameChange,
-          placeholder: USERNAME_HINT,
-          placeholderTextColor: PLACEHOLDER_TEXT_COLOR,
-          underlineStatus: usernameStatus,
-          feedback: renderAccountFieldFeedback(usernameStatus, {
-            successText: USERNAME_VALID_MESSAGE,
-            errorText: USERNAME_ERROR,
-          }),
-        })}
-        {renderAccountUnderlineField({
-          label: '비밀번호',
-          value: password,
-          onChangeText: (text) => {
-            setPassword(text);
-            notifyChange({ password: text });
-          },
-          placeholder: PASSWORD_HINT,
-          placeholderTextColor: PLACEHOLDER_TEXT_COLOR,
-          secureTextEntry: !showPassword,
-          visible: showPassword,
-          onToggleVisible: () => setShowPassword((v) => !v),
-          underlineStatus: passwordStatus,
-          feedback: renderAccountFieldFeedback(passwordStatus, {
-            successText: '',
-            errorText: PASSWORD_INVALID_MESSAGE,
-          }),
-        })}
-        {renderAccountUnderlineField({
-          label: '비밀번호 확인',
-          value: passwordConfirm,
-          onChangeText: (text) => {
-            setPasswordConfirm(text);
-            notifyChange({ passwordConfirm: text });
-          },
-          placeholder: '',
-          secureTextEntry: !showPasswordConfirm,
-          visible: showPasswordConfirm,
-          onToggleVisible: () => setShowPasswordConfirm((v) => !v),
-          underlineStatus: passwordConfirmStatus,
-          feedback: renderAccountFieldFeedback(passwordConfirmStatus, {
-            successText: '',
-            errorText: PASSWORD_CONFIRM_MISMATCH_MESSAGE,
-          }),
-        })}
-      </Pressable>
+      <View style={[styles.stepFlex, accountStyles.body]}>
+        <SignupStepScroll normalize={normalize} bottomOffset={bottomOffset}>
+          <AuthTextField
+            label="이름"
+            labelExtra="(본인인증으로 확인된 이름으로 변경할 수 없습니다)"
+            icon="user"
+            value={verifiedName || ''}
+            editable={false}
+            style={fieldGap}
+          />
+          <AuthTextField
+            label="아이디"
+            icon="at-sign"
+            value={username}
+            onChangeText={handleUsernameChange}
+            placeholder={USERNAME_HINT}
+            autoCorrect={false}
+            spellCheck={false}
+            keyboardType={asciiKeyboard}
+            textContentType="username"
+            autoComplete="username"
+            error={usernameStatus === 'invalid' ? USERNAME_ERROR : ''}
+            success={
+              usernameStatus === 'valid' ? USERNAME_VALID_MESSAGE : ''
+            }
+            style={fieldGap}
+          />
+          <AuthTextField
+            label="비밀번호"
+            icon="lock"
+            value={password}
+            onChangeText={(text) => {
+              setPassword(text);
+              notifyChange({ password: text });
+            }}
+            placeholder={PASSWORD_HINT}
+            secureTextEntry
+            autoCorrect={false}
+            spellCheck={false}
+            keyboardType={asciiKeyboard}
+            textContentType="newPassword"
+            autoComplete="password-new"
+            error={
+              passwordStatus === 'invalid' ? PASSWORD_INVALID_MESSAGE : ''
+            }
+            style={fieldGap}
+          />
+          <AuthTextField
+            label="비밀번호 확인"
+            icon="lock"
+            value={passwordConfirm}
+            onChangeText={(text) => {
+              setPasswordConfirm(text);
+              notifyChange({ passwordConfirm: text });
+            }}
+            secureTextEntry
+            autoCorrect={false}
+            spellCheck={false}
+            keyboardType={asciiKeyboard}
+            textContentType="newPassword"
+            autoComplete="password-new"
+            error={
+              passwordConfirmStatus === 'mismatch'
+                ? PASSWORD_CONFIRM_MISMATCH_MESSAGE
+                : ''
+            }
+            success={
+              passwordConfirmStatus === 'match'
+                ? '비밀번호가 일치합니다.'
+                : ''
+            }
+          />
+        </SignupStepScroll>
+      </View>
     );
   }
 
@@ -427,119 +209,111 @@ const SignStep2 = ({
           ) : null}
         </>
 
-        <Text style={[styles.inputLabel, styles.inputLabelSpaced]}>아이디</Text>
-        <View style={styles.inputWrapper}>
-          <TextInput
-            style={styles.input}
-            value={username}
-            onChangeText={handleUsernameChange}
-            placeholder={USERNAME_HINT}
-            placeholderTextColor={colors.textLight4}
-            autoCapitalize="none"
-            autoCorrect={false}
-            spellCheck={false}
-            keyboardType={Platform.select({
-              ios: 'ascii-capable',
-              android: 'email-address',
-            })}
-            textContentType="username"
-            autoComplete="username"
-          />
-        </View>
-        {renderFieldFeedback(usernameStatus, {
-          validText: '사용 가능한 아이디 형식입니다.',
-          invalidText: USERNAME_ERROR,
-        })}
-
-        {renderPasswordField({
-          label: '비밀번호',
-          value: password,
-          onChangeText: (text) => {
+        <AuthTextField
+          label="아이디"
+          icon="at-sign"
+          value={username}
+          onChangeText={handleUsernameChange}
+          placeholder={USERNAME_HINT}
+          autoCorrect={false}
+          spellCheck={false}
+          keyboardType={asciiKeyboard}
+          textContentType="username"
+          autoComplete="username"
+          error={usernameStatus === 'invalid' ? USERNAME_ERROR : ''}
+          success={
+            usernameStatus === 'valid' ? '사용 가능한 아이디 형식입니다.' : ''
+          }
+          style={fieldGap}
+        />
+        <AuthTextField
+          label="비밀번호"
+          icon="lock"
+          value={password}
+          onChangeText={(text) => {
             setPassword(text);
             notifyChange({ password: text });
-          },
-          visible: showPassword,
-          onToggleVisible: () => setShowPassword((v) => !v),
-        })}
-        {renderFieldFeedback(passwordStatus, {
-          validText: '사용 가능한 비밀번호 형식입니다.',
-          invalidText: PASSWORD_ERROR,
-        })}
-
-        {renderPasswordField({
-          label: '비밀번호 확인',
-          value: passwordConfirm,
-          onChangeText: (text) => {
+          }}
+          placeholder={PASSWORD_HINT}
+          secureTextEntry
+          autoCorrect={false}
+          spellCheck={false}
+          keyboardType={asciiKeyboard}
+          textContentType="newPassword"
+          autoComplete="password-new"
+          error={passwordStatus === 'invalid' ? PASSWORD_ERROR : ''}
+          success={
+            passwordStatus === 'valid'
+              ? '사용 가능한 비밀번호 형식입니다.'
+              : ''
+          }
+          style={fieldGap}
+        />
+        <AuthTextField
+          label="비밀번호 확인"
+          icon="lock"
+          value={passwordConfirm}
+          onChangeText={(text) => {
             setPasswordConfirm(text);
             notifyChange({ passwordConfirm: text });
-          },
-          visible: showPasswordConfirm,
-          onToggleVisible: () => setShowPasswordConfirm((v) => !v),
-          placeholder: '',
-          inputStyle:
-            passwordConfirmStatus === 'match'
-              ? styles.passwordConfirmMatch
-              : passwordConfirmStatus === 'mismatch'
-                ? styles.passwordConfirmMismatch
-                : undefined,
-        })}
-        {renderFieldFeedback(passwordConfirmStatus, {
-          validText: '비밀번호가 일치합니다.',
-          invalidText: '비밀번호가 일치하지 않습니다.',
-        })}
+          }}
+          secureTextEntry
+          autoCorrect={false}
+          spellCheck={false}
+          keyboardType={asciiKeyboard}
+          textContentType="newPassword"
+          autoComplete="password-new"
+          error={
+            passwordConfirmStatus === 'mismatch'
+              ? '비밀번호가 일치하지 않습니다.'
+              : ''
+          }
+          success={
+            passwordConfirmStatus === 'match' ? '비밀번호가 일치합니다.' : ''
+          }
+          style={fieldGap}
+        />
 
         {showCertificateFields ? (
           <>
-            <Text
-              style={[styles.inputLabel, styles.certificateSubmitLabelSpaced]}
-            >
-              재학 학교명
-            </Text>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                placeholder="증명서에 기재된 학교명"
-                placeholderTextColor={colors.textLight4}
-                value={claimedSchoolName}
-                onChangeText={(text) => {
-                  setClaimedSchoolName(text);
-                  notifyCertificate({ claimedSchoolName: text });
-                }}
-              />
-            </View>
-            <Text style={styles.inputLabel}>열람용 주소</Text>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                placeholder="열람용 주소"
-                placeholderTextColor={colors.textLight4}
-                value={certificateUrl}
-                onChangeText={(text) => {
-                  setCertificateUrl(text);
-                  notifyCertificate({ certificateUrl: text });
-                }}
-                autoCapitalize="none"
-                autoCorrect={false}
-                spellCheck={false}
-                keyboardType="url"
-                textContentType="URL"
-                autoComplete="url"
-              />
-            </View>
-            <Text style={styles.inputLabel}>열람 번호</Text>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                style={styles.input}
-                placeholder="열람 번호"
-                placeholderTextColor={colors.textLight4}
-                value={submissionNumber}
-                onChangeText={(text) => {
-                  setSubmissionNumber(text);
-                  notifyCertificate({ submissionNumber: text });
-                }}
-                autoCapitalize="none"
-              />
-            </View>
+            <AuthTextField
+              label="재학 학교명"
+              icon="home"
+              placeholder="증명서에 기재된 학교명"
+              value={claimedSchoolName}
+              onChangeText={(text) => {
+                setClaimedSchoolName(text);
+                notifyCertificate({ claimedSchoolName: text });
+              }}
+              autoCapitalize="none"
+              style={fieldGap}
+            />
+            <AuthTextField
+              label="열람용 주소"
+              icon="link"
+              placeholder="열람용 주소"
+              value={certificateUrl}
+              onChangeText={(text) => {
+                setCertificateUrl(text);
+                notifyCertificate({ certificateUrl: text });
+              }}
+              autoCorrect={false}
+              spellCheck={false}
+              keyboardType="url"
+              textContentType="URL"
+              autoComplete="url"
+              style={fieldGap}
+            />
+            <AuthTextField
+              label="열람 번호"
+              icon="hash"
+              placeholder="열람 번호"
+              value={submissionNumber}
+              onChangeText={(text) => {
+                setSubmissionNumber(text);
+                notifyCertificate({ submissionNumber: text });
+              }}
+            />
           </>
         ) : null}
       </SignupStepScroll>
@@ -548,9 +322,6 @@ const SignStep2 = ({
 };
 
 function createAccountStyles(normalize, width) {
-  const inputMinHeight = normalize(Math.round(fontSizes.xxl));
-  const inputIconSize = normalize(Platform.OS === 'ios' ? 18 : 24);
-
   return StyleSheet.create({
     body: {
       flex: 1,
@@ -558,85 +329,8 @@ function createAccountStyles(normalize, width) {
       paddingHorizontal: width * 0.07,
       paddingTop: normalize(4),
     },
-    fieldBlock: {
-      marginBottom: normalize(24),
-    },
-    fieldLabel: {
-      marginBottom: normalize(10),
-      fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.lg),
-      color: colors.textLight4,
-      lineHeight: normalize(Math.round(fontSizes.lg * 1.45)),
-    },
-    fieldLabelExtra: {
-      fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.lg),
-      color: colors.textLight4,
-    },
-    underlineField: {
-      paddingBottom: normalize(8),
-    },
-    underlineFieldSuccess: {},
-    underlineFieldError: {},
-    inputRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: normalize(8),
-      minWidth: 0,
-      height: inputIconSize,
-      minHeight: inputIconSize,
-    },
-    fieldInput: {
-      flex: 1,
-      minWidth: 0,
-      paddingVertical: 0,
-      paddingHorizontal: 0,
-      fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.xxl),
-      minHeight: inputMinHeight,
-      height: inputIconSize,
-      maxHeight: inputIconSize,
-      color: colors.text,
-      ...Platform.select({
-        android: { includeFontPadding: false, textAlignVertical: 'center' },
-        ios: {},
-      }),
-    },
-    inputIconButton: {
-      width: inputIconSize,
-      height: inputIconSize,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    inputIconSlot: {
-      width: inputIconSize,
-      height: inputIconSize,
-    },
-    lockedValue: {
-      fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.xxl),
-      minHeight: inputMinHeight,
-      color: colors.text,
-      ...Platform.select({
-        android: { includeFontPadding: false, textAlignVertical: 'center' },
-        ios: {},
-      }),
-    },
-    fieldFeedbackSlot: {
-      marginTop: normalize(8),
-      minHeight: normalize(Math.round(fontSizes.lg * 1.4)),
-      justifyContent: 'flex-start',
-    },
-    fieldFeedback: {
-      fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.lg),
-      lineHeight: normalize(Math.round(fontSizes.lg * 1.4)),
-    },
-    fieldFeedbackSuccess: {
-      color: colors.primary,
-    },
-    fieldFeedbackError: {
-      color: colors.alert,
+    fieldGap: {
+      marginBottom: normalize(14),
     },
   });
 }

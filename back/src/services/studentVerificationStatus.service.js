@@ -2,7 +2,7 @@ import pool from '../config/database.js';
 
 const REVERIFICATION_ACTIVE_STATUSES = new Set(['grace', 'required', 'restricted']);
 
-/** @typedef {'PENDING'|'APPROVED'|'REJECTED'} StudentVerificationStatus */
+/** @typedef {'PENDING'|'APPROVED'|'REJECTED'|'UNVERIFIED'} StudentVerificationStatus */
 /** @typedef {'signup'|'resubmit'|'reverification'|null} SubmissionPurpose */
 
 /**
@@ -102,7 +102,8 @@ export async function getStudentVerificationStatus(userId) {
   }
 
   if (!submission) {
-    return { status: 'APPROVED', rejectReason: null, submissionType: null, ...base };
+    // 가입 시 학생증 스킵 — 미제출은 미인증 (가입_개편)
+    return { status: 'UNVERIFIED', rejectReason: null, submissionType: null, ...base };
   }
 
   if (rawStatus === 'pending') {
