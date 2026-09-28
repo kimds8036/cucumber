@@ -134,7 +134,7 @@ export default function BoardCommentTree({
                     name="pin"
                     size={normalize(12)}
                     color={colors.textLight4}
-                    style={{ marginLeft: normalize(4)}}
+                    style={{ marginLeft: normalize(4), top: normalize(-4)}}
                   />
                 ) : null}
               </View>
