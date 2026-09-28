@@ -644,6 +644,21 @@ export const createDetailStyles = (width, normalize) => {
       alignItems: 'center',
       marginBottom: normalize(7),
     },
+    distanceBadgeWrap: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginLeft: normalize(8),
+      flexShrink: 0,
+    },
+    distanceBadgeChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(1),
+      backgroundColor: colors.primaryLight3,
+      borderRadius: normalize(10),
+      paddingHorizontal: normalize(7),
+      paddingVertical: normalize(2),
+    },
     detailAuthorRow: {
       flexDirection: 'row',
       alignItems: 'baseline',
@@ -658,7 +673,7 @@ export const createDetailStyles = (width, normalize) => {
     },
     detailAuthorAnonymous: {
       fontSize: normalize(fontSizes.lg),
-      fontFamily: fonts.regular,
+      fontFamily: fonts.bold,
       color: colors.textLight4,
       lineHeight: metaLineHeight,
       textAlignVertical: 'center',
@@ -706,9 +721,15 @@ export const createDetailStyles = (width, normalize) => {
       marginBottom: normalize(7),
       overflow: 'hidden',
     },
+    detailImageFrame: {
+      width: '100%',
+      borderRadius: normalize(10),
+      overflow: 'hidden',
+    },
     detailImage: {
       width: '100%',
       marginBottom: normalize(8),
+      borderRadius: normalize(10),
     },
     detailImageFallback: {
       width: '100%',

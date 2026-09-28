@@ -14,7 +14,7 @@ export default function TopAdBanner({ inset = true }) {
   return (
     <View
       style={{
-        height: normalize(100),
+        height: normalize(80),
         borderRadius: normalize(20),
         overflow: 'hidden',
         backgroundColor: colors.primaryLight2,

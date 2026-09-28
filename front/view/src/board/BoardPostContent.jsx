@@ -31,11 +31,16 @@ export default function BoardPostContent({
   const distanceValid =
     typeof post.distanceKm === 'number' && !Number.isNaN(post.distanceKm);
   const imageUris = collectPostImageUris(post);
+  const singleRatio = imageRatios?.[imageUris[0]];
+  const singleIsPortrait = typeof singleRatio === 'number' && singleRatio < 1;
   return (
     <View style={styles.contentSection}>
       <View style={styles.detailHeader}>
         <View style={[styles.detailAuthorRow, { flex: 1, minWidth: 0 }]}>
-          <Text style={styles.detailAuthorAnonymous} numberOfLines={1}>
+          <Text
+            style={[styles.detailAuthorAnonymous, { fontFamily: fonts.bold }]}
+            numberOfLines={1}
+          >
             {post.author}
           </Text>
           <EquippedBadge
@@ -43,8 +48,10 @@ export default function BoardPostContent({
             size={normalize(13)}
             style={{ marginLeft: normalize(3) }}
           />
-          <Text style={styles.detailDot}>•</Text>
-          <Text style={styles.detailTime} numberOfLines={1}>
+          <Text
+            style={[styles.detailTime, { marginLeft: normalize(8) }]}
+            numberOfLines={1}
+          >
             {post.time}
           </Text>
           {post.location ? (
@@ -74,10 +81,8 @@ export default function BoardPostContent({
             stale={distanceStale}
             loading={distanceLoading}
             normalize={normalize}
-            wrapStyle={{
-              marginLeft: normalize(8),
-              flexShrink: 0,
-            }}
+            wrapStyle={styles.distanceBadgeWrap}
+            chipStyle={styles.distanceBadgeChip}
           />
         ) : null}
       </View>
@@ -90,15 +95,17 @@ export default function BoardPostContent({
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={() => onImagePress?.(imageUris[0])}
-            style={{ width: '100%' }}
+            style={styles.detailImageFrame}
           >
             <Image
               source={{ uri: imageUris[0] }}
               style={[
                 styles.detailImage,
-                imageRatios?.[imageUris[0]]
-                  ? { aspectRatio: imageRatios[imageUris[0]] }
-                  : styles.detailImageFallback,
+                singleIsPortrait
+                  ? { aspectRatio: 1 }
+                  : singleRatio
+                    ? { aspectRatio: singleRatio }
+                    : styles.detailImageFallback,
                 styles.detailImageLast,
               ]}
               onLoad={(e) => onImageLoad?.(imageUris[0], e)}
