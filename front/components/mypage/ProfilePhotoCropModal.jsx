@@ -39,11 +39,17 @@ export default function ProfilePhotoCropModal({
 }) {
   const insets = useSafeAreaInsets();
   const { width: screenW } = useWindowDimensions();
-  const frameSize = Math.round(Math.min(screenW * 0.72, 300));
+  const frameSize = Math.round(Math.min(Math.max(screenW, 1) * 0.72, 300));
   const frameRadius = Math.round(frameSize * (28 / 70));
+  const [naturalSize, setNaturalSize] = useState(null);
+  const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
+  const [ready, setReady] = useState(false);
+
+  const resolvedW = naturalSize?.w || imageWidth;
+  const resolvedH = naturalSize?.h || imageHeight;
   const { baseW, baseH } = useMemo(
-    () => getCoverBaseSize(imageWidth, imageHeight, frameSize),
-    [imageWidth, imageHeight, frameSize],
+    () => getCoverBaseSize(resolvedW, resolvedH, frameSize),
+    [resolvedW, resolvedH, frameSize],
   );
 
   const scale = useRef(new Animated.Value(1)).current;
@@ -56,7 +62,6 @@ export default function ProfilePhotoCropModal({
   const pinchStartScale = useRef(1);
   const panActive = useRef(false);
   const panStart = useRef({ x: 0, y: 0, tx: 0, ty: 0 });
-  const [ready, setReady] = useState(false);
 
   const applyTransform = (nextScale, nextTx, nextTy) => {
     const s = clamp(nextScale, MIN_SCALE, MAX_SCALE);
@@ -78,7 +83,24 @@ export default function ProfilePhotoCropModal({
     translateX.setValue(0);
     translateY.setValue(0);
     setReady(false);
+    setNaturalSize(null);
   }, [visible, uri, scale, translateX, translateY]);
+
+  useEffect(() => {
+    if (!visible || !uri) return undefined;
+    let cancelled = false;
+    Image.getSize(
+      uri,
+      (w, h) => {
+        if (cancelled || !(w > 1) || !(h > 1)) return;
+        setNaturalSize({ w, h });
+      },
+      () => {},
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, uri]);
 
   const handleTouchStart = (e) => {
     const touches = e?.nativeEvent?.touches;
@@ -152,6 +174,12 @@ export default function ProfilePhotoCropModal({
     onConfirm?.(cropRegion);
   };
 
+  const stageReady = stageSize.width > 0 && stageSize.height > 0;
+  const imageLeft = stageReady ? (stageSize.width - baseW) / 2 : 0;
+  const imageTop = stageReady ? (stageSize.height - baseH) / 2 : 0;
+  const frameLeft = stageReady ? (stageSize.width - frameSize) / 2 : 0;
+  const frameTop = stageReady ? (stageSize.height - frameSize) / 2 : 0;
+
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={[styles.root, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 12 }]}>
@@ -159,45 +187,67 @@ export default function ProfilePhotoCropModal({
         <Text style={styles.hint}>드래그로 옮기고, 두 손가락으로 확대하세요</Text>
         <View
           style={styles.stage}
+          onLayout={(e) => {
+            const { width, height } = e.nativeEvent.layout;
+            if (!(width > 0) || !(height > 0)) return;
+            setStageSize((prev) =>
+              prev.width === width && prev.height === height
+                ? prev
+                : { width, height },
+            );
+          }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
           onTouchCancel={handleTouchEnd}
         >
-          <Animated.View
-            pointerEvents="none"
-            style={{
-              width: baseW,
-              height: baseH,
-              transform: [{ translateX }, { translateY }, { scale }],
-            }}
-          >
-            {uri ? (
+          {uri && stageReady ? (
+            <Animated.View
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                left: imageLeft,
+                top: imageTop,
+                width: baseW,
+                height: baseH,
+                zIndex: 0,
+                transform: [{ translateX }, { translateY }, { scale }],
+              }}
+            >
               <Image
                 source={{ uri }}
                 style={{ width: baseW, height: baseH }}
                 resizeMode="cover"
+                onLoad={() => setReady(true)}
                 onLoadEnd={() => setReady(true)}
               />
-            ) : null}
-          </Animated.View>
-          <View pointerEvents="none" style={styles.mask}>
-            <View style={styles.maskFlex} />
-            <View style={[styles.maskMid, { height: frameSize }]}>
-              <View style={styles.maskFlex} />
-              <View
-                style={{
-                  width: frameSize,
-                  height: frameSize,
-                  borderRadius: frameRadius,
-                  borderWidth: 2,
-                  borderColor: colors.textWhite,
-                }}
-              />
-              <View style={styles.maskFlex} />
+            </Animated.View>
+          ) : null}
+          {stageReady ? (
+            <View pointerEvents="none" style={styles.overlay} collapsable={false}>
+              <View style={[styles.dim, { height: Math.max(0, frameTop) }]} />
+              <View style={[styles.overlayMid, { height: frameSize }]}>
+                <View style={[styles.dim, { width: Math.max(0, frameLeft) }]} />
+                <View
+                  style={[
+                    styles.guideFrame,
+                    {
+                      width: frameSize,
+                      height: frameSize,
+                      borderRadius: frameRadius,
+                    },
+                  ]}
+                >
+                  <View style={[styles.gridLineH, { top: '33.333%' }]} />
+                  <View style={[styles.gridLineH, { top: '66.666%' }]} />
+                  <View style={[styles.gridLineV, { left: '33.333%' }]} />
+                  <View style={[styles.gridLineV, { left: '66.666%' }]} />
+                </View>
+                <View style={styles.dimFlex} />
+              </View>
+              <View style={styles.dimFlex} />
             </View>
-            <View style={styles.maskFlex} />
-          </View>
+          ) : null}
         </View>
         <View style={styles.actions}>
           <TouchableOpacity
@@ -243,19 +293,43 @@ const styles = StyleSheet.create({
   },
   stage: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
     overflow: 'hidden',
+    position: 'relative',
   },
-  mask: {
+  overlay: {
     ...StyleSheet.absoluteFillObject,
+    zIndex: 2,
+    elevation: 4,
   },
-  maskFlex: {
+  overlayMid: {
+    flexDirection: 'row',
+  },
+  dim: {
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  dimFlex: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.55)',
   },
-  maskMid: {
-    flexDirection: 'row',
+  guideFrame: {
+    borderWidth: 2,
+    borderColor: colors.textWhite,
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+  },
+  gridLineH: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.75)',
+  },
+  gridLineV: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.75)',
   },
   actions: {
     flexDirection: 'row',

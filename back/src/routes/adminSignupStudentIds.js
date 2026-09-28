@@ -39,6 +39,8 @@ router.get('/', requireAdminApi, async (req, res) => {
     const whereParts = [];
     const params = [];
 
+    whereParts.push('u.is_deleted = FALSE');
+
     if (status !== 'all') {
       whereParts.push('s.status = ?');
       params.push(status);
@@ -135,6 +137,17 @@ router.patch('/:id', requireAdminApi, validate(reviewValidators), async (req, re
     }
 
     const submission = rows[0];
+    const [userRows] = await connection.execute(
+      `SELECT is_deleted FROM users WHERE id = ? LIMIT 1`,
+      [submission.user_id],
+    );
+    if (!userRows.length || userRows[0].is_deleted) {
+      await connection.rollback();
+      return res.status(400).json({
+        success: false,
+        message: '탈퇴한 사용자의 제출 건입니다. 검수할 필요가 없습니다.',
+      });
+    }
     const prevStatus = String(submission.status || '').toLowerCase();
     const isReapprove = prevStatus === 'rejected' && status === 'approved';
 

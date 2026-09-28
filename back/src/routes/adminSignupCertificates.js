@@ -34,7 +34,7 @@ router.get('/', requireAdminApi, async (req, res) => {
   const offsetSql = Number.isFinite(offset) ? Math.floor(offset) : 0;
 
   try {
-    const where = status === 'all' ? '1=1' : 's.status = ?';
+    const where = status === 'all' ? 'u.is_deleted = FALSE' : 's.status = ? AND u.is_deleted = FALSE';
     const params = status === 'all' ? [] : [status];
 
     const [rows] = await pool.execute(
@@ -97,6 +97,17 @@ router.patch('/:id', requireAdminApi, validate(reviewValidators), async (req, re
     }
 
     const submission = rows[0];
+    const [userRows] = await connection.execute(
+      `SELECT is_deleted FROM users WHERE id = ? LIMIT 1`,
+      [submission.user_id],
+    );
+    if (!userRows.length || userRows[0].is_deleted) {
+      await connection.rollback();
+      return res.status(400).json({
+        success: false,
+        message: '탈퇴한 사용자의 제출 건입니다. 검수할 필요가 없습니다.',
+      });
+    }
     if (submission.status !== 'pending') {
       await connection.rollback();
       return res.status(400).json({
