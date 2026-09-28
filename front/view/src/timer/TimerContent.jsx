@@ -37,6 +37,7 @@ import { useNavigation, useFocusEffect, useIsFocused } from '@react-navigation/n
 import { runAfterTabTransition } from '../../../utils/runAfterTabTransition';
 import { useFriendStudyEvents } from '../../../hooks/useFriendStudyEvents';
 import { useGuidePreview } from '../../../context/GuidePreviewContext';
+import { useMainTabBarInset } from '../../../context/MainTabBarInsetContext';
 import { getGuideTimerFriends } from '../../../src/screens/UserGuide/guidePreviewData';
 import { appAlert } from '../../../utils/appAlert';
 import {
@@ -62,6 +63,7 @@ export function TimerContent() {
   const { isGuidePreview } = useGuidePreview();
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
+  const tabBarInset = useMainTabBarInset();
   const styles = useMemo(
     () => createTimerStyles(width, normalize),
     [width, normalize],
@@ -365,7 +367,8 @@ export function TimerContent() {
     return (
       <ScrollView
         style={[styles.scroll, tdb('#FF3B30')]}
-        contentContainerStyle={{ paddingBottom: normalize(24) }}
+        contentContainerStyle={{ paddingBottom: normalize(24) + tabBarInset }}
+        scrollIndicatorInsets={{ bottom: tabBarInset }}
         showsVerticalScrollIndicator={false}
       >
         {scrollingHeader}
@@ -448,7 +451,8 @@ export function TimerContent() {
           <>
             <ScrollView
               style={[styles.scroll, tdb('#FF3B30')]}
-              contentContainerStyle={{ paddingBottom: normalize(24) }}
+              contentContainerStyle={{ paddingBottom: normalize(24) + tabBarInset }}
+              scrollIndicatorInsets={{ bottom: tabBarInset }}
               stickyHeaderIndices={showDayContentSkeleton ? undefined : [3]}
               showsVerticalScrollIndicator={false}
             >

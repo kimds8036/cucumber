@@ -106,7 +106,7 @@ class YouthPaperTabBarView: ExpoView, UITabBarDelegate {
     tabBar.unselectedItemTintColor = inactiveColor
 
     let appearance = UITabBarAppearance()
-    appearance.configureWithDefaultBackground()
+    appearance.configureWithTransparentBackground()
     for layout in [
       appearance.stackedLayoutAppearance,
       appearance.inlineLayoutAppearance,

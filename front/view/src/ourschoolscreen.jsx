@@ -22,6 +22,7 @@ import { createOurSchoolStyles } from '../../styles/school.style';
 import Skeleton from '../../components/common/Skeleton';
 import TopAdBanner from '../../components/ads/TopAdBanner';
 import { useGuidePreview } from '../../context/GuidePreviewContext';
+import { useMainTabBarInset } from '../../context/MainTabBarInsetContext';
 import { GuideFocusTarget } from '../../components/guide/GuideFocusTarget';
 import { GUIDE_FOCUS_TARGETS as T } from '../../src/screens/UserGuide/guideFocusTargets';
 import {
@@ -46,6 +47,7 @@ const OurSchoolScreen = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createOurSchoolStyles(normalize), [normalize]);
+  const tabBarInset = useMainTabBarInset();
   const [schoolInfo, setSchoolInfo] = useState({
     id: null,
     name: '',
@@ -336,7 +338,11 @@ const OurSchoolScreen = ({ navigation }) => {
       <ScrollView
         ref={scrollRef}
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: normalize(16) + tabBarInset },
+        ]}
+        scrollIndicatorInsets={{ bottom: tabBarInset }}
         scrollEnabled={!isGuidePreview}
         onContentSizeChange={applyGuideScroll}
       >

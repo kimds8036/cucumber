@@ -19,6 +19,7 @@ import { getDeviceId } from '../../utils/deviceId';
 import { getFCMToken } from '../../utils/fcmService';
 import { useFocusEffect } from '@react-navigation/native';
 import { useGuidePreview } from '../../context/GuidePreviewContext';
+import { useMainTabBarInset } from '../../context/MainTabBarInsetContext';
 import { GuideFocusTarget } from '../../components/guide/GuideFocusTarget';
 import { GUIDE_FOCUS_TARGETS as T } from '../../src/screens/UserGuide/guideFocusTargets';
 import {
@@ -58,6 +59,7 @@ const MyPage = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createMyPageStyles(normalize), [normalize]);
+  const tabBarInset = useMainTabBarInset();
   const { logout, studentVerificationStatus } = useAuth();
   const TIMETABLE_CACHE_KEY = '@mypage_timetable_cache_v1';
   const TIMETABLE_CACHE_KEY_PREFIX = '@mypage_timetable_cache_v1:';
@@ -425,6 +427,7 @@ const MyPage = ({ navigation }) => {
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: tabBarInset }}
       >
         {showPageSkeleton ? (
           <>

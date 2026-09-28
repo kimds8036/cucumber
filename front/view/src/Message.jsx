@@ -38,6 +38,7 @@ import * as socketManager from './socketManager';
 import { useToast } from '../../context/ToastContext';
 import { useNotification } from '../../context/NotificationContext';
 import { useGuidePreview } from '../../context/GuidePreviewContext';
+import { useMainTabBarInset } from '../../context/MainTabBarInsetContext';
 import { GuideFocusTarget } from '../../components/guide/GuideFocusTarget';
 import { GUIDE_FOCUS_TARGETS as T } from '../../src/screens/UserGuide/guideFocusTargets';
 import {
@@ -365,6 +366,7 @@ export function MessageContent({ navigation }) {
   const adSlots = [];
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
+  const tabBarInset = useMainTabBarInset();
   const styles = useMemo(
     () => createMessageStyles(width, normalize),
     [width, normalize],
@@ -932,7 +934,7 @@ export function MessageContent({ navigation }) {
         style={{ flex: 1, backgroundColor: colors.white }}
         stickyHeaderIndices={[2]}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: normalize(80) }}
+        contentContainerStyle={{ paddingBottom: normalize(80) + tabBarInset }}
       >
         <MainHeader
           headerTitle={getMainTabTitle('message')}

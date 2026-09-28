@@ -38,6 +38,7 @@ import SortChips from '../../components/common/SortChips';
 import Skeleton from '../../components/common/Skeleton';
 import { useLocationContext } from '../../context/LocationContext';
 import { useGuidePreview } from '../../context/GuidePreviewContext';
+import { useMainTabBarInset } from '../../context/MainTabBarInsetContext';
 import { getGuideBoardPosts } from '../../src/screens/UserGuide/guidePreviewData';
 import { filterPostsExcludingUser } from '../../utils/blockUser';
 import { invalidateProfileCountsCache } from '../../utils/profileCountsCache';
@@ -112,6 +113,7 @@ function mapApiPost(p) {
 export function BoardAllContent({ navigation, posts }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
+  const tabBarInset = useMainTabBarInset();
   const styles = useMemo(() => createBoardStyles(width, normalize), [width]);
   const { isGuidePreview } = useGuidePreview();
   const shell = useMainShellOptional();
@@ -825,7 +827,8 @@ export function BoardAllContent({ navigation, posts }) {
               </View>
             ) : null
           }
-          contentContainerStyle={{ paddingBottom: normalize(80) }}
+          contentContainerStyle={{ paddingBottom: normalize(80) + tabBarInset }}
+          scrollIndicatorInsets={{ bottom: tabBarInset }}
         />
       </View>
 

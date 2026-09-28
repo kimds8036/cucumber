@@ -1,8 +1,9 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useIsFocused } from '@react-navigation/native';
-import MainFooter from '../frame/mainFooter';
+import MainFooter, { USES_NATIVE_TAB_BAR } from '../frame/mainFooter';
+import { MainTabBarInsetContext } from '../../context/MainTabBarInsetContext';
 import BoardTab from './tabs/BoardTab';
 import MessageTab from './tabs/MessageTab';
 import SchoolTab from './tabs/SchoolTab';
@@ -19,7 +20,15 @@ export const MAIN_TAB_KEYS = new Set([
   'mypage',
 ]);
 
-function MainTabBar({ state, navigation, tabNavigationRef, onActiveTabChange }) {
+const overlayTabBarStyle = { position: 'absolute', left: 0, right: 0, bottom: 0 };
+
+function MainTabBar({
+  state,
+  navigation,
+  tabNavigationRef,
+  onActiveTabChange,
+  onOverlayHeightChange,
+}) {
   const activeTab = state.routes[state.index].name;
 
   useEffect(() => {
@@ -30,7 +39,7 @@ function MainTabBar({ state, navigation, tabNavigationRef, onActiveTabChange }) 
     onActiveTabChange?.(activeTab);
   }, [activeTab, onActiveTabChange]);
 
-  return (
+  const footer = (
     <MainFooter
       activeTab={activeTab}
       onTabPress={(tab) => {
@@ -39,6 +48,18 @@ function MainTabBar({ state, navigation, tabNavigationRef, onActiveTabChange }) 
         }
       }}
     />
+  );
+
+  if (!USES_NATIVE_TAB_BAR) return footer;
+
+  // 콘텐츠가 탭 바 뒤로 지나가도록 탭 바를 띄운다. 가려지는 만큼은 각 탭이 아래 여백으로 채운다.
+  return (
+    <View
+      style={overlayTabBarStyle}
+      onLayout={(e) => onOverlayHeightChange(e.nativeEvent.layout.height)}
+    >
+      {footer}
+    </View>
   );
 }
 
@@ -55,6 +76,7 @@ export default function MainTabNavigator({
    */
   const pendingTabRef = useRef(null);
   const isFocused = useIsFocused();
+  const [overlayTabBarHeight, setOverlayTabBarHeight] = useState(0);
 
   useEffect(() => {
     const requestedTab = route?.params?.screen ?? route?.params?.initialTab;
@@ -87,6 +109,7 @@ export default function MainTabNavigator({
   }, [isFocused]);
 
   return (
+    <MainTabBarInsetContext.Provider value={overlayTabBarHeight}>
     <Tab.Navigator
       initialRouteName="timer"
       tabBar={(props) => (
@@ -94,6 +117,7 @@ export default function MainTabNavigator({
           {...props}
           tabNavigationRef={tabNavigationRef}
           onActiveTabChange={onActiveTabChange}
+          onOverlayHeightChange={setOverlayTabBarHeight}
         />
       )}
       screenOptions={{
@@ -116,6 +140,7 @@ export default function MainTabNavigator({
         {() => <MyPageTab navigation={stackNavigation} />}
       </Tab.Screen>
     </Tab.Navigator>
+    </MainTabBarInsetContext.Provider>
   );
 }
 

@@ -4,13 +4,14 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { colors } from '../../styles/colors';
 import { getNormalize, FOOTER_HEIGHT } from '../../styles/frame.style';
 import { shadow } from '../../styles/tokens';
+import { useMainTabBarInset } from '../../context/MainTabBarInsetContext';
 
-function createFloatingButtonStyles(normalize, aboveFooter) {
+function createFloatingButtonStyles(normalize, aboveFooter, tabBarInset) {
   return StyleSheet.create({
     button: {
       position: 'absolute',
       right: normalize(20),
-      bottom: normalize(20) + (aboveFooter ? normalize(35) : 0),
+      bottom: normalize(20) + (aboveFooter ? normalize(35) : 0) + tabBarInset,
       width: normalize(50),
       height: normalize(50),
       borderRadius: normalize(28),
@@ -24,9 +25,10 @@ function createFloatingButtonStyles(normalize, aboveFooter) {
 export default function FloatingButton({ onPress, icon, aboveFooter = false }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
+  const tabBarInset = useMainTabBarInset();
   const styles = useMemo(
-    () => createFloatingButtonStyles(normalize, aboveFooter),
-    [normalize, aboveFooter],
+    () => createFloatingButtonStyles(normalize, aboveFooter, tabBarInset),
+    [normalize, aboveFooter, tabBarInset],
   );
 
   return (
