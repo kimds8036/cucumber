@@ -927,24 +927,32 @@ export function MessageContent({ navigation }) {
 
   return (
     <>
-      <TopAdBanner />
-      <SortChips
-        value={messageType}
-        onChange={handleMessageTypeChange}
-        options={[
-          { value: 'note', label: '쪽지' },
-          { value: 'mail', label: '우편' },
-        ]}
-      />
+      <View style={{ flex: 1 }}>
+      <ScrollView
+        style={{ flex: 1, backgroundColor: colors.white }}
+        stickyHeaderIndices={[2]}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: normalize(80) }}
+      >
+        <MainHeader
+          headerTitle={getMainTabTitle('message')}
+          navigation={navigation}
+        />
+        <TopAdBanner />
+        <View style={{ backgroundColor: colors.white }} collapsable={false}>
+          <SortChips
+            value={messageType}
+            onChange={handleMessageTypeChange}
+            options={[
+              { value: 'note', label: '쪽지' },
+              { value: 'mail', label: '우편' },
+            ]}
+          />
+        </View>
 
-      {/* 메인 내용 영역 */}
-      <View style={styles.contentArea}>
+      <View style={{ paddingHorizontal: width * 0.04 }}>
         {messageType === 'note' ? (
           <>
-            <ScrollView
-              style={styles.list}
-              showsVerticalScrollIndicator={false}
-            >
               {loadingNote && noteRooms.length === 0 ? (
                 <MessageListSkeleton
                   styles={styles}
@@ -1116,15 +1124,9 @@ export function MessageContent({ navigation }) {
                   );
                 })
               )}
-            </ScrollView>
           </>
         ) : (
-          <View style={{ flex: 1 }}>
-            <ScrollView
-              style={styles.list}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: normalize(80) }}
-            >
+          <>
               {loadingMail && mails.length === 0 ? (
                 <MessageListSkeleton
                   styles={styles}
@@ -1288,9 +1290,10 @@ export function MessageContent({ navigation }) {
                   );
                 })
               )}
-            </ScrollView>
-          </View>
+          </>
         )}
+      </View>
+      </ScrollView>
       </View>
 
       {messageType === 'mail' ? (
@@ -1450,7 +1453,6 @@ export function MessageContent({ navigation }) {
 const Message = ({ navigation }) => {
   return (
     <SafeAreaView style={{ flex: 1 }} edges={MAIN_FOOTER_SAFE_AREA_EDGES}>
-      <MainHeader headerTitle={getMainTabTitle('message')} />
       <MessageContent navigation={navigation} />
       <MainFooter
         activeTab="message"

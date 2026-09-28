@@ -16,6 +16,9 @@ import {
 } from '../../context/MainShellContext';
 import { navigate as navigateRoot } from '../../navigation/navigationRef';
 
+/** 이 탭은 메인 헤더를 화면 스크롤 안에 둔다. */
+export const TABS_WITH_SCROLLING_MAIN_HEADER = ['board', 'message', 'timer'];
+
 const MainHeader = ({
   headerTitle: headerTitleProp,
   navigation: navigationProp,

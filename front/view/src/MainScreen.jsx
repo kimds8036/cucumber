@@ -8,7 +8,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import MainHeader from '../frame/mainHeader';
+import MainHeader, {
+  TABS_WITH_SCROLLING_MAIN_HEADER,
+} from '../frame/mainHeader';
 import {
   MainShellProvider,
   useMainShell,
@@ -172,7 +174,9 @@ const MainScreen = ({ navigation, route }) => {
           style={{ flex: 1, backgroundColor: colors.white }}
           edges={MAIN_FOOTER_SAFE_AREA_EDGES}
         >
-          <MainHeader />
+          {TABS_WITH_SCROLLING_MAIN_HEADER.includes(activeTab) ? null : (
+            <MainHeader />
+          )}
           <View style={{ flex: 1, backgroundColor: colors.white }}>
             {screenReady ? (
               <MainTabNavigatorContainer

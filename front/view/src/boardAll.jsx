@@ -14,14 +14,14 @@ import {
   TouchableWithoutFeedback,
   Alert,
   Share,
-  FlatList,
+  SectionList,
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import MainHeader from '../frame/mainHeader';
 import MainFooter, { MAIN_FOOTER_SAFE_AREA_EDGES } from '../frame/mainFooter';
-import { getMainTabTitle, useMainShellOptional } from '../../context/MainShellContext';
+import { useMainShellOptional } from '../../context/MainShellContext';
 import { colors, fonts } from '../../styles/colors';
 import { useAuth } from '../../context/AuthContext';
 import StudentVerificationCtaModal from '../../components/auth/StudentVerificationCtaModal';
@@ -635,6 +635,11 @@ export function BoardAllContent({ navigation, posts }) {
     pinnedPost,
   ]);
 
+  const boardSections = useMemo(
+    () => [{ data: flatListData }],
+    [flatListData],
+  );
+
   const renderBoardSkeletonCard = () => (
     <View style={styles.postItem}>
       <View style={{ flexDirection: 'row', marginBottom: normalize(8) }}>
@@ -712,42 +717,60 @@ export function BoardAllContent({ navigation, posts }) {
     );
   };
   const renderItem = ({ item }) => {
+    let body;
     if (item.type === 'skeleton') {
-      return renderBoardSkeletonCard();
-    }
-    if (item.type === 'ad') {
-      return (
+      body = renderBoardSkeletonCard();
+    } else if (item.type === 'ad') {
+      body = (
         <AdPlaceholder
           normalize={normalize}
           styles={styles}
           adData={item.adData}
         />
       );
+    } else {
+      body = renderPostItem({ item });
     }
-    return renderPostItem({ item });
+    return (
+      <View style={{ paddingHorizontal: width * 0.04 }}>{body}</View>
+    );
   };
+
+  const renderSectionHeader = useCallback(
+    () => (
+      <View style={{ backgroundColor: colors.white }} collapsable={false}>
+        <SortChips
+          value={boardScope}
+          onChange={setBoardScope}
+          options={[
+            { value: 'national', label: '전체' },
+            { value: 'school', label: '학생' },
+          ]}
+          sortValue={sortType}
+          onSortChange={setSortType}
+        />
+      </View>
+    ),
+    [boardScope, sortType],
+  );
 
   return (
     <>
-      <TopAdBanner />
-      <SortChips
-        value={boardScope}
-        onChange={setBoardScope}
-        options={[
-          { value: 'national', label: '전체' },
-          { value: 'school', label: '학생' },
-        ]}
-        sortValue={sortType}
-        onSortChange={setSortType}
-      />
-
-      {/* 게시글 목록 — 초기 로딩 시 스켈레톤 행을 리스트 데이터로 렌더(측정 방해 방지) */}
+      {/* 배너는 스크롤되며 사라지고, 전체/학생 줄은 섹션 헤더로 고정된다 */}
       <View style={{ flex: 1 }}>
-        <FlatList
-          style={styles.postList}
-          data={flatListData}
+        <SectionList
+          style={{ flex: 1 }}
+          sections={boardSections}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderItem}
+          renderSectionHeader={renderSectionHeader}
+          stickySectionHeadersEnabled
+          ListHeaderComponent={
+            <View>
+              <MainHeader />
+              <TopAdBanner />
+            </View>
+          }
           showsVerticalScrollIndicator={false}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
@@ -994,7 +1017,6 @@ const BoardAll = ({ navigation }) => {
   const styles = useMemo(() => createBoardStyles(width, normalize), [width]);
   return (
     <SafeAreaView style={styles.container} edges={MAIN_FOOTER_SAFE_AREA_EDGES}>
-      <MainHeader headerTitle={getMainTabTitle('board')} />
       <BoardAllContent navigation={navigation} />
       <MainFooter
         activeTab="board"

@@ -15,6 +15,9 @@ import {
   Alert,
 } from 'react-native';
 import { createTimerStyles, getNormalize } from '../../../styles/timer';
+import { colors } from '../../../styles/colors';
+import MainHeader from '../../frame/mainHeader';
+import { getMainTabTitle } from '../../../context/MainShellContext';
 import { api, getApiUserFacingMessage } from '../../../utils/api';
 import { saveImageUriToGallery, alertGallerySaveFailure } from '../../../utils/saveImageToGallery';
 import TimerDayContentSkeleton from './TimerDayContentSkeleton';
@@ -344,14 +347,32 @@ export function TimerContent() {
     }
   };
 
+  const timerGutter = width * 0.04;
+  const scrollingHeader = (
+    <MainHeader
+      headerTitle={getMainTabTitle('timer')}
+      navigation={navigation}
+    />
+  );
+  const friendStoryStickyStyle = {
+    backgroundColor: colors.white,
+    paddingHorizontal: timerGutter,
+    paddingTop: normalize(8),
+    paddingBottom: normalize(16),
+  };
+
   if (!timer.initialLoadDone) {
     return (
       <ScrollView
         style={[styles.scroll, tdb('#FF3B30')]}
-        contentContainerStyle={[styles.scrollContent, tdb('#FF9500')]}
+        contentContainerStyle={{ paddingBottom: normalize(24) }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.friendStoryRow, tdb('#FFCC00')]}>
+        {scrollingHeader}
+        <View
+          style={[styles.friendStoryRow, friendStoryStickyStyle, tdb('#FFCC00')]}
+          collapsable={false}
+        >
           <View style={[styles.friendStoryScroll, tdb('#34C759')]}>
             {[0, 1, 2, 3].map((idx) => (
               <View
@@ -373,14 +394,47 @@ export function TimerContent() {
             ))}
           </View>
         </View>
-        <TopAdBanner inset={false} />
-
-        <TimerDayContentSkeleton styles={styles} normalize={normalize} />
+        <View style={{ paddingHorizontal: timerGutter }}>
+          <TopAdBanner inset={false} />
+          <TimerDayContentSkeleton styles={styles} normalize={normalize} />
+        </View>
       </ScrollView>
     );
   }
 
   const showDayContentSkeleton = timer.isDayLoading;
+  const liveScrollProps = {
+    styles,
+    normalize,
+    isViewingToday: timer.isViewingToday,
+    totalElapsedMs: timer.totalElapsedMs,
+    displayTotalElapsedMs: timer.displayTotalElapsedMs,
+    displaySessions: timer.displaySessionsForTimetable,
+    displaySubjects: timer.effectiveDisplaySubjects,
+    displayTasks: timer.displayTasks,
+    isRunning: timer.isRunning,
+    activeSubjectId: timer.activeSubjectId,
+    selectedDayKey: timer.selectedDayKey,
+    goPrevDay: timer.goPrevDay,
+    goNextDay: timer.goNextDay,
+    canGoNextDay: timer.canGoNextDay,
+    setShowCalendar: timer.setShowCalendar,
+    handleSaveAsImage,
+    onOpenStudyRoom: () => {
+      preloadStudyRoomAssets();
+      navigation.navigate('TimerAniLab');
+    },
+    toggleTimer: timer.toggleTimer,
+    pauseTimer: timer.pauseTimer,
+    startForSubject: timer.startForSubject,
+    collapsedSubjects: timer.collapsedSubjects,
+    toggleSubjectCollapsed: timer.toggleSubjectCollapsed,
+    openAddTaskForSubject: timer.openAddTaskForSubject,
+    setShowAddSubject: timer.setShowAddSubject,
+    setTaskStatus: timer.setTaskStatus,
+    deleteSubject: timer.deleteSubject,
+    deleteTask: timer.deleteTask,
+  };
 
   return (
     <>
@@ -394,54 +448,55 @@ export function TimerContent() {
           <>
             <ScrollView
               style={[styles.scroll, tdb('#FF3B30')]}
-              contentContainerStyle={[styles.scrollContent, tdb('#FF9500')]}
+              contentContainerStyle={{ paddingBottom: normalize(24) }}
+              stickyHeaderIndices={showDayContentSkeleton ? undefined : [3]}
               showsVerticalScrollIndicator={false}
             >
-              <FriendStoryBar
-                friends={storyFriends}
-                studyingFriends={studyingFriends}
-                normalize={normalize}
-                styles={styles}
-                loading={friendsBarLoading}
-                onFriendPress={handleFriendPress}
-                onAddFriendPress={handleOpenAddFriend}
-              />
-              <TopAdBanner inset={false} />
-              {showDayContentSkeleton ? (
-                <TimerDayContentSkeleton styles={styles} normalize={normalize} />
-              ) : (
-                <TimerLiveScrollInner
-                  styles={styles}
+              {scrollingHeader}
+              <View
+                style={friendStoryStickyStyle}
+                collapsable={false}
+              >
+                <FriendStoryBar
+                  friends={storyFriends}
+                  studyingFriends={studyingFriends}
                   normalize={normalize}
-                  isViewingToday={timer.isViewingToday}
-                  totalElapsedMs={timer.totalElapsedMs}
-                  displayTotalElapsedMs={timer.displayTotalElapsedMs}
-                  displaySessions={timer.displaySessionsForTimetable}
-                  displaySubjects={timer.effectiveDisplaySubjects}
-                  displayTasks={timer.displayTasks}
-                  isRunning={timer.isRunning}
-                  activeSubjectId={timer.activeSubjectId}
-                  selectedDayKey={timer.selectedDayKey}
-                  goPrevDay={timer.goPrevDay}
-                  goNextDay={timer.goNextDay}
-                  canGoNextDay={timer.canGoNextDay}
-                  setShowCalendar={timer.setShowCalendar}
-                  handleSaveAsImage={handleSaveAsImage}
-                  onOpenStudyRoom={() => {
-                    preloadStudyRoomAssets();
-                    navigation.navigate('TimerAniLab');
-                  }}
-                  toggleTimer={timer.toggleTimer}
-                  pauseTimer={timer.pauseTimer}
-                  startForSubject={timer.startForSubject}
-                  collapsedSubjects={timer.collapsedSubjects}
-                  toggleSubjectCollapsed={timer.toggleSubjectCollapsed}
-                  openAddTaskForSubject={timer.openAddTaskForSubject}
-                  setShowAddSubject={timer.setShowAddSubject}
-                  setTaskStatus={timer.setTaskStatus}
-                  deleteSubject={timer.deleteSubject}
-                  deleteTask={timer.deleteTask}
+                  styles={styles}
+                  loading={friendsBarLoading}
+                  onFriendPress={handleFriendPress}
+                  onAddFriendPress={handleOpenAddFriend}
                 />
+              </View>
+              <View
+                style={{
+                  paddingHorizontal: timerGutter,
+                  marginBottom: normalize(16),
+                }}
+              >
+                <TopAdBanner inset={false} />
+              </View>
+              {showDayContentSkeleton ? (
+                <View style={{ paddingHorizontal: timerGutter }}>
+                  <TimerDayContentSkeleton
+                    styles={styles}
+                    normalize={normalize}
+                  />
+                </View>
+              ) : (
+                <View
+                  style={{
+                    backgroundColor: colors.white,
+                    paddingHorizontal: timerGutter,
+                  }}
+                  collapsable={false}
+                >
+                  <TimerLiveScrollInner segment="card" {...liveScrollProps} />
+                </View>
+              )}
+              {showDayContentSkeleton ? null : (
+                <View style={{ paddingHorizontal: timerGutter }}>
+                  <TimerLiveScrollInner segment="body" {...liveScrollProps} />
+                </View>
               )}
             </ScrollView>
             {timer.initialLoadDone ? (

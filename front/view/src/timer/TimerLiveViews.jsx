@@ -78,6 +78,7 @@ export function LiveElapsedTicker({
 }
 
 const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
+  segment,
   styles,
   normalize,
   isViewingToday,
@@ -202,9 +203,12 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
       );
     });
 
-  return (
-    <>
-      <GuideFocusTarget name={T.TIMER_TIMER_CARD} style={[styles.timerCard, tdb('#34C759')]}>
+  if (segment === 'card') {
+    return (
+      <GuideFocusTarget
+        name={T.TIMER_TIMER_CARD}
+        style={[styles.timerCard, tdb('#34C759')]}
+      >
         <View style={[styles.dateBar, tdb('#30B0C7')]}>
           <View style={[styles.dateBarLeft, tdb('#0A84FF')]}>
             <TouchableOpacity
@@ -267,7 +271,6 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
             </TouchableOpacity>
           </View>
         </View>
-
         <View style={[styles.timerBlock, tdb('#5E5CE6')]}>
           <Text style={styles.timerTime}>{formatHMS(displayTotalMs)}</Text>
           {isViewingToday && (
@@ -293,7 +296,10 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
           )}
         </View>
       </GuideFocusTarget>
+    );
+  }
 
+  return (
       <View style={[styles.todoTimetableRow, tdb('#BF5AF2')]}>
         <GuideFocusTarget name={T.TIMER_TODO_COLUMN} style={[styles.todoColumn, tdb('#FF2D55')]}>
           <View style={[styles.todoHeader, tdb('#64D2FF')]}>
@@ -453,7 +459,6 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
           </View>
         </GuideFocusTarget>
       </View>
-    </>
   );
 }
 
