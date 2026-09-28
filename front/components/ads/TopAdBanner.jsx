@@ -19,7 +19,7 @@ export default function TopAdBanner({ inset = true }) {
         overflow: 'hidden',
         backgroundColor: colors.primaryLight2,
         marginHorizontal: inset ? width * 0.04 : 0,
-        marginBottom: normalize(4),
+        marginBottom: normalize(10),
       }}
     />
   );

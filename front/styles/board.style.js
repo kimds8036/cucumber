@@ -661,7 +661,7 @@ export const createDetailStyles = (width, normalize) => {
     },
     detailAuthorRow: {
       flexDirection: 'row',
-      alignItems: 'baseline',
+      alignItems: 'flex-end',
     },
     detailAuthor: {
       fontSize: normalize(fontSizes.lg),
@@ -669,6 +669,7 @@ export const createDetailStyles = (width, normalize) => {
       color: colors.alert,
       lineHeight: metaLineHeight,
       textAlignVertical: 'center',
+      top: normalize(-1),
       ...metaTextAndroid,
     },
     detailAuthorAnonymous: {
@@ -677,6 +678,7 @@ export const createDetailStyles = (width, normalize) => {
       color: colors.textLight4,
       lineHeight: metaLineHeight,
       textAlignVertical: 'center',
+      top: normalize(-1),
       ...metaTextAndroid,
     },
     detailDot: {
@@ -815,7 +817,19 @@ export const createDetailStyles = (width, normalize) => {
     // 댓글 섹션 (SchoolMail.style.js smDetailComment* 와 동일 톤·간격)
     commentSection: {
       paddingHorizontal: width * 0.04,
-      paddingVertical: normalize(10),
+    },
+    commentListHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(4),
+      paddingVertical: normalize(6),
+      borderTopWidth: 1,
+      borderTopColor: colors.textLight1,
+    },
+    commentListHeaderText: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.bold,
+      color: colors.text,
     },
     commentSectionTitle: {
       fontSize: normalize(fontSizes.xl),
@@ -823,22 +837,24 @@ export const createDetailStyles = (width, normalize) => {
       color: colors.text,
       marginBottom: normalize(12),
     },
-    commentItem: {
-      marginBottom: normalize(6),
+    commentItem: {},
+    commentGutter: {
+      paddingHorizontal: width * 0.04,
+    },
+    commentRow: {
+      paddingVertical: normalize(10),
+    },
+    commentRowDivider: {
+      borderBottomWidth: 1,
+      borderBottomColor: colors.textLight1,
     },
     commentItemReply: {
-      marginBottom: normalize(12),
-      marginLeft: normalize(12),
       marginRight: 0,
       flexDirection: 'row',
       alignItems: 'flex-start',
     },
-    /** 댓글·대댓글 공통 말풍선 (= smDetailCommentBubble) */
-    commentBubble: {
-      backgroundColor: colors.white,
-      paddingVertical: normalize(10),
-      paddingHorizontal: normalize(14),
-    },
+    /** 댓글·대댓글 공통. 바깥 여백은 commentRow가 담당한다 */
+    commentBubble: {},
     /** 대댓글 말풍선 가로 확장 (= smDetailCommentBubbleReply) */
     commentBubbleReply: {
       flex: 1,
@@ -847,11 +863,10 @@ export const createDetailStyles = (width, normalize) => {
     },
     /** 댓글 달기 포커스 (= smDetailCommentBubbleReplying, 그림자 없음) */
     commentBubbleReplying: {
-      backgroundColor: colors.primaryLight3,
+      backgroundColor: colors.primaryLight2,
     },
     commentReplyArrow: {
       marginRight: normalize(6),
-      marginTop: normalize(7),
     },
     commentReplyBody: {
       flex: 1,
@@ -859,14 +874,6 @@ export const createDetailStyles = (width, normalize) => {
     /** 댓글 본문(작성자·내용·푸터) 한 덩어리 */
     commentBlock: {
       flex: 1,
-      paddingHorizontal: width * 0.01,
-      paddingVertical: normalize(4),
-    },
-    commentRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'flex-start',
-      marginBottom: normalize(6),
     },
     commentAuthorRow: {
       flexDirection: 'row',
@@ -898,14 +905,12 @@ export const createDetailStyles = (width, normalize) => {
       fontFamily: fonts.regular,
       color: colors.text,
       lineHeight: normalize(20),
-      marginBottom: normalize(6),
     },
     commentBodyWithTag: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.text,
       lineHeight: normalize(20),
-      marginBottom: normalize(6),
     },
     commentTag: {
       color: colors.primary,
@@ -915,15 +920,17 @@ export const createDetailStyles = (width, normalize) => {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.primary,
+      lineHeight: normalize(20),
     },
     commentFooter: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
+      marginTop: normalize(4),
     },
     commentFooterLeft: {
       flexDirection: 'row',
-      alignItems: 'baseline',
+      alignItems: 'center',
       gap: normalize(12),
       flex: 1,
     },
@@ -932,15 +939,10 @@ export const createDetailStyles = (width, normalize) => {
       alignItems: 'center',
       gap: normalize(4),
     },
-    commentReplyButton: {
-      paddingVertical: normalize(4),
-      paddingHorizontal: normalize(6),
-    },
     commentReplyButtonText: {
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textLight4,
-      marginTop: -normalize(2),
     },
     loadMoreRow: {
       flexDirection: 'row',
@@ -955,14 +957,12 @@ export const createDetailStyles = (width, normalize) => {
       alignItems: 'center',
       alignSelf: 'flex-start',
       paddingTop: normalize(2),
-      paddingBottom: normalize(10),
+      paddingBottom: normalize(8),
       paddingRight: normalize(4),
       gap: normalize(4),
-      marginLeft: normalize(18),
-      marginTop: -normalize(4),
     },
     loadMoreText: {
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textLight4,
     },

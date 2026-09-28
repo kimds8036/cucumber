@@ -68,7 +68,7 @@ export default function BoardDetail({ navigation, route }) {
   const postMenuButtonRef = useRef(null);
   const commentMenuRefs = useRef({});
   const scrollToCommentIdRef = useRef(null);
-  const INITIAL_REPLIES = 3;
+  const INITIAL_REPLIES = 0;
 
   const closeFloatingMenu = () => {
     setFloatingMenuVisible(false);
@@ -186,6 +186,15 @@ export default function BoardDetail({ navigation, route }) {
     return result;
   };
 
+  const countCommentNodes = (comments) => {
+    let total = 0;
+    for (const comment of comments || []) {
+      total += 1;
+      total += countCommentNodes(comment.replies);
+    }
+    return total;
+  };
+
   const buildFlatComments = (comments, expandedRepliesMap) => {
     const result = [];
     for (const c of comments) {
@@ -223,6 +232,8 @@ export default function BoardDetail({ navigation, route }) {
     () => buildFlatComments(visibleComments, expandedReplies),
     [visibleComments, expandedReplies],
   );
+
+  const commentCount = countCommentNodes(visibleComments);
 
   const openFloatingMenu = (context, ref) => {
     const menuContext =
@@ -474,6 +485,14 @@ export default function BoardDetail({ navigation, route }) {
                       distanceLoading={distanceLoading}
                     />
                     <TopAdBanner />
+                    <View style={styles.commentGutter}>
+                      <View style={styles.commentListHeader}>
+                        <Text style={styles.commentListHeaderText}>댓글</Text>
+                        <Text style={styles.commentListHeaderText}>
+                          {commentCount}
+                        </Text>
+                      </View>
+                    </View>
                   </View>
                 }
                 contentContainerStyle={[
@@ -578,9 +597,7 @@ export default function BoardDetail({ navigation, route }) {
                     />
                   </View>
                 </View>
-                <View
-                  style={[styles.commentSection, { paddingTop: normalize(10) }]}
-                >
+                <View style={styles.commentSection}>
                   {[0, 1, 2].map((idx) => (
                     <View
                       key={`board-detail-comment-skel-${idx}`}

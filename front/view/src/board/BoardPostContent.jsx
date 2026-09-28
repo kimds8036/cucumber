@@ -46,7 +46,7 @@ export default function BoardPostContent({
           <EquippedBadge
             badge={post.equippedBadge}
             size={normalize(13)}
-            style={{ marginLeft: normalize(3) }}
+            style={{ marginLeft: normalize(3), alignSelf: 'center' }}
           />
           <Text
             style={[styles.detailTime, { marginLeft: normalize(8) }]}
