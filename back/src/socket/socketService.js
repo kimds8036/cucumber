@@ -205,14 +205,16 @@ export async function broadcastTimerStatus({ userId, status }) {
 
   const updatedAt = new Date().toISOString();
   let username = null;
+  let avatarUrl = null;
   let startedAt = null;
   let closedTotalMs = 0;
   try {
     const [userRows] = await pool.execute(
-      'SELECT username FROM users WHERE id = ? AND is_deleted = FALSE LIMIT 1',
+      'SELECT username, avatar_url FROM users WHERE id = ? AND is_deleted = FALSE LIMIT 1',
       [userId],
     );
     username = userRows[0]?.username || null;
+    avatarUrl = userRows[0]?.avatar_url || null;
     if (status === 'studying') {
       const todayTimerDayKey = getTimerDayKey();
       const [sessionRows] = await pool.execute(
@@ -256,6 +258,7 @@ export async function broadcastTimerStatus({ userId, status }) {
       type: 'study_room_timer_status',
       userId,
       username,
+      avatarUrl,
       status,
       startedAt,
       closedTotalMs,

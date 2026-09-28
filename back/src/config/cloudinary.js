@@ -16,6 +16,8 @@ const BASE_FOLDER = String(process.env.CLOUDINARY_FOLDER_BASE || 'focux')
 export const CLOUDINARY_FOLDERS = {
   /** 학생증 인증 (가입·재제출, PII) */
   studentId: `${BASE_FOLDER}/verification/student-id`,
+  /** 마이페이지 프로필 사진 */
+  avatars: `${BASE_FOLDER}/user/avatars`,
   /** 인앱 사용자 콘텐츠 */
   posts: `${BASE_FOLDER}/user/posts`,
   comments: `${BASE_FOLDER}/user/comments`,

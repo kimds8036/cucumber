@@ -73,6 +73,14 @@ function normalizePostImagesFromRow(raw) {
   return [];
 }
 
+const SQL_POST_IMAGES_JSON = `(SELECT JSON_ARRAYAGG(cloudinary_url)
+ FROM (
+   SELECT cloudinary_url
+   FROM post_images
+   WHERE post_id = p.id AND deleted_at IS NULL
+   ORDER BY display_order ASC
+ ) pi) AS images`;
+
 /** 좋아요/댓글/스크랩 **발생 시각**이 [start, end] 안에 드는 행을 게시물별로 집계 */
 function sqlEngagedEventsByBoardType(boardType) {
   const bt = boardType === 'student' ? 'student' : 'national';
@@ -174,6 +182,7 @@ async function loadPostsRowsByIdOrder(
         WHERE pi1.post_id = p.id AND pi1.deleted_at IS NULL
         ORDER BY pi1.display_order ASC
         LIMIT 1) AS thumbnail,
+      ${SQL_POST_IMAGES_JSON},
       (SELECT COUNT(*) FROM post_likes pl
         WHERE pl.post_id = p.id AND pl.user_id = ?) AS is_liked,
       (SELECT COUNT(*) FROM post_scraps ps
@@ -482,6 +491,7 @@ router.get('/', optionalAuthenticate, async (req, res) => {
           WHERE pi1.post_id = p.id AND pi1.deleted_at IS NULL
           ORDER BY pi1.display_order ASC
           LIMIT 1) AS thumbnail,
+        ${SQL_POST_IMAGES_JSON},
         (SELECT COUNT(*) FROM post_likes pl
           WHERE pl.post_id = p.id AND pl.user_id = ?) AS is_liked,
         (SELECT COUNT(*) FROM post_scraps ps
@@ -519,6 +529,7 @@ router.get('/', optionalAuthenticate, async (req, res) => {
         tags: rawTags,
         latitude: postLat,
         longitude: postLng,
+        images: rawImages,
         ...rest
       } = p;
       let tags = [];
@@ -552,6 +563,7 @@ router.get('/', optionalAuthenticate, async (req, res) => {
       return {
         ...rest,
         tags,
+        images: normalizePostImagesFromRow(rawImages),
         distanceKm,
         is_author: !!userId && user_id === userId,
         author_user_id: user_id,
@@ -662,7 +674,8 @@ router.get('/my', authenticate, async (req, res) => {
             FROM post_images pi1
            WHERE pi1.post_id = p.id AND pi1.deleted_at IS NULL
            ORDER BY pi1.display_order ASC
-           LIMIT 1) AS thumbnail
+           LIMIT 1) AS thumbnail,
+         ${SQL_POST_IMAGES_JSON}
        FROM posts p
        LEFT JOIN users u ON p.user_id = u.id
        LEFT JOIN schools s ON p.school_id = s.school_id
@@ -681,9 +694,10 @@ router.get('/my', authenticate, async (req, res) => {
     const total = Number(countResult[0]?.total ?? 0);
 
     const postsForClient = posts.map((p) => {
-      const { user_id, is_liked, is_scrapped, scrap_count, ...rest } = p;
+      const { user_id, is_liked, is_scrapped, scrap_count, images: rawImages, ...rest } = p;
       return {
         ...rest,
+        images: normalizePostImagesFromRow(rawImages),
         author_user_id: user_id,
         isLiked: Boolean(Number(is_liked) > 0),
         isScrapped: Boolean(Number(is_scrapped) > 0),
@@ -845,7 +859,8 @@ router.get('/liked', authenticate, async (req, res) => {
             FROM post_images pi1
            WHERE pi1.post_id = p.id AND pi1.deleted_at IS NULL
            ORDER BY pi1.display_order ASC
-           LIMIT 1) AS thumbnail
+           LIMIT 1) AS thumbnail,
+         ${SQL_POST_IMAGES_JSON}
        FROM post_likes pl
        INNER JOIN posts p ON pl.post_id = p.id
        LEFT JOIN users u ON p.user_id = u.id
@@ -868,7 +883,10 @@ router.get('/liked', authenticate, async (req, res) => {
     res.json({
       success: true,
       data: {
-        posts,
+        posts: posts.map((p) => ({
+          ...p,
+          images: normalizePostImagesFromRow(p.images),
+        })),
         pagination: {
           page: parseInt(page, 10),
           limit: limitNum,
@@ -964,7 +982,8 @@ router.get('/scrapped', authenticate, async (req, res) => {
             FROM post_images pi1
            WHERE pi1.post_id = p.id AND pi1.deleted_at IS NULL
            ORDER BY pi1.display_order ASC
-           LIMIT 1) AS thumbnail
+           LIMIT 1) AS thumbnail,
+         ${SQL_POST_IMAGES_JSON}
        FROM post_scraps ps
        INNER JOIN posts p ON ps.post_id = p.id
        LEFT JOIN users u ON p.user_id = u.id
@@ -985,9 +1004,10 @@ router.get('/scrapped', authenticate, async (req, res) => {
     const total = Number(countResult[0]?.total ?? 0);
 
     const postsForClient = posts.map((p) => {
-      const { user_id, is_liked, is_scrapped, scrap_count, ...rest } = p;
+      const { user_id, is_liked, is_scrapped, scrap_count, images: rawImages, ...rest } = p;
       return {
         ...rest,
+        images: normalizePostImagesFromRow(rawImages),
         author_user_id: user_id,
         isLiked: Boolean(Number(is_liked) > 0),
         isScrapped: Boolean(Number(is_scrapped) > 0),
