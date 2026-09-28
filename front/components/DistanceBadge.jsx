@@ -137,7 +137,7 @@ export default function DistanceBadge({
           <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
             <Text
               style={{
-                fontSize: normalize(11),
+                fontSize: normalize(10),
                 fontFamily: fonts.regular,
                 color: theme.accent,
               }}

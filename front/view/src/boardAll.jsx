@@ -79,6 +79,34 @@ function formatTimeAgo(createdAt) {
   return date.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
 }
 
+function mapApiPost(p) {
+  const thumb =
+    typeof p.thumbnail === 'string' && p.thumbnail.trim()
+      ? p.thumbnail.trim()
+      : null;
+  return {
+    id: p.id,
+    author: '익명',
+    equippedBadge: equippedBadgeFromApiRow(p),
+    time: formatTimeAgo(p.created_at),
+    location: '',
+    content: p.content,
+    likes: p.like_count,
+    comments: p.comment_count,
+    liked: Boolean(p.isLiked ?? false),
+    scrapped: Boolean(p.isScrapped ?? p.is_scrapped ?? false),
+    scrapCount: p.scrapCount ?? 0,
+    isMyPost: !!p.is_author,
+    authorUserId: p.author_user_id,
+    thumbnail: thumb,
+    tags: normalizeTagsFromApi(p.tags),
+    distanceKm:
+      typeof p.distanceKm === 'number' && !Number.isNaN(p.distanceKm)
+        ? p.distanceKm
+        : null,
+  };
+}
+
 // 메인 화면(MainScreen)에서 헤더/푸터 없이 메인 영역만 렌더할 때 사용
 // posts: 외부에서 주입하는 게시글 배열 (없으면 defaultPosts 사용)
 export function BoardAllContent({ navigation, posts }) {
@@ -105,6 +133,7 @@ export function BoardAllContent({ navigation, posts }) {
   const [sortType, setSortType] = useState('latest'); // latest, popular, nearby
   const [boardScope, setBoardScope] = useState('national'); // national | school
   const [serverPosts, setServerPosts] = useState([]);
+  const [pinnedPost, setPinnedPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -119,6 +148,7 @@ export function BoardAllContent({ navigation, posts }) {
   const [reportReportedUserId, setReportReportedUserId] = useState(null);
 
   const fetchPostsRef = useRef(null);
+  const fetchPinnedRef = useRef(null);
   const didMountSortEffectRef = useRef(false);
   const serverPostsRef = useRef(serverPosts);
   const skipNextFocusFetchRef = useRef(true);
@@ -156,6 +186,10 @@ export function BoardAllContent({ navigation, posts }) {
                   setServerPosts((prev) =>
                     prev.filter((p) => p.id !== postToDelete.id),
                   );
+                  setPinnedPost((prev) =>
+                    prev?.id === postToDelete.id ? null : prev,
+                  );
+                  fetchPinnedRef.current?.();
                   Alert.alert('삭제됨', '게시글이 삭제되었습니다.');
                 } catch (error) {
                   console.error('게시글 삭제 오류:', error);
@@ -339,34 +373,7 @@ export function BoardAllContent({ navigation, posts }) {
         }
         const response = await api.get('/api/posts', { params });
         const apiPosts = response.data?.data?.posts || [];
-        const mapped = apiPosts.map((p) => {
-          const thumb =
-            typeof p.thumbnail === 'string' && p.thumbnail.trim()
-              ? p.thumbnail.trim()
-              : null;
-          const tags = normalizeTagsFromApi(p.tags);
-          return {
-            id: p.id,
-            author: '익명',
-            equippedBadge: equippedBadgeFromApiRow(p),
-            time: formatTimeAgo(p.created_at),
-            location: '',
-            content: p.content,
-            likes: p.like_count,
-            comments: p.comment_count,
-            liked: Boolean(p.isLiked ?? false),
-            scrapped: Boolean(p.isScrapped ?? p.is_scrapped ?? false),
-            scrapCount: p.scrapCount ?? 0,
-            isMyPost: !!p.is_author,
-            authorUserId: p.author_user_id,
-            thumbnail: thumb,
-            tags,
-            distanceKm:
-              typeof p.distanceKm === 'number' && !Number.isNaN(p.distanceKm)
-                ? p.distanceKm
-                : null,
-          };
-        });
+        const mapped = apiPosts.map(mapApiPost);
         if (append) {
           setServerPosts((prev) => {
             const existingIds = new Set(prev.map((p) => p.id));
@@ -425,9 +432,64 @@ export function BoardAllContent({ navigation, posts }) {
     ],
   );
 
+  const pinnedRequestRef = useRef(0);
+
+  const fetchPinnedPost = useCallback(async () => {
+    const requestId = ++pinnedRequestRef.current;
+    if (
+      isGuidePreview ||
+      studentFeedLocked ||
+      (posts && posts.length > 0)
+    ) {
+      setPinnedPost(null);
+      return;
+    }
+    try {
+      let schoolId;
+      if (boardScope === 'school') {
+        const schoolRes = await api.get('/api/schools/me');
+        schoolId = schoolRes.data?.data?.id;
+        if (!schoolId) {
+          if (requestId === pinnedRequestRef.current) setPinnedPost(null);
+          return;
+        }
+      }
+      const params = {
+        boardType: boardFeedMode === 'student' ? 'student' : 'national',
+        sort: 'popular',
+        page: 1,
+        limit: 1,
+      };
+      if (schoolId) params.schoolId = schoolId;
+      if (coords) {
+        params.viewerLat = coords.latitude;
+        params.viewerLng = coords.longitude;
+      }
+      const response = await api.get('/api/posts', { params });
+      if (requestId !== pinnedRequestRef.current) return;
+      const first = response.data?.data?.posts?.[0];
+      setPinnedPost(first ? mapApiPost(first) : null);
+    } catch (error) {
+      console.error('인기 게시글 로드 실패:', error);
+      if (requestId !== pinnedRequestRef.current) return;
+      setPinnedPost(null);
+    }
+  }, [
+    boardScope,
+    coords,
+    posts,
+    isGuidePreview,
+    boardFeedMode,
+    studentFeedLocked,
+  ]);
+
   useEffect(() => {
     fetchPostsRef.current = fetchPosts;
   }, [fetchPosts]);
+
+  useEffect(() => {
+    fetchPinnedRef.current = fetchPinnedPost;
+  }, [fetchPinnedPost]);
 
   useEffect(() => {
     if (studentFeedLocked) {
@@ -464,6 +526,7 @@ export function BoardAllContent({ navigation, posts }) {
       if (elapsed < BOARD_FOCUS_REFRESH_COOLDOWN_MS) return;
       // 쿨다운 경과 시 1페이지 교체(스피너/스켈레톤 없이)
       fetchPostsRef.current?.(1, false, { soft: true, quiet: true });
+      fetchPinnedRef.current?.();
     }, [posts, isGuidePreview]),
   );
 
@@ -476,11 +539,16 @@ export function BoardAllContent({ navigation, posts }) {
     fetchPosts(1, false);
   }, [sortType, boardScope, isGuidePreview, boardFeedMode]);
 
+  useEffect(() => {
+    fetchPinnedRef.current?.();
+  }, [boardScope, boardFeedMode, isGuidePreview, studentFeedLocked, coords]);
+
   const handlePullToRefresh = useCallback(() => {
     if (isGuidePreview) return;
     if (posts && posts.length > 0) return;
     refreshLocation();
     fetchPostsRef.current?.(1, false, { soft: true });
+    fetchPinnedRef.current?.();
   }, [isGuidePreview, posts, refreshLocation]);
 
   const data = studentFeedLocked
@@ -488,6 +556,17 @@ export function BoardAllContent({ navigation, posts }) {
     : posts && posts.length > 0
       ? posts
       : serverPosts;
+
+  const showPinned =
+    Boolean(pinnedPost) &&
+    !studentFeedLocked &&
+    !(posts && posts.length > 0) &&
+    !isGuidePreview;
+
+  const feedPosts = useMemo(() => {
+    if (!showPinned) return data;
+    return data.filter((post) => post.id !== pinnedPost.id);
+  }, [data, showPinned, pinnedPost]);
 
   const handleLoadMore = () => {
     if (sortType === 'nearby' && !coords) return;
@@ -522,14 +601,14 @@ export function BoardAllContent({ navigation, posts }) {
 
   const dataWithAds = useMemo(
     () =>
-      injectAdSlots(data, adSlots, {
+      injectAdSlots(feedPosts, adSlots, {
         placement: AD_PLACEMENTS.FEED_BOARD,
         adType: 'ad',
         idPrefix: 'ad',
         skipFirstIndex: true,
         wrapItem: (post) => ({ ...post, type: 'post' }),
       }),
-    [data, adSlots],
+    [feedPosts, adSlots],
   );
 
   const skeletonListData = useMemo(
@@ -543,8 +622,18 @@ export function BoardAllContent({ navigation, posts }) {
 
   const flatListData = useMemo(() => {
     if (hideListBehindLoader) return skeletonListData;
-    return dataWithAds;
-  }, [hideListBehindLoader, dataWithAds, skeletonListData]);
+    if (!showPinned) return dataWithAds;
+    return [
+      { ...pinnedPost, type: 'post', featured: true },
+      ...dataWithAds,
+    ];
+  }, [
+    hideListBehindLoader,
+    dataWithAds,
+    skeletonListData,
+    showPinned,
+    pinnedPost,
+  ]);
 
   const renderBoardSkeletonCard = () => (
     <View style={styles.postItem}>
@@ -611,6 +700,7 @@ export function BoardAllContent({ navigation, posts }) {
         showDistanceBadge={permissionGranted}
         distanceStale={distanceStale}
         distanceLoading={permissionGranted && !postHasKm && distanceStale}
+        featured={Boolean(post.featured)}
         onPress={() =>
           navigation.navigate('BoardDetail', {
             post: { ...post, author: post.author },

@@ -1,11 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, Image } from 'react-native';
+import { View, Text, TouchableOpacity, Image, Platform } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { colors, fonts, fontSizes } from '../styles/colors';
 import { normalizeTagsFromApi } from '../utils/normalizePostTags';
 import DistanceBadge from './DistanceBadge';
-import EquippedBadge from './EquippedBadge';
 import { collectPostImageUris } from './board/PostImageSlider';
 
 /**
@@ -23,6 +22,7 @@ import { collectPostImageUris } from './board/PostImageSlider';
  *  - showDistanceBadge : 위치 권한 등으로 배지 영역 표시
  *  - distanceStale : 좌표 없음(주황 칩), coords 있으면 캐시·GPS 모두 초록
  *  - distanceLoading : 거리 미계산 시 주황 칩 + 점 로딩
+ *  - featured : 인기 1등 고정 카드. 배경 primaryLight2, 윤곽선 없음, 인기 뱃지
  */
 const BoardPostCard = ({
   post,
@@ -36,6 +36,7 @@ const BoardPostCard = ({
   showDistanceBadge = true,
   distanceStale = false,
   distanceLoading = false,
+  featured = false,
 }) => {
   const thumbUri = collectPostImageUris(post)[0] || '';
   const hasThumb = thumbUri.length > 0;
@@ -175,38 +176,28 @@ const BoardPostCard = ({
   const scrapCount = Number(post.scrapCount) || 0;
   const hasVisibleStats = likesCount > 0 || commentsCount > 0 || scrapCount > 0;
 
+  const metaTextAndroid =
+    Platform.OS === 'android' ? { includeFontPadding: false } : null;
+
   return (
     <TouchableOpacity
-      style={styles.postItem}
+      style={[styles.postItem, featured && styles.postItemFeatured]}
       activeOpacity={0.7}
       onPress={() => onPress?.(post)}
     >
-      {/* 헤더: 좌측 작성자|시간(·위치), 우측 거리 배지 */}
+      {/* 헤더: 좌측 시간(인기 카드는 뱃지), 우측 거리 배지 */}
       <View style={styles.postHeader}>
         <View style={styles.postAuthorRow}>
-          <Text style={styles.postAuthor} numberOfLines={1}>
-            {post.author}
-          </Text>
-          <EquippedBadge
-            badge={post.equippedBadge}
-            size={normalize(13)}
-            style={{ marginLeft: normalize(3) }}
-          />
-          <Text style={styles.postDot}>•</Text>
-          <Text style={styles.postTime} numberOfLines={1}>
-            {post.time}
-          </Text>
-          {post.location ? (
-            <View style={[styles.postTimeRow, styles.postLocationWrap]}>
-              <Text style={styles.postDot}>•</Text>
-              <Text
-                style={[styles.postLocationText, styles.postLocationInlineText]}
-                numberOfLines={1}
-              >
-                {post.location}
+          {featured ? (
+            <View style={styles.popularBadge}>
+              <Text style={[styles.popularBadgeText, metaTextAndroid]}>
+                인기
               </Text>
             </View>
           ) : null}
+          <Text style={styles.postTime} numberOfLines={1}>
+            {post.time}
+          </Text>
         </View>
         {!hideDistanceBadge && showDistanceBadge ? (
           <DistanceBadge

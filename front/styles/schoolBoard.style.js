@@ -1,6 +1,5 @@
 import { StyleSheet, Platform } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
-import { shadow } from './tokens';
 export const getNormalize = (width) => {
   const scale = width / 375;
   return (size) => Math.round(scale * size);
@@ -26,12 +25,38 @@ export const createSchoolBoardStyles = (width, normalize) => {
     postItem: {
       backgroundColor: colors.white,
       borderRadius: normalize(18),
+      borderWidth: 1,
+      borderColor: colors.textLight1,
       padding: normalize(14),
       marginBottom: normalize(12),
-      ...shadow.md,
+    },
+    postItemFeatured: {
+      backgroundColor: colors.primaryLight2,
+      borderWidth: 0,
+      elevation: 0,
+      shadowOpacity: 0,
+      shadowRadius: 0,
+      shadowOffset: { width: 0, height: 0 },
+    },
+    popularBadge: {
+      marginRight: normalize(6),
+      backgroundColor: colors.yellow,
+      borderWidth: 1,
+      borderColor: colors.scrap,
+      borderRadius: normalize(10),
+      paddingHorizontal: normalize(6),
+      paddingVertical: normalize(1),
+    },
+    popularBadgeText: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.bold,
+      color: colors.text,
+      lineHeight: metaLineHeight,
+      textAlignVertical: 'center',
+      ...metaTextAndroid,
     },
 
-    // 게시글 헤더 (좌: 작성자•시간[·위치], 우: 거리 배지 등)
+    // 게시글 헤더 (좌: 시간, 우: 거리 배지)
     postHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
