@@ -63,7 +63,7 @@ export default function PostImageSlider({
               style={{
                 width: tile,
                 height: tile,
-                backgroundColor: colors.textLight10,
+                backgroundColor: colors.textLight1,
                 borderRadius,
               }}
               resizeMode="cover"

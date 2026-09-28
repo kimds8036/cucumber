@@ -1046,7 +1046,7 @@ const Settings = ({ navigation, route }) => {
                       <Text
                         style={[
                           styles.pwInput,
-                          { color: colors.textSecondary },
+                          { color: colors.textLight4 },
                         ]}
                         numberOfLines={2}
                       >

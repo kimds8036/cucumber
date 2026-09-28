@@ -20,7 +20,7 @@ const AuthScreenShell = ({ children, edges = ['top', 'bottom'], style }) => {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
   },
   safe: {
     flex: 1,

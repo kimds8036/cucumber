@@ -22,7 +22,7 @@ const AuthSignupStepHeader = ({
           accessibilityRole="button"
           accessibilityLabel="가입 중단"
         >
-          <Feather name="x" size={normalize(20)} color={colors.textPrimary} />
+          <Feather name="x" size={normalize(20)} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{title}</Text>
       </View>

@@ -174,7 +174,7 @@ const SignStepAgeGate = ({
             <Ionicons
               name="chevron-down"
               size={normalize(16)}
-              color={colors.textSecondary}
+              color={colors.textLight4}
             />
           </TouchableOpacity>
         </View>
@@ -273,7 +273,7 @@ const makeLocalStyles = (normalize) =>
     sheetTitle: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       textAlign: 'center',
       marginBottom: normalize(8),
     },
@@ -288,12 +288,12 @@ const makeLocalStyles = (normalize) =>
       justifyContent: 'space-between',
     },
     optionRowSelected: {
-      backgroundColor: colors.surface,
+      backgroundColor: colors.white,
     },
     optionText: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     optionTextSelected: {
       fontFamily: fonts.bold,
@@ -310,7 +310,7 @@ const makeLocalStyles = (normalize) =>
     cancelText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
   });
 

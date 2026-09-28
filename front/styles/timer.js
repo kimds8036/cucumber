@@ -74,7 +74,7 @@ export const createTimerStyles = (width, normalize) => {
     },
     studyRoomEntryBtnDisabled: {
       backgroundColor: colors.textLight5,
-      borderColor: colors.textLight10,
+      borderColor: colors.textLight1,
     },
     studyRoomEntryText: {
       fontSize: normalize(fontSizes.md),
@@ -82,7 +82,7 @@ export const createTimerStyles = (width, normalize) => {
       color: colors.white,
     },
     studyRoomEntryTextDisabled: {
-      color: colors.textLight40,
+      color: colors.textLight4,
     },
     saveBtnText: {
       fontSize: normalize(fontSizes.xl),
@@ -327,7 +327,7 @@ export const createTimerStyles = (width, normalize) => {
       color: colors.white,
     },
     subjectTasksArea: {
-      backgroundColor: colors.white || colors.white,
+      backgroundColor: colors.white,
       paddingVertical: normalize(6),
       borderTopWidth: 0.5,
       borderTopColor: colors.textLight1,

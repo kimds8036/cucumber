@@ -74,7 +74,7 @@ const AuthTextField = ({
                 ? colors.alertDark
                 : focused
                   ? colors.primaryDark
-                  : colors.textLight40
+                  : colors.textLight4
             }
             style={styles.icon}
           />
@@ -84,7 +84,7 @@ const AuthTextField = ({
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor={colors.textSecondary}
+          placeholderTextColor={colors.textLight4}
           secureTextEntry={isSecure && hidden}
           autoCapitalize={autoCapitalize}
           editable={!isReadonly}
@@ -108,7 +108,7 @@ const AuthTextField = ({
             <Feather
               name={hidden ? 'eye-off' : 'eye'}
               size={normalize(18)}
-              color={colors.textLight40}
+              color={colors.textLight4}
             />
           </TouchableOpacity>
         ) : null}
@@ -129,12 +129,12 @@ function createStyles(normalize) {
       marginLeft: normalize(2),
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.lg),
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     labelExtra: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.md),
-      color: colors.textLight40,
+      color: colors.textLight4,
     },
     box: {
       flexDirection: 'row',
@@ -142,8 +142,8 @@ function createStyles(normalize) {
       minHeight: normalize(52),
       borderRadius: normalize(16),
       borderWidth: 1.5,
-      borderColor: colors.textLight20,
-      backgroundColor: colors.surface,
+      borderColor: colors.textLight2,
+      backgroundColor: colors.white,
       paddingHorizontal: normalize(14),
     },
     boxCompact: {
@@ -152,14 +152,14 @@ function createStyles(normalize) {
     },
     boxFocused: {
       borderColor: colors.primaryDark,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     boxError: {
       borderColor: colors.alertDark,
       backgroundColor: colors.alertLight,
     },
     boxReadonly: {
-      backgroundColor: colors.surface,
+      backgroundColor: colors.white,
     },
     icon: {
       marginRight: normalize(10),
@@ -171,7 +171,7 @@ function createStyles(normalize) {
       paddingHorizontal: 0,
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       textAlignVertical: 'center',
       ...Platform.select({
         android: { includeFontPadding: false },

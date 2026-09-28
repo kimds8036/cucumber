@@ -246,7 +246,7 @@ export const createProfileCardStyles = (normalize) =>
       justifyContent: 'center',
       alignItems: 'center',
       overflow: 'hidden',
-      backgroundColor: colors.surface,
+      backgroundColor: colors.white,
     },
     profileAvatarImage: {
       width: normalize(70),
@@ -268,7 +268,7 @@ export const createProfileCardStyles = (normalize) =>
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 2,
-      borderColor: colors.background,
+      borderColor: colors.white,
     },
     profileInfo: {
       flex: 1,
@@ -331,14 +331,14 @@ export const createProfileCardStyles = (normalize) =>
     verifyCtaText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: normalize(20),
       textDecorationLine: 'underline',
-      textDecorationColor: colors.textLight20 || colors.border,
+      textDecorationColor: colors.textLight2,
     },
     verifyCtaTextPending: {
       textDecorationLine: 'none',
-      color: colors.textLight40 || colors.textSecondary,
+      color: colors.textLight4,
     },
     verifyCtaTextRejected: {
       color: colors.scrapDark || '#A46E17',
@@ -755,7 +755,7 @@ export const createNotificationSettingsStyles = (normalize) => {
     academicGateText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: normalize(fontSizes.lg + 6),
       marginBottom: normalize(14),
     },

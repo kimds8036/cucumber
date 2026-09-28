@@ -352,7 +352,7 @@ const SignStepIdentity = ({
                   isBusy ||
                   isVerified ||
                   resendCooldownSec > 0) && {
-                  backgroundColor: colors.textLight20,
+                  backgroundColor: colors.textLight2,
                 },
               ]}
               onPress={handleSendCode}
@@ -364,7 +364,7 @@ const SignStepIdentity = ({
               }
             >
               {sendingCode ? (
-                <ActivityIndicator size="small" color={colors.background} />
+                <ActivityIndicator size="small" color={colors.white} />
               ) : (
                 <Text
                   style={[
@@ -403,7 +403,7 @@ const SignStepIdentity = ({
             disabled={isBusy}
           >
             {verifyingCode ? (
-              <ActivityIndicator size="small" color={colors.background} />
+              <ActivityIndicator size="small" color={colors.white} />
             ) : (
               <Text style={styles.verifyButtonText}>인증 확인</Text>
             )}

@@ -37,7 +37,7 @@ const AltVerifyChoiceResubmit = ({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
   },
   body: {
     flex: 1,

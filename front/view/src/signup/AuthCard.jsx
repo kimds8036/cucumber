@@ -18,7 +18,7 @@ function createStyles(width) {
       width: '100%',
       maxWidth: 400,
       alignSelf: 'center',
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: radius.xl,
       paddingHorizontal: normalize(22),
       paddingTop: normalize(28),

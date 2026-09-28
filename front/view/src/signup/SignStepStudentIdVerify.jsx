@@ -251,7 +251,7 @@ function SignupCompleteWelcome({ styles, normalize, submitting, onConfirm }) {
     <>
       <Animated.View style={[styles.completeContent, { opacity }]}>
         <View style={styles.completeCheck}>
-          <Feather name="check" size={normalize(28)} color={colors.textWhite} />
+          <Feather name="check" size={normalize(28)} color={colors.white} />
         </View>
         <Text style={styles.completeHello}>환영합니다</Text>
         <Text style={styles.completeTitle}>가입이 완료되었습니다!</Text>
@@ -314,21 +314,21 @@ function createLocalStyles(normalize, width) {
     completeHello: {
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.heading),
-      color: colors.textPrimary,
+      color: colors.text,
       textAlign: 'center',
       marginBottom: normalize(6),
     },
     completeTitle: {
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.xl),
-      color: colors.textPrimary,
+      color: colors.text,
       textAlign: 'center',
       marginBottom: normalize(8),
     },
     completeSubtitle: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.md),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textAlign: 'center',
       lineHeight: normalize(22),
     },

@@ -40,28 +40,6 @@ export const colors = {
   red: '#FFF3F3',
   blue: '#E5F0FF',
   transparent: 'transparent',
-
-  // 이전 토큰 이름. 로그인·가입 개편 코드가 이 이름으로 색을 읽는다.
-  background: '#FFFFFF',
-  backgroundGray: '#D3D3D3',
-  surface: '#F7F7F7',
-  border: '#E0E0E0',
-  guideBackground: '#FAF8F4',
-  textPrimary: '#000000',
-  textSecondary: '#8E8E8E',
-  textWhite: '#FFFFFF',
-  background2: 'rgba(0, 0, 0, 0.3)',
-  textLight10: '#E3E3E3',
-  textLight20: '#C6C6C6',
-  textLight40: '#8E8E8E',
-  textLight70: '#555555',
-  primaryLight70: 'rgba(166, 218, 149, 0.7)',
-  primaryLight50: 'rgba(166, 218, 149, 0.5)',
-  primaryLight30: 'rgba(166, 218, 149, 0.3)',
-  primaryLight20: 'rgba(166, 218, 149, 0.2)',
-  primaryLight10: 'rgba(166, 218, 149, 0.1)',
-  disabled: '#ECECEC',
-  overlay: 'rgba(0, 0, 0, 0.5)',
 };
 
 export const TIMETABLE_SUBJECT_COLORS = [

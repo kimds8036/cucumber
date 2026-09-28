@@ -146,7 +146,7 @@ function createLocalStyles(normalize, width) {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.md),
       letterSpacing: 0.2,
-      color: colors.textLight40,
+      color: colors.textLight4,
     },
     gradeClassRow: {
       flexDirection: 'row',

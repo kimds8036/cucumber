@@ -1578,7 +1578,7 @@ const SignApple = ({ navigation }) => {
           >
             <ActivityIndicator size="large" color={colors.primary} />
             <Text
-              style={{ marginTop: normalize(16), color: colors.textSecondary }}
+              style={{ marginTop: normalize(16), color: colors.textLight4 }}
             >
               Apple 계정 정보를 불러오는 중…
             </Text>

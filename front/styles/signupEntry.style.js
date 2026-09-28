@@ -18,20 +18,20 @@ export function createSignupEntryStyles(width, normalize) {
       marginTop: normalize(12),
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.heading),
-      color: colors.textPrimary,
+      color: colors.text,
     },
     titleEn: {
       marginTop: normalize(2),
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.md),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       letterSpacing: 0.4,
     },
     subtitle: {
       marginTop: normalize(8),
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.lg),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textAlign: 'center',
     },
     buttonStack: {
@@ -69,7 +69,7 @@ export function createSignupEntryStyles(width, normalize) {
       ...shadow.sm,
     },
     phoneButton: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       ...shadow.sm,
     },
     socialButtonDisabled: {
@@ -85,10 +85,10 @@ export function createSignupEntryStyles(width, normalize) {
     },
     appleButtonText: {
       marginLeft: 0,
-      color: colors.textWhite,
+      color: colors.white,
     },
     phoneButtonText: {
-      color: colors.textPrimary,
+      color: colors.text,
     },
     footer: {
       paddingVertical: normalize(20),
@@ -97,7 +97,7 @@ export function createSignupEntryStyles(width, normalize) {
     footerText: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.lg),
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     footerLink: {
       fontFamily: fonts.bold,

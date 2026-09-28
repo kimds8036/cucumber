@@ -250,7 +250,7 @@ const PWfind = ({ navigation }) => {
             <Ionicons
               name="chevron-back"
               size={normalize(24)}
-              color={colors.textPrimary}
+              color={colors.text}
             />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>비밀번호 찾기</Text>

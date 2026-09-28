@@ -157,7 +157,7 @@ export default function StudentIdPhotoAttachFields({
               <Ionicons
                 name="add"
                 size={normalize(20)}
-                color={colors.textSecondary}
+                color={colors.textLight4}
               />
             </TouchableOpacity>
           ) : null}
@@ -183,7 +183,7 @@ export default function StudentIdPhotoAttachFields({
                   <Ionicons
                     name="close-circle"
                     size={normalize(18)}
-                    color={colors.background}
+                    color={colors.white}
                   />
                 </TouchableOpacity>
               ) : null}
@@ -230,7 +230,7 @@ function createStyles(normalize) {
     slotLabel: {
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.lg),
-      color: colors.textPrimary,
+      color: colors.text,
     },
     required: {
       fontFamily: fonts.regular,
@@ -240,14 +240,14 @@ function createStyles(normalize) {
     hint: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.md),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: normalize(22),
     },
     attachBox: {
       borderWidth: 1.5,
       borderStyle: 'dashed',
       borderColor: colors.primary,
-      backgroundColor: colors.surface || colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(12),
       paddingVertical: normalize(28),
       alignItems: 'center',
@@ -271,7 +271,7 @@ function createStyles(normalize) {
       borderRadius: normalize(10),
       borderWidth: 1.5,
       borderStyle: 'dashed',
-      borderColor: colors.textLight10,
+      borderColor: colors.textLight1,
       alignItems: 'center',
       justifyContent: 'center',
       marginRight: normalize(8),
@@ -285,13 +285,13 @@ function createStyles(normalize) {
       width: normalize(80),
       height: normalize(80),
       borderRadius: normalize(10),
-      backgroundColor: colors.surface || '#F5F5F5',
+      backgroundColor: colors.white,
     },
     photoDeleteButton: {
       position: 'absolute',
       top: normalize(-6),
       right: normalize(-6),
-      backgroundColor: colors.textPrimary,
+      backgroundColor: colors.text,
       borderRadius: normalize(10),
     },
     altLinkWrap: {

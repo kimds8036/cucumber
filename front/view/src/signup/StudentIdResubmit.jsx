@@ -32,19 +32,19 @@ const makeFieldStyles = (normalize) =>
     inputLabel: {
       fontFamily: fonts.regular,
       fontSize: normalize(14),
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: normalize(6),
     },
     inputWrapper: {
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: colors.textLight1,
       borderRadius: normalize(12),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     input: {
       fontFamily: fonts.regular,
       fontSize: normalize(15),
-      color: colors.textPrimary,
+      color: colors.text,
       paddingHorizontal: normalize(14),
       paddingVertical: normalize(12),
     },
@@ -306,14 +306,14 @@ const StudentIdResubmit = ({ mode: modeProp, navigation, route }) => {
                     keyboardType="number-pad"
                     maxLength={1}
                     placeholder=""
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={colors.textLight4}
                     returnKeyType="next"
                   />
                 </View>
                 <GrowingUnderline
                   active={Boolean(schoolGradeNum)}
                   normalize={normalize}
-                  fillColor={colors.textLight40}
+                  fillColor={colors.textLight4}
                 />
               </View>
               <View style={enrollmentStyles.gradeClassCol}>
@@ -328,14 +328,14 @@ const StudentIdResubmit = ({ mode: modeProp, navigation, route }) => {
                     keyboardType="number-pad"
                     maxLength={2}
                     placeholder=""
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={colors.textLight4}
                     returnKeyType="done"
                   />
                 </View>
                 <GrowingUnderline
                   active={Boolean(schoolClassNum)}
                   normalize={normalize}
-                  fillColor={colors.textLight40}
+                  fillColor={colors.textLight4}
                 />
               </View>
             </View>
@@ -394,7 +394,7 @@ const StudentIdResubmit = ({ mode: modeProp, navigation, route }) => {
           onPress={runResubmit}
         >
           {busy ? (
-            <ActivityIndicator color={colors.background} />
+            <ActivityIndicator color={colors.white} />
           ) : (
             <Text
               style={[
@@ -429,7 +429,7 @@ function createEnrollmentStyles(normalize) {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.md),
       letterSpacing: 0.2,
-      color: colors.textLight40,
+      color: colors.textLight4,
     },
     underlineField: {
       paddingVertical: normalize(10),
@@ -443,7 +443,7 @@ function createEnrollmentStyles(normalize) {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.xxl),
       minHeight: normalize(fontSizes.xxl),
-      color: colors.textPrimary,
+      color: colors.text,
       ...Platform.select({
         android: { includeFontPadding: false, textAlignVertical: 'center' },
         ios: {},
@@ -456,7 +456,7 @@ function createLocalStyles(normalize) {
   return StyleSheet.create({
     root: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     scroll: {
       flex: 1,
@@ -474,8 +474,8 @@ function createLocalStyles(normalize) {
       paddingTop: normalize(8),
       paddingBottom: normalize(12),
       borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.border,
-      backgroundColor: colors.background,
+      borderTopColor: colors.textLight1,
+      backgroundColor: colors.white,
     },
     submitBtn: {
       backgroundColor: colors.primary,
@@ -487,7 +487,7 @@ function createLocalStyles(normalize) {
     },
     submitBtnText: {
       fontFamily: fonts.bold,
-      color: colors.textWhite,
+      color: colors.white,
     },
   });
 }

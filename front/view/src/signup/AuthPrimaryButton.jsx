@@ -42,7 +42,7 @@ const AuthPrimaryButton = ({
           style={styles.gradient}
         >
           {loading ? (
-            <ActivityIndicator color={colors.textWhite} />
+            <ActivityIndicator color={colors.white} />
           ) : (
             <Text style={styles.label}>{label}</Text>
           )}
@@ -63,7 +63,7 @@ function createStyles(normalize) {
       alignItems: 'center',
     },
     wrapDisabled: {
-      backgroundColor: colors.disabled,
+      backgroundColor: colors.textLight1,
     },
     gradient: {
       flex: 1,
@@ -75,10 +75,10 @@ function createStyles(normalize) {
     label: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textWhite,
+      color: colors.white,
     },
     labelDisabled: {
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
   });
 }

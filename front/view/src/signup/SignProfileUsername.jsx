@@ -198,14 +198,14 @@ function createStyles(normalize, width) {
     title: {
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.heading + 2),
-      color: colors.textPrimary,
+      color: colors.text,
       textAlign: 'left',
       lineHeight: normalize(32),
     },
     subtitle: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.lg),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textAlign: 'left',
       lineHeight: normalize(22),
       marginBottom: normalize(28),

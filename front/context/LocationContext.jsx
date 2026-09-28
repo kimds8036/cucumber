@@ -248,28 +248,8 @@ export function useLocationContext() {
 export function LocationGate({ children }) {
   const { permissionGranted, retryPermission } = useLocationContext();
 
-  if (!isReady) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: colors.background,
-        }}
-      >
-        <Skeleton width={28} height={28} borderRadius={14} />
-        <Text
-          style={{
-            marginTop: 16,
-            fontFamily: fonts.regular,
-            color: colors.textSecondary,
-          }}
-        >
-          위치 권한을 확인하는 중이에요…
-        </Text>
-      </View>
-    );
+  if (permissionGranted !== false) {
+    return children;
   }
 
   return (

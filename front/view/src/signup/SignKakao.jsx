@@ -947,7 +947,7 @@ const SignKakao = ({ navigation }) => {
               <>
                 <Text
                   style={{
-                    color: colors.textPrimary,
+                    color: colors.text,
                     fontSize: normalize(18),
                     fontWeight: '700',
                     textAlign: 'center',
@@ -958,7 +958,7 @@ const SignKakao = ({ navigation }) => {
                 </Text>
                 <Text
                   style={{
-                    color: colors.textSecondary,
+                    color: colors.textLight4,
                     fontSize: normalize(14),
                     lineHeight: normalize(22),
                     textAlign: 'center',
@@ -972,7 +972,7 @@ const SignKakao = ({ navigation }) => {
               <>
                 <ActivityIndicator size="large" color={colors.primary} />
                 <Text
-                  style={{ marginTop: normalize(16), color: colors.textSecondary, textAlign: 'center' }}
+                  style={{ marginTop: normalize(16), color: colors.textLight4, textAlign: 'center' }}
                 >
                   카카오 로그인을 여는 중…
                 </Text>
@@ -981,7 +981,7 @@ const SignKakao = ({ navigation }) => {
               <>
                 <Text
                   style={{
-                    color: colors.textPrimary,
+                    color: colors.text,
                     fontSize: normalize(16),
                     textAlign: 'center',
                     marginBottom: normalize(8),

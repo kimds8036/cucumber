@@ -256,7 +256,7 @@ const ProfileCard = ({
             )}
           </Pressable>
           <View pointerEvents="none" style={styles.profileAvatarCam}>
-            <Ionicons name="camera" size={normalize(12)} color={colors.textWhite} />
+            <Ionicons name="camera" size={normalize(12)} color={colors.white} />
           </View>
         </View>
 

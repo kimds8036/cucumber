@@ -191,7 +191,7 @@ export default function ProfilePhotoCropModal({
                   height: frameSize,
                   borderRadius: frameRadius,
                   borderWidth: 2,
-                  borderColor: colors.textWhite,
+                  borderColor: colors.white,
                 }}
               />
               <View style={styles.maskFlex} />
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
   },
   title: {
     textAlign: 'center',
-    color: colors.textWhite,
+    color: colors.white,
     fontFamily: fonts.bold,
     fontSize: 18,
     marginBottom: 4,
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.35)',
   },
   btnGhostText: {
-    color: colors.textWhite,
+    color: colors.white,
     fontFamily: fonts.bold,
     fontSize: 16,
   },
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryDark,
   },
   btnMainText: {
-    color: colors.textWhite,
+    color: colors.white,
     fontFamily: fonts.bold,
     fontSize: 16,
   },

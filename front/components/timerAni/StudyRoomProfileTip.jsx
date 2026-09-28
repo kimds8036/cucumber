@@ -127,7 +127,7 @@ const tipStyles = StyleSheet.create({
   },
   card: {
     width: '100%',
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
     borderRadius: 14,
     paddingHorizontal: 10,
     paddingVertical: 8,
@@ -147,7 +147,7 @@ const tipStyles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -156,7 +156,7 @@ const tipStyles = StyleSheet.create({
     flex: 1,
     fontFamily: fonts.bold,
     fontSize: 13,
-    color: colors.textPrimary,
+    color: colors.text,
   },
   addBtn: {
     height: 30,
@@ -166,21 +166,21 @@ const tipStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   addBtnOff: {
-    backgroundColor: colors.textLight10,
+    backgroundColor: colors.textLight1,
   },
   addText: {
     fontFamily: fonts.bold,
     fontSize: 12,
-    color: colors.textWhite,
+    color: colors.white,
   },
   addTextOff: {
-    color: colors.textSecondary,
+    color: colors.textLight4,
   },
   caret: {
     width: 10,
     height: 10,
     marginTop: -5,
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
     transform: [{ rotate: '45deg' }],
   },
 });

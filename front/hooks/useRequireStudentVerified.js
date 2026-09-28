@@ -83,6 +83,6 @@ export function useRequireStudentVerified(navigation, options = {}) {
 const gateStyles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
   },
 });

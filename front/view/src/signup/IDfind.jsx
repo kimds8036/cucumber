@@ -169,7 +169,7 @@ const IDfind = ({ navigation }) => {
             <Ionicons
               name="chevron-back"
               size={normalize(24)}
-              color={colors.textPrimary}
+              color={colors.text}
             />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>아이디 찾기</Text>

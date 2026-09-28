@@ -30,7 +30,7 @@ const AuthSignupComplete = ({
     <View style={styles.root}>
       <Animated.View style={[styles.content, { opacity }]}>
         <View style={styles.check}>
-          <Feather name="check" size={normalize(28)} color={colors.textWhite} />
+          <Feather name="check" size={normalize(28)} color={colors.white} />
         </View>
         <Text style={styles.hello}>환영합니다</Text>
         <Text style={styles.title}>{title}</Text>
@@ -74,21 +74,21 @@ function createStyles(normalize) {
     hello: {
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.heading),
-      color: colors.textPrimary,
+      color: colors.text,
       textAlign: 'center',
       marginBottom: normalize(6),
     },
     title: {
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.xl),
-      color: colors.textPrimary,
+      color: colors.text,
       textAlign: 'center',
       marginBottom: normalize(8),
     },
     sub: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.lg),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textAlign: 'center',
       lineHeight: normalize(22),
     },
