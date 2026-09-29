@@ -182,8 +182,8 @@ export const createBoardStyles = (width, normalize) => {
     postTagText: {
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
-      color: colors.primaryDark,
-      backgroundColor: colors.primaryLight2,
+      color: colors.textLight4,
+      backgroundColor: colors.primaryLight3,
       borderRadius: normalize(10),
       paddingHorizontal: normalize(5),
       paddingVertical: normalize(1),
@@ -746,7 +746,7 @@ export const createDetailStyles = (width, normalize) => {
     },
     detailTagChip: {
       flexShrink: 0,
-      backgroundColor: colors.primaryLight2,
+      backgroundColor: colors.primaryLight3,
       borderRadius: normalize(10),
       paddingHorizontal: normalize(5),
       paddingVertical: normalize(1),
@@ -754,7 +754,7 @@ export const createDetailStyles = (width, normalize) => {
     detailTagText: {
       fontSize: normalize(11),
       fontFamily: fonts.regular,
-      color: colors.primaryDark,
+      color: colors.textLight4,
     },
     detailDivider: {
       height: 1,
