@@ -126,16 +126,16 @@ export default function MainTabNavigator({
         unmountOnBlur: false,
       }}
     >
+      <Tab.Screen name="timer" component={TimerTab} options={{ freezeOnBlur: true }} />
+      <Tab.Screen name="school">
+        {() => <SchoolTab navigation={stackNavigation} />}
+      </Tab.Screen>
       <Tab.Screen name="board">
         {() => <BoardTab navigation={stackNavigation} />}
       </Tab.Screen>
       <Tab.Screen name="message">
         {() => <MessageTab navigation={stackNavigation} />}
       </Tab.Screen>
-      <Tab.Screen name="school">
-        {() => <SchoolTab navigation={stackNavigation} />}
-      </Tab.Screen>
-      <Tab.Screen name="timer" component={TimerTab} options={{ freezeOnBlur: true }} />
       <Tab.Screen name="mypage">
         {() => <MyPageTab navigation={stackNavigation} />}
       </Tab.Screen>

@@ -100,6 +100,7 @@ function mapApiPost(p) {
     isMyPost: !!p.is_author,
     authorUserId: p.author_user_id,
     thumbnail: thumb,
+    images: Array.isArray(p.images) ? p.images : [],
     tags: normalizeTagsFromApi(p.tags),
     distanceKm:
       typeof p.distanceKm === 'number' && !Number.isNaN(p.distanceKm)

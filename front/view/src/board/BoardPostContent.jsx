@@ -9,6 +9,21 @@ import EquippedBadge from '../../../components/EquippedBadge';
 import PostImageSlider, {
   collectPostImageUris,
 } from '../../../components/board/PostImageSlider';
+import BoardPollCard from './BoardPollCard';
+
+/** 투표 디자인 확인용. 확인이 끝나면 false로 바꾸거나 이 상수와 DUMMY_POLL을 지운다. */
+const SHOW_DUMMY_POLL = __DEV__ && false;
+
+const DUMMY_POLL = {
+  multi: false,
+  totalVotes: 42,
+  myVotes: [],
+  options: [
+    { id: 1, text: '급식 맛있다', votes: 25 },
+    { id: 2, text: '보통이다', votes: 12 },
+    { id: 3, text: '맛없다', votes: 5 },
+  ],
+};
 
 /** 통계 숫자 — 99 초과는 99+ (칸 폭 고정용) */
 function formatStatCount(n) {
@@ -94,6 +109,14 @@ export default function BoardPostContent({
       <Text style={[styles.detailBody, { marginBottom: normalize(7) }]}>
         {post.content}
       </Text>
+      {post.poll || SHOW_DUMMY_POLL ? (
+        <BoardPollCard
+          key={post.id ?? 'poll'}
+          poll={post.poll ?? DUMMY_POLL}
+          styles={styles}
+          normalize={normalize}
+        />
+      ) : null}
       {imageUris.length === 1 ? (
         <View style={styles.detailImagesWrap}>
           <TouchableOpacity

@@ -13,10 +13,10 @@ import { useMainShellOptional } from '../../context/MainShellContext';
 const ICON_SIZE = 30;
 
 const TABS = [
+  { key: 'timer', label: '타이머', inactive: 'time-outline', active: 'time' },
+  { key: 'school', label: '우리 학교', inactive: 'school-outline', active: 'school' },
   { key: 'board', label: '게시판', inactive: 'document-text-outline', active: 'document-text' },
   { key: 'message', label: '메시지', inactive: 'chatbubble-outline', active: 'chatbubble' },
-  { key: 'school', label: '우리 학교', inactive: 'school-outline', active: 'school' },
-  { key: 'timer', label: '타이머', inactive: 'time-outline', active: 'time' },
   { key: 'mypage', label: '마이페이지', inactive: 'person-outline', active: 'person' },
 ];
 

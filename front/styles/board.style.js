@@ -232,7 +232,6 @@ export const createBoardStyles = (width, normalize) => {
       backgroundColor: colors.textLight1,
       alignSelf: 'flex-start',
     },
-
     // 내용과 푸터 사이 경계선
     postDivider: {
       height: 1,
@@ -868,6 +867,115 @@ export const createDetailStyles = (width, normalize) => {
       width: '100%',
       marginBottom: normalize(7),
       overflow: 'hidden',
+    },
+    detailPollBox: {
+      marginBottom: normalize(10),
+      padding: normalize(14),
+      backgroundColor: colors.primaryLight3,
+      borderRadius: normalize(12),
+      gap: normalize(8),
+    },
+    detailPollHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(6),
+    },
+    detailPollTitle: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.bold,
+      color: colors.text,
+      ...metaTextAndroid,
+    },
+    detailPollHint: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textLight4,
+      ...metaTextAndroid,
+    },
+    detailPollOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(8),
+      minHeight: normalize(44),
+      paddingHorizontal: normalize(12),
+      borderRadius: normalize(12),
+      backgroundColor: colors.white,
+      overflow: 'hidden',
+    },
+    detailPollOptionSelected: {
+      borderWidth: 1,
+      borderColor: colors.primary,
+    },
+    detailPollFill: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      bottom: 0,
+      backgroundColor: colors.textLight1,
+    },
+    detailPollFillMine: {
+      backgroundColor: colors.primary,
+    },
+    detailPollRadio: {
+      width: normalize(18),
+      height: normalize(18),
+      borderRadius: normalize(9),
+      borderWidth: 1.5,
+      borderColor: colors.textLight2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    detailPollCheckbox: {
+      borderRadius: normalize(4),
+    },
+    detailPollMarkOn: {
+      borderColor: colors.primary,
+      backgroundColor: colors.primary,
+    },
+    detailPollOptionText: {
+      flex: 1,
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.regular,
+      color: colors.textLight5,
+      ...metaTextAndroid,
+    },
+    detailPollOptionTextMine: {
+      fontFamily: fonts.bold,
+      color: colors.text,
+    },
+    detailPollPercent: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.regular,
+      color: colors.textLight4,
+      ...metaTextAndroid,
+    },
+    detailPollFooter: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: normalize(2),
+    },
+    detailPollVoteButton: {
+      paddingHorizontal: normalize(16),
+      paddingVertical: normalize(8),
+      borderRadius: normalize(20),
+      backgroundColor: colors.primary,
+    },
+    detailPollVoteButtonDisabled: {
+      backgroundColor: colors.textLight1,
+    },
+    detailPollVoteButtonText: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.bold,
+      color: colors.white,
+      ...metaTextAndroid,
+    },
+    detailPollRevote: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textLight4,
+      textDecorationLine: 'underline',
+      ...metaTextAndroid,
     },
     detailImageFrame: {
       width: '100%',
