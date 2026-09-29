@@ -104,6 +104,7 @@ export default function SortChips({
   onSortChange,
   /** 'default' | 'mint' — 활성 칩 배경 (mint: 파스텔 민트 + 흰 글자) */
   activeTone = 'default',
+  containerStyle,
 }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
@@ -134,7 +135,7 @@ export default function SortChips({
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, containerStyle]}>
       <View style={styles.chips}>
         {options.map((option) => {
           const active = value === option.value;

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,12 +12,17 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  KeyboardAwareScrollView,
+  KeyboardController,
+  KeyboardEvents,
+} from 'react-native-keyboard-controller';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { StackActions } from '@react-navigation/native';
 import SubHeader from '../frame/subHeader';
 import SortChips from '../../components/common/SortChips';
+import ImageViewer from './ImageViewer';
 import { createWriteStyles, getNormalize } from '../../styles/board.style';
 import { api } from '../../utils/api';
 import { invalidateProfileCountsCache } from '../../utils/profileCountsCache';
@@ -45,11 +50,12 @@ const createPollOptions = () => ['', ''];
 
 const DUMMY_HASHTAGS = ['중간고사', '수행평가', '급식'];
 
+
 const BoardWrite = ({ navigation, route }) => {
   const { studentVerificationStatus } = useAuth();
   const studentBoardEnabled = studentVerificationStatus === 'APPROVED';
   const { coords, refreshLocation } = useLocationContext();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(
     () => createWriteStyles(width, normalize),
@@ -67,8 +73,15 @@ const BoardWrite = ({ navigation, route }) => {
   const [pollOpen, setPollOpen] = useState(false);
   const [pollOptions, setPollOptions] = useState(createPollOptions);
   const [pollMulti, setPollMulti] = useState(false);
+  const [viewerUri, setViewerUri] = useState(null);
   const boardContext = route?.params?.boardContext || 'national';
   const [selectedBoard, setSelectedBoard] = useState('national');
+  const scrollRef = useRef(null);
+  const bodyInputRef = useRef(null);
+  const hashtagFieldRef = useRef(null);
+  const pollRowRefs = useRef([]);
+  const scrollOffsetRef = useRef(0);
+  const focusedFieldRef = useRef(null);
 
   useEffect(() => {
     if (!studentBoardEnabled) {
@@ -79,6 +92,51 @@ const BoardWrite = ({ navigation, route }) => {
       setSelectedBoard(boardContext);
     }
   }, [studentBoardEnabled, boardContext]);
+
+  const scrollFocusedFieldIntoView = useCallback(() => {
+    const field = focusedFieldRef.current;
+    const scroll = scrollRef.current;
+    if (!field?.measureInWindow || typeof scroll?.scrollTo !== 'function') {
+      return;
+    }
+    field.measureInWindow((_x, y, _width, fieldHeight) => {
+      const keyboardHeight = KeyboardController.state().height || 0;
+      const visibleBottom = height - keyboardHeight - 24;
+      const overlap = y + fieldHeight - visibleBottom;
+      if (overlap <= 0) return;
+      const fitsAboveKeyboard = fieldHeight <= visibleBottom - 24;
+      const delta = fitsAboveKeyboard
+        ? overlap
+        : Math.min(overlap, Math.max(0, y - 12));
+      if (delta <= 0) return;
+      scroll.scrollTo({
+        y: scrollOffsetRef.current + delta,
+        animated: true,
+      });
+    });
+  }, [height]);
+
+  useEffect(() => {
+    const subscription = KeyboardEvents.addListener('keyboardDidShow', () => {
+      if (focusedFieldRef.current) scrollFocusedFieldIntoView();
+    });
+    return () => subscription.remove();
+  }, [scrollFocusedFieldIntoView]);
+
+  const handleFieldFocus = (field) => {
+    if (!field) return;
+    focusedFieldRef.current = field;
+    const wait = KeyboardController.isVisible()
+      ? 0
+      : Math.max(KeyboardController.state().duration || 0, 280);
+    setTimeout(() => {
+      if (focusedFieldRef.current === field) scrollFocusedFieldIntoView();
+    }, wait);
+  };
+
+  const handleFieldBlur = (field) => {
+    if (focusedFieldRef.current === field) focusedFieldRef.current = null;
+  };
 
   const handleBoardChange = (next) => {
     if (next !== 'national' && !studentBoardEnabled) {
@@ -333,33 +391,87 @@ const BoardWrite = ({ navigation, route }) => {
 
   const writeMainColumn = (
     <View style={styles.writeComposer}>
-      <View style={[styles.writeBodyBox, !pollOpen && styles.writeBodyBoxGrow]}>
+      <View style={[styles.writeBodyBox, styles.writeBodyBoxGrow]}>
         <TextInput
+          ref={bodyInputRef}
           style={styles.writeBodyInput}
           placeholder="내용을 입력해 주세요"
           placeholderTextColor={colors.textLight4}
           multiline
           value={content}
           onChangeText={setContent}
+          onFocus={() => handleFieldFocus(bodyInputRef.current)}
+          onBlur={() => handleFieldBlur(bodyInputRef.current)}
         />
+        {pollOpen ? (
+          <View style={styles.pollBox}>
+            {pollOptions.map((option, index) => (
+              <View
+                key={`poll-option-${index}`}
+                style={styles.pollOptionRow}
+                ref={(node) => {
+                  pollRowRefs.current[index] = node;
+                }}
+              >
+                <TextInput
+                  style={styles.pollOptionInput}
+                  placeholder={`항목 ${index + 1}`}
+                  placeholderTextColor={colors.textLight4}
+                  value={option}
+                  onChangeText={(text) => handleChangePollOption(index, text)}
+                  onFocus={() => handleFieldFocus(pollRowRefs.current[index])}
+                  onBlur={() => handleFieldBlur(pollRowRefs.current[index])}
+                  maxLength={50}
+                />
+                {pollOptions.length > POLL_MIN_OPTIONS ? (
+                  <TouchableOpacity
+                    onPress={() => handleRemovePollOption(index)}
+                    hitSlop={8}
+                  >
+                    <Ionicons name="close" size={18} color={colors.textLight4} />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            ))}
+            {pollOptions.length < POLL_MAX_OPTIONS ? (
+              <TouchableOpacity
+                style={styles.pollAddButton}
+                onPress={handleAddPollOption}
+              >
+                <Text style={styles.pollAddButtonText}>+ 항목 추가</Text>
+              </TouchableOpacity>
+            ) : null}
+            <TouchableOpacity
+              style={styles.pollMultiRow}
+              onPress={() => setPollMulti((prev) => !prev)}
+            >
+              <View
+                style={[styles.pollCheckbox, pollMulti && styles.pollCheckboxOn]}
+              >
+                {pollMulti ? (
+                  <Ionicons name="checkmark" size={14} color={colors.white} />
+                ) : null}
+              </View>
+              <Text style={styles.pollMultiLabel}>복수 선택</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
         {postImages.length > 0 && (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
+            style={styles.writeBodyPhotoScroll}
             contentContainerStyle={styles.writeBodyPhotoStrip}
             keyboardShouldPersistTaps="handled"
           >
-            {postImages.length < 5 && (
-              <TouchableOpacity
-                onPress={handlePressPhoto}
-                style={styles.photoAddButton}
-              >
-                <Ionicons name="add" size={20} color={colors.textLight4} />
-              </TouchableOpacity>
-            )}
             {postImages.map((uri, index) => (
               <View key={`${uri}-${index}`} style={styles.photoItemWrap}>
-                <Image source={{ uri }} style={styles.photoThumb} />
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  onPress={() => setViewerUri(uri)}
+                >
+                  <Image source={{ uri }} style={styles.photoThumb} />
+                </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() =>
                     setPostImages((prev) => prev.filter((_, i) => i !== index))
@@ -393,73 +505,27 @@ const BoardWrite = ({ navigation, route }) => {
             style={styles.toolbarIconButton}
             hitSlop={8}
           >
-            <Ionicons name="image-outline" size={22} color={colors.textLight4} />
+            <Ionicons
+              name={postImages.length > 0 ? 'image' : 'image-outline'}
+              size={postImages.length > 0 ? 24 : 22}
+              color={postImages.length > 0 ? colors.primary : colors.textLight4}
+            />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handlePressPoll}
             style={styles.toolbarIconButton}
             hitSlop={8}
           >
-            <Ionicons
-              name="bar-chart-outline"
+            <MaterialCommunityIcons
+              name={pollOpen ? 'vote' : 'vote-outline'}
               size={22}
               color={pollOpen ? colors.primary : colors.textLight4}
             />
           </TouchableOpacity>
         </View>
       </View>
-      {pollOpen ? (
-        <View style={styles.pollBox}>
-          {pollOptions.map((option, index) => (
-            <View key={`poll-option-${index}`} style={styles.pollOptionRow}>
-              <View style={styles.pollOptionMark} />
-              <TextInput
-                style={styles.pollOptionInput}
-                placeholder={`항목 ${index + 1}`}
-                placeholderTextColor={colors.textLight4}
-                value={option}
-                onChangeText={(text) => handleChangePollOption(index, text)}
-                maxLength={50}
-              />
-              {pollOptions.length > POLL_MIN_OPTIONS ? (
-                <TouchableOpacity
-                  onPress={() => handleRemovePollOption(index)}
-                  hitSlop={8}
-                >
-                  <Ionicons
-                    name="close"
-                    size={18}
-                    color={colors.textLight4}
-                  />
-                </TouchableOpacity>
-              ) : null}
-            </View>
-          ))}
-          {pollOptions.length < POLL_MAX_OPTIONS ? (
-            <TouchableOpacity
-              style={styles.pollAddButton}
-              onPress={handleAddPollOption}
-            >
-              <Text style={styles.pollAddButtonText}>+ 항목 추가</Text>
-            </TouchableOpacity>
-          ) : null}
-          <TouchableOpacity
-            style={[styles.pollMultiChip, pollMulti && styles.pollMultiChipOn]}
-            onPress={() => setPollMulti((prev) => !prev)}
-          >
-            <Text
-              style={[
-                styles.pollMultiChipText,
-                pollMulti && styles.pollMultiChipTextOn,
-              ]}
-            >
-              복수 선택
-            </Text>
-          </TouchableOpacity>
-        </View>
-      ) : null}
       <View style={styles.writeHashtagBlock}>
-        <View style={styles.writeHashtagField}>
+        <View ref={hashtagFieldRef} style={styles.writeHashtagField}>
           <Text style={styles.writeHashtagPrefix}>#</Text>
           <TextInput
             style={styles.writeHashtagFieldInput}
@@ -467,6 +533,8 @@ const BoardWrite = ({ navigation, route }) => {
             placeholderTextColor={colors.textLight4}
             value={hashtagInput}
             onChangeText={handleHashtagInputChange}
+            onFocus={() => handleFieldFocus(hashtagFieldRef.current)}
+            onBlur={() => handleFieldBlur(hashtagFieldRef.current)}
             onSubmitEditing={handleAddHashtag}
             returnKeyType="done"
             maxLength={30}
@@ -539,7 +607,7 @@ const BoardWrite = ({ navigation, route }) => {
           <View style={styles.fullFlex}>
             <SafeAreaView style={styles.container} edges={['top']}>
               <SubHeader
-                title="글쓰기"
+                title="게시글 작성"
                 onBack={handleBack}
                 onRightPress={handleComplete}
                 rightDisabled={!canSubmit}
@@ -556,18 +624,23 @@ const BoardWrite = ({ navigation, route }) => {
                         !canSubmit && styles.completePillTextDisabled,
                       ]}
                     >
-                      {isSubmitting ? '등록 중...' : '등록'}
+                      {isSubmitting ? '•••' : '완료'}
                     </Text>
                   </View>
                 }
               />
 
               <KeyboardAwareScrollView
+                ref={scrollRef}
                 style={styles.fullFlex}
                 contentContainerStyle={styles.scrollContentGrow}
                 keyboardShouldPersistTaps="handled"
                 keyboardDismissMode="on-drag"
                 showsVerticalScrollIndicator={false}
+                scrollEventThrottle={16}
+                onScroll={(event) => {
+                  scrollOffsetRef.current = event.nativeEvent.contentOffset.y;
+                }}
                 onScrollBeginDrag={Keyboard.dismiss}
                 bottomOffset={16}
               >
@@ -575,6 +648,7 @@ const BoardWrite = ({ navigation, route }) => {
                   value={selectedBoard}
                   onChange={handleBoardChange}
                   options={BOARD_OPTIONS}
+                  containerStyle={{ paddingBottom: 0 }}
                 />
                 <Text style={styles.boardScopeHint}>
                   {BOARD_HINTS[selectedBoard]}
@@ -584,6 +658,11 @@ const BoardWrite = ({ navigation, route }) => {
 
               {guideBlock}
             </SafeAreaView>
+            <ImageViewer
+              visible={Boolean(viewerUri)}
+              uri={viewerUri}
+              onClose={() => setViewerUri(null)}
+            />
           </View>
         </View>
       </View>
