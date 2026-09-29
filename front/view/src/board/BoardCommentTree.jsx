@@ -7,6 +7,13 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { colors } from '../../../styles/colors';
 import EquippedBadge from '../../../components/EquippedBadge';
 
+function formatStatCount(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v) || v < 0) return '0';
+  if (v > 99) return '99+';
+  return String(Math.floor(v));
+}
+
 function CommentBody({ content, styles }) {
   const parts = [];
   let last = 0;
@@ -92,32 +99,19 @@ export default function BoardCommentTree({
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 marginBottom: normalize(4),
+                minHeight: normalize(18),
               }}
             >
-              {isReply ? (
-                <View style={styles.commentReplyArrow}>
-                  <Ionicons
-                    name="return-down-forward"
-                    size={normalize(16)}
-                    color={colors.textLight4}
-                  />
-                </View>
-              ) : null}
-              <View style={[styles.detailAuthorRow, { flex: 1, minWidth: 0 }]}>
-                {isAuthorLabel ? (
-                  <View style={styles.detailAuthorWriterPill}>
-                    <Text
-                      style={styles.detailAuthorWriterPillText}
-                      numberOfLines={1}
-                    >
-                      {item.authorLabel}
-                    </Text>
-                  </View>
-                ) : (
-                  <Text style={styles.detailAuthorAnonymous} numberOfLines={1}>
-                    {item.authorLabel}
-                  </Text>
-                )}
+              <View style={styles.commentMetaRow}>
+                <Text
+                  style={[
+                    styles.commentAuthorName,
+                    isAuthorLabel && styles.commentAuthorWriterName,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {isAuthorLabel ? '작성자' : item.authorLabel}
+                </Text>
                 <EquippedBadge
                   badge={item.equippedBadge}
                   size={normalize(13)}
@@ -128,18 +122,19 @@ export default function BoardCommentTree({
                   }}
                 />
                 <Text
-                  style={[styles.detailTime, { marginLeft: normalize(6) }]}
+                  style={[styles.commentTime, { marginLeft: normalize(10) }]}
                   numberOfLines={1}
                 >
                   {item.time}
                 </Text>
                 {item.isPinned ? (
-                  <MaterialCommunityIcons
-                    name="pin"
-                    size={normalize(12)}
-                    color={colors.textLight4}
-                    style={{ marginLeft: normalize(4), top: normalize(-4) }}
-                  />
+                  <View style={styles.commentPinSlot}>
+                    <MaterialCommunityIcons
+                      name="pin"
+                      size={normalize(12)}
+                      color={colors.textLight4}
+                    />
+                  </View>
                 ) : null}
               </View>
               <View
@@ -159,7 +154,9 @@ export default function BoardCommentTree({
                     size={normalize(13)}
                     color={colors.alert}
                   />
-                  <Text style={styles.commentLikeCount}>{item.likes ?? 0}</Text>
+                  <Text style={styles.commentLikeCount}>
+                    {formatStatCount(item.likes ?? 0)}
+                  </Text>
                 </TouchableOpacity>
                 <View
                   ref={(r) => {
@@ -176,7 +173,7 @@ export default function BoardCommentTree({
                   >
                     <Entypo
                       name="dots-three-vertical"
-                      size={normalize(14)}
+                      size={normalize(13)}
                       color={colors.textLight4}
                     />
                   </TouchableOpacity>
@@ -190,7 +187,6 @@ export default function BoardCommentTree({
                   alignItems: 'center',
                   flexWrap: 'wrap',
                   gap: normalize(2),
-                  marginLeft: isReply ? normalize(16) + normalize(6) : 0,
                 }}
               >
                 <Text style={styles.commentReplyLabel}>
@@ -199,19 +195,13 @@ export default function BoardCommentTree({
                 {contentEl}
               </View>
             ) : (
-              <View
-                style={
-                  isReply ? { marginLeft: normalize(16) + normalize(6) } : null
-                }
-              >
-                {contentEl}
-              </View>
+              <View>{contentEl}</View>
             )}
           </View>
         );
 
         const rowStyle = [
-          styles.commentRow,
+          isReply ? styles.commentReplyItem : styles.commentRow,
           item.isPinned && styles.commentPinned,
           isReplyingToThis && styles.commentBubbleReplying,
           showDivider && styles.commentRowDivider,
@@ -251,7 +241,7 @@ export default function BoardCommentTree({
     }
     if (item.type === 'reply') {
       const prevType = flatComments[index - 1]?.type;
-      // 연속 대댓글은 한 컨테이너에 모아 inset 그림자가 끊기지 않게 함
+      // 연속 대댓글은 ReplyGroup 하나로 묶어 inset이 끊기지 않게 함
       if (isReplyBlock(prevType)) {
         return null;
       }
@@ -270,14 +260,27 @@ export default function BoardCommentTree({
           ]}
           collapsable={false}
         >
-          <View style={styles.commentReplyWell}>
-            {group.map((entry) => (
-              <View key={`reply-${entry.data.id}`}>
-                {renderComment(entry.data, true, entry.parentAuthorLabel, false, {
-                  wrapInGutter: false,
-                })}
-              </View>
-            ))}
+          <View style={styles.commentReplyGroup}>
+            <Ionicons
+              name="return-down-forward"
+              size={normalize(18)}
+              color={colors.replyArrow}
+              style={styles.commentReplyArrow}
+            />
+            <View style={styles.commentReplyWell}>
+              {group.map((entry, i) => (
+                <View key={`reply-${entry.data.id}`}>
+                  {i > 0 ? <View style={styles.commentReplyDivider} /> : null}
+                  {renderComment(
+                    entry.data,
+                    true,
+                    entry.parentAuthorLabel,
+                    false,
+                    { wrapInGutter: false },
+                  )}
+                </View>
+              ))}
+            </View>
           </View>
         </View>
       );
@@ -294,7 +297,7 @@ export default function BoardCommentTree({
             >
               <Ionicons
                 name={expanded ? 'chevron-up' : 'chevron-down'}
-                size={normalize(14)}
+                size={normalize(13)}
                 color={colors.textLight4}
               />
               <Text style={styles.loadMoreText}>

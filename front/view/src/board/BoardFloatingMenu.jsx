@@ -78,7 +78,7 @@ export default function BoardFloatingMenu({
     menuItems = [
       {
         label: '쪽지 보내기',
-        iconName: 'chatbubble-outline',
+        iconName: 'paper-plane-outline',
         onPress: () => {
           if (!onNoteToUser?.postUserId) return;
           if (onNoteToUser.postUserId === currentUserId) {
@@ -136,7 +136,7 @@ export default function BoardFloatingMenu({
       },
       {
         label: '쪽지 보내기',
-        iconName: 'chatbubble-outline',
+        iconName: 'paper-plane-outline',
         onPress: () => {
           if (
             commentForMenu.userId &&

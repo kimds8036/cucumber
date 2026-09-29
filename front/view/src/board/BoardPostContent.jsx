@@ -10,6 +10,14 @@ import PostImageSlider, {
   collectPostImageUris,
 } from '../../../components/board/PostImageSlider';
 
+/** 통계 숫자 — 99 초과는 99+ (칸 폭 고정용) */
+function formatStatCount(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v) || v < 0) return '0';
+  if (v > 99) return '99+';
+  return String(Math.floor(v));
+}
+
 export default function BoardPostContent({
   post,
   postLiked,
@@ -37,18 +45,16 @@ export default function BoardPostContent({
     <View style={styles.contentSection}>
       <View style={styles.detailHeader}>
         <View style={[styles.detailAuthorRow, { flex: 1, minWidth: 0 }]}>
-          <View style={styles.detailAuthorWriterPill}>
-            <Text style={styles.detailAuthorWriterPillText} numberOfLines={1}>
-              {post.author}
-            </Text>
-          </View>
+          <Text style={styles.detailAuthorAnonymous} numberOfLines={1}>
+            {post.author}
+          </Text>
           <EquippedBadge
             badge={post.equippedBadge}
             size={normalize(13)}
             style={{ marginLeft: normalize(3), alignSelf: 'center' }}
           />
           <Text
-            style={[styles.detailTime, { marginLeft: normalize(8) }]}
+            style={[styles.detailTime, { marginLeft: normalize(10) }]}
             numberOfLines={1}
           >
             {post.time}
@@ -61,11 +67,10 @@ export default function BoardPostContent({
                 flexShrink: 1,
               }}
             >
-              <Text style={styles.detailTime}>{' · '}</Text>
               <Text
                 style={[
                   styles.detailLocationText,
-                  { flexShrink: 1, minWidth: 0 },
+                  { flexShrink: 1, minWidth: 0, marginLeft: normalize(10) },
                 ]}
                 numberOfLines={1}
               >
@@ -157,7 +162,9 @@ export default function BoardPostContent({
               size={normalize(14)}
               color={colors.alert}
             />
-            <Text style={styles.detailStatText}>{post.likes}</Text>
+            <Text style={styles.detailStatText}>
+              {formatStatCount(post.likes)}
+            </Text>
           </TouchableOpacity>
           <View style={styles.detailStatItem}>
             <Ionicons
@@ -165,7 +172,9 @@ export default function BoardPostContent({
               size={normalize(15)}
               color={colors.primary}
             />
-            <Text style={styles.detailStatText}>{post.comments}</Text>
+            <Text style={styles.detailStatText}>
+              {formatStatCount(post.comments)}
+            </Text>
           </View>
           <TouchableOpacity
             style={styles.detailStatItem}
@@ -178,7 +187,9 @@ export default function BoardPostContent({
               size={normalize(14)}
               color={colors.scrap}
             />
-            <Text style={styles.detailStatText}>{post.scraps ?? 0}</Text>
+            <Text style={styles.detailStatText}>
+              {formatStatCount(post.scraps ?? 0)}
+            </Text>
           </TouchableOpacity>
         </View>
         <View ref={postMenuButtonRef} collapsable={false}>
