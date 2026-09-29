@@ -23,6 +23,11 @@ export const createHeaderStyles = (width, height) => {
       paddingBottom: normalize(8),
       backgroundColor: colors.white,
       minHeight: normalize(56),
+      elevation: 0,
+      shadowOpacity: 0,
+      shadowRadius: 0,
+      shadowOffset: { width: 0, height: 0 },
+      borderBottomWidth: 0,
     },
     tabContainer: {
       flex: 1,
@@ -110,6 +115,11 @@ export const createSubHeaderStyles = (width, height) => {
       backgroundColor: colors.white,
       paddingHorizontal: width * 0.04,
       flexShrink: 0,
+      elevation: 0,
+      shadowOpacity: 0,
+      shadowRadius: 0,
+      shadowOffset: { width: 0, height: 0 },
+      borderBottomWidth: 0,
     },
     headerTop: {
       flexDirection: 'row',

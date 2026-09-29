@@ -293,6 +293,7 @@ const BoardWrite = ({ navigation, route }) => {
       });
       await invalidateProfileCountsCache();
 
+      Keyboard.dismiss();
       Alert.alert('완료', '게시글이 작성되었습니다.', [
         {
           text: '확인',

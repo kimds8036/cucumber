@@ -25,6 +25,11 @@ export const colors = {
   textLight7: '#393939',
   textLight8: '#1C1C1C',
 
+  /** 대댓글 well · 구분 · 화살표 (무채) */
+  replyWell: '#F7F7F7',
+  replyWellLine: '#E6E6E6',
+  replyArrow: '#B5B5B5',
+
   // 상태 컬러
   alertDark: '#AB6A6A',
   alert: '#FF9F9F',

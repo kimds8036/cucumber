@@ -7,6 +7,13 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { colors } from '../../../styles/colors';
 import EquippedBadge from '../../../components/EquippedBadge';
 
+function formatStatCount(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v) || v < 0) return '0';
+  if (v > 99) return '99+';
+  return String(Math.floor(v));
+}
+
 function CommentBody({ content, styles }) {
   const parts = [];
   let last = 0;
@@ -70,13 +77,13 @@ export default function BoardCommentTree({
         isReply = false,
         parentAuthorLabel = null,
         showDivider = false,
-        replyGroupEdge = null,
+        { wrapInGutter = true } = {},
       ) => {
         const isCommentLiked =
           commentLikedState[item.id] !== undefined
             ? commentLikedState[item.id]
             : Boolean(item.liked);
-        const isAuthorLabel = item.authorLabel === '작성자';
+        const isAuthorLabel = Boolean(item.isWriter);
         const bodyHasTag = /@익명\d+/.test(item.content);
         const contentEl = bodyHasTag ? (
           <CommentBody content={item.content} styles={styles} />
@@ -92,54 +99,48 @@ export default function BoardCommentTree({
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 marginBottom: normalize(4),
+                minHeight: normalize(18),
               }}
             >
-              {isReply ? (
-                <View style={styles.commentReplyArrow}>
-                  <Ionicons
-                    name="return-down-forward"
-                    size={normalize(16)}
-                    color={colors.textLight4}
-                  />
-                </View>
-              ) : null}
-              <View
-                style={[styles.detailAuthorRow, { flex: 1, minWidth: 0 }]}
-              >
+              <View style={styles.commentMetaRow}>
                 <Text
-                  style={
-                    isAuthorLabel
-                      ? styles.detailAuthor
-                      : styles.detailAuthorAnonymous
-                  }
+                  style={[
+                    styles.commentAuthorName,
+                    isAuthorLabel && styles.commentAuthorWriterName,
+                  ]}
                   numberOfLines={1}
                 >
-                  {item.authorLabel}
+                  {isAuthorLabel ? '작성자' : item.authorLabel}
                 </Text>
                 <EquippedBadge
-                    badge={item.equippedBadge}
-                    size={normalize(13)}
-                    style={{ marginLeft: normalize(3), flexShrink: 0, alignSelf: 'center' }}
-                  />
+                  badge={item.equippedBadge}
+                  size={normalize(13)}
+                  style={{
+                    marginLeft: normalize(3),
+                    flexShrink: 0,
+                    alignSelf: 'center',
+                  }}
+                />
                 <Text
-                  style={[styles.detailTime, { marginLeft: normalize(6) }]}
+                  style={[styles.commentTime, { marginLeft: normalize(10) }]}
                   numberOfLines={1}
                 >
                   {item.time}
                 </Text>
                 {item.isPinned ? (
-                  <MaterialCommunityIcons
-                    name="pin"
-                    size={normalize(12)}
-                    color={colors.textLight4}
-                    style={{ marginLeft: normalize(4), top: normalize(-4)}}
-                  />
+                  <View style={styles.commentPinSlot}>
+                    <MaterialCommunityIcons
+                      name="pin"
+                      size={normalize(12)}
+                      color={colors.textLight4}
+                    />
+                  </View>
                 ) : null}
               </View>
               <View
                 style={[
                   styles.commentFooterLeft,
-                  { flex: 0, marginLeft: normalize(8) },
+                  { flex: 0, marginLeft: normalize(8), gap: normalize(0) },
                 ]}
               >
                 <TouchableOpacity
@@ -153,7 +154,9 @@ export default function BoardCommentTree({
                     size={normalize(13)}
                     color={colors.alert}
                   />
-                  <Text style={styles.detailStatText}>{item.likes}</Text>
+                  <Text style={styles.commentLikeCount}>
+                    {formatStatCount(item.likes ?? 0)}
+                  </Text>
                 </TouchableOpacity>
                 <View
                   ref={(r) => {
@@ -170,7 +173,7 @@ export default function BoardCommentTree({
                   >
                     <Entypo
                       name="dots-three-vertical"
-                      size={normalize(14)}
+                      size={normalize(13)}
                       color={colors.textLight4}
                     />
                   </TouchableOpacity>
@@ -179,15 +182,12 @@ export default function BoardCommentTree({
             </View>
             {parentAuthorLabel ? (
               <View
-                style={[
-                  {
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    gap: normalize(2),
-                    marginLeft: isReply ? normalize(16) + normalize(6) : 0,
-                  },
-                ]}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: normalize(2),
+                }}
               >
                 <Text style={styles.commentReplyLabel}>
                   @{parentAuthorLabel}{' '}
@@ -195,32 +195,29 @@ export default function BoardCommentTree({
                 {contentEl}
               </View>
             ) : (
-              <View
-                style={
-                  isReply ? { marginLeft: normalize(16) + normalize(6) } : null
-                }
-              >
-                {contentEl}
-              </View>
+              <View>{contentEl}</View>
             )}
           </View>
         );
 
         const rowStyle = [
-          styles.commentRow,
-          isReply && styles.commentReplyGroup,
-          isReply && replyGroupEdge?.start && styles.commentReplyGroupStart,
-          isReply && replyGroupEdge?.end && styles.commentReplyGroupEnd,
+          isReply ? styles.commentReplyItem : styles.commentRow,
           item.isPinned && styles.commentPinned,
           isReplyingToThis && styles.commentBubbleReplying,
           showDivider && styles.commentRowDivider,
         ];
 
+        const inner = (
+          <View style={rowStyle}>
+            <View style={styles.commentBubble}>{commentBlock}</View>
+          </View>
+        );
+
+        if (!wrapInGutter) return inner;
+
         return (
           <View key={item.id} style={styles.commentGutter} collapsable={false}>
-            <View style={rowStyle}>
-              <View style={styles.commentBubble}>{commentBlock}</View>
-            </View>
+            {inner}
           </View>
         );
       },
@@ -239,24 +236,53 @@ export default function BoardCommentTree({
 
   const renderItem = ({ item, index }) => {
     const showDivider = showGroupDivider(index);
-    const prevType = flatComments[index - 1]?.type;
-    const nextType = flatComments[index + 1]?.type;
-    const replyGroupEdge = isReplyBlock(item.type)
-      ? {
-          start: !isReplyBlock(prevType),
-          end: !isReplyBlock(nextType),
-        }
-      : null;
     if (item.type === 'comment') {
       return renderComment(item.data, false, null, showDivider);
     }
     if (item.type === 'reply') {
-      return renderComment(
-        item.data,
-        true,
-        item.parentAuthorLabel,
-        showDivider,
-        replyGroupEdge,
+      const prevType = flatComments[index - 1]?.type;
+      // 연속 대댓글은 ReplyGroup 하나로 묶어 inset이 끊기지 않게 함
+      if (isReplyBlock(prevType)) {
+        return null;
+      }
+      const group = [];
+      for (let i = index; i < flatComments.length; i += 1) {
+        if (!isReplyBlock(flatComments[i]?.type)) break;
+        group.push(flatComments[i]);
+      }
+      const lastInGroupIndex = index + group.length - 1;
+      const groupShowDivider = showGroupDivider(lastInGroupIndex);
+      return (
+        <View
+          style={[
+            styles.commentGutter,
+            groupShowDivider && styles.commentRowDivider,
+          ]}
+          collapsable={false}
+        >
+          <View style={styles.commentReplyGroup}>
+            <Ionicons
+              name="return-down-forward"
+              size={normalize(18)}
+              color={colors.replyArrow}
+              style={styles.commentReplyArrow}
+            />
+            <View style={styles.commentReplyWell}>
+              {group.map((entry, i) => (
+                <View key={`reply-${entry.data.id}`}>
+                  {i > 0 ? <View style={styles.commentReplyDivider} /> : null}
+                  {renderComment(
+                    entry.data,
+                    true,
+                    entry.parentAuthorLabel,
+                    false,
+                    { wrapInGutter: false },
+                  )}
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
       );
     }
     if (item.type === 'more' || item.type === 'collapse') {
@@ -271,7 +297,7 @@ export default function BoardCommentTree({
             >
               <Ionicons
                 name={expanded ? 'chevron-up' : 'chevron-down'}
-                size={normalize(14)}
+                size={normalize(13)}
                 color={colors.textLight4}
               />
               <Text style={styles.loadMoreText}>

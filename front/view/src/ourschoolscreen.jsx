@@ -618,7 +618,7 @@ const OurSchoolScreen = ({ navigation }) => {
         </View>
 
         <GuideFocusTarget name={T.SCHOOL_GRASS_CARD}>
-          <TopAdBanner inset={false} />
+          <TopAdBanner placement="school" inset={false} />
         </GuideFocusTarget>
 
         {/* 게시판 / 우편함 바로가기 */}

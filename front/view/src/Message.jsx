@@ -940,8 +940,18 @@ export function MessageContent({ navigation }) {
           headerTitle={getMainTabTitle('message')}
           navigation={navigation}
         />
-        <TopAdBanner />
-        <View style={{ backgroundColor: colors.white }} collapsable={false}>
+        <TopAdBanner placement="message" />
+        <View
+          style={{
+            backgroundColor: colors.white,
+            elevation: 0,
+            shadowOpacity: 0,
+            shadowRadius: 0,
+            shadowOffset: { width: 0, height: 0 },
+            borderBottomWidth: 0,
+          }}
+          collapsable={false}
+        >
           <SortChips
             value={messageType}
             onChange={handleMessageTypeChange}

@@ -81,7 +81,9 @@ function buildTree(comments, postAuthorId, currentUserId) {
     nodes.set(id, {
       id,
       userId: c.user_id,
-      authorLabel: isPostAuthor ? '작성자' : `익명 ${c.anonymous_index}`,
+      authorLabel: isPostAuthor
+        ? '작성자'
+        : `익명 ${c.anonymous_index ?? c.anon_no ?? ''}`,
       equippedBadge: equippedBadgeFromApiRow(c),
       isWriter: isPostAuthor,
       isMyComment:

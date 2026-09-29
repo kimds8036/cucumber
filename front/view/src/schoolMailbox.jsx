@@ -383,7 +383,7 @@ const SchoolMailboxScreen = ({ navigation, route, embedded = false }) => {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <SubHeader title="학교 우편함" onBack={() => navigation?.goBack()} />
-      <TopAdBanner />
+      <TopAdBanner placement="school" />
       {list}
     </SafeAreaView>
   );

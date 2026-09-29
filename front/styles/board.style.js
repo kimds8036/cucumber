@@ -6,6 +6,17 @@ export const getNormalize = (width) => {
   return (size) => Math.round(scale * size);
 };
 
+/** 게시글 카드용 — shadow.sm 보다 한 단계 옅게 */
+const postCardLift = Platform.select({
+  ios: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+  },
+  android: { elevation: 1 },
+});
+
 export const createBoardStyles = (width, normalize) => {
   const metaLineHeight = normalize(18);
   const metaTextAndroid =
@@ -26,17 +37,15 @@ export const createBoardStyles = (width, normalize) => {
       backgroundColor: colors.white,
       borderRadius: normalize(18),
       borderWidth: 1,
-      borderColor: colors.textLight1,
+      borderColor: colors.textLight0,
       padding: normalize(12),
       marginBottom: normalize(12),
+      ...postCardLift,
     },
     postItemFeatured: {
-      backgroundColor: colors.primaryLight2,
-      borderWidth: 0,
-      elevation: 0,
-      shadowOpacity: 0,
-      shadowRadius: 0,
-      shadowOffset: { width: 0, height: 0 },
+      backgroundColor: colors.white,
+      borderWidth: 1,
+      borderColor: colors.primaryLight4,
     },
     popularBadge: {
       marginRight: normalize(6),
@@ -757,24 +766,43 @@ export const createDetailStyles = (width, normalize) => {
     },
     detailAuthorRow: {
       flexDirection: 'row',
-      alignItems: 'flex-end',
+      alignItems: 'center',
     },
     detailAuthor: {
       fontSize: normalize(fontSizes.lg),
-      fontFamily: fonts.bold,
+      fontFamily: fonts.regular,
       color: colors.alert,
       lineHeight: metaLineHeight,
       textAlignVertical: 'center',
-      top: normalize(-1),
+      includeFontPadding: false,
       ...metaTextAndroid,
     },
     detailAuthorAnonymous: {
       fontSize: normalize(fontSizes.lg),
-      fontFamily: fonts.bold,
+      fontFamily: fonts.regular,
       color: colors.textLight4,
       lineHeight: metaLineHeight,
       textAlignVertical: 'center',
-      top: normalize(-1),
+      includeFontPadding: false,
+      ...metaTextAndroid,
+    },
+    /** 게시글 익명 / 작성자 댓글 — 연회색 둥근 칩 */
+    detailAuthorWriterPill: {
+      backgroundColor: colors.textLight1,
+      borderRadius: 999,
+      paddingHorizontal: normalize(8),
+      paddingVertical: normalize(2),
+      justifyContent: 'center',
+      alignItems: 'center',
+      minHeight: metaLineHeight + normalize(2),
+    },
+    detailAuthorWriterPillText: {
+      fontSize: normalize(fontSizes.md),
+      fontFamily: fonts.regular,
+      color: colors.textLight6,
+      lineHeight: normalize(14),
+      textAlignVertical: 'center',
+      includeFontPadding: false,
       ...metaTextAndroid,
     },
     detailDot: {
@@ -792,6 +820,17 @@ export const createDetailStyles = (width, normalize) => {
       color: colors.textLight4,
       lineHeight: metaLineHeight,
       textAlignVertical: 'center',
+      includeFontPadding: false,
+      ...metaTextAndroid,
+    },
+    detailMetaDot: {
+      marginHorizontal: normalize(5),
+      fontSize: normalize(fontSizes.lg),
+      lineHeight: metaLineHeight,
+      fontFamily: fonts.regular,
+      color: colors.textLight4,
+      textAlignVertical: 'center',
+      includeFontPadding: false,
       ...metaTextAndroid,
     },
     detailLocation: {
@@ -873,15 +912,23 @@ export const createDetailStyles = (width, normalize) => {
     detailStatItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: normalize(4),
+      height: normalize(20),
+      gap: normalize(2),
     },
     detailStatText: {
       fontSize: normalize(fontSizes.xl),
+      lineHeight: normalize(18),
       fontFamily: fonts.regular,
       color: colors.textLight4,
+      fontVariant: ['tabular-nums'],
+      textAlign: 'left',
+      includeFontPadding: false,
+      ...metaTextAndroid,
     },
     detailMenuBtn: {
-      padding: normalize(4),
+      paddingVertical: normalize(4),
+      paddingLeft: normalize(2),
+      paddingRight: normalize(0),
     },
     // 광고 영역 — searchscreen BoarddetailADplaceholder(badgeOnLeft)와 동일
     adSection: {
@@ -940,22 +987,39 @@ export const createDetailStyles = (width, normalize) => {
     },
     commentRowDivider: {
       borderBottomWidth: 1,
-      borderBottomColor: colors.textLight0,
+      borderBottomColor: '#EFEFEF',
     },
+    /** 대댓글 묶음: 화살표 1개 + inset well
+     * marginLeft = (부모 아바타 폭 - 화살표 size) / 2 → 아바타·화살표 중심 정렬
+     */
     commentReplyGroup: {
-      backgroundColor: colors.textLight0,
-      paddingHorizontal: normalize(10),
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      marginLeft: (normalize(30) - normalize(18)) / 2,
+      marginTop: normalize(10),
+      gap: normalize(4),
     },
-    commentReplyGroupStart: {
-      borderTopLeftRadius: normalize(12),
-      borderTopRightRadius: normalize(12),
+    commentReplyArrow: {
+      paddingTop: normalize(12),
+    },
+    commentReplyWell: {
+      flex: 1,
+      minWidth: 0,
+      backgroundColor: colors.replyWell,
+      borderRadius: normalize(18),
+      paddingVertical: normalize(12),
+      paddingHorizontal: normalize(14),
       overflow: 'hidden',
+      boxShadow:
+        'inset 2px 2px 6px rgba(0,0,0,0.07), inset -2px -2px 6px rgba(255,255,255,0.9)',
     },
-    commentReplyGroupEnd: {
-      borderBottomLeftRadius: normalize(12),
-      borderBottomRightRadius: normalize(12),
-      overflow: 'hidden',
+    commentReplyDivider: {
+      height: 0.5,
+      backgroundColor: colors.replyWellLine,
+      marginVertical: normalize(10),
     },
+    /** well 안 대댓글 — 세로 여백은 well·구분선이 담당 */
+    commentReplyItem: {},
     commentItemReply: {
       marginRight: 0,
       flexDirection: 'row',
@@ -973,15 +1037,41 @@ export const createDetailStyles = (width, normalize) => {
     commentBubbleReplying: {
       backgroundColor: colors.primaryLight2,
     },
-    commentReplyArrow: {
-      marginRight: normalize(6),
-    },
     commentReplyBody: {
       flex: 1,
     },
     /** 댓글 본문(작성자·내용·푸터) 한 덩어리 */
     commentBlock: {
       flex: 1,
+    },
+    /** 댓글 메타 행 — 이름·뱃지·시간·핀 · 높이 18 */
+    commentMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      height: normalize(18),
+      flex: 1,
+      minWidth: 0,
+    },
+    commentAuthorName: {
+      fontSize: normalize(fontSizes.lg),
+      lineHeight: normalize(18),
+      fontFamily: fonts.regular,
+      fontWeight: '600',
+      color: colors.textLight6,
+      includeFontPadding: false,
+      ...metaTextAndroid,
+    },
+    /** 게시글 작성자 댓글 — 이름과 동일 메트릭, 색만 alert */
+    commentAuthorWriterName: {
+      color: colors.alert,
+    },
+    commentPinSlot: {
+      width: normalize(18),
+      height: normalize(18),
+      marginLeft: normalize(4),
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
     },
     commentAuthorRow: {
       flexDirection: 'row',
@@ -1007,6 +1097,19 @@ export const createDetailStyles = (width, normalize) => {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textLight4,
+      lineHeight: normalize(18),
+      includeFontPadding: false,
+      ...metaTextAndroid,
+    },
+    commentMetaDot: {
+      marginHorizontal: normalize(5),
+      fontSize: normalize(fontSizes.lg),
+      lineHeight: normalize(18),
+      fontFamily: fonts.regular,
+      color: colors.textLight4,
+      textAlignVertical: 'center',
+      includeFontPadding: false,
+      ...metaTextAndroid,
     },
     commentBody: {
       fontSize: normalize(fontSizes.xl),
@@ -1021,13 +1124,13 @@ export const createDetailStyles = (width, normalize) => {
       lineHeight: normalize(20),
     },
     commentTag: {
-      color: colors.primary,
+      color: colors.primaryDark,
       fontFamily: fonts.bold,
     },
     commentReplyLabel: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
-      color: colors.primary,
+      color: colors.primaryDark,
       lineHeight: normalize(20),
     },
     commentFooter: {
@@ -1044,7 +1147,22 @@ export const createDetailStyles = (width, normalize) => {
     commentLikeRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: normalize(4),
+      justifyContent: 'flex-end',
+      width: normalize(34),
+      height: normalize(18),
+      gap: normalize(3),
+    },
+    commentLikeCount: {
+      minWidth: normalize(18),
+      fontSize: normalize(fontSizes.lg),
+      lineHeight: normalize(14),
+      fontFamily: fonts.regular,
+      color: colors.textLight4,
+      includeFontPadding: false,
+      textAlignVertical: 'center',
+      textAlign: 'left',
+      fontVariant: ['tabular-nums'],
+      marginTop: Platform.OS === 'android' ? -1 : 0,
     },
     commentReplyButtonText: {
       fontSize: normalize(fontSizes.lg),
@@ -1063,7 +1181,7 @@ export const createDetailStyles = (width, normalize) => {
       flexDirection: 'row',
       alignItems: 'center',
       alignSelf: 'flex-start',
-      paddingTop: normalize(2),
+      paddingTop: normalize(8),
       paddingBottom: normalize(8),
       paddingRight: normalize(4),
       gap: normalize(4),

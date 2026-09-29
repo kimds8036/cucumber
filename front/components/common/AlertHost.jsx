@@ -14,6 +14,7 @@ export default function AlertHost() {
   const queueRef = useRef([]);
   const visibleRef = useRef(false);
   const closingRef = useRef(false);
+  const pendingPressRef = useRef(null);
 
   const present = (payload) => {
     setCurrentAlert(payload);
@@ -31,6 +32,16 @@ export default function AlertHost() {
     visibleRef.current = false;
     setVisible(false);
     setCurrentAlert(null);
+  };
+
+  const handleDismissed = () => {
+    const press = pendingPressRef.current;
+    pendingPressRef.current = null;
+    presentNextOrClear();
+    // 페이드 끝난 뒤에 네비게이션 등 onPress 실행 — 닫히는 중 화면이 바뀌며 튀는 현상 방지
+    if (typeof press === 'function') {
+      queueMicrotask(press);
+    }
   };
 
   const requestClose = () => {
@@ -62,10 +73,9 @@ export default function AlertHost() {
   );
 
   const handlePress = (button) => {
+    pendingPressRef.current =
+      typeof button?.onPress === 'function' ? button.onPress : null;
     requestClose();
-    if (typeof button?.onPress === 'function') {
-      requestAnimationFrame(() => button.onPress());
-    }
   };
 
   const titleText = String(currentAlert?.title ?? '').trim();
@@ -78,7 +88,7 @@ export default function AlertHost() {
       visible={visible}
       onClose={requestClose}
       dismissOnBackdrop={false}
-      onDismissed={presentNextOrClear}
+      onDismissed={handleDismissed}
     >
       {titleText !== '' ? (
         <Text

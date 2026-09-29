@@ -483,7 +483,7 @@ export default function BoardDetail({ navigation, route }) {
                       distanceStale={distanceStale}
                       distanceLoading={distanceLoading}
                     />
-                    <TopAdBanner />
+                    <TopAdBanner placement="board" />
                     <View style={styles.commentGutter}>
                       <View style={styles.commentListHeader}>
                         <Text style={styles.commentListHeaderText}>댓글</Text>

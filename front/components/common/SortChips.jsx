@@ -26,7 +26,7 @@ function createSortChipStyles(width, normalize) {
       justifyContent: 'space-between',
       paddingHorizontal: width * 0.04,
       paddingVertical: normalize(10),
-      paddingTop: normalize(8),
+      paddingTop: normalize(1),
     },
     chips: {
       flexDirection: 'row',
@@ -44,6 +44,10 @@ function createSortChipStyles(width, normalize) {
     },
     chipActive: {
       backgroundColor: colors.textLight3,
+      borderWidth: 0,
+    },
+    chipActiveMint: {
+      backgroundColor: colors.primaryLight6,
       borderWidth: 0,
     },
     label: {
@@ -98,6 +102,8 @@ export default function SortChips({
   options = [],
   sortValue,
   onSortChange,
+  /** 'default' | 'mint' — 활성 칩 배경 (mint: 파스텔 민트 + 흰 글자) */
+  activeTone = 'default',
 }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
@@ -135,7 +141,13 @@ export default function SortChips({
           return (
             <TouchableOpacity
               key={option.value}
-              style={[styles.chip, active && styles.chipActive]}
+              style={[
+                styles.chip,
+                active &&
+                  (activeTone === 'mint'
+                    ? styles.chipActiveMint
+                    : styles.chipActive),
+              ]}
               onPress={() => onChange(option.value)}
             >
               <Text style={[styles.label, active && styles.labelActive]}>
