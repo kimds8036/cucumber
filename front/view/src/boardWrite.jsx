@@ -524,6 +524,7 @@ const BoardWrite = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
       </View>
+      {guideBlock}
       <View style={styles.writeHashtagBlock}>
         <View ref={hashtagFieldRef} style={styles.writeHashtagField}>
           <Text style={styles.writeHashtagPrefix}>#</Text>
@@ -655,8 +656,6 @@ const BoardWrite = ({ navigation, route }) => {
                 </Text>
                 {writeMainColumn}
               </KeyboardAwareScrollView>
-
-              {guideBlock}
             </SafeAreaView>
             <ImageViewer
               visible={Boolean(viewerUri)}

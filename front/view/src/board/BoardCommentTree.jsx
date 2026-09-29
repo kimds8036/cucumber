@@ -149,11 +149,13 @@ export default function BoardCommentTree({
                   activeOpacity={0.7}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <FontAwesome
-                    name={isCommentLiked ? 'heart' : 'heart-o'}
-                    size={normalize(13)}
-                    color={colors.alert}
-                  />
+                  <View style={styles.commentLikeIcon}>
+                    <FontAwesome
+                      name={isCommentLiked ? 'heart' : 'heart-o'}
+                      size={normalize(13)}
+                      color={colors.alert}
+                    />
+                  </View>
                   <Text style={styles.commentLikeCount}>
                     {formatStatCount(item.likes ?? 0)}
                   </Text>
@@ -209,14 +211,20 @@ export default function BoardCommentTree({
 
         const inner = (
           <View style={rowStyle}>
-            <View style={styles.commentBubble}>{commentBlock}</View>
+            <View style={styles.commentBubble}>
+              {commentBlock}
+            </View>
           </View>
         );
 
         if (!wrapInGutter) return inner;
 
         return (
-          <View key={item.id} style={styles.commentGutter} collapsable={false}>
+          <View
+            key={item.id}
+            style={styles.commentGutter}
+            collapsable={false}
+          >
             {inner}
           </View>
         );

@@ -403,6 +403,14 @@ export default function BoardDetail({ navigation, route }) {
   });
 
   const postImages = Array.isArray(post?.images) ? post.images : [];
+  const boardTitle =
+    post?.boardType === 'national'
+      ? '전체 게시판'
+      : post?.boardType === 'student'
+        ? '학생 게시판'
+        : post?.boardType === 'school' && post?.schoolName
+          ? post.schoolName
+          : '게시판';
   const hasFirstImageRatio =
     postImages.length === 0 || Boolean(imageRatios[postImages[0]]);
   const isWaitingImageLayout =
@@ -428,9 +436,7 @@ export default function BoardDetail({ navigation, route }) {
   }, [isInitialLoading, hasFirstImageRatio, postImages.length, post?.id]);
 
   return (
-    <View
-      style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}
-    >
+    <View style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}>
       <SafeAreaView style={styles.container} edges={['top']}>
         <View
           style={{
@@ -439,7 +445,7 @@ export default function BoardDetail({ navigation, route }) {
             backgroundColor: colors.white,
           }}
         >
-          <SubHeader title="게시판" onBack={() => navigation.goBack()} />
+          <SubHeader title={boardTitle} onBack={() => navigation.goBack()} />
         </View>
         <View
           style={{

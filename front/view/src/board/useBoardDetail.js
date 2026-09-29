@@ -167,6 +167,8 @@ export function useBoardDetail({
       ...base,
       id: routePostId ?? routePost?.id ?? base.id ?? null,
       author: '익명',
+      boardType: base.boardType ?? base.board_type ?? null,
+      schoolName: base.schoolName ?? base.school_name ?? '',
       images: Array.isArray(base.images) ? base.images : [],
       tags: normalizeTagsFromApi(base.tags),
       distanceKm:
@@ -221,6 +223,8 @@ export function useBoardDetail({
         setPost({
           id: data.id,
           author: '익명',
+          boardType: data.board_type ?? null,
+          schoolName: data.school_name ?? '',
           equippedBadge: equippedBadgeFromApiRow(data),
           time: formatTimeAgo(data.created_at),
           location: data.location ?? '',

@@ -44,8 +44,16 @@ export default function BoardPostContent({
   return (
     <View style={styles.contentSection}>
       <View style={styles.detailHeader}>
-        <View style={[styles.detailAuthorRow, { flex: 1, minWidth: 0 }]}>
-          <Text style={styles.detailAuthorAnonymous} numberOfLines={1}>
+        <View
+          style={[
+            styles.detailAuthorRow,
+            { flex: 1, minWidth: 0 },
+          ]}
+        >
+          <Text
+            style={styles.detailAuthorAnonymous}
+            numberOfLines={1}
+          >
             {post.author}
           </Text>
           <EquippedBadge
@@ -54,7 +62,10 @@ export default function BoardPostContent({
             style={{ marginLeft: normalize(3), alignSelf: 'center' }}
           />
           <Text
-            style={[styles.detailTime, { marginLeft: normalize(10) }]}
+            style={[
+              styles.detailTime,
+              { marginLeft: normalize(6) },
+            ]}
             numberOfLines={1}
           >
             {post.time}
@@ -91,7 +102,12 @@ export default function BoardPostContent({
         ) : null}
       </View>
 
-      <Text style={[styles.detailBody, { marginBottom: normalize(7) }]}>
+      <Text
+        style={[
+          styles.detailBody,
+          { marginBottom: normalize(7) },
+        ]}
+      >
         {post.content}
       </Text>
       {imageUris.length === 1 ? (
@@ -157,21 +173,25 @@ export default function BoardPostContent({
             activeOpacity={0.7}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <FontAwesome
-              name={postLiked ? 'heart' : 'heart-o'}
-              size={normalize(14)}
-              color={colors.alert}
-            />
+            <View style={styles.detailStatIcon}>
+              <FontAwesome
+                name={postLiked ? 'heart' : 'heart-o'}
+                size={normalize(14)}
+                color={colors.alert}
+              />
+            </View>
             <Text style={styles.detailStatText}>
               {formatStatCount(post.likes)}
             </Text>
           </TouchableOpacity>
           <View style={styles.detailStatItem}>
-            <Ionicons
-              name="chatbubble-outline"
-              size={normalize(15)}
-              color={colors.primary}
-            />
+            <View style={styles.detailStatIcon}>
+              <Ionicons
+                name="chatbubble-outline"
+                size={normalize(15)}
+                color={colors.primary}
+              />
+            </View>
             <Text style={styles.detailStatText}>
               {formatStatCount(post.comments)}
             </Text>
@@ -182,11 +202,13 @@ export default function BoardPostContent({
             activeOpacity={0.7}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Ionicons
-              name={postScrapped ? 'bookmark' : 'bookmark-outline'}
-              size={normalize(14)}
-              color={colors.scrap}
-            />
+            <View style={styles.detailStatIcon}>
+              <Ionicons
+                name={postScrapped ? 'bookmark' : 'bookmark-outline'}
+                size={normalize(14)}
+                color={colors.scrap}
+              />
+            </View>
             <Text style={styles.detailStatText}>
               {formatStatCount(post.scraps ?? 0)}
             </Text>
