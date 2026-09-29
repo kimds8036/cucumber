@@ -15,6 +15,7 @@ export const colors = {
   // 무채색
   white: '#FFFFFF',
   text: '#000000',
+  textLight0: '#F8F8F8',
   textLight1: '#E3E3E3',
   textLight2: '#C6C6C6',
   textLight3: '#AAAAAA',

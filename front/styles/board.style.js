@@ -40,17 +40,15 @@ export const createBoardStyles = (width, normalize) => {
     },
     popularBadge: {
       marginRight: normalize(6),
-      backgroundColor: colors.yellow,
       borderWidth: 1,
       borderColor: colors.scrap,
       borderRadius: normalize(10),
       paddingHorizontal: normalize(6),
-      paddingVertical: normalize(1),
     },
     popularBadgeText: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.md),
       fontFamily: fonts.bold,
-      color: colors.text,
+      color: colors.scrap,
       lineHeight: metaLineHeight,
       textAlignVertical: 'center',
       ...metaTextAndroid,
@@ -822,9 +820,7 @@ export const createDetailStyles = (width, normalize) => {
       flexDirection: 'row',
       alignItems: 'center',
       gap: normalize(4),
-      paddingVertical: normalize(6),
-      borderTopWidth: 1,
-      borderTopColor: colors.textLight1,
+      paddingVertical: normalize(6)
     },
     commentListHeaderText: {
       fontSize: normalize(fontSizes.xl),
@@ -846,7 +842,21 @@ export const createDetailStyles = (width, normalize) => {
     },
     commentRowDivider: {
       borderBottomWidth: 1,
-      borderBottomColor: colors.textLight1,
+      borderBottomColor: colors.textLight0,
+    },
+    commentReplyGroup: {
+      backgroundColor: colors.textLight0,
+      paddingHorizontal: normalize(10),
+    },
+    commentReplyGroupStart: {
+      borderTopLeftRadius: normalize(12),
+      borderTopRightRadius: normalize(12),
+      overflow: 'hidden',
+    },
+    commentReplyGroupEnd: {
+      borderBottomLeftRadius: normalize(12),
+      borderBottomRightRadius: normalize(12),
+      overflow: 'hidden',
     },
     commentItemReply: {
       marginRight: 0,
@@ -931,7 +941,6 @@ export const createDetailStyles = (width, normalize) => {
     commentFooterLeft: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: normalize(12),
       flex: 1,
     },
     commentLikeRow: {

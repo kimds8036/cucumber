@@ -7,12 +7,6 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { colors } from '../../../styles/colors';
 import EquippedBadge from '../../../components/EquippedBadge';
 
-function countReplies(comment) {
-  const replies = comment?.replies;
-  if (!replies?.length) return 0;
-  return replies.reduce((sum, reply) => sum + 1 + countReplies(reply), 0);
-}
-
 function CommentBody({ content, styles }) {
   const parts = [];
   let last = 0;
@@ -53,7 +47,6 @@ export default function BoardCommentTree({
   flatComments,
   commentLikedState,
   replyToCommentId,
-  onFocusReply,
   onCommentLike,
   onToggleReplies,
   onOpenMenu,
@@ -72,7 +65,13 @@ export default function BoardCommentTree({
 
   const renderComment = useMemo(
     () =>
-      (item, isReply = false, parentAuthorLabel = null, showDivider = false) => {
+      (
+        item,
+        isReply = false,
+        parentAuthorLabel = null,
+        showDivider = false,
+        replyGroupEdge = null,
+      ) => {
         const isCommentLiked =
           commentLikedState[item.id] !== undefined
             ? commentLikedState[item.id]
@@ -85,7 +84,6 @@ export default function BoardCommentTree({
           <Text style={styles.commentBody}>{item.content}</Text>
         );
         const isReplyingToThis = replyToCommentId === item.id;
-        const replyCount = countReplies(item);
         const commentBlock = (
           <View style={styles.commentBlock}>
             <View
@@ -157,19 +155,6 @@ export default function BoardCommentTree({
                   />
                   <Text style={styles.detailStatText}>{item.likes}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.commentLikeRow}
-                  onPress={() => onFocusReply(item.id)}
-                  activeOpacity={0.7}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <Ionicons
-                    name="chatbubble-outline"
-                    size={normalize(15)}
-                    color={colors.primary}
-                  />
-                  <Text style={styles.detailStatText}>{replyCount}</Text>
-                </TouchableOpacity>
                 <View
                   ref={(r) => {
                     if (r) commentMenuRefs.current[item.id] = r;
@@ -223,6 +208,9 @@ export default function BoardCommentTree({
 
         const rowStyle = [
           styles.commentRow,
+          isReply && styles.commentReplyGroup,
+          isReply && replyGroupEdge?.start && styles.commentReplyGroupStart,
+          isReply && replyGroupEdge?.end && styles.commentReplyGroupEnd,
           item.isPinned && styles.commentPinned,
           isReplyingToThis && styles.commentBubbleReplying,
           showDivider && styles.commentRowDivider,
@@ -241,20 +229,35 @@ export default function BoardCommentTree({
       commentMenuRefs,
       normalize,
       onCommentLike,
-      onFocusReply,
       onOpenMenu,
       replyToCommentId,
       styles,
     ],
   );
 
+  const isReplyBlock = (type) => type === 'reply';
+
   const renderItem = ({ item, index }) => {
     const showDivider = showGroupDivider(index);
+    const prevType = flatComments[index - 1]?.type;
+    const nextType = flatComments[index + 1]?.type;
+    const replyGroupEdge = isReplyBlock(item.type)
+      ? {
+          start: !isReplyBlock(prevType),
+          end: !isReplyBlock(nextType),
+        }
+      : null;
     if (item.type === 'comment') {
       return renderComment(item.data, false, null, showDivider);
     }
     if (item.type === 'reply') {
-      return renderComment(item.data, true, item.parentAuthorLabel, showDivider);
+      return renderComment(
+        item.data,
+        true,
+        item.parentAuthorLabel,
+        showDivider,
+        replyGroupEdge,
+      );
     }
     if (item.type === 'more' || item.type === 'collapse') {
       const expanded = item.type === 'collapse';

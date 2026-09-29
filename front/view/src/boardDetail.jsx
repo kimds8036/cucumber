@@ -393,7 +393,6 @@ export default function BoardDetail({ navigation, route }) {
     commentLikedState,
     replyToCommentId,
     expandedReplies,
-    onFocusReply: focusReplyInput,
     onCommentLike: handleCommentLike,
     onToggleReplies: toggleRepliesExpand,
     onOpenMenu: openFloatingMenu,
@@ -678,6 +677,7 @@ export default function BoardDetail({ navigation, route }) {
             if (!target?.userId || target.userId === currentUserId) return;
             openReportModal('comment', commentId, target.userId);
           }}
+          onReplyComment={focusReplyInput}
           styles={styles}
           normalize={normalize}
           width={width}

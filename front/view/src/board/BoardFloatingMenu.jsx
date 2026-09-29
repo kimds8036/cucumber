@@ -46,6 +46,7 @@ export default function BoardFloatingMenu({
   onNoteToUser,
   onReportPost,
   onReportComment,
+  onReplyComment,
   styles,
   normalize,
   width,
@@ -97,6 +98,11 @@ export default function BoardFloatingMenu({
   } else if (isMyComment) {
     menuItems = [
       {
+        label: '답글 달기',
+        iconName: 'chatbubble-outline',
+        onPress: () => onReplyComment?.(isCommentMenu),
+      },
+      {
         label: '삭제하기',
         iconName: 'trash-outline',
         onPress: () => onDeleteComment(isCommentMenu),
@@ -124,6 +130,11 @@ export default function BoardFloatingMenu({
     }
     menuItems.push(
       {
+        label: '답글 달기',
+        iconName: 'chatbubble-outline',
+        onPress: () => onReplyComment?.(isCommentMenu),
+      },
+      {
         label: '쪽지 보내기',
         iconName: 'chatbubble-outline',
         onPress: () => {
@@ -146,6 +157,11 @@ export default function BoardFloatingMenu({
     );
   } else if (isCommentMenu != null) {
     menuItems = [
+      {
+        label: '답글 달기',
+        iconName: 'chatbubble-outline',
+        onPress: () => onReplyComment?.(isCommentMenu),
+      },
       {
         label: '신고 / 차단',
         iconName: 'flag-outline',
