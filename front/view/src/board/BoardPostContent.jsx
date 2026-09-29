@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, Image } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Entypo from '@expo/vector-icons/Entypo';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { colors, fonts } from '../../../styles/colors';
+import { colors } from '../../../styles/colors';
 import DistanceBadge from '../../../components/DistanceBadge';
 import EquippedBadge from '../../../components/EquippedBadge';
 import PostImageSlider, {
@@ -37,12 +37,11 @@ export default function BoardPostContent({
     <View style={styles.contentSection}>
       <View style={styles.detailHeader}>
         <View style={[styles.detailAuthorRow, { flex: 1, minWidth: 0 }]}>
-          <Text
-            style={[styles.detailAuthorAnonymous, { fontFamily: fonts.bold }]}
-            numberOfLines={1}
-          >
-            {post.author}
-          </Text>
+          <View style={styles.detailAuthorWriterPill}>
+            <Text style={styles.detailAuthorWriterPillText} numberOfLines={1}>
+              {post.author}
+            </Text>
+          </View>
           <EquippedBadge
             badge={post.equippedBadge}
             size={normalize(13)}

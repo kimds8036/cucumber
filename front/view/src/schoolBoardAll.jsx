@@ -289,7 +289,7 @@ const SchoolBoardAll = ({ navigation, route }) => {
           />
         }
       />
-      <TopAdBanner />
+      <TopAdBanner placement="board" />
       <SortChips
         value={section}
         onChange={setSection}

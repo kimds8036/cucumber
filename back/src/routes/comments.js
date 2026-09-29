@@ -18,9 +18,8 @@ const router = express.Router();
 // 핸들러 안에서 그대로 본다. 여기서는 타입/길이/숫자 검증만 깐다.
 const COMMENT_CONTENT_MAX = 2000;
 
-/** 작성자는 '작성자'로만 보이므로 익명 순번에서 제외한다. */
-function remapAnonymousIndices(comments, postAuthorId) {
-  const authorId = Number(postAuthorId);
+/** 댓글 작성 시각 순으로 유저별 익명 번호(작성자 포함). */
+function remapAnonymousIndices(comments) {
   const chronological = [...comments].sort((a, b) => {
     const ta = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
     if (ta !== 0) return ta;
@@ -30,18 +29,14 @@ function remapAnonymousIndices(comments, postAuthorId) {
   let next = 1;
   for (const c of chronological) {
     const uid = Number(c.user_id);
-    if (!Number.isFinite(uid) || uid === authorId) continue;
+    if (!Number.isFinite(uid)) continue;
     if (!indexByUser.has(uid)) {
       indexByUser.set(uid, next);
       next += 1;
     }
   }
   return comments.map((c) => {
-    const uid = Number(c.user_id);
-    if (uid === authorId) {
-      return { ...c, anonymous_index: 0 };
-    }
-    const mapped = indexByUser.get(uid);
+    const mapped = indexByUser.get(Number(c.user_id));
     return mapped != null ? { ...c, anonymous_index: mapped } : c;
   });
 }
@@ -163,28 +158,22 @@ router.post('/:postId/comments', authenticate, blockWhenFlag('comment_write_disa
       parentComment = parentComments[0];
     }
 
-    // 익명 번호: 작성자 제외, 같은 유저는 같은 번호, 신규 유저는 작성자 외 고유 인원 + 1
-    const postAuthorId = posts[0].user_id;
-    const isPostAuthor = Number(userId) === Number(postAuthorId);
-    const [existingIndex] = await pool.execute(
-      `SELECT anonymous_index FROM comments
-       WHERE post_id = ? AND user_id = ? AND is_deleted = FALSE
-       LIMIT 1`,
-      [postId, userId],
+    // 익명 번호: 작성자 포함, 같은 유저는 같은 번호(첫 댓글 시각 순)
+    const [firstByUser] = await pool.execute(
+      `SELECT user_id, MIN(id) AS first_id
+       FROM comments
+       WHERE post_id = ? AND is_deleted = FALSE
+       GROUP BY user_id
+       ORDER BY first_id ASC`,
+      [postId],
     );
-
-    let anonymousIndex;
-    if (isPostAuthor) {
-      anonymousIndex = 0;
-    } else if (existingIndex.length > 0 && Number(existingIndex[0].anonymous_index) > 0) {
-      anonymousIndex = existingIndex[0].anonymous_index;
-    } else {
-      const [uniqueAuthors] = await pool.execute(
-        `SELECT COUNT(DISTINCT user_id) as count FROM comments
-         WHERE post_id = ? AND is_deleted = FALSE AND user_id <> ?`,
-        [postId, postAuthorId],
-      );
-      anonymousIndex = Number(uniqueAuthors[0].count || 0) + 1;
+    const indexByUser = new Map();
+    firstByUser.forEach((row, i) => {
+      indexByUser.set(Number(row.user_id), i + 1);
+    });
+    let anonymousIndex = indexByUser.get(Number(userId));
+    if (anonymousIndex == null) {
+      anonymousIndex = indexByUser.size + 1;
     }
 
     // 댓글 생성
@@ -432,7 +421,7 @@ router.get('/:postId/comments', optionalAuthenticate, async (req, res) => {
       images: comment.images ? JSON.parse(comment.images) : [],
       isLiked: likedSet.has(comment.id),
     }));
-    const result = remapAnonymousIndices(withLikes, posts[0].user_id);
+    const result = remapAnonymousIndices(withLikes);
 
     res.json({
       success: true,

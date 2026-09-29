@@ -1,5 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Modal, Pressable, StyleSheet, View } from 'react-native';
+import {
+  Animated,
+  Easing,
+  Keyboard,
+  Modal,
+  Pressable,
+  StyleSheet,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../styles/colors';
 
 /** 등장·퇴장 페이드 (시간표·타이머 「저장 완료」와 동일 톤) */
@@ -10,6 +19,7 @@ const FADE_MS = 220;
  * - 항상 페이드 인/아웃 (개별 animationType 오버라이드 없음)
  * - visible=false 시 내용은 유지한 채 페이드 아웃 후 숨김
  * - Modal 인스턴스는 유지해서 안드로이드에서 창이 튀지 않게 함
+ * - 세이프에어리어·키보드를 반영해 카드가 위로 밀리거나 아래가 잘리지 않게 함
  */
 export default function AppPopupModal({
   visible,
@@ -25,6 +35,7 @@ export default function AppPopupModal({
   useDefaultContainerWidth = true,
   onDismissed,
 }) {
+  const insets = useSafeAreaInsets();
   const [shown, setShown] = useState(Boolean(visible));
   const opacity = useRef(new Animated.Value(visible ? 1 : 0)).current;
   const animRef = useRef(null);
@@ -38,6 +49,12 @@ export default function AppPopupModal({
     opacity.setValue(0);
     setShown(true);
   }
+
+  useEffect(() => {
+    if (visible) {
+      Keyboard.dismiss();
+    }
+  }, [visible]);
 
   useEffect(() => {
     if (visible) {
@@ -91,6 +108,8 @@ export default function AppPopupModal({
           {
             backgroundColor: overlayColor,
             opacity,
+            paddingTop: Math.max(insets.top, 16),
+            paddingBottom: Math.max(insets.bottom, 16),
           },
         ]}
       >
@@ -121,7 +140,8 @@ export default function AppPopupModal({
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    flex: 1,
+    width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
   },

@@ -398,7 +398,7 @@ export function TimerContent() {
           </View>
         </View>
         <View style={{ paddingHorizontal: timerGutter }}>
-          <TopAdBanner inset={false} />
+          <TopAdBanner placement="timer" inset={false} />
           <TimerDayContentSkeleton styles={styles} normalize={normalize} />
         </View>
       </ScrollView>
@@ -477,7 +477,7 @@ export function TimerContent() {
                   marginBottom: normalize(16),
                 }}
               >
-                <TopAdBanner inset={false} />
+                <TopAdBanner placement="timer" inset={false} />
               </View>
               {showDayContentSkeleton ? (
                 <View style={{ paddingHorizontal: timerGutter }}>

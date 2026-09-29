@@ -744,6 +744,7 @@ export function BoardAllContent({ navigation, posts }) {
         <SortChips
           value={boardScope}
           onChange={setBoardScope}
+          activeTone="mint"
           options={[
             { value: 'national', label: '전체' },
             { value: 'school', label: '학생' },
@@ -770,7 +771,7 @@ export function BoardAllContent({ navigation, posts }) {
           ListHeaderComponent={
             <View>
               <MainHeader />
-              <TopAdBanner />
+              <TopAdBanner placement="board" />
             </View>
           }
           showsVerticalScrollIndicator={false}

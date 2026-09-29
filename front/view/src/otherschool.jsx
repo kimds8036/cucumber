@@ -467,7 +467,7 @@ const OtherSchoolScreen = ({ route, navigation }) => {
           </View>
         </View>
 
-        <TopAdBanner inset={false} />
+        <TopAdBanner placement="school" inset={false} />
 
         {/* 학교 우편함 — 이전 가로형 카드 디자인 */}
         <View style={otherSchoolStyles.mailboxWideBlock}>

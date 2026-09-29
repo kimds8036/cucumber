@@ -347,7 +347,11 @@ export const createChatStyles = (width, normalize) => {
       flexGrow: 0,
       backgroundColor: colors.white,
       zIndex: 20,
-      elevation: 4,
+      elevation: 0,
+      shadowOpacity: 0,
+      shadowRadius: 0,
+      shadowOffset: { width: 0, height: 0 },
+      borderBottomWidth: 0,
     },
     chatScreenBody: {
       flex: 1,

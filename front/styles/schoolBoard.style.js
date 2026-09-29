@@ -5,6 +5,17 @@ export const getNormalize = (width) => {
   return (size) => Math.round(scale * size);
 };
 
+/** 게시글 카드용 — shadow.sm 보다 한 단계 옅게 */
+const postCardLift = Platform.select({
+  ios: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+  },
+  android: { elevation: 1 },
+});
+
 export const createSchoolBoardStyles = (width, normalize) => {
   const metaLineHeight = normalize(18);
   const metaTextAndroid =
@@ -26,17 +37,15 @@ export const createSchoolBoardStyles = (width, normalize) => {
       backgroundColor: colors.white,
       borderRadius: normalize(18),
       borderWidth: 1,
-      borderColor: colors.textLight1,
+      borderColor: colors.textLight0,
       padding: normalize(14),
       marginBottom: normalize(12),
+      ...postCardLift,
     },
     postItemFeatured: {
-      backgroundColor: colors.primaryLight2,
-      borderWidth: 0,
-      elevation: 0,
-      shadowOpacity: 0,
-      shadowRadius: 0,
-      shadowOffset: { width: 0, height: 0 },
+      backgroundColor: colors.white,
+      borderWidth: 1,
+      borderColor: colors.primaryLight4,
     },
     popularBadge: {
       marginRight: normalize(6),
