@@ -44,16 +44,8 @@ export default function BoardPostContent({
   return (
     <View style={styles.contentSection}>
       <View style={styles.detailHeader}>
-        <View
-          style={[
-            styles.detailAuthorRow,
-            { flex: 1, minWidth: 0 },
-          ]}
-        >
-          <Text
-            style={styles.detailAuthorAnonymous}
-            numberOfLines={1}
-          >
+        <View style={[styles.detailAuthorRow, { flex: 1, minWidth: 0 }]}>
+          <Text style={styles.detailAuthorAnonymous} numberOfLines={1}>
             {post.author}
           </Text>
           <EquippedBadge
@@ -62,10 +54,7 @@ export default function BoardPostContent({
             style={{ marginLeft: normalize(3), alignSelf: 'center' }}
           />
           <Text
-            style={[
-              styles.detailTime,
-              { marginLeft: normalize(6) },
-            ]}
+            style={[styles.detailTime, { marginLeft: normalize(6) }]}
             numberOfLines={1}
           >
             {post.time}
@@ -102,12 +91,7 @@ export default function BoardPostContent({
         ) : null}
       </View>
 
-      <Text
-        style={[
-          styles.detailBody,
-          { marginBottom: normalize(7) },
-        ]}
-      >
+      <Text style={[styles.detailBody, { marginBottom: normalize(7) }]}>
         {post.content}
       </Text>
       {imageUris.length === 1 ? (

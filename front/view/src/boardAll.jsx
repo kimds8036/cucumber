@@ -117,12 +117,7 @@ export function BoardAllContent({ navigation, posts }) {
   const styles = useMemo(() => createBoardStyles(width, normalize), [width]);
   const { isGuidePreview } = useGuidePreview();
   const shell = useMainShellOptional();
-  const boardFeedMode = shell?.boardFeedMode ?? 'national';
   const { studentVerificationStatus } = useAuth();
-  const studentFeedLocked =
-    boardFeedMode === 'student' &&
-    studentVerificationStatus !== 'APPROVED' &&
-    !isGuidePreview;
   const [studentCtaVisible, setStudentCtaVisible] = useState(false);
   const [studentCtaClosingForVerify, setStudentCtaClosingForVerify] =
     useState(false);
@@ -133,7 +128,12 @@ export function BoardAllContent({ navigation, posts }) {
   const distanceStale = permissionGranted && !coords;
 
   const [sortType, setSortType] = useState('latest'); // latest, popular, nearby
-  const [boardScope, setBoardScope] = useState('national'); // national | school
+  const [boardScope, setBoardScope] = useState('national'); // national | student | school
+  const studentBoardSelected = boardScope !== 'national';
+  const studentFeedLocked =
+    studentBoardSelected &&
+    studentVerificationStatus !== 'APPROVED' &&
+    !isGuidePreview;
   const [serverPosts, setServerPosts] = useState([]);
   const [pinnedPost, setPinnedPost] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -286,7 +286,11 @@ export function BoardAllContent({ navigation, posts }) {
   const fetchPosts = useCallback(
     async (nextPage = 1, append = false, opts = {}) => {
       const options =
-        opts === true ? { silent: true } : opts === false || opts == null ? {} : opts;
+        opts === true
+          ? { silent: true }
+          : opts === false || opts == null
+            ? {}
+            : opts;
       const silent = Boolean(options.silent);
       /** 목록은 교체하되 전체 스켈레톤 대신 RefreshControl만 표시 */
       const soft = Boolean(options.soft);
@@ -306,7 +310,7 @@ export function BoardAllContent({ navigation, posts }) {
         return;
       }
       if (
-        boardFeedMode === 'student' &&
+        studentBoardSelected &&
         studentVerificationStatus !== 'APPROVED'
       ) {
         if (nextPage === 1 && !append) {
@@ -363,7 +367,7 @@ export function BoardAllContent({ navigation, posts }) {
           }
         }
         const params = {
-          boardType: boardFeedMode === 'student' ? 'student' : 'national',
+          boardType: boardScope,
           sort: sortParam,
           page: nextPage,
           limit: 20,
@@ -429,7 +433,7 @@ export function BoardAllContent({ navigation, posts }) {
       coords,
       posts,
       isGuidePreview,
-      boardFeedMode,
+      studentBoardSelected,
       studentVerificationStatus,
     ],
   );
@@ -438,11 +442,7 @@ export function BoardAllContent({ navigation, posts }) {
 
   const fetchPinnedPost = useCallback(async () => {
     const requestId = ++pinnedRequestRef.current;
-    if (
-      isGuidePreview ||
-      studentFeedLocked ||
-      (posts && posts.length > 0)
-    ) {
+    if (isGuidePreview || studentFeedLocked || (posts && posts.length > 0)) {
       setPinnedPost(null);
       return;
     }
@@ -457,7 +457,7 @@ export function BoardAllContent({ navigation, posts }) {
         }
       }
       const params = {
-        boardType: boardFeedMode === 'student' ? 'student' : 'national',
+        boardType: boardScope,
         sort: 'popular',
         page: 1,
         limit: 1,
@@ -481,7 +481,6 @@ export function BoardAllContent({ navigation, posts }) {
     coords,
     posts,
     isGuidePreview,
-    boardFeedMode,
     studentFeedLocked,
   ]);
 
@@ -506,7 +505,7 @@ export function BoardAllContent({ navigation, posts }) {
     }
     refreshLocation();
     fetchPostsRef.current?.(1, false);
-  }, [isGuidePreview, boardFeedMode]);
+  }, [isGuidePreview]);
 
   useEffect(() => {
     if (isGuidePreview) return;
@@ -539,11 +538,11 @@ export function BoardAllContent({ navigation, posts }) {
       return;
     }
     fetchPosts(1, false);
-  }, [sortType, boardScope, isGuidePreview, boardFeedMode]);
+  }, [sortType, boardScope, isGuidePreview]);
 
   useEffect(() => {
     fetchPinnedRef.current?.();
-  }, [boardScope, boardFeedMode, isGuidePreview, studentFeedLocked, coords]);
+  }, [boardScope, isGuidePreview, studentFeedLocked, coords]);
 
   const handlePullToRefresh = useCallback(() => {
     if (isGuidePreview) return;
@@ -598,8 +597,7 @@ export function BoardAllContent({ navigation, posts }) {
   }, []);
 
   const postsInjected = Boolean(posts && posts.length > 0);
-  const hideListBehindLoader =
-    !studentFeedLocked && loading && !postsInjected;
+  const hideListBehindLoader = !studentFeedLocked && loading && !postsInjected;
 
   const dataWithAds = useMemo(
     () =>
@@ -625,10 +623,7 @@ export function BoardAllContent({ navigation, posts }) {
   const flatListData = useMemo(() => {
     if (hideListBehindLoader) return skeletonListData;
     if (!showPinned) return dataWithAds;
-    return [
-      { ...pinnedPost, type: 'post', featured: true },
-      ...dataWithAds,
-    ];
+    return [{ ...pinnedPost, type: 'post', featured: true }, ...dataWithAds];
   }, [
     hideListBehindLoader,
     dataWithAds,
@@ -637,10 +632,7 @@ export function BoardAllContent({ navigation, posts }) {
     pinnedPost,
   ]);
 
-  const boardSections = useMemo(
-    () => [{ data: flatListData }],
-    [flatListData],
-  );
+  const boardSections = useMemo(() => [{ data: flatListData }], [flatListData]);
 
   const renderBoardSkeletonCard = () => (
     <View style={styles.postItem}>
@@ -733,9 +725,7 @@ export function BoardAllContent({ navigation, posts }) {
     } else {
       body = renderPostItem({ item });
     }
-    return (
-      <View style={{ paddingHorizontal: width * 0.04 }}>{body}</View>
-    );
+    return <View style={{ paddingHorizontal: width * 0.04 }}>{body}</View>;
   };
 
   const renderSectionHeader = useCallback(
@@ -746,7 +736,7 @@ export function BoardAllContent({ navigation, posts }) {
           onChange={setBoardScope}
           options={[
             { value: 'national', label: '전체' },
-            { value: 'school', label: '학생' },
+            { value: 'student', label: '학생' },
           ]}
           sortValue={sortType}
           onSortChange={setSortType}
@@ -835,7 +825,7 @@ export function BoardAllContent({ navigation, posts }) {
       <FloatingButton
         onPress={() => {
           if (
-            boardFeedMode === 'student' &&
+            studentBoardSelected &&
             studentVerificationStatus !== 'APPROVED'
           ) {
             setStudentCtaVisible(true);
@@ -843,8 +833,7 @@ export function BoardAllContent({ navigation, posts }) {
           }
           navigation.navigate('BoardWrite', {
             from: 'Main',
-            boardContext:
-              boardFeedMode === 'student' ? 'student' : 'national',
+            boardContext: boardScope,
           });
         }}
       />
@@ -982,10 +971,10 @@ export function BoardAllContent({ navigation, posts }) {
           setStudentCtaClosingForVerify(false);
           setStudentCtaVisible(false);
           if (
-            boardFeedMode === 'student' &&
+            studentBoardSelected &&
             studentVerificationStatus !== 'APPROVED'
           ) {
-            shell?.setBoardFeedMode?.('national');
+            setBoardScope('national');
           }
         }}
         onPressVerify={() => {
@@ -993,10 +982,10 @@ export function BoardAllContent({ navigation, posts }) {
           setStudentCtaClosingForVerify(true);
           setStudentCtaVisible(false);
           if (
-            boardFeedMode === 'student' &&
+            studentBoardSelected &&
             studentVerificationStatus !== 'APPROVED'
           ) {
-            shell?.setBoardFeedMode?.('national');
+            setBoardScope('national');
           }
         }}
         onDismissed={() => {

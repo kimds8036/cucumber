@@ -983,7 +983,7 @@ export const createDetailStyles = (width, normalize) => {
       flexDirection: 'row',
       alignItems: 'center',
       gap: normalize(4),
-      paddingVertical: normalize(6)
+      paddingVertical: normalize(6),
     },
     commentListHeaderText: {
       fontSize: normalize(fontSizes.xl),
