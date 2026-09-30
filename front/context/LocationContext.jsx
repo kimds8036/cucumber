@@ -11,10 +11,14 @@ import {
   AppState,
   Linking,
   Platform,
+  Pressable,
+  StyleSheet,
   Text,
-  TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useAuth } from './AuthContext';
 import { colors, fonts } from '../styles/colors';
@@ -247,91 +251,158 @@ export function useLocationContext() {
  */
 export function LocationGate({ children }) {
   const { permissionGranted, retryPermission } = useLocationContext();
+  const { width } = useWindowDimensions();
+  const n = (size) => Math.round((width / 375) * size);
 
   if (permissionGranted !== false) {
     return children;
   }
 
   return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-          paddingHorizontal: 28,
-          backgroundColor: colors.white,
-        }}
-      >
-        <Text
-          style={{
-            fontFamily: fonts.bold,
-            fontSize: 18,
-            color: colors.text,
-            textAlign: 'center',
-            marginBottom: 12,
-          }}
-        >
-          위치 권한이 필요해요
-        </Text>
-        <Text
-          style={{
-            fontFamily: fonts.regular,
-            fontSize: 15,
-            color: colors.textLight4,
-            textAlign: 'center',
-            lineHeight: 22,
-            marginBottom: 28,
-          }}
-        >
-          게시판 거리·근처 글 보기를 위해 위치 접근을 허용해 주세요. 설정에서
-          권한을 켠 뒤 앱으로 돌아오면 계속할 수 있어요.
-        </Text>
-        <TouchableOpacity
-          onPress={() => retryPermission()}
-          style={{
-            borderWidth: 1,
-            borderColor: colors.textLight1,
-            paddingVertical: 12,
-            paddingHorizontal: 20,
-            borderRadius: 12,
-            marginBottom: 10,
-          }}
-        >
-          <Text
-            style={{
-              fontFamily: fonts.bold,
-              color: colors.text,
-              fontSize: 15,
-            }}
+    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+      <View style={[styles.inner, { paddingHorizontal: n(24) }]}>
+        <View style={styles.hero}>
+          <View
+            style={[
+              styles.iconCircle,
+              {
+                width: n(88),
+                height: n(88),
+                borderRadius: n(44),
+                marginBottom: n(24),
+              },
+            ]}
           >
-            권한 다시 요청
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => Linking.openSettings()}
-          style={{
-            backgroundColor: colors.primary,
-            paddingVertical: 14,
-            paddingHorizontal: 24,
-            borderRadius: 12,
-            marginBottom: 12,
-          }}
-        >
-          <Text style={{ fontFamily: fonts.bold, color: colors.white, fontSize: 16 }}>
-            설정 열기
-          </Text>
-        </TouchableOpacity>
-        {Platform.OS === 'android' ? (
+            <Feather name="map-pin" size={n(30)} color={colors.primaryDark} />
+          </View>
           <Text
-            style={{
-              fontFamily: fonts.regular,
-              fontSize: 12,
-              color: colors.textLight4,
-            }}
+            style={[
+              styles.title,
+              { fontSize: n(22), lineHeight: n(30), marginBottom: n(10) },
+            ]}
           >
-            일부 기기에서는 위치 권한을 “앱 사용 중에만”으로 설정해 주세요.
+            위치 권한이 필요해요
           </Text>
-        ) : null}
+          <Text
+            style={[
+              styles.body,
+              { fontSize: n(14), lineHeight: n(22) },
+            ]}
+          >
+            근처 글과 거리를 보여 주려면{'\n'}위치 접근을 허용해 주세요.
+          </Text>
+        </View>
+
+        <View style={[styles.actions, { paddingBottom: n(8), gap: n(10) }]}>
+          <Pressable
+            onPress={() => Linking.openSettings()}
+            style={({ pressed }) => [
+              styles.button,
+              styles.primaryButton,
+              {
+                height: n(52),
+                borderRadius: n(16),
+              },
+              pressed && styles.primaryPressed,
+            ]}
+          >
+            <Text style={[styles.primaryLabel, { fontSize: n(15) }]}>
+              설정에서 허용하기
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => retryPermission()}
+            style={({ pressed }) => [
+              styles.button,
+              styles.secondaryButton,
+              {
+                height: n(52),
+                borderRadius: n(16),
+              },
+              pressed && styles.secondaryPressed,
+            ]}
+          >
+            <Text style={[styles.secondaryLabel, { fontSize: n(15) }]}>
+              권한 다시 요청
+            </Text>
+          </Pressable>
+          <Text
+            style={[
+              styles.hint,
+              { fontSize: n(12), lineHeight: n(18), marginTop: n(6) },
+            ]}
+          >
+            {Platform.OS === 'android'
+              ? '설정에서 위치를 “앱 사용 중에만”으로 켜 주세요.'
+              : '허용한 뒤 앱으로 돌아오면 이어서 볼 수 있어요.'}
+          </Text>
+        </View>
       </View>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: colors.white,
+  },
+  inner: {
+    flex: 1,
+  },
+  hero: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconCircle: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primaryLight3,
+  },
+  title: {
+    fontFamily: fonts.bold,
+    color: colors.text,
+    textAlign: 'center',
+  },
+  body: {
+    fontFamily: fonts.regular,
+    color: colors.textLight6,
+    textAlign: 'center',
+  },
+  actions: {
+    width: '100%',
+  },
+  button: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryButton: {
+    backgroundColor: colors.primaryDark,
+  },
+  primaryPressed: {
+    opacity: 0.88,
+  },
+  secondaryButton: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.textLight1,
+  },
+  secondaryPressed: {
+    backgroundColor: colors.textLight0,
+  },
+  primaryLabel: {
+    fontFamily: fonts.bold,
+    color: colors.white,
+  },
+  secondaryLabel: {
+    fontFamily: fonts.bold,
+    color: colors.textLight8,
+  },
+  hint: {
+    fontFamily: fonts.regular,
+    color: colors.textLight4,
+    textAlign: 'center',
+  },
+});

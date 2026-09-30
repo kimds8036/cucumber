@@ -829,7 +829,7 @@ router.post('/personal/:mailId/reply', authenticate, requireStudentVerified, asy
     // 원본 발신자(=이번 답장 수신자)에게 알림 생성 (비동기 큐 + 소켓 emit)
     if (!isShadowBlocked) {
       const [senderRows] = await pool.execute(
-        'SELECT name FROM users WHERE id = ?',
+        'SELECT name_enc FROM users WHERE id = ?',
         [userId],
       );
       const replySenderName =
