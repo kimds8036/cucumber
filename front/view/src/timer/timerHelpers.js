@@ -10,6 +10,11 @@ import {
 export const DEFAULT_SUBJECTS = [];
 export const DEFAULT_TASKS = [];
 
+/** 한 줄을 넘기면 카드가 늘어나므로 입력 길이를 막는다 */
+export const TIMER_SUBJECT_NAME_MAX = 15;
+export const TIMER_TASK_CONTENT_MAX = 15;
+export const TIMER_WEEKLY_ITEM_MAX = 15;
+
 /** 레이아웃 위치 확인용 — 확인 끝나면 false 로 변경 */
 export const DEBUG_TIMER_LAYOUT_BORDERS = false;
 export const tdb = (color) =>

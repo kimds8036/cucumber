@@ -53,6 +53,7 @@ import {
   subscribeTimerRuntime,
 } from '../../utils/timerRuntimeStore';
 import { formatHMS } from './timer/timerHelpers';
+import { getTimerSettings, loadTimerSettings } from './timer/timerSettingsStorage';
 import { api, getApiUserFacingMessage } from '../../utils/api';
 import { getTimerDayKey, loadDayFromDb } from '../../utils/timerStorage';
 import { preloadStudyRoomAssets } from '../../utils/preloadStudyRoomAssets';
@@ -671,11 +672,16 @@ export default function TimerAniLab({ navigation }) {
         if (!alive) return;
         const uid = data.id ?? data.userId;
         const username = data.username || data.name || '나';
+        const settings = await loadTimerSettings();
+        const gender =
+          settings.gender === 'boy' || settings.gender === 'girl'
+            ? settings.gender
+            : randomGender();
         setMe({
           key: uid != null ? `u:${uid}` : 'me',
           userId: uid,
           username,
-          gender: randomGender(),
+          gender,
         });
       } catch {
         // keep defaults
@@ -1161,7 +1167,12 @@ export default function TimerAniLab({ navigation }) {
     }
     if (!selfEnterStartedRef.current) {
       selfEnterStartedRef.current = true;
-      setMe((prev) => ({ ...prev, gender: randomGender() }));
+      const settings = getTimerSettings();
+      const gender =
+        settings.gender === 'boy' || settings.gender === 'girl'
+          ? settings.gender
+          : randomGender();
+      setMe((prev) => ({ ...prev, gender }));
       if (selfUid && initialStudyingSeedRef.current) {
         initialStudyingSeedRef.current.add(selfUid);
       }

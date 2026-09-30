@@ -512,6 +512,67 @@ export const createTimerStyles = (width, normalize) => {
       justifyContent: 'center',
       alignItems: 'center',
     },
+    weekCalBody: {
+      paddingHorizontal: normalize(12),
+      paddingTop: normalize(8),
+    },
+    weekCalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: normalize(8),
+      paddingBottom: normalize(10),
+    },
+    weekCalGrid: {
+      height: (normalize(40) + normalize(4)) * 6,
+    },
+    weekCalMonth: {
+      fontFamily: fonts.bold,
+      fontSize: normalize(fontSizes.xl),
+      color: colors.text,
+    },
+    weekCalRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderRadius: normalize(10),
+      marginVertical: normalize(2),
+    },
+    weekCalRowSelected: {
+      backgroundColor: colors.primaryLight4,
+    },
+    weekCalDay: {
+      flex: 1,
+      height: normalize(40),
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    weekCalDayText: {
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.lg),
+      color: colors.text,
+    },
+    weekCalDayTextOutside: {
+      color: colors.textLight3,
+    },
+    weekCalDayTextToday: {
+      fontFamily: fonts.bold,
+      color: colors.primaryDark,
+    },
+    weekCalDayTextSelected: {
+      fontFamily: fonts.bold,
+    },
+    weekCalSunday: {
+      color: '#E23B3B',
+    },
+    weekCalSaturday: {
+      color: '#3A7BD5',
+    },
+    weekCalSundayMuted: {
+      color: '#F0A8A8',
+    },
+    weekCalSaturdayMuted: {
+      color: '#A9C6F2',
+    },
     ymWheelWrap: {
       flexDirection: 'row',
       marginVertical: normalize(8),

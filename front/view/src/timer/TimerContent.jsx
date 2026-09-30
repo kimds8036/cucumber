@@ -14,6 +14,7 @@ import {
   useWindowDimensions,
   Alert,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { createTimerStyles, getNormalize } from '../../../styles/timer';
 import { colors } from '../../../styles/colors';
 import MainHeader from '../../frame/mainHeader';
@@ -379,7 +380,10 @@ export function TimerContent() {
 
   const dayRecordData = useTimerDayRecord(dayRecord?.dayKey ?? null);
   const weekly = useTimerWeekly();
-  const streakDays = useStudyStreak();
+  const grassRefreshSec = timer.isRunning
+    ? null
+    : Math.floor((timer.totalElapsedMs || 0) / 1000);
+  const streakDays = useStudyStreak(grassRefreshSec);
   const dayRecordCaptureRef = useRef(null);
 
   const captureToGallery = async (captureRef) => {
@@ -521,6 +525,7 @@ export function TimerContent() {
     onOpenDayRecord: openDayRecord,
     weekly,
     streakDays,
+    grassRefreshSec,
     onOpenSettings: () => navigation.navigate('TimerSettings'),
   };
 
@@ -534,14 +539,14 @@ export function TimerContent() {
           isActive={isFocused}
         >
           <>
-            <ScrollView
+            <KeyboardAwareScrollView
               style={[styles.scroll, tdb('#FF3B30')]}
               contentContainerStyle={{ paddingBottom: normalize(24) + tabBarInset }}
               scrollIndicatorInsets={{ bottom: tabBarInset }}
               stickyHeaderIndices={showDayContentSkeleton ? undefined : [3]}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
-              automaticallyAdjustKeyboardInsets
+              bottomOffset={normalize(20)}
             >
               {scrollingHeader}
               <View
@@ -597,7 +602,7 @@ export function TimerContent() {
                   />
                 </View>
               )}
-            </ScrollView>
+            </KeyboardAwareScrollView>
             {timer.initialLoadDone ? (
               <TimerLivePlannerCapture
                 capturePlannerRef={timer.capturePlannerRef}

@@ -1,8 +1,8 @@
 /**
  * 타이머 설정 — 뽀모도로 · 스터디룸 캐릭터 성별
- * 화면만 구성한 상태 (저장·뽀모도로 엔진·서버 연결 없음)
+ * 값은 기기 캐시에 남겨 앱을 다시 열어도 유지한다.
  */
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -18,12 +18,18 @@ import SubHeader from '../../frame/subHeader';
 import { colors } from '../../../styles/colors';
 import { createTimerSettingsStyles, getNormalize } from '../../../styles/timer';
 import { WALK_BY_GENDER } from '../../../assets/timer_ani/frames';
+import { shiftTimerSetting, useTimerSettings } from './timerSettingsStorage';
 
 const POMODORO_ROWS = [
-  { key: 'focus', label: '집중 시간', value: '25분' },
-  { key: 'shortBreak', label: '짧은 휴식', value: '5분' },
-  { key: 'longBreak', label: '긴 휴식', value: '15분' },
-  { key: 'longBreakEvery', label: '긴 휴식 주기', desc: '집중을 이 횟수만큼 마치면 긴 휴식', value: '4회' },
+  { key: 'focusMin', label: '집중 시간', unit: '분' },
+  { key: 'shortBreakMin', label: '짧은 휴식', unit: '분' },
+  { key: 'longBreakMin', label: '긴 휴식', unit: '분' },
+  {
+    key: 'longBreakEvery',
+    label: '긴 휴식 주기',
+    desc: '집중을 이 횟수만큼 마치면 긴 휴식',
+    unit: '회',
+  },
 ];
 
 const GENDER_OPTIONS = [
@@ -39,9 +45,8 @@ export default function TimerSettings({ navigation }) {
     () => createTimerSettingsStyles(width, normalize),
     [width, normalize],
   );
-  const [pomodoroOn, setPomodoroOn] = useState(false);
-  const [autoStart, setAutoStart] = useState(false);
-  const [gender, setGender] = useState('random');
+  const { settings, ready, update } = useTimerSettings();
+  const { pomodoroOn, autoStart, gender } = settings;
 
   const switchColors = {
     trackColor: { false: colors.textLight1, true: colors.primary },
@@ -63,7 +68,12 @@ export default function TimerSettings({ navigation }) {
               <Text style={styles.rowLabel}>뽀모도로 사용</Text>
               <Text style={styles.rowDesc}>켜면 시간 카드에 뽀모도로 타이머가 표시돼요</Text>
             </View>
-            <Switch value={pomodoroOn} onValueChange={setPomodoroOn} {...switchColors} />
+            <Switch
+              value={pomodoroOn}
+              onValueChange={(value) => update({ pomodoroOn: value })}
+              disabled={!ready}
+              {...switchColors}
+            />
           </View>
           {POMODORO_ROWS.map((row) => (
             <View key={row.key} style={[styles.row, styles.rowBorder]}>
@@ -76,8 +86,9 @@ export default function TimerSettings({ navigation }) {
               <View style={styles.stepper}>
                 <TouchableOpacity
                   style={styles.stepperBtn}
-                  disabled={!pomodoroOn}
+                  disabled={!pomodoroOn || !ready}
                   accessibilityLabel={`${row.label} 줄이기`}
+                  onPress={() => update({ [row.key]: shiftTimerSetting(row.key, -1) })}
                 >
                   <Ionicons
                     name="remove"
@@ -86,12 +97,13 @@ export default function TimerSettings({ navigation }) {
                   />
                 </TouchableOpacity>
                 <Text style={[styles.stepperValue, !pomodoroOn && styles.stepperValueDisabled]}>
-                  {row.value}
+                  {`${settings[row.key]}${row.unit}`}
                 </Text>
                 <TouchableOpacity
                   style={styles.stepperBtn}
-                  disabled={!pomodoroOn}
+                  disabled={!pomodoroOn || !ready}
                   accessibilityLabel={`${row.label} 늘리기`}
+                  onPress={() => update({ [row.key]: shiftTimerSetting(row.key, 1) })}
                 >
                   <Ionicons
                     name="add"
@@ -111,8 +123,8 @@ export default function TimerSettings({ navigation }) {
             </View>
             <Switch
               value={autoStart}
-              onValueChange={setAutoStart}
-              disabled={!pomodoroOn}
+              onValueChange={(value) => update({ autoStart: value })}
+              disabled={!pomodoroOn || !ready}
               {...switchColors}
             />
           </View>
@@ -120,7 +132,7 @@ export default function TimerSettings({ navigation }) {
 
         <Text style={styles.sectionTitle}>스터디룸 캐릭터</Text>
         <Text style={styles.footNote}>
-          선택한 캐릭터는 다른 친구들의 스터디룸 화면에도 똑같이 보여요
+          선택한 캐릭터는 이 기기에 저장되고, 내 스터디룸에 보여요
         </Text>
         <View style={styles.characterCard}>
           <View style={styles.genderRow}>
@@ -130,8 +142,9 @@ export default function TimerSettings({ navigation }) {
                 <TouchableOpacity
                   key={opt.key}
                   style={[styles.genderOption, active && styles.genderOptionActive]}
-                  onPress={() => setGender(opt.key)}
+                  onPress={() => update({ gender: opt.key })}
                   activeOpacity={0.8}
+                  disabled={!ready}
                   accessibilityRole="radio"
                   accessibilityState={{ selected: active }}
                 >

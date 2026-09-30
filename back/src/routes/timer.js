@@ -1,5 +1,5 @@
 import express from 'express';
-import { body, param } from 'express-validator';
+import { body, param, query } from 'express-validator';
 import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
@@ -14,6 +14,7 @@ import {
   timerDayAnchorUtcMs,
   utcMsToKstMysqlDatetime3,
 } from '../utils/timerSessionTimes.js';
+import { getTimerDayKey } from '../utils/timerDayKey.js';
 import { upsertStudyDayTotalForUserKey } from '../utils/studyDayTotal.js';
 import { evaluateAndUnlockBadges } from '../services/badge.service.js';
 
@@ -868,6 +869,60 @@ router.patch('/tasks/:taskId', authenticate, validate(updateTaskStatusValidators
     });
   }
 });
+
+/** 공부 잔디: 한 달 공부 초 + 가입일 */
+router.get(
+  '/study-grass',
+  authenticate,
+  validate([
+    query('year').isInt({ min: 2000, max: 2100 }),
+    query('month').isInt({ min: 1, max: 12 }),
+  ]),
+  async (req, res) => {
+    try {
+      const userId = req.user.userId;
+      const year = Number(req.query.year);
+      const month = Number(req.query.month);
+      const start = `${year}-${String(month).padStart(2, '0')}-01`;
+
+      const [rows] = await pool.execute(
+        `SELECT DATE_FORMAT(day_key, '%Y-%m-%d') AS day_key, total_elapsed_ms
+         FROM study_days
+         WHERE user_id = ? AND day_key >= ? AND day_key < DATE_ADD(?, INTERVAL 1 MONTH)`,
+        [userId, start, start],
+      );
+      const secondsByDay = {};
+      for (const row of rows) {
+        const key = String(row.day_key || '').slice(0, 10);
+        const seconds = Math.floor(Number(row.total_elapsed_ms) / 1000);
+        if (key && seconds > 0) secondsByDay[key] = seconds;
+      }
+
+      const [userRows] = await pool.execute(
+        'SELECT created_at FROM users WHERE id = ? LIMIT 1',
+        [userId],
+      );
+      const createdAt = userRows[0]?.created_at
+        ? new Date(userRows[0].created_at)
+        : null;
+      const memberSince =
+        createdAt && !Number.isNaN(createdAt.getTime())
+          ? getTimerDayKey(createdAt)
+          : null;
+
+      return res.json({
+        success: true,
+        data: { secondsByDay, memberSince },
+      });
+    } catch (error) {
+      console.error('공부 잔디 조회 오류:', error);
+      return res.status(500).json({
+        success: false,
+        message: '공부 잔디 조회 중 오류가 발생했습니다.',
+      });
+    }
+  },
+);
 
 /** 스터디룸: 내 방 멤버만 (서버 배정, 최대 16) */
 router.get('/study-room/studying', authenticate, async (req, res) => {

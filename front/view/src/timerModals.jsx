@@ -27,6 +27,10 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../../styles/colors';
 import { getNormalize, createTimerModalsStyles } from '../../styles/timer';
 import { getTimerDayKey } from '../../utils/timerStorage';
+import {
+  TIMER_SUBJECT_NAME_MAX,
+  TIMER_TASK_CONTENT_MAX,
+} from './timer/timerHelpers';
 import Skeleton from '../../components/common/Skeleton';
 import { useKeyboardHandler } from 'react-native-keyboard-controller';
 
@@ -199,7 +203,8 @@ export const AddSubjectModal = ({ visible, onClose, onAdd }) => {
                 placeholder="과목명"
                 placeholderTextColor={colors.textLight4}
                 value={name}
-                onChangeText={setName}
+                onChangeText={(text) => setName(String(text || '').slice(0, TIMER_SUBJECT_NAME_MAX))}
+                maxLength={TIMER_SUBJECT_NAME_MAX}
                 autoFocus
               />
               {subjectPresets.length > 0 ? (
@@ -413,7 +418,10 @@ export const AddTaskModal = ({
                 placeholder="할 일 내용"
                 placeholderTextColor={colors.textLight4}
                 value={content}
-                onChangeText={setContent}
+                onChangeText={(text) =>
+                  setContent(String(text || '').slice(0, TIMER_TASK_CONTENT_MAX))
+                }
+                maxLength={TIMER_TASK_CONTENT_MAX}
                 multiline
                 autoFocus
               />

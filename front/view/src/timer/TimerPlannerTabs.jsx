@@ -62,6 +62,7 @@ export default function TimerPlannerTabs({ value, ...panelProps }) {
           styles={panelProps.styles}
           normalize={panelProps.normalize}
           onOpenDayRecord={panelProps.onOpenDayRecord}
+          refreshSec={panelProps.grassRefreshSec}
         />
       );
     case 'weekly':

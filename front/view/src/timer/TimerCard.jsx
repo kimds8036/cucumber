@@ -1,7 +1,7 @@
 /**
  * 타이머 시간 카드 — 왼쪽 시간 영역(7) · 세로 구분선 · 오른쪽 메뉴 영역(3)
  */
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
@@ -10,12 +10,27 @@ import { colors } from '../../../styles/colors';
 import { GuideFocusTarget } from '../../../components/guide/GuideFocusTarget';
 import { GUIDE_FOCUS_TARGETS as T } from '../../../src/screens/UserGuide/guideFocusTargets';
 import { tdb, formatHMS } from './timerHelpers';
+import { usePomodoro } from '../../../hooks/usePomodoro';
+import {
+  timerSettingsToPomodoroConfig,
+  useTimerSettings,
+} from './timerSettingsStorage';
 
 /** 날짜 이동(이전·달력·다음) 버튼. 숨김 상태이며 코드는 남겨 둔다 */
 const SHOW_DATE_NAV = false;
 
-/** 뽀모도로 카드 화면 미리보기 — 설정 연결 전 임시 스위치 */
-const PREVIEW_POMODORO_CARD = false;
+const POMO_PHASE_LABEL = {
+  focus: '집중',
+  short_break: '짧은 휴식',
+  long_break: '긴 휴식',
+};
+
+function formatPomodoro(sec) {
+  const s = Math.max(0, Math.floor(Number(sec) || 0));
+  const mm = String(Math.floor(s / 60)).padStart(2, '0');
+  const ss = String(s % 60).padStart(2, '0');
+  return `${mm}:${ss}`;
+}
 
 export default function TimerCard({
   styles,
@@ -34,8 +49,30 @@ export default function TimerCard({
   weeklyRate = 0,
   streakDays = 0,
   onOpenSettings,
-  pomodoroEnabled = PREVIEW_POMODORO_CARD,
 }) {
+  const { settings, ready } = useTimerSettings();
+  const pomo = usePomodoro();
+  const showPomodoro = settings.pomodoroOn && isViewingToday;
+
+  useEffect(() => {
+    if (!ready) return;
+    pomo.setConfig(timerSettingsToPomodoroConfig(settings));
+  }, [
+    ready,
+    pomo.setConfig,
+    settings.focusMin,
+    settings.shortBreakMin,
+    settings.longBreakMin,
+    settings.longBreakEvery,
+    settings.autoStart,
+  ]);
+
+  const pomoRunning = pomo.status === 'running';
+  const pomoPaused = pomo.status === 'paused';
+  const pomoLabel = POMO_PHASE_LABEL[pomo.phase] || POMO_PHASE_LABEL.focus;
+  const pomoDots = Math.max(1, pomo.longBreakEvery || settings.longBreakEvery || 4);
+  const pomoFilled = Math.min(pomoDots, pomo.focusCountInCycle || 0);
+
   return (
     <GuideFocusTarget
       name={T.TIMER_TIMER_CARD}
@@ -110,36 +147,64 @@ export default function TimerCard({
             </View>
           </View>
         </View>
-        {pomodoroEnabled ? (
+        {showPomodoro ? (
           <View style={[styles.timerBlock, tdb('#5E5CE6')]}>
             <View style={styles.pomoPhaseRow}>
               <View style={styles.pomoPhaseChip}>
-                <Text style={styles.pomoPhaseChipText}>집중</Text>
+                <Text style={styles.pomoPhaseChipText}>{pomoLabel}</Text>
               </View>
               <View style={styles.pomoCycleDots}>
-                {[0, 1, 2, 3].map((i) => (
+                {Array.from({ length: pomoDots }, (_, i) => (
                   <View
                     key={`pomo-dot-${i}`}
-                    style={[styles.pomoCycleDot, i === 0 && styles.pomoCycleDotActive]}
+                    style={[
+                      styles.pomoCycleDot,
+                      i < pomoFilled && styles.pomoCycleDotActive,
+                    ]}
                   />
                 ))}
               </View>
             </View>
             <Text style={styles.timerTime} numberOfLines={1} adjustsFontSizeToFit>
-              25:00
+              {formatPomodoro(pomo.remainingSec)}
             </Text>
             <View style={styles.pomoProgressTrack}>
-              <View style={[styles.pomoProgressFill, { width: '0%' }]} />
+              <View
+                style={[
+                  styles.pomoProgressFill,
+                  { width: `${Math.round((pomo.progress || 0) * 100)}%` },
+                ]}
+              />
             </View>
             <View style={styles.pomoBtnRow}>
-              <TouchableOpacity style={styles.timerBtn} activeOpacity={0.8}>
-                <Ionicons name="play" size={normalize(20)} color={colors.white} />
-                <Text style={styles.timerBtnText}>시작</Text>
+              <TouchableOpacity
+                style={[styles.timerBtn, pomoRunning && styles.timerBtnPause]}
+                activeOpacity={0.8}
+                onPress={() => {
+                  if (pomoRunning) pomo.pause();
+                  else if (pomoPaused) pomo.resume();
+                  else pomo.start();
+                }}
+              >
+                <Ionicons
+                  name={pomoRunning ? 'pause' : 'play'}
+                  size={normalize(20)}
+                  color={pomoRunning ? colors.text : colors.white}
+                />
+                <Text
+                  style={[
+                    styles.timerBtnText,
+                    pomoRunning && styles.timerBtnTextPause,
+                  ]}
+                >
+                  {pomoRunning ? '일시정지' : pomoPaused ? '계속' : '시작'}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.pomoSubBtn}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 accessibilityLabel="건너뛰기"
+                onPress={() => pomo.skip()}
               >
                 <Ionicons name="play-skip-forward" size={normalize(16)} color={colors.textLight4} />
               </TouchableOpacity>
@@ -147,6 +212,7 @@ export default function TimerCard({
                 style={styles.pomoSubBtn}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 accessibilityLabel="초기화"
+                onPress={() => pomo.reset(timerSettingsToPomodoroConfig(settings))}
               >
                 <Ionicons name="refresh" size={normalize(16)} color={colors.textLight4} />
               </TouchableOpacity>

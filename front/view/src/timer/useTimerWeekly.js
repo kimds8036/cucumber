@@ -1,13 +1,17 @@
 /**
  * 타이머 위클리 — 주(일~토) 단위 요일별 체크리스트 + 이번 주 달성률
- * 백엔드 연결 전이라 주 단위로 AsyncStorage에 저장한다.
- * 보고 있는 주를 옮겨도 시간 카드의 달성률은 항상 이번 주 기준이다.
+ * 체크 항목은 기기 캐시에 남긴다. 시간 카드의 달성률은 항상 이번 주 기준이다.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getTimerDayKey } from '../../../utils/timerStorage';
+import { TIMER_WEEKLY_ITEM_MAX } from './timerHelpers';
 
 export const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
+
+/** 위클리는 2026년 7월부터. 그 달 1일이 속한 주(일요일)가 가장 이른 주다. */
+export const WEEKLY_MIN_MONTH = { year: 2026, month: 6 };
+export const WEEKLY_MIN_WEEK_KEY = '2026-06-28';
 
 const STORAGE_PREFIX = 'timerWeekly:';
 
@@ -104,7 +108,7 @@ export function useTimerWeekly() {
 
   const addItem = useCallback(
     (dayKey, content) => {
-      const text = String(content || '').trim();
+      const text = String(content || '').trim().slice(0, TIMER_WEEKLY_ITEM_MAX);
       if (!text) return;
       updateDay(dayKey, (items) => [
         ...items,
@@ -137,14 +141,17 @@ export function useTimerWeekly() {
   const shiftWeek = useCallback((delta) => {
     setViewWeekKey((prev) => {
       const start = dateFromKey(prev);
-      return toDayKey(
+      const next = toDayKey(
         new Date(start.getFullYear(), start.getMonth(), start.getDate() + delta * 7),
       );
+      if (next < WEEKLY_MIN_WEEK_KEY) return prev;
+      return next;
     });
   }, []);
 
   const selectDate = useCallback((date) => {
-    setViewWeekKey(getWeekStartKey(toDayKey(date)));
+    const key = getWeekStartKey(toDayKey(date));
+    setViewWeekKey(key < WEEKLY_MIN_WEEK_KEY ? WEEKLY_MIN_WEEK_KEY : key);
   }, []);
 
   const days = useMemo(() => buildWeekDays(viewWeekKey), [viewWeekKey]);
