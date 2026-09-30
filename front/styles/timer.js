@@ -499,6 +499,14 @@ export const createTimerStyles = (width, normalize) => {
       flex: 1,
       alignSelf: 'stretch',
     },
+    timetableContainer: {
+      borderWidth: 1,
+      borderColor: colors.textLight1,
+      borderRadius: normalize(12),
+      overflow: 'hidden',
+      backgroundColor: colors.white,
+      paddingVertical: normalize(4),
+    },
     timetableScroll: {
       // 높이 제한을 없애 전체 페이지 스크롤에서 00~05까지 노출
     },
@@ -724,14 +732,16 @@ export const createTimerStyles = (width, normalize) => {
       borderTopWidth: 0.5,
       borderColor: colors.textLight1,
     },
+    timetableRowFirst: {
+      borderTopWidth: 0,
+    },
     timetableHourCell: {
-      width: normalize(20),
-      paddingVertical: normalize(4),
+      padding: normalize(6),
       alignItems: 'center',
       justifyContent: 'center',
     },
     timetableHourText: {
-      fontSize: normalize(fontSizes.md),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textLight4,
     },

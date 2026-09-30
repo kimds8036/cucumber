@@ -43,14 +43,18 @@ export default function TimerTimetable({
       name={T.TIMER_TIMETABLE_COLUMN}
       style={[styles.timetableColumn, tdb('#4682B4')]}
     >
-      <View style={[styles.timetableScroll, tdb('#CD853F')]}>
+      <View style={[styles.timetableContainer, tdb('#CD853F')]}>
         {HOURS.map((rowIndex) => {
           const hour = (6 + rowIndex) % 24;
           const slotStartBaseSeconds = ((hour - 6 + 24) % 24) * 3600;
           return (
             <View
               key={rowIndex}
-              style={[styles.timetableRow, tdb('#708090')]}
+              style={[
+                styles.timetableRow,
+                rowIndex === 0 && styles.timetableRowFirst,
+                tdb('#708090'),
+              ]}
             >
               <View style={[styles.timetableHourCell, tdb('#B8860B')]}>
                 <Text style={styles.timetableHourText}>
