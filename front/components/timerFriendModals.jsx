@@ -502,7 +502,7 @@ export const FriendStoryBar = memo(function FriendStoryBar({
             debugFriendStoryBorder('#34C759'),
           ]}
         >
-          <Ionicons name="add" size={normalize(28)} color={colors.primary} />
+          <Ionicons name="add" size={normalize(25)} color={colors.primary} />
         </View>
         <Text
           style={[
@@ -530,9 +530,9 @@ export const FriendStoryBar = memo(function FriendStoryBar({
                 style={styles.friendStoryCircleWrap}
               >
                 <Skeleton
-                  width={normalize(56)}
-                  height={normalize(56)}
-                  borderRadius={normalize(28)}
+                  width={normalize(50)}
+                  height={normalize(50)}
+                  borderRadius={normalize(25)}
                 />
                 <Skeleton
                   width={normalize(40)}
@@ -568,7 +568,7 @@ export const FriendStoryBar = memo(function FriendStoryBar({
               >
                 <UserAvatar
                   uri={pickAvatarUrl(friend)}
-                  size={normalize(56)}
+                  size={normalize(50)}
                   colorId={
                     friend.colorId ??
                       friend.profileColorId ??
@@ -586,7 +586,7 @@ export const FriendStoryBar = memo(function FriendStoryBar({
                   >
                     <Ionicons
                       name="person-add"
-                      size={normalize(9)}
+                      size={normalize(8)}
                       color={colors.white}
                     />
                   </View>
