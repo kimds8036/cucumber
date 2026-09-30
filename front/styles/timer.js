@@ -19,8 +19,40 @@ export const getNormalize = (width) => {
   return (size) => Math.round(scale * size);
 };
 
+/** 타이머 탭 레이아웃 확인용 윤곽선. 확인이 끝나면 false로 바꾼다 */
+const DEBUG_TIMER_OUTLINE = __DEV__ && true;
+const DEBUG_OUTLINE_COLORS = [
+  '#FF3B30',
+  '#FF9500',
+  '#FFCC00',
+  '#34C759',
+  '#30B0C7',
+  '#0A84FF',
+  '#5E5CE6',
+  '#BF5AF2',
+  '#FF2D55',
+];
+
+const withDebugOutline = (styleMap) => {
+  if (!DEBUG_TIMER_OUTLINE) return styleMap;
+  const result = {};
+  Object.keys(styleMap).forEach((key, i) => {
+    const value = styleMap[key];
+    result[key] =
+      value && typeof value === 'object'
+        ? {
+            ...value,
+            borderWidth: 1,
+            borderColor:
+              DEBUG_OUTLINE_COLORS[i % DEBUG_OUTLINE_COLORS.length],
+          }
+        : value;
+  });
+  return result;
+};
+
 export const createTimerStyles = (width, normalize) => {
-  return StyleSheet.create({
+  return StyleSheet.create(withDebugOutline({
     container: {
       flex: 1,
       backgroundColor: colors.white,
@@ -52,44 +84,20 @@ export const createTimerStyles = (width, normalize) => {
       minWidth: normalize(100),
       textAlign: 'center',
     },
-    saveBtn: {
+    /** 시간 영역 오른쪽 위 아이콘 버튼 (사진 저장·설정) */
+    timerCardIconRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: normalize(4),
-      paddingHorizontal: normalize(8),
-      paddingVertical: normalize(6),
+      gap: normalize(10),
+    },
+    timerCardIconBtn: {
+      padding: normalize(2),
     },
     dateBarRight: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: normalize(4),
     },
-    studyRoomEntryBtn: {
-      paddingHorizontal: normalize(10),
-      paddingVertical: normalize(6),
-      borderRadius: normalize(8),
-      backgroundColor: colors.primaryDark,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.primaryDark,
-    },
-    studyRoomEntryBtnDisabled: {
-      backgroundColor: colors.textLight5,
-      borderColor: colors.textLight1,
-    },
-    studyRoomEntryText: {
-      fontSize: normalize(fontSizes.md),
-      fontFamily: fonts.bold,
-      color: colors.white,
-    },
-    studyRoomEntryTextDisabled: {
-      color: colors.textLight4,
-    },
-    saveBtnText: {
-      fontSize: normalize(fontSizes.xl),
-      fontFamily: fonts.regular,
-      color: colors.primary,
-    },
-
     // 친구 스토리 스타일
     friendStoryRow: {
       flexDirection: 'row',
@@ -168,7 +176,65 @@ export const createTimerStyles = (width, normalize) => {
       paddingHorizontal: normalize(10),
       paddingVertical: normalize(16),
       marginBottom: normalize(10),
-      ...shadow.md,
+      borderWidth: 1,
+      borderColor: colors.textLight1,
+      flexDirection: 'row',
+      alignItems: 'stretch',
+    },
+    /** 카드 왼쪽 시간 영역 (왼쪽:오른쪽 = 7:3) */
+    timerMainCol: {
+      flex: 7,
+      minWidth: 0,
+    },
+    timerCardDivider: {
+      width: 1,
+      backgroundColor: colors.textLight1,
+      marginHorizontal: normalize(10),
+    },
+    /** 카드 오른쪽 메뉴 영역 */
+    timerMenuCol: {
+      flex: 3,
+      minWidth: 0,
+      justifyContent: 'space-around',
+    },
+    timerMenuItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(6),
+    },
+    timerMenuIconBox: {
+      width: normalize(24),
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    timerMenuTextCol: {
+      flex: 1,
+      minWidth: 0,
+    },
+    timerMenuLabel: {
+      fontSize: normalize(fontSizes.md),
+      fontFamily: fonts.regular,
+      color: colors.textLight4,
+    },
+    timerMenuValue: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.bold,
+      color: colors.text,
+    },
+    timerMenuValueDisabled: {
+      color: colors.textLight3,
+    },
+    timerMenuProgressTrack: {
+      height: normalize(4),
+      borderRadius: normalize(2),
+      backgroundColor: colors.textLight1,
+      marginTop: normalize(3),
+      overflow: 'hidden',
+    },
+    timerMenuProgressFill: {
+      height: '100%',
+      borderRadius: normalize(2),
+      backgroundColor: colors.subcolor,
     },
     // 타이머 블록 (시·분·초) — 카드 안 정렬
     timerBlock: {
@@ -852,7 +918,7 @@ export const createTimerStyles = (width, normalize) => {
     safeAreaFlex: {
       flex: 1,
     },
-  });
+  }));
 };
 
 /** timerFriendModals.jsx — PokeModal / AddFriendModal 전용 */

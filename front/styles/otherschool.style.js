@@ -17,7 +17,8 @@ export const createOtherSchoolStyles = (normalize) =>
       borderRadius: normalize(16),
       paddingVertical: normalize(8),
       paddingHorizontal: normalize(15),
-      ...shadow.md,
+      borderWidth: 1,
+      borderColor: colors.textLight1,
     },
     mailboxWideIconWrap: {
       width: normalize(48),

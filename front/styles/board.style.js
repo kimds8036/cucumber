@@ -750,8 +750,7 @@ export const createDetailStyles = (width, normalize) => {
     // 게시글 내용 영역
     contentSection: {
       paddingHorizontal: width * 0.04,
-      paddingTop: normalize(13),
-      paddingBottom: normalize(13),
+      paddingTop: normalize(10),
     },
     detailHeader: {
       flexDirection: 'row',
@@ -1091,7 +1090,7 @@ export const createDetailStyles = (width, normalize) => {
       flexDirection: 'row',
       alignItems: 'center',
       gap: normalize(4),
-      paddingVertical: normalize(6),
+      paddingBottom: normalize(6),
     },
     commentListHeaderText: {
       fontSize: normalize(fontSizes.xl),

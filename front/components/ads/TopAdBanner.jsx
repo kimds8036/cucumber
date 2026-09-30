@@ -54,7 +54,7 @@ function createStyles(normalize) {
       borderRadius: normalize(20),
       overflow: 'hidden',
       backgroundColor: colors.white,
-      marginBottom: normalize(10),
+      marginVertical: normalize(10),
       justifyContent: 'center',
     },
     image: {

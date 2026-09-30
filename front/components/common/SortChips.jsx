@@ -25,8 +25,7 @@ function createSortChipStyles(width, normalize) {
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingHorizontal: width * 0.04,
-      paddingVertical: normalize(10),
-      paddingTop: normalize(1),
+      paddingBottom: normalize(10),
     },
     chips: {
       flexDirection: 'row',

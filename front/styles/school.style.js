@@ -86,9 +86,6 @@ export const createOurSchoolStyles = (normalize) => {
       textAlign: 'center',
       lineHeight: normalize(fontSizes.lg + 4),
     },
-    mealCardBlock: {
-      marginBottom: normalize(12),
-    },
     mealSectionCard: {
       backgroundColor: colors.white,
       borderRadius: normalize(16),

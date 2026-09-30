@@ -360,7 +360,6 @@ export function TimerContent() {
     backgroundColor: colors.white,
     paddingHorizontal: timerGutter,
     paddingTop: normalize(8),
-    paddingBottom: normalize(16),
   };
 
   if (!timer.initialLoadDone) {
@@ -474,7 +473,6 @@ export function TimerContent() {
               <View
                 style={{
                   paddingHorizontal: timerGutter,
-                  marginBottom: normalize(16),
                 }}
               >
                 <TopAdBanner placement="timer" inset={false} />

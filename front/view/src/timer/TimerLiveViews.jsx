@@ -17,7 +17,6 @@ import {
   Image,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import Feather from '@expo/vector-icons/Feather';
 import ViewShot from 'react-native-view-shot';
 import { colors } from '../../../styles/colors';
 import { GuideFocusTarget } from '../../../components/guide/GuideFocusTarget';
@@ -36,6 +35,7 @@ import {
   TIMER_CAPTURE_WATERMARK,
   preloadTimerCaptureWatermark,
 } from './timerCaptureWatermark';
+import TimerCard from './TimerCard';
 
 const LiveElapsedMsContext = createContext(0);
 
@@ -205,97 +205,21 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
 
   if (segment === 'card') {
     return (
-      <GuideFocusTarget
-        name={T.TIMER_TIMER_CARD}
-        style={[styles.timerCard, tdb('#34C759')]}
-      >
-        <View style={[styles.dateBar, tdb('#30B0C7')]}>
-          <View style={[styles.dateBarLeft, tdb('#0A84FF')]}>
-            <TouchableOpacity
-              onPress={goPrevDay}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              style={styles.dateBarNavBtn}
-            >
-              <Ionicons
-                name="chevron-back"
-                size={22}
-                color={colors.text}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setShowCalendar(true)}
-              style={styles.dateBarDateTouch}
-            >
-              <Text style={styles.dateBarText}>
-                {selectedDayKey
-                  ? selectedDayKey.replace(/-/g, '.')
-                  : '--.--.--'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={goNextDay}
-              disabled={!canGoNextDay}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              style={styles.dateBarNavBtn}
-            >
-              <Ionicons
-                name="chevron-forward"
-                size={22}
-                color={canGoNextDay ? colors.text : colors.textLight2}
-              />
-            </TouchableOpacity>
-          </View>
-          <View style={styles.dateBarRight}>
-            <TouchableOpacity
-              style={[
-                styles.studyRoomEntryBtn,
-                !isRunning && styles.studyRoomEntryBtnDisabled,
-              ]}
-              onPress={onOpenStudyRoom}
-              disabled={!isRunning}
-              activeOpacity={0.85}
-              accessibilityLabel="스터디룸 입장"
-              accessibilityState={{ disabled: !isRunning }}
-            >
-              <Text
-                style={[
-                  styles.studyRoomEntryText,
-                  !isRunning && styles.studyRoomEntryTextDisabled,
-                ]}
-              >
-                스터디룸 입장
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.saveBtn} onPress={handleSaveAsImage}>
-              <Feather name="download" size={20} color={colors.text} />
-            </TouchableOpacity>
-          </View>
-        </View>
-        <View style={[styles.timerBlock, tdb('#5E5CE6')]}>
-          <Text style={styles.timerTime}>{formatHMS(displayTotalMs)}</Text>
-          {isViewingToday && (
-            <TouchableOpacity
-              style={[styles.timerBtn, isRunning && styles.timerBtnPause]}
-              onPress={toggleTimer}
-              activeOpacity={0.8}
-            >
-              <Ionicons
-                name={isRunning ? 'pause' : 'play'}
-                size={normalize(20)}
-                color={isRunning ? colors.text : colors.white}
-              />
-              <Text
-                style={[
-                  styles.timerBtnText,
-                  isRunning && styles.timerBtnTextPause,
-                ]}
-              >
-                {isRunning ? '일시정지' : '시작'}
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      </GuideFocusTarget>
+      <TimerCard
+        styles={styles}
+        normalize={normalize}
+        displayTotalMs={displayTotalMs}
+        isViewingToday={isViewingToday}
+        isRunning={isRunning}
+        selectedDayKey={selectedDayKey}
+        goPrevDay={goPrevDay}
+        goNextDay={goNextDay}
+        canGoNextDay={canGoNextDay}
+        setShowCalendar={setShowCalendar}
+        handleSaveAsImage={handleSaveAsImage}
+        onOpenStudyRoom={onOpenStudyRoom}
+        toggleTimer={toggleTimer}
+      />
     );
   }
 
