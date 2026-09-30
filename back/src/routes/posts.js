@@ -18,6 +18,7 @@ import { isBlockedBy } from '../utils/userBlock.js';
 import { submitContentReport } from '../services/reportSubmission.service.js';
 import { notifyAppealCreated } from '../services/discordWebhook.service.js';
 import { evaluateAndUnlockBadges } from '../services/badge.service.js';
+import { attachDryRun } from '../utils/dryRun.js';
 import { API_ERROR_CODES } from '../constants/apiErrorCodes.js';
 const router = express.Router();
 
@@ -1293,7 +1294,7 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
 });
 
 // 게시글 작성
-router.post('/', authenticate, blockWhenFlag('post_write_disabled'), uploadPost.array('images', 5), validate(postCreateValidators), async (req, res) => {
+router.post('/', authenticate, attachDryRun, blockWhenFlag('post_write_disabled'), uploadPost.array('images', 5), validate(postCreateValidators), async (req, res) => {
   try {
     const userId = req.user.userId;
     const { boardType, schoolId, content, tags } = req.body;
@@ -1440,6 +1441,21 @@ router.post('/', authenticate, blockWhenFlag('post_write_disabled'), uploadPost.
             [postId, tagId, now],
           );
         }
+      }
+
+      if (req.dryRun) {
+        const bypassedExternalCalls = ['evaluateAndUnlockBadges'];
+        if (boardType === 'school' && schoolId) {
+          bypassedExternalCalls.push('scheduleSchoolStats');
+        }
+        await connection.rollback();
+        return res.status(201).json({
+          success: true,
+          message: 'Dry-run: 게시글은 저장되지 않았습니다.',
+          dryRun: true,
+          bypassedExternalCalls,
+          data: { postId },
+        });
       }
 
       await connection.commit();
