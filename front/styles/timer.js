@@ -190,6 +190,7 @@ export const createTimerStyles = (width, normalize) => {
       width: 1,
       backgroundColor: colors.textLight1,
       marginHorizontal: normalize(6),
+      marginVertical: normalize(6),
     },
     /** 카드 오른쪽 메뉴 영역 */
     timerMenuCol: {

@@ -450,7 +450,7 @@ function createStyles(normalize) {
       justifyContent: 'center',
     },
     overlay: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: 'rgba(255,255,255,0.55)',

@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   readyMask: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 2,
     alignItems: 'center',
     justifyContent: 'center',

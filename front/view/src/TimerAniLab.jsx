@@ -1381,10 +1381,10 @@ export default function TimerAniLab({ navigation }) {
           backgroundColor: colors.text,
         },
         stage: {
-          ...StyleSheet.absoluteFillObject,
+          ...StyleSheet.absoluteFill,
         },
         bg: {
-          ...StyleSheet.absoluteFillObject,
+          ...StyleSheet.absoluteFill,
           width: '100%',
           height: '100%',
         },

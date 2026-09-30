@@ -254,7 +254,7 @@ function createStyles(n, bottomInset) {
       backgroundColor: 'rgba(0,0,0,0.45)',
     },
     backdrop: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
     },
     sheet: {
       backgroundColor: colors.white,

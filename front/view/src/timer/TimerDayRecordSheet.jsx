@@ -37,7 +37,7 @@ function formatSheetTitle(dayKey, seconds) {
   const weekday = WEEKDAYS[new Date(y, m - 1, d).getDay()];
   const duration = formatGrassDurationHm(seconds);
   const date = `${m}월 ${d}일 (${weekday})`;
-  return duration ? `${date} · ${duration}` : date;
+  return duration ? `${date}  ${duration}` : date;
 }
 
 const noop = () => {};
@@ -188,15 +188,17 @@ export default function TimerDayRecordSheet({
             {formatSheetTitle(dayKey, seconds)}
           </Text>
           <View style={styles.dayRecordHeaderActions}>
-            <TouchableOpacity
-              style={[styles.dayRecordSaveBtn, saveDisabled && styles.dayRecordSaveBtnDisabled]}
-              onPress={handleSave}
-              disabled={saveDisabled}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              accessibilityLabel="이 날짜 사진 저장"
-            >
-              <Feather name="download" size={normalize(18)} color={colors.textLight4} />
-            </TouchableOpacity>
+            {loading || !isEmpty ? (
+              <TouchableOpacity
+                style={[styles.dayRecordSaveBtn, saveDisabled && styles.dayRecordSaveBtnDisabled]}
+                onPress={handleSave}
+                disabled={saveDisabled}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityLabel="이 날짜 사진 저장"
+              >
+                <Feather name="download" size={normalize(18)} color={colors.textLight4} />
+              </TouchableOpacity>
+            ) : null}
             <TouchableOpacity
               style={styles.dayRecordCloseBtn}
               onPress={close}

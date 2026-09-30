@@ -388,7 +388,7 @@ export const createChatStyles = (width, normalize) => {
       color: colors.text,
     },
     chatSkeletonOverlay: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       backgroundColor: colors.white,
       zIndex: 50,
     },

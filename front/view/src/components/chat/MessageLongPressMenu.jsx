@@ -413,11 +413,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   overlayFill: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: colors.textLight3,
   },
   confirmLayer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: 'center',
     alignItems: 'center',
     pointerEvents: 'box-none',

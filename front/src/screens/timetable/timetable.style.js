@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   choiceLoadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: COLORS.textLight70,
     justifyContent: 'center',
     alignItems: 'center',

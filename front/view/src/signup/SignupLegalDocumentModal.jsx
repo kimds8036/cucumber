@@ -103,7 +103,7 @@ const SignupLegalDocumentModal = ({
 
 const overlayStyles = StyleSheet.create({
   root: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 100,
     elevation: 100,
     backgroundColor: colors.white,

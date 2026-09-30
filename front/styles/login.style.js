@@ -863,7 +863,7 @@ export const createSignupStyles = (width, normalize) => {
       ...debugBorder,
     },
     cameraOverlay: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       zIndex: 1,
       elevation: 0,
       backgroundColor: 'transparent',

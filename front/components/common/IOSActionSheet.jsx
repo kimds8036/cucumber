@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   wrap: {
     gap: 8,

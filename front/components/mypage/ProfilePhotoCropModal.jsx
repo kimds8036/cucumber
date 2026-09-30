@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 2,
     elevation: 4,
   },
