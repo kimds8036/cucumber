@@ -155,7 +155,7 @@ const BadgeManage = ({ navigation }) => {
   const [saving, setSaving] = useState(false);
   const [badges, setBadges] = useState([]);
 
-  const pad = normalize(20);
+  const pad = width * 0.04;
   const gap = normalize(12);
   const cardWidth = Math.floor((width - pad * 2 - gap) / 2);
 

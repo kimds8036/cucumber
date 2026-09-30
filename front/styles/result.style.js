@@ -1,7 +1,8 @@
 import { StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
 
-export const createSearchResultStyles = (normalize) => {
+export const createSearchResultStyles = (normalize, width) => {
+  const gutter = width * 0.04;
   return StyleSheet.create({
     flexOne: {
       flex: 1,
@@ -25,7 +26,7 @@ export const createSearchResultStyles = (normalize) => {
     tagRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      paddingHorizontal: normalize(16),
+      paddingHorizontal: gutter,
       gap: normalize(8),
     },
     tag: {
@@ -42,7 +43,7 @@ export const createSearchResultStyles = (normalize) => {
     recentRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginHorizontal: normalize(18),
+      marginHorizontal: gutter,
       paddingVertical: normalize(13),
       borderBottomWidth: 1,
       borderBottomColor: colors.textLight1,
@@ -57,7 +58,7 @@ export const createSearchResultStyles = (normalize) => {
       marginLeft: 'auto',
     },
     tabContent: {
-      paddingHorizontal: normalize(16),
+      paddingHorizontal: gutter,
       paddingVertical: normalize(8),
       gap: normalize(8),
     },
@@ -104,7 +105,7 @@ export const createSearchResultStyles = (normalize) => {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingHorizontal: normalize(20),
+      paddingHorizontal: gutter,
       marginBottom: normalize(7),
     },
     sectionTitleRow: {
@@ -141,7 +142,7 @@ export const createSearchResultStyles = (normalize) => {
     schoolCard: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginHorizontal: normalize(18),
+      marginHorizontal: gutter,
       paddingVertical: normalize(10),
       gap: normalize(12),
     },
@@ -160,7 +161,7 @@ export const createSearchResultStyles = (normalize) => {
     },
 
     card: {
-      paddingHorizontal: normalize(18),
+      paddingHorizontal: gutter,
       paddingVertical: normalize(14),
     },
     cardBorder: {
@@ -187,7 +188,7 @@ export const createSearchResultStyles = (normalize) => {
     },
 
     fullCard: {
-      paddingHorizontal: normalize(18),
+      paddingHorizontal: gutter,
       paddingVertical: normalize(16),
       borderBottomWidth: 1,
       borderBottomColor: colors.textLight1,

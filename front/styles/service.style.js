@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
 
-export const createServiceStyles = (normalize) =>
+export const createServiceStyles = (normalize, width) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -11,7 +11,7 @@ export const createServiceStyles = (normalize) =>
       flex: 1,
     },
     scrollContent: {
-      paddingHorizontal: normalize(20),
+      paddingHorizontal: width != null ? width * 0.04 : normalize(20),
       paddingTop: normalize(16),
       paddingBottom: normalize(32),
       gap: normalize(8),

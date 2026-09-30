@@ -445,7 +445,7 @@ export default function TimetabelChoice({ navigation, route }) {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <SubHeader title="시간표 선택" onBack={handleBack} />
-      <View style={styles.choiceContent}>
+      <View style={[styles.choiceContent, { paddingHorizontal: width * 0.04 }]}>
         <Text style={styles.choiceTitle}>이 시간표가 맞나요?</Text>
         <Text style={styles.choiceDescription}>
           Neis(교육행정정보시스템)에서 제공하는 시간표예요. {'\n'}실제와 같으면

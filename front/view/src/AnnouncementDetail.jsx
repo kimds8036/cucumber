@@ -36,7 +36,7 @@ const AnnouncementDetail = ({ navigation, route }) => {
   const [error, setError] = useState('');
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createServiceStyles(normalize), [normalize]);
+  const styles = useMemo(() => createServiceStyles(normalize, width), [normalize, width]);
 
   useEffect(() => {
     let cancelled = false;

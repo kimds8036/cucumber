@@ -1,11 +1,12 @@
 import { StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
 
-export const createNotificationSkeletonStyles = (normalize) =>
+export const createNotificationSkeletonStyles = (normalize, width) =>
   StyleSheet.create({
     row: {
       flexDirection: 'row',
-      padding: normalize(16),
+      paddingVertical: normalize(16),
+      paddingHorizontal: width * 0.04,
       alignItems: 'flex-start',
     },
     icon: {
@@ -30,7 +31,7 @@ export const createNotificationSkeletonStyles = (normalize) =>
     timeLine: { height: normalize(12), width: '30%' },
   });
 
-export const createNotificationStyles = (normalize) =>
+export const createNotificationStyles = (normalize, width) =>
   StyleSheet.create({
     rootWrapper: {
       flex: 1,
@@ -45,7 +46,7 @@ export const createNotificationStyles = (normalize) =>
       paddingVertical: normalize(4),
     },
     tabContent: {
-      paddingHorizontal: normalize(16),
+      paddingHorizontal: width * 0.04,
       paddingVertical: normalize(8),
       gap: normalize(8),
     },
@@ -109,7 +110,8 @@ export const createNotificationStyles = (normalize) =>
     notificationItem: {
       backgroundColor: colors.white,
       flexDirection: 'row',
-      padding: normalize(18),
+      paddingVertical: normalize(18),
+      paddingHorizontal: width * 0.04,
       alignItems: 'flex-start',
     },
     notificationItemUnread: {
@@ -233,7 +235,7 @@ export const createNotificationStyles = (normalize) =>
       height: normalize(12),
     },
     announcementListContainer: {
-      paddingHorizontal: normalize(20),
+      paddingHorizontal: width * 0.04,
       paddingTop: normalize(6),
       paddingBottom: normalize(24),
       gap: normalize(8),

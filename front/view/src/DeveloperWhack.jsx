@@ -51,14 +51,14 @@ const wFont = {
 };
 
 function WhackListSkeleton({ normalize, width }) {
-  const contentWidth = Math.max(width - normalize(16) * 2 - normalize(48), normalize(160));
+  const contentWidth = Math.max(width - width * 0.04 * 2 - normalize(48), normalize(160));
   return (
     <>
       {[0, 1, 2, 3, 4].map((key) => (
         <View
           key={key}
           style={{
-            paddingHorizontal: normalize(16),
+            paddingHorizontal: width * 0.04,
             paddingVertical: normalize(14),
             borderBottomWidth: 1,
             borderBottomColor: colors.textLight1,
@@ -259,7 +259,7 @@ const DeveloperWhack = ({ navigation }) => {
     borderRadius: normalize(10),
     borderWidth: 1,
     borderColor: colors.textLight1,
-    backgroundColor: colors.textLight1,
+    backgroundColor: colors.textLight05,
     fontFamily: fonts.regular,
     fontSize: normalize(wFont.input),
     color: colors.text,
@@ -276,7 +276,7 @@ const DeveloperWhack = ({ navigation }) => {
         activeOpacity={0.75}
         onPress={() => toggleExpand(item.id)}
         style={{
-          paddingHorizontal: normalize(16),
+          paddingHorizontal: width * 0.04,
           paddingVertical: normalize(14),
           borderBottomWidth: 1,
           borderBottomColor: colors.textLight1,

@@ -1,20 +1,22 @@
 import { StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
 import { shadow } from './tokens';
-export function createMailStyles(normalize) {
+export function createMailStyles(normalize, width) {
+  const gutter = width * 0.04;
   return StyleSheet.create({
     safe: { flex: 1, backgroundColor: colors.white },
     scroll: { flex: 1, backgroundColor: colors.white },
 
     // 목록
     inboxContainer: {
-      padding: normalize(12),
+      paddingVertical: normalize(12),
+      paddingHorizontal: gutter,
       paddingBottom: normalize(20),
       gap: normalize(8),
     },
     inboxTabRow: {
       flexDirection: 'row',
-      paddingHorizontal: normalize(16),
+      paddingHorizontal: gutter,
       gap: normalize(8),
       marginBottom: normalize(8),
       paddingTop: normalize(8),
@@ -122,7 +124,7 @@ export function createMailStyles(normalize) {
 
     // 상세 화면 (첫 번째 디자인)
     detailRoot: { flex: 1, backgroundColor: colors.white },
-    detailScroll: { padding: normalize(16) },
+    detailScroll: { paddingVertical: normalize(16), paddingHorizontal: gutter },
     detailLetterCard: {
       backgroundColor: colors.white,
       borderRadius: normalize(12),
@@ -230,7 +232,7 @@ export function createMailStyles(normalize) {
       color: colors.textLight4,
     },
     bottomCtaWrapper: {
-      paddingHorizontal: normalize(16),
+      paddingHorizontal: gutter,
       paddingBottom: normalize(16),
       paddingTop: normalize(8),
       backgroundColor: colors.white,
@@ -265,7 +267,7 @@ export function createMailStyles(normalize) {
     modalFullScroll: { flex: 1 },
     modalFullContent: {
       flexGrow: 1,
-      paddingHorizontal: normalize(16),
+      paddingHorizontal: gutter,
       paddingBottom: normalize(32),
       paddingTop: normalize(16),
     },
@@ -359,7 +361,7 @@ export function createMailStyles(normalize) {
     // 히스토리 화면
     historyScroll: { flex: 1, backgroundColor: colors.white },
     historyContainer: {
-      paddingHorizontal: normalize(16),
+      paddingHorizontal: gutter,
       paddingVertical: normalize(16),
     },
     historyRow: {
@@ -464,7 +466,7 @@ export function createMailStyles(normalize) {
     inputWrapper: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.textLight1,
+      backgroundColor: colors.textLight05,
       borderRadius: normalize(8),
       paddingHorizontal: normalize(12),
       height: normalize(48),
@@ -520,7 +522,7 @@ export function createMailStyles(normalize) {
     // SendMail 전용 레이아웃
     sendScrollContent: {
       flexGrow: 1,
-      paddingHorizontal: normalize(16),
+      paddingHorizontal: gutter,
       paddingTop: normalize(16),
     },
     loadingBelowInput: {
@@ -557,7 +559,7 @@ export function createMailStyles(normalize) {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.textLight1,
+      backgroundColor: colors.textLight05,
       borderRadius: normalize(8),
       paddingHorizontal: normalize(10),
       height: normalize(48),
@@ -566,7 +568,7 @@ export function createMailStyles(normalize) {
       flex: 1,
       height: normalize(48),
       justifyContent: 'center',
-      backgroundColor: colors.textLight1,
+      backgroundColor: colors.textLight05,
       borderRadius: normalize(8),
     },
     recipientFieldInput: {
@@ -639,7 +641,7 @@ export function createMailStyles(normalize) {
       color: colors.textLight4,
     },
     textAreaWrapper: {
-      backgroundColor: colors.textLight1,
+      backgroundColor: colors.textLight05,
       borderRadius: normalize(12),
       padding: normalize(12),
       flex: 1,

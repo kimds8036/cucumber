@@ -33,7 +33,7 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createMailStyles(normalize), [normalize]);
+  const styles = useMemo(() => createMailStyles(normalize, width), [normalize, width]);
 
   const schoolId = route?.params?.schoolId ?? null;
   const schoolName = route?.params?.schoolName ?? '';

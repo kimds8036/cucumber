@@ -156,12 +156,12 @@ const NotificationScreen = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(
-    () => createNotificationStyles(normalize),
-    [normalize],
+    () => createNotificationStyles(normalize, width),
+    [normalize, width],
   );
   const skeletonStyles = useMemo(
-    () => createNotificationSkeletonStyles(normalize),
-    [normalize],
+    () => createNotificationSkeletonStyles(normalize, width),
+    [normalize, width],
   );
   const [selectedTab, setSelectedTab] = useState('all');
   const [notifications, setNotifications] = useState([]);

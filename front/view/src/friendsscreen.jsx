@@ -27,7 +27,7 @@ import Skeleton from '../../components/common/Skeleton';
 const FriendsScreen = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createFriendStyles(normalize), [normalize]);
+  const styles = useMemo(() => createFriendStyles(normalize, width), [normalize, width]);
   const [friends, setFriends] = useState([]);
   const [friendRequests, setFriendRequests] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');

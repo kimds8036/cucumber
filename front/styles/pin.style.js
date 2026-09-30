@@ -6,7 +6,7 @@ export const getNormalize = (width) => {
   return (size) => Math.round(scale * size);
 };
 
-export const createPinStyles = (normalize) =>
+export const createPinStyles = (normalize, width) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -16,7 +16,7 @@ export const createPinStyles = (normalize) =>
       flex: 1,
       alignItems: 'center',
       paddingTop: normalize(100),
-      paddingHorizontal: normalize(24),
+      paddingHorizontal: width * 0.04,
     },
     title: {
       fontSize: normalize(fontSizes.xl + 2),

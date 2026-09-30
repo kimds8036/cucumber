@@ -6,7 +6,7 @@ export const getNormalize = (width) => {
   return (size) => Math.round(scale * size);
 };
 
-export const createMyPageStyles = (normalize) => {
+export const createMyPageStyles = (normalize, width) => {
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -18,7 +18,7 @@ export const createMyPageStyles = (normalize) => {
       paddingTop: normalize(8),
     },
     menuSection: {
-      marginHorizontal: normalize(16),
+      marginHorizontal: width * 0.04,
       marginTop: normalize(8),
       marginBottom: normalize(8),
     },
@@ -161,7 +161,7 @@ export const createMyPageStyles = (normalize) => {
     },
     profileSkeletonCard: {
       backgroundColor: colors.white,
-      marginHorizontal: normalize(16),
+      marginHorizontal: width * 0.04,
       marginTop: 0,
       marginBottom: normalize(8),
       padding: normalize(16),
@@ -222,11 +222,11 @@ export const createMyPageStyles = (normalize) => {
 };
 
 /** 마이페이지 학생 정보 카드 + 하단 바로가기 (`Profilecard.jsx`) */
-export const createProfileCardStyles = (normalize) =>
+export const createProfileCardStyles = (normalize, width) =>
   StyleSheet.create({
     profileCard: {
       backgroundColor: colors.white,
-      marginHorizontal: normalize(16),
+      marginHorizontal: width * 0.04,
       marginTop: 0,
       marginBottom: normalize(8),
       padding: normalize(16),
@@ -498,7 +498,7 @@ export const createProfileCardStyles = (normalize) =>
   });
 
 /** 알림/설정 화면 (`notificationsettings.jsx`) */
-export const createNotificationSettingsStyles = (normalize) => {
+export const createNotificationSettingsStyles = (normalize, width) => {
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -514,7 +514,7 @@ export const createNotificationSettingsStyles = (normalize) => {
     sectionHeader: {
       marginTop: normalize(16),
       marginBottom: normalize(8),
-      marginHorizontal: normalize(20),
+      marginHorizontal: width * 0.04,
     },
     sectionHeaderTopRow: {
       flexDirection: 'row',
@@ -537,7 +537,7 @@ export const createNotificationSettingsStyles = (normalize) => {
     },
 
     card: {
-      marginHorizontal: normalize(16),
+      marginHorizontal: width * 0.04,
       backgroundColor: colors.white,
       borderRadius: normalize(16),
       paddingHorizontal: normalize(18),
@@ -666,7 +666,7 @@ export const createNotificationSettingsStyles = (normalize) => {
     pwInputWrap: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.textLight1,
+      backgroundColor: colors.textLight05,
       borderRadius: normalize(10),
       paddingHorizontal: normalize(12),
       height: normalize(44),
@@ -991,7 +991,7 @@ export const createHiddenPostsAppealsStyles = (width, normalize) =>
       flex: 1,
     },
     scrollContent: {
-      paddingHorizontal: normalize(16),
+      paddingHorizontal: width * 0.04,
       paddingTop: normalize(14),
       paddingBottom: normalize(28),
     },
@@ -1187,7 +1187,7 @@ export const createHiddenPostsAppealsStyles = (width, normalize) =>
       borderWidth: 1,
       borderColor: colors.textLight1,
       borderRadius: normalize(10),
-      backgroundColor: colors.textLight1,
+      backgroundColor: colors.textLight05,
       paddingHorizontal: normalize(10),
       paddingVertical: normalize(10),
       fontFamily: fonts.regular,

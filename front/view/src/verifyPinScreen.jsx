@@ -11,7 +11,7 @@ const VerifyPinScreen = ({ navigation }) => {
   const exitToAppSettings = usePinFlowBackToSettings(navigation);
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createPinStyles(normalize), [normalize, width]);
+  const styles = useMemo(() => createPinStyles(normalize, width), [normalize, width]);
   const [errorTrigger, setErrorTrigger] = useState(0);
 
   const handlePinComplete = async (enteredPin) => {

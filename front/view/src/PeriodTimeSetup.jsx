@@ -98,10 +98,13 @@ function TimeField({ label, value, onPress, styles }) {
 const PeriodTimeSetup = ({ navigation, route }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createStyles(normalize), [normalize]);
+  const styles = useMemo(
+    () => createStyles(normalize, width),
+    [normalize, width],
+  );
   const ns = useMemo(
-    () => createNotificationSettingsStyles(normalize),
-    [normalize],
+    () => createNotificationSettingsStyles(normalize, width),
+    [normalize, width],
   );
 
   const pendingTimetable = route?.params?.pendingTimetable;
@@ -465,13 +468,12 @@ const PeriodTimeSetup = ({ navigation, route }) => {
   );
 };
 
-function createStyles(normalize) {
+function createStyles(normalize, width) {
   return {
     safe: { flex: 1, backgroundColor: colors.white },
     scroll: { flex: 1 },
     content: {
       paddingBottom: normalize(24),
-      paddingTop: normalize(4),
     },
     periodCard: {
       paddingVertical: normalize(4),
@@ -502,12 +504,10 @@ function createStyles(normalize) {
     },
     timeField: {
       flex: 1,
-      backgroundColor: colors.textLight1,
+      backgroundColor: colors.textLight05,
       borderRadius: normalize(10),
       paddingVertical: normalize(10),
       paddingHorizontal: normalize(12),
-      borderWidth: 1,
-      borderColor: colors.textLight1,
     },
     timeFieldLabel: {
       fontSize: normalize(11),
@@ -547,7 +547,7 @@ function createStyles(normalize) {
     },
     error: {
       marginTop: normalize(10),
-      marginHorizontal: normalize(20),
+      marginHorizontal: width * 0.04,
       fontSize: normalize(13),
       color: colors.alertDark,
       lineHeight: normalize(18),

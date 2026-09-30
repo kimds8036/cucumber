@@ -1362,7 +1362,7 @@ export const createDetailStyles = (width, normalize) => {
       paddingVertical: bottomInputPaddingV,
       paddingHorizontal: normalize(16),
       borderRadius: normalize(24),
-      backgroundColor: colors.textLight1,
+      backgroundColor: colors.textLight05,
       fontSize: bottomInputFontSize,
       lineHeight: bottomInputLineHeight,
       fontFamily: fonts.regular,

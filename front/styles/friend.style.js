@@ -6,7 +6,7 @@ export const getNormalize = (width) => {
   return (size) => Math.round(scale * size);
 };
 
-export const createFriendStyles = (normalize) =>
+export const createFriendStyles = (normalize, width) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -106,7 +106,7 @@ export const createFriendStyles = (normalize) =>
     },
     reqRejectBtn: {
       flex: 1,
-      backgroundColor: colors.textLight1,
+      backgroundColor: colors.textLight05,
       paddingVertical: normalize(6),
       borderRadius: normalize(8),
       alignItems: 'center',
@@ -119,9 +119,9 @@ export const createFriendStyles = (normalize) =>
     searchWrapper: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginHorizontal: normalize(16),
+      marginHorizontal: width * 0.04,
       marginVertical: normalize(12),
-      backgroundColor: colors.textLight1,
+      backgroundColor: colors.textLight05,
       borderRadius: normalize(12),
       paddingHorizontal: normalize(12),
       paddingVertical: normalize(10),
@@ -147,7 +147,7 @@ export const createFriendStyles = (normalize) =>
       flex: 1,
     },
     mainScrollContent: {
-      paddingHorizontal: normalize(16),
+      paddingHorizontal: width * 0.04,
       paddingBottom: normalize(40),
     },
     friendRow: {

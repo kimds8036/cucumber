@@ -41,7 +41,7 @@ const ProfileCard = ({
 }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createProfileCardStyles(normalize), [normalize]);
+  const styles = useMemo(() => createProfileCardStyles(normalize, width), [normalize, width]);
   const { studentVerificationStatus, rejectReason, refreshStudentVerification } =
     useAuth();
   const shell = useMainShellOptional();

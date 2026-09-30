@@ -41,7 +41,7 @@ const SendMailScreen = ({ navigation, route }) => {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createMailStyles(normalize), [normalize]);
+  const styles = useMemo(() => createMailStyles(normalize, width), [normalize, width]);
   const [schoolQuery, setSchoolQuery] = useState('');
   const [schoolResults, setSchoolResults] = useState([]);
   const [schoolLoading, setSchoolLoading] = useState(false);

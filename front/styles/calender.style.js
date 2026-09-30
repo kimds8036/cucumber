@@ -3,7 +3,8 @@ import { colors, fonts, fontSizes } from './colors';
 import { shadow } from './tokens';
 
 export const createCalendarStyles = (width, normalize) => {
-  const dayCellSize = (width - normalize(32)) / 7;
+  const gutter = width * 0.04;
+  const dayCellSize = (width - gutter * 2) / 7;
   // Android는 borderRadius를 과도하게 크게 주면 사각형에 가깝게 그려지는 경우가 있어,
   // 크기의 절반으로 고정하고 overflow로 배경을 클립한다.
   const dayNumberCircleSize = normalize(22);
@@ -17,7 +18,7 @@ export const createCalendarStyles = (width, normalize) => {
       flex: 1,
     },
     content: {
-      paddingHorizontal: normalize(16),
+      paddingHorizontal: gutter,
       paddingTop: normalize(8),
       paddingBottom: normalize(24),
     },
@@ -26,7 +27,7 @@ export const createCalendarStyles = (width, normalize) => {
       alignItems: 'center',
       justifyContent: 'space-between',
       paddingTop: normalize(60),
-      paddingHorizontal: normalize(16),
+      paddingHorizontal: gutter,
       marginBottom: normalize(12),
     },
     monthTitle: {
@@ -129,7 +130,6 @@ export const createCalendarStyles = (width, normalize) => {
     // 급식 상세 영역 컨테이너
     mealDetail: {
       marginTop: normalize(12),
-      paddingHorizontal: normalize(4),
     },
     // 급식 없음 텍스트
     noMealText: {

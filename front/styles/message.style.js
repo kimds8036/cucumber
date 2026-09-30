@@ -77,7 +77,6 @@ export const createMessageStyles = (width, normalize) => {
       flexDirection: 'row',
       alignItems: 'center',
       paddingVertical: normalize(12),
-      paddingHorizontal: normalize(8),
       backgroundColor: colors.white,
     },
     listItemLeft: {
@@ -291,7 +290,7 @@ export const createChatStyles = (width, normalize) => {
     // ─────────────────────────────────────────────
     replyPreviewContainer: {
       backgroundColor: colors.textLight1,
-      paddingHorizontal: normalize(12),
+      paddingHorizontal: width * 0.04,
       paddingVertical: normalize(8),
       flexDirection: 'row',
       justifyContent: 'space-between',

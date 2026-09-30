@@ -149,7 +149,7 @@ export default function SearchResult({ route, navigation }) {
 
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const s = useMemo(() => createSearchResultStyles(normalize), [normalize]);
+  const s = useMemo(() => createSearchResultStyles(normalize, width), [normalize, width]);
 
   const highlightSnippet = (text, query, baseStyle) => {
     if (!query) return <Text style={baseStyle}>{text}</Text>;
@@ -424,7 +424,7 @@ export default function SearchResult({ route, navigation }) {
                 {!isInitialRenderReady ? (
                   <View
                     style={{
-                      paddingHorizontal: normalize(18),
+                      paddingHorizontal: width * 0.04,
                       paddingTop: normalize(14),
                     }}
                   >

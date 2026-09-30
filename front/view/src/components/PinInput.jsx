@@ -29,7 +29,7 @@ const PinInput = ({
 }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createPinStyles(normalize), [normalize, width]);
+  const styles = useMemo(() => createPinStyles(normalize, width), [normalize, width]);
 
   const [pin, setPin] = useState('');
   const [hasError, setHasError] = useState(false);

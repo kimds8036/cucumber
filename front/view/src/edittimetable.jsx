@@ -73,8 +73,8 @@ const EditTimetable = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const et = useMemo(
-    () => createEditTimetableScreenStyles(normalize),
-    [normalize],
+    () => createEditTimetableScreenStyles(normalize, width),
+    [normalize, width],
   );
   const scrollRef = useRef(null);
 

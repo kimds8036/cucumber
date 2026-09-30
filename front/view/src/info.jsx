@@ -78,8 +78,8 @@ const Info = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(
-    () => createNotificationStyles(normalize),
-    [normalize],
+    () => createNotificationStyles(normalize, width),
+    [normalize, width],
   );
   const [versionReady, setVersionReady] = useState(false);
   const appVersion = Constants.expoConfig?.version || '확인 불가';

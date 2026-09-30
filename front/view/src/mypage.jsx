@@ -58,7 +58,7 @@ const MyPage = ({ navigation }) => {
   const { isGuidePreview } = useGuidePreview();
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createMyPageStyles(normalize), [normalize]);
+  const styles = useMemo(() => createMyPageStyles(normalize, width), [normalize, width]);
   const tabBarInset = useMainTabBarInset();
   const { logout, studentVerificationStatus } = useAuth();
   const TIMETABLE_CACHE_KEY = '@mypage_timetable_cache_v1';
@@ -446,7 +446,7 @@ const MyPage = ({ navigation }) => {
                 <View style={styles.profileSkeletonQuickCell} />
               </View>
             </View>
-            <View style={[styles.ttSkeletonCard, { marginHorizontal: normalize(16) }]}>
+            <View style={[styles.ttSkeletonCard, { marginHorizontal: width * 0.04 }]}>
               <View style={styles.ttSkeletonHeader} />
               {[...Array(7)].map((_, idx) => (
                 <View style={styles.ttSkeletonRow} key={`page-tt-sk-${idx}`}>

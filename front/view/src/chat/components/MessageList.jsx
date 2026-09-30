@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Dimensions, View } from 'react-native';
+import { Dimensions, View, useWindowDimensions } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import Skeleton from '../../../../components/common/Skeleton';
 import { CHAT_LIST_SPINNER_DELAY_MS } from '../constants/chatConfig';
@@ -46,6 +46,7 @@ export default function MessageList({
   handleContentSizeChange,
   onViewableItemsChanged,
 }) {
+  const { width } = useWindowDimensions();
   const initialScrollIndex = Math.max(0, (data?.length ?? 1) - 1);
   const n =
     typeof normalize === 'function'
@@ -132,7 +133,7 @@ export default function MessageList({
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
         decelerationRate="normal"
-        contentContainerStyle={{ paddingHorizontal: n(6) }}
+        contentContainerStyle={{ paddingHorizontal: width * 0.04 }}
         onContentSizeChange={handleContentSizeChange}
         onScroll={handleScroll}
         onViewableItemsChanged={onViewableItemsChanged}

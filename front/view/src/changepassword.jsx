@@ -11,6 +11,7 @@ import {
   Platform,
   Keyboard,
   TouchableWithoutFeedback,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +20,8 @@ import { colors } from '../../styles/colors';
 import Skeleton from '../../components/common/Skeleton';
 
 const ChangePassword = ({ navigation }) => {
+  const { width } = useWindowDimensions();
+  const gutterStyle = { paddingHorizontal: width * 0.04 };
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -62,12 +65,12 @@ const ChangePassword = ({ navigation }) => {
   if (!screenReady) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.header}>
+        <View style={[styles.header, gutterStyle]}>
           <Skeleton width={24} height={24} borderRadius={12} />
           <Skeleton width={120} height={18} borderRadius={8} />
           <View style={{ width: 24 }} />
         </View>
-        <View style={styles.content}>
+        <View style={[styles.content, gutterStyle]}>
           {[0, 1, 2].map((idx) => (
             <View key={`change-pw-skel-${idx}`} style={styles.inputGroup}>
               <Skeleton
@@ -105,7 +108,7 @@ const ChangePassword = ({ navigation }) => {
             showsVerticalScrollIndicator={false}
           >
             {/* Header */}
-            <View style={styles.header}>
+            <View style={[styles.header, gutterStyle]}>
               <TouchableOpacity onPress={() => navigation.goBack()}>
                 <Ionicons name="arrow-back" size={24} color="#333" />
               </TouchableOpacity>
@@ -113,7 +116,7 @@ const ChangePassword = ({ navigation }) => {
               <View style={{ width: 24 }} />
             </View>
 
-            <View style={styles.content}>
+            <View style={[styles.content, gutterStyle]}>
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>현재 비밀번호</Text>
                 <TextInput

@@ -178,7 +178,7 @@ export const createSearchStyles = (width, normalize) => {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      paddingHorizontal: normalize(18),
+      paddingHorizontal: width * 0.04,
       marginBottom: normalize(7),
     },
     sectionTitle: {
@@ -405,7 +405,7 @@ export const createSearchScreenStyles = (width, normalize) => {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      paddingHorizontal: normalize(18),
+      paddingHorizontal: width * 0.04,
       marginBottom: normalize(7),
     },
     sectionTitle: {
@@ -428,7 +428,7 @@ export const createSearchScreenStyles = (width, normalize) => {
     recentRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginHorizontal: normalize(18),
+      marginHorizontal: width * 0.04,
       paddingVertical: normalize(13),
       gap: normalize(10),
       borderBottomWidth: 1,
@@ -451,7 +451,7 @@ export const createSearchScreenStyles = (width, normalize) => {
       flexDirection: 'row',
       alignItems: 'center',
       width: '50%',
-      paddingHorizontal: normalize(18),
+      paddingHorizontal: width * 0.04,
       paddingVertical: normalize(11),
       gap: normalize(10),
     },
@@ -484,7 +484,7 @@ export const createSearchScreenStyles = (width, normalize) => {
     tagRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      paddingHorizontal: normalize(16),
+      paddingHorizontal: width * 0.04,
       gap: normalize(8),
     },
     tag: {

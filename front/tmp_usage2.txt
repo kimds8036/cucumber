@@ -1,0 +1,56 @@
+src/screens/timetable/timetable.style.js	searchInput	view/frame/SearchSubHeader.jsx:86, view/src/changeschool.jsx:98, view/src/friendsscreen.jsx:265
+styles/friend.style.js	sheetAction	
+styles/friend.style.js	sheetCancelBtn	
+styles/friend.style.js	sheetDivider	
+styles/search.style.js	searchBox	view/src/changeschool.jsx:90
+styles/search.style.js	previewDivider	
+styles/search.style.js	previewSchoolIcon	
+styles/search.style.js	previewPostIcon	
+styles/search.style.js	content	components/Boardpostcard.jsx:237, view/src/AnnouncementDetail.jsx:109, view/src/board/BoardCommentTree.jsx:87, view/src/board/BoardCommentTree.jsx:89, view/src/board/BoardCommentTree.jsx:91, view/src/board/BoardPostContent.jsx:112 …(+70)
+styles/timer.js	friendSearchInputWrapper	
+styles/timer.js	timerBtnPause	view/src/timer/TimerCard.jsx:169
+styles/timer.js	controlButtonSecondary	
+styles/timer.js	taskStatusBtn	
+styles/timer.js	pokeCancelBtn	
+styles/timer.js	addFriendCancelBtn	
+styles/timer.js	timerCardDivider	view/src/timer/TimerCard.jsx:191, view/src/timer/TimerDayContentSkeleton.jsx:31
+styles/timer.js	divider	components/common/IOSActionSheet.jsx:48, view/src/notificationsettings.jsx:793, view/src/notificationsettings.jsx:901, src/screens/Terms-of-Service/PolicyDocumentMeta.jsx:35, src/screens/Terms-of-Service/PolicyDocumentSkeleton.jsx:19, src/screens/Terms-of-Service/PolicyMarkdownBody.jsx:183
+styles/timer.js	plannerMemoLine	view/src/timer/TimerLiveViews.jsx:323
+styles/timer.js	pokeDivider	
+styles/timer.js	pokeHandle	
+styles/timer.js	addFriendHandle	
+styles/timer.js	timerMenuProgressTrack	view/src/timer/TimerCard.jsx:229
+styles/timer.js	pomoProgressTrack	view/src/timer/TimerCard.jsx:131
+styles/timer.js	pomoCycleDot	view/src/timer/TimerCard.jsx:123
+styles/SchoolMail.style.js	schoolSendFixedSchoolBox	
+styles/SchoolMail.style.js	schoolSendCtaBtnDisabled	
+styles/SchoolMail.style.js	schoolSendAdChip	
+styles/board.style.js	detailPollVoteButtonDisabled	view/src/board/BoardPollCard.jsx:150
+styles/board.style.js	postDivider	
+styles/board.style.js	detailDivider	view/src/mailreply.jsx:232
+styles/board.style.js	detailAuthorWriterPill	
+styles/board.style.js	detailPollFill	view/src/board/BoardPollCard.jsx:90
+styles/board.style.js	postThumb	components/Boardpostcard.jsx:381
+styles/board.style.js	photoAddButton	view/src/signup/StudentIdPhotoAttachFields.jsx:154
+styles/mypage.style.js	cancelButton	
+styles/mypage.style.js	profileDivider	
+styles/mypage.style.js	myPostSkeletonTitleLine1	
+styles/mypage.style.js	myPostSkeletonTitleLine2	
+styles/mypage.style.js	myPostSkeletonDate	
+styles/mypage.style.js	myPostSkeletonIcon	
+styles/mypage.style.js	myPostSkeletonCount	
+styles/mail.style.js	cardDivider	
+styles/mail.style.js	recipientInfoBox	
+styles/school.style.js	grassCardTooltip	
+styles/service.style.js	divider	components/common/IOSActionSheet.jsx:48, view/src/notificationsettings.jsx:793, view/src/notificationsettings.jsx:901, src/screens/Terms-of-Service/PolicyDocumentMeta.jsx:35, src/screens/Terms-of-Service/PolicyDocumentSkeleton.jsx:19, src/screens/Terms-of-Service/PolicyMarkdownBody.jsx:183
+styles/service.style.js	tableHeaderRow	src/screens/Terms-of-Service/PolicyMarkdownBody.jsx:152
+styles/message.style.js	opponentBubble	view/src/components/chat/MessageItem.jsx:368
+view/src/PeriodTimeSettings.jsx	cardDivider	
+components/studygrassmap.jsx	divider	components/common/IOSActionSheet.jsx:48, view/src/notificationsettings.jsx:793, view/src/notificationsettings.jsx:901, src/screens/Terms-of-Service/PolicyDocumentMeta.jsx:35, src/screens/Terms-of-Service/PolicyDocumentSkeleton.jsx:19, src/screens/Terms-of-Service/PolicyMarkdownBody.jsx:183
+view/src/signup/SignStepNeisPlusSubmit.jsx	preview	view/src/mailscreen.jsx:250, view/src/mailscreen.jsx:501, view/src/Message.jsx:432, view/src/MyInquiries.jsx:214
+FILE ReportModal: view/src/boardAll.jsx, view/src/boardDetail.jsx, view/src/mailscreen.jsx, view/src/Message.jsx, view/src/schoolMailDetail.jsx
+FILE HallOfFameCarousel: (없음)
+FILE studygrassmap: (없음)
+FILE SignStepNeisPlusSubmit: view/src/signup/NeisPlusResubmit.jsx, view/src/signup/Sign.jsx, view/src/signup/SignApple.jsx, view/src/signup/SignKakao.jsx, view/src/signup/SignPhone.jsx
+FILE PeriodTimeSetup: view/src/edittimetable.jsx, src/screens/timetable/timetabelChoice.jsx, src/screens/timetable/TimetableScreen.jsx, App.js
+FILE TestLogin: App.js

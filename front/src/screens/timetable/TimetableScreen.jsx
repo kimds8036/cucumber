@@ -111,8 +111,8 @@ export default function TimetableScreen({ navigation, route }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const mt = useMemo(
-    () => createManualTimetableScreenStyles(normalize),
-    [normalize],
+    () => createManualTimetableScreenStyles(normalize, width),
+    [normalize, width],
   );
 
   const [keyword, setKeyword] = useState('');

@@ -1621,7 +1621,7 @@ export const createTimerFriendModalStyles = (normalize) =>
     addFriendInputRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.textLight1,
+      backgroundColor: colors.textLight05,
       borderRadius: normalize(12),
       paddingHorizontal: normalize(14),
       paddingVertical: normalize(12),

@@ -203,7 +203,7 @@ function mapMailToListItem(mail, isReceived) {
 function MailInbox({ onOpen, onBack, navigation }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createMailStyles(normalize), [normalize]);
+  const styles = useMemo(() => createMailStyles(normalize, width), [normalize, width]);
   const inboxMenuSheetStyles = useMemo(
     () => createMailInboxMenuSheetStyles(normalize),
     [normalize],
@@ -334,7 +334,7 @@ function MailInbox({ onOpen, onBack, navigation }) {
         <View
           style={{
             flex: 1,
-            paddingHorizontal: normalize(14),
+            paddingHorizontal: width * 0.04,
             paddingTop: normalize(10),
           }}
         >
@@ -638,7 +638,7 @@ function MailInbox({ onOpen, onBack, navigation }) {
 function MailDetail({ mail: initialMail, onBack, navigation }) {
   const { width, height } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createMailStyles(normalize), [normalize]);
+  const styles = useMemo(() => createMailStyles(normalize, width), [normalize, width]);
 
   const { refreshHasUnread } = useNotification();
 
@@ -876,7 +876,7 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
           <View
             style={{
               flex: 1,
-              paddingHorizontal: normalize(16),
+              paddingHorizontal: width * 0.04,
               paddingTop: normalize(16),
             }}
           >

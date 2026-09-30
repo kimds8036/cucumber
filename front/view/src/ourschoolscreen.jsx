@@ -46,7 +46,7 @@ const OurSchoolScreen = ({ navigation }) => {
   const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createOurSchoolStyles(normalize), [normalize]);
+  const styles = useMemo(() => createOurSchoolStyles(normalize, width), [normalize, width]);
   const tabBarInset = useMainTabBarInset();
   const [schoolInfo, setSchoolInfo] = useState({
     id: null,
@@ -307,7 +307,7 @@ const OurSchoolScreen = ({ navigation }) => {
       <View style={styles.container}>
         <View
           style={{
-            paddingHorizontal: normalize(16),
+            paddingHorizontal: width * 0.04,
             paddingTop: normalize(12),
           }}
         >

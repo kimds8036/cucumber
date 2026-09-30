@@ -27,7 +27,7 @@ import TopAdBanner from '../../components/ads/TopAdBanner';
 const OtherSchoolScreen = ({ route, navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createOurSchoolStyles(normalize), [normalize]);
+  const styles = useMemo(() => createOurSchoolStyles(normalize, width), [normalize, width]);
   const otherSchoolStyles = useMemo(
     () => createOtherSchoolStyles(normalize),
     [normalize],
@@ -143,7 +143,7 @@ const OtherSchoolScreen = ({ route, navigation }) => {
         <SubHeader title={routeName} onBack={() => navigation?.goBack()} />
         <View
           style={{
-            paddingHorizontal: normalize(16),
+            paddingHorizontal: width * 0.04,
             paddingTop: normalize(12),
           }}
         >
@@ -289,7 +289,6 @@ const OtherSchoolScreen = ({ route, navigation }) => {
           <View
             style={{
               marginBottom: normalize(12),
-              paddingHorizontal: normalize(4),
             }}
           >
             <Text

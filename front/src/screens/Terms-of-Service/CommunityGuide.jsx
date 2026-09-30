@@ -14,7 +14,7 @@ const FALLBACK_MARKDOWN = require('./_community_md.json');
 const CommunityGuide = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createServiceStyles(normalize), [normalize]);
+  const styles = useMemo(() => createServiceStyles(normalize, width), [normalize, width]);
   const { markdown, meta, loading } = useLegalDocument('community_guide', FALLBACK_MARKDOWN);
 
   return (

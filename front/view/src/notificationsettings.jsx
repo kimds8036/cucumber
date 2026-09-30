@@ -100,8 +100,8 @@ const Settings = ({ navigation, route }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(
-    () => createNotificationSettingsStyles(normalize),
-    [normalize],
+    () => createNotificationSettingsStyles(normalize, width),
+    [normalize, width],
   );
 
   /** 마이페이지에서 분리 진입: 'prefs' 알림·거리만, 'profile' 아이디·비밀번호·학교만, 없으면 전체 */

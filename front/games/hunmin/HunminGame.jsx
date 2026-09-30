@@ -258,7 +258,10 @@ export default function HunminGame() {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createStyles(normalize), [normalize]);
+  const styles = useMemo(
+    () => createStyles(normalize, width),
+    [normalize, width],
+  );
   const [fontsLoaded] = useFonts({ Jua_400Regular });
   const gameFont = useMemo(
     () =>
@@ -822,14 +825,15 @@ export default function HunminGame() {
   );
 }
 
-function createStyles(normalize) {
+function createStyles(normalize, width) {
   const colW = normalize(102);
   return StyleSheet.create({
     root: { flex: 1 },
     frame: {
       flex: 1,
       borderRadius: normalize(22),
-      padding: normalize(12),
+      paddingVertical: normalize(12),
+      paddingHorizontal: width * 0.04,
       overflow: 'visible',
     },
     guideBox: {

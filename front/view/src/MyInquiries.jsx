@@ -122,7 +122,7 @@ const MyInquiries = ({
         lineHeight: normalize(22),
       },
       row: {
-        paddingHorizontal: normalize(16),
+        paddingHorizontal: width * 0.04,
         paddingVertical: normalize(14),
         borderBottomWidth: 1,
         borderBottomColor: colors.textLight1,
@@ -174,7 +174,7 @@ const MyInquiries = ({
         backgroundColor: colors.primary,
       },
     }),
-    [normalize],
+    [normalize, width],
   );
 
   const Root = fullScreenOverlay ? View : SafeAreaView;

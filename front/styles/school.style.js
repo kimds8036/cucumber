@@ -2,7 +2,7 @@ import { StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
 import { shadow } from './tokens';
 // 우리 학교 화면 전용 스타일 (학교 정보 + 급식 + 잔디 + 바로가기 + 인기)
-export const createOurSchoolStyles = (normalize) => {
+export const createOurSchoolStyles = (normalize, width) => {
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -12,7 +12,7 @@ export const createOurSchoolStyles = (normalize) => {
       flex: 1,
     },
     scrollContent: {
-      padding: normalize(16),
+      paddingHorizontal: width * 0.04,
       paddingBottom: normalize(16),
       paddingTop: normalize(8),
     },

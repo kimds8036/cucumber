@@ -1,5 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Dimensions, Image, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Dimensions,
+  Image,
+  Text,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { api } from '../../../../utils/api';
@@ -9,7 +16,7 @@ import Skeleton from '../../../../components/common/Skeleton';
 const postCache = {};
 
 /** 실제 카드와 비슷한 바깥 여백 + 고정 높이(레이아웃 점프 완화) */
-function PostCardSkeleton({ n, onLayout }) {
+function PostCardSkeleton({ n, gutter, onLayout }) {
   const bar = (w, h, mt = 0) => (
     <View
       style={{
@@ -28,7 +35,7 @@ function PostCardSkeleton({ n, onLayout }) {
       onLayout={onLayout}
       style={{
         backgroundColor: colors.white,
-        marginHorizontal: n(12),
+        marginHorizontal: gutter,
         marginTop: n(6),
         marginBottom: n(4),
         borderRadius: n(10),
@@ -81,6 +88,8 @@ export default function PostCard({
   onThumbnailLoaded,
   onLoadingChange,
 }) {
+  const { width } = useWindowDimensions();
+  const gutter = width * 0.04;
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(() => Boolean(roomId));
   const n =
@@ -188,7 +197,7 @@ export default function PostCard({
   }, [roomId]);
 
   if (loading) {
-    return <PostCardSkeleton n={n} onLayout={handleLayout} />;
+    return <PostCardSkeleton n={n} gutter={gutter} onLayout={handleLayout} />;
   }
 
   if (!post) return null;
@@ -200,7 +209,7 @@ export default function PostCard({
       onPress={() => onPress?.(post)}
       style={{
         backgroundColor: colors.white,
-        marginHorizontal: n(12),
+        marginHorizontal: gutter,
         marginTop: n(6),
         marginBottom: n(4),
         borderRadius: n(10),

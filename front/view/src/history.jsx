@@ -56,7 +56,7 @@ function extractMailListFromResponse(res) {
 export default function MailHistoryScreen({ navigation, route }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createMailStyles(normalize), [normalize]);
+  const styles = useMemo(() => createMailStyles(normalize, width), [normalize, width]);
 
   const threadId = Number(route?.params?.threadId);
   const [historyItems, setHistoryItems] = useState([]);

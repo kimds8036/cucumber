@@ -430,7 +430,7 @@ const makeStyles = (N) =>
       fontSize: N(13),
       color: colors.text,
       minHeight: N(100),
-      backgroundColor: colors.textLight1,
+      backgroundColor: colors.textLight05,
     },
     charCount: {
       fontFamily: fonts.regular,

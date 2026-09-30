@@ -3,14 +3,6 @@ import { colors, fonts, fontSizes } from '../../../styles/colors';
 
 const normalize = (size) =>
   Math.round((Dimensions.get('window').width / 375) * size);
-const COLORS = {
-  ...colors,
-  inputBackground: colors.textLight1,
-  selectedBackground: colors.primaryLight3,
-  textDisabled: colors.textLight2,
-  textTertiary: colors.textLight4,
-  white: colors.white,
-};
 
 export const DAYS = ['월', '화', '수', '목', '금'];
 export const PERIODS = [1, 2, 3, 4, 5, 6, 7];
@@ -24,7 +16,7 @@ const tableHeight =
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.white,
   },
   content: {
     flexGrow: 1,
@@ -39,12 +31,12 @@ const styles = StyleSheet.create({
   schoolInfoText: {
     fontFamily: fonts.regular,
     fontSize: fontSizes.sm,
-    color: COLORS.textSecondary,
+    color: colors.textLight4,
     marginRight: normalize(8),
   },
   neisBadge: {
     borderWidth: 1,
-    borderColor: COLORS.primary,
+    borderColor: colors.primary,
     borderRadius: 20,
     paddingHorizontal: normalize(8),
     paddingVertical: normalize(2),
@@ -52,16 +44,16 @@ const styles = StyleSheet.create({
   neisBadgeText: {
     fontFamily: fonts.bold,
     fontSize: fontSizes.sm,
-    color: COLORS.primary,
+    color: colors.primary,
   },
   searchInput: {
     height: normalize(42),
     borderRadius: 10,
-    backgroundColor: COLORS.inputBackground,
+    backgroundColor: colors.textLight05,
     paddingHorizontal: normalize(12),
     fontFamily: fonts.regular,
     fontSize: fontSizes.sm,
-    color: COLORS.textPrimary,
+    color: colors.text,
     marginBottom: normalize(14),
   },
   tableWrap: {
@@ -84,7 +76,7 @@ const styles = StyleSheet.create({
   dayHeaderText: {
     fontFamily: fonts.bold,
     fontSize: fontSizes.sm,
-    color: COLORS.textSecondary,
+    color: colors.textLight4,
   },
   tableBodyRow: {
     flexDirection: 'row',
@@ -103,7 +95,7 @@ const styles = StyleSheet.create({
   periodText: {
     fontFamily: fonts.regular,
     fontSize: normalize(9),
-    color: COLORS.textSecondary,
+    color: colors.textLight4,
   },
   dayCol: {
     flex: 1,
@@ -116,7 +108,7 @@ const styles = StyleSheet.create({
   emptyCell: {
     height: CELL_HEIGHT,
     marginBottom: CELL_GAP,
-    backgroundColor: COLORS.surface,
+    backgroundColor: colors.textLight0,
   },
   blockCell: {
     position: 'absolute',
@@ -130,12 +122,12 @@ const styles = StyleSheet.create({
   blockTitle: {
     fontFamily: fonts.bold,
     fontSize: normalize(8),
-    color: COLORS.white,
+    color: colors.white,
   },
   blockRoom: {
     fontFamily: fonts.regular,
     fontSize: normalize(7),
-    color: COLORS.textLight70,
+    color: colors.textLight5,
     marginTop: normalize(1),
   },
   subjectList: {
@@ -144,7 +136,7 @@ const styles = StyleSheet.create({
   subjectRow: {
     borderRadius: normalize(10),
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.textLight1,
     paddingHorizontal: normalize(12),
     paddingVertical: normalize(10),
     marginBottom: normalize(8),
@@ -152,7 +144,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   subjectRowSelected: {
-    backgroundColor: COLORS.selectedBackground,
+    backgroundColor: colors.primaryLight3,
   },
   colorDot: {
     width: normalize(10),
@@ -166,16 +158,16 @@ const styles = StyleSheet.create({
   subjectTitle: {
     fontFamily: fonts.bold,
     fontSize: fontSizes.sm,
-    color: COLORS.textPrimary,
+    color: colors.text,
   },
   subjectTitleDisabled: {
-    color: COLORS.textDisabled,
+    color: colors.textLight2,
   },
   subjectMeta: {
     marginTop: normalize(2),
     fontFamily: fonts.regular,
     fontSize: normalize(11),
-    color: COLORS.textSecondary,
+    color: colors.textLight4,
   },
   checkCircle: {
     width: normalize(20),
@@ -192,11 +184,11 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: COLORS.overlay,
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
   bottomSheet: {
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.white,
     borderTopLeftRadius: normalize(18),
     borderTopRightRadius: normalize(18),
     paddingHorizontal: normalize(16),
@@ -207,7 +199,7 @@ const styles = StyleSheet.create({
   handleBar: {
     width: normalize(48),
     height: normalize(4),
-    backgroundColor: COLORS.border,
+    backgroundColor: colors.textLight1,
     borderRadius: normalize(10),
     alignSelf: 'center',
     marginBottom: normalize(10),
@@ -215,29 +207,29 @@ const styles = StyleSheet.create({
   bsTitle: {
     fontFamily: fonts.bold,
     fontSize: fontSizes.title,
-    color: COLORS.textPrimary,
+    color: colors.text,
   },
   bsSub: {
     marginTop: normalize(4),
     fontFamily: fonts.regular,
     fontSize: fontSizes.sm,
-    color: COLORS.textSecondary,
+    color: colors.textLight4,
     marginBottom: normalize(10),
   },
   bsDivider: {
     height: 1,
-    backgroundColor: COLORS.border,
+    backgroundColor: colors.textLight1,
     marginBottom: normalize(10),
   },
   bsRoomLabel: {
     fontFamily: fonts.bold,
     fontSize: normalize(12),
-    color: COLORS.textSecondary,
+    color: colors.textLight4,
     marginBottom: normalize(6),
   },
   classOption: {
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: colors.textLight1,
     borderRadius: normalize(10),
     padding: normalize(10),
     marginBottom: normalize(8),
@@ -264,13 +256,13 @@ const styles = StyleSheet.create({
   classMain: {
     fontFamily: fonts.bold,
     fontSize: fontSizes.sm,
-    color: COLORS.textPrimary,
+    color: colors.text,
   },
   classSchedule: {
     marginTop: normalize(2),
     fontFamily: fonts.regular,
     fontSize: normalize(11),
-    color: COLORS.textSecondary,
+    color: colors.textLight4,
   },
   badgeRow: {
     marginTop: normalize(8),
@@ -282,7 +274,7 @@ const styles = StyleSheet.create({
   daySeparator: {
     fontFamily: fonts.regular,
     fontSize: normalize(10),
-    color: COLORS.textTertiary,
+    color: colors.textLight4,
     marginRight: normalize(2),
   },
   periodBadge: {
@@ -298,21 +290,20 @@ const styles = StyleSheet.create({
     marginTop: normalize(8),
     height: 50,
     borderRadius: 10,
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   completeButtonText: {
     fontFamily: fonts.bold,
     fontSize: fontSizes.sm,
-    color: COLORS.white,
+    color: colors.white,
   },
   choiceScroll: {
     flex: 1,
   },
   choiceContent: {
     flexGrow: 1,
-    paddingHorizontal: normalize(16),
     paddingTop: normalize(70),
     paddingBottom: normalize(24),
     gap: normalize(12),
@@ -321,7 +312,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: '100%',
     borderRadius: normalize(14),
-    backgroundColor: COLORS.primary,
+    backgroundColor: colors.primary,
     paddingHorizontal: normalize(14),
     paddingVertical: normalize(12),
     marginTop: normalize(10),
@@ -330,7 +321,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: '100%',
     borderRadius: normalize(14),
-    backgroundColor: COLORS.textLight5,
+    backgroundColor: colors.textLight05,
     paddingHorizontal: normalize(14),
     paddingVertical: normalize(12),
     marginTop: normalize(10),
@@ -338,30 +329,30 @@ const styles = StyleSheet.create({
   choiceTitle: {
     fontFamily: fonts.bold,
     fontSize: fontSizes.heading + 2,
-    color: COLORS.textPrimary,
+    color: colors.text,
     textAlign: 'center',
   },
   choiceRightTitle: {
     fontFamily: fonts.bold,
     fontSize: fontSizes.title,
-    color: COLORS.background,
+    color: colors.white,
     textAlign: 'center',
   },
   choiceWrongTitle: {
     fontFamily: fonts.bold,
     fontSize: fontSizes.title,
-    color: COLORS.textSecondary,
+    color: colors.textLight4,
     textAlign: 'center',
   },
   choiceDescription: {
     fontFamily: fonts.regular,
     fontSize: fontSizes.lg,
-    color: COLORS.textSecondary,
+    color: colors.textLight4,
     textAlign: 'center',
   },
   choiceLoadingOverlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: COLORS.textLight70,
+    backgroundColor: colors.textLight5,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
@@ -370,7 +361,7 @@ const styles = StyleSheet.create({
     marginTop: normalize(12),
     fontFamily: fonts.regular,
     fontSize: fontSizes.md,
-    color: COLORS.textSecondary,
+    color: colors.textLight4,
     textAlign: 'center',
     paddingHorizontal: normalize(24),
   },
@@ -384,7 +375,7 @@ const styles = StyleSheet.create({
  * @param {{ dividerColor?: string }} [options] — 격자·외곽 구분선 색 (기본 `textLight10`)
  */
 export function createTimetableViewStyles(normalize, options = {}) {
-  const dividerColor = options.dividerColor ?? COLORS.textLight10;
+  const dividerColor = options.dividerColor ?? colors.textLight1;
   return StyleSheet.create({
     wrapper: {
       marginTop: normalize(16),
@@ -393,7 +384,7 @@ export function createTimetableViewStyles(normalize, options = {}) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: COLORS.background,
+      backgroundColor: colors.white,
       paddingHorizontal: normalize(8),
       paddingVertical: normalize(4),
       borderRadius: normalize(20),
@@ -401,7 +392,7 @@ export function createTimetableViewStyles(normalize, options = {}) {
     footerResetLabel: {
       fontFamily: fonts.bold,
       fontSize: fontSizes.lg,
-      color: COLORS.textLight70,
+      color: colors.textLight5,
     },
     timetableContainer: {
       borderRadius: normalize(8),
@@ -411,16 +402,16 @@ export function createTimetableViewStyles(normalize, options = {}) {
     },
     /** 이미지 저장용: 요일~교시 격자만 (푸터 제외) */
     timetableViewShot: {
-      backgroundColor: COLORS.background,
+      backgroundColor: colors.white,
     },
     daysRow: {
       flexDirection: 'row',
-      backgroundColor: COLORS.textLight5,
+      backgroundColor: colors.textLight05,
     },
     periodHeaderCell: {
       width: normalize(20),
       height: normalize(20),
-      backgroundColor: COLORS.textLight5,
+      backgroundColor: colors.textLight05,
     },
     dayCell: {
       flex: 1,
@@ -433,7 +424,7 @@ export function createTimetableViewStyles(normalize, options = {}) {
     dayText: {
       fontFamily: fonts.regular,
       fontSize: fontSizes.md,
-      color: COLORS.textSecondary,
+      color: colors.textLight4,
     },
     row: {
       flexDirection: 'row',
@@ -443,7 +434,7 @@ export function createTimetableViewStyles(normalize, options = {}) {
     lunchRow: {
       borderTopWidth: 1,
       borderTopColor: dividerColor,
-      backgroundColor: COLORS.textLight5,
+      backgroundColor: colors.textLight05,
       paddingVertical: normalize(2),
       alignItems: 'center',
       justifyContent: 'center',
@@ -451,19 +442,19 @@ export function createTimetableViewStyles(normalize, options = {}) {
     lunchText: {
       fontFamily: fonts.regular,
       fontSize: fontSizes.sm,
-      color: COLORS.textSecondary,
+      color: colors.textLight4,
     },
     periodCell: {
       width: normalize(20),
       height: normalize(40),
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: COLORS.textLight5,
+      backgroundColor: colors.textLight05,
     },
     periodText: {
       fontFamily: fonts.regular,
       fontSize: fontSizes.md,
-      color: COLORS.textSecondary,
+      color: colors.textLight4,
     },
     mergedFooterRow: {
       flexDirection: 'row',
@@ -475,7 +466,7 @@ export function createTimetableViewStyles(normalize, options = {}) {
       flexDirection: 'row',
       alignItems: 'center',
       minHeight: normalize(35),
-      backgroundColor: COLORS.background,
+      backgroundColor: colors.white,
     },
     mergedFooterActionRow: {
       flex: 1,
@@ -492,26 +483,26 @@ export function createTimetableViewStyles(normalize, options = {}) {
       alignItems: 'center',
       borderLeftWidth: 1,
       borderLeftColor: dividerColor,
-      backgroundColor: COLORS.background,
+      backgroundColor: colors.white,
       padding: normalize(2),
     },
     classCellFilled: {
-      backgroundColor: COLORS.primaryLight30,
+      backgroundColor: colors.primaryLight4,
     },
     classCellText: {
       fontFamily: fonts.regular,
       fontSize: fontSizes.md,
-      color: COLORS.textLight20,
+      color: colors.textLight2,
       textAlign: 'center',
     },
     classCellTextFilled: {
       fontFamily: fonts.regular,
       fontSize: fontSizes.md,
-      color: COLORS.textPrimary,
+      color: colors.text,
     },
     saveSuccessModalOverlay: {
       flex: 1,
-      backgroundColor: COLORS.overlay,
+      backgroundColor: 'rgba(0,0,0,0.5)',
       justifyContent: 'center',
       alignItems: 'center',
       paddingHorizontal: normalize(24),
@@ -519,7 +510,7 @@ export function createTimetableViewStyles(normalize, options = {}) {
     saveSuccessModalCard: {
       width: '85%',
       maxWidth: normalize(340),
-      backgroundColor: COLORS.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(20),
       padding: normalize(24),
       alignItems: 'center',
@@ -527,21 +518,21 @@ export function createTimetableViewStyles(normalize, options = {}) {
     saveSuccessModalTitle: {
       fontFamily: fonts.bold,
       fontSize: fontSizes.title,
-      color: COLORS.textPrimary,
+      color: colors.text,
       marginBottom: normalize(10),
       textAlign: 'center',
     },
     saveSuccessModalBody: {
       fontFamily: fonts.regular,
       fontSize: fontSizes.lg,
-      color: COLORS.textSecondary,
+      color: colors.textLight4,
       textAlign: 'center',
       marginBottom: normalize(20),
     },
     saveSuccessModalConfirm: {
       width: '100%',
       height: normalize(45),
-      backgroundColor: COLORS.primary,
+      backgroundColor: colors.primary,
       borderRadius: normalize(24),
       justifyContent: 'center',
       alignItems: 'center',
@@ -549,7 +540,7 @@ export function createTimetableViewStyles(normalize, options = {}) {
     saveSuccessModalConfirmText: {
       fontFamily: fonts.bold,
       fontSize: fontSizes.xxl,
-      color: COLORS.background,
+      color: colors.white,
     },
     /** 마이페이지 시간표 초기화 확인 (저장 완료 모달과 동일 셸 + 이중 버튼) */
     timetableResetModalActions: {
@@ -560,7 +551,7 @@ export function createTimetableViewStyles(normalize, options = {}) {
     timetableResetModalCancel: {
       flex: 1,
       height: normalize(40),
-      backgroundColor: COLORS.surface,
+      backgroundColor: colors.textLight0,
       borderRadius: normalize(24),
       justifyContent: 'center',
       alignItems: 'center',
@@ -568,12 +559,12 @@ export function createTimetableViewStyles(normalize, options = {}) {
     timetableResetModalCancelText: {
       fontFamily: fonts.bold,
       fontSize: fontSizes.lg,
-      color: COLORS.textSecondary,
+      color: colors.textLight4,
     },
     timetableResetModalDelete: {
       flex: 1,
       height: normalize(40),
-      backgroundColor: COLORS.alert,
+      backgroundColor: colors.alert,
       borderRadius: normalize(24),
       justifyContent: 'center',
       alignItems: 'center',
@@ -581,7 +572,7 @@ export function createTimetableViewStyles(normalize, options = {}) {
     timetableResetModalDeleteText: {
       fontFamily: fonts.bold,
       fontSize: fontSizes.lg,
-      color: COLORS.textWhite,
+      color: colors.white,
     },
   });
 }
@@ -594,7 +585,7 @@ export function createTimetableChoicePreviewStyles(normalize) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: COLORS.background,
+      backgroundColor: colors.white,
       paddingHorizontal: normalize(8),
       paddingVertical: normalize(4),
       borderRadius: normalize(20),
@@ -603,7 +594,7 @@ export function createTimetableChoicePreviewStyles(normalize) {
       borderRadius: normalize(8),
       overflow: 'hidden',
       borderWidth: 1,
-      borderColor: COLORS.timetableBorder,
+      borderColor: colors.textLight1,
     },
     choicePreviewEmptyContainer: {
       minHeight: normalize(200),
@@ -611,47 +602,47 @@ export function createTimetableChoicePreviewStyles(normalize) {
       alignItems: 'center',
       paddingVertical: normalize(32),
       paddingHorizontal: normalize(20),
-      backgroundColor: COLORS.background,
+      backgroundColor: colors.white,
     },
     choicePreviewEmptyText: {
       fontFamily: fonts.regular,
       fontSize: fontSizes.lg,
-      color: COLORS.textSecondary,
+      color: colors.textLight4,
       textAlign: 'center',
       lineHeight: normalize(22),
     },
     choicePreviewNoticeBanner: {
       paddingVertical: normalize(10),
       paddingHorizontal: normalize(12),
-      backgroundColor: COLORS.background,
+      backgroundColor: colors.white,
       borderBottomWidth: 1,
-      borderBottomColor: COLORS.timetableBorder,
+      borderBottomColor: colors.textLight1,
     },
     choicePreviewNoticeText: {
       fontFamily: fonts.bold,
       fontSize: fontSizes.lg,
-      color: COLORS.textPrimary,
+      color: colors.text,
       textAlign: 'center',
       lineHeight: normalize(20),
     },
     choicePreviewNoticeSubText: {
       fontFamily: fonts.regular,
       fontSize: fontSizes.md,
-      color: COLORS.textSecondary,
+      color: colors.textLight4,
       textAlign: 'center',
       lineHeight: normalize(18),
     },
     choicePreviewGrid: {
-      backgroundColor: COLORS.background,
+      backgroundColor: colors.white,
     },
     choicePreviewDaysRow: {
       flexDirection: 'row',
-      backgroundColor: COLORS.textLight5,
+      backgroundColor: colors.textLight05,
     },
     choicePreviewPeriodHeaderCell: {
       width: normalize(20),
       height: normalize(20),
-      backgroundColor: COLORS.textLight5,
+      backgroundColor: colors.textLight05,
     },
     choicePreviewDayCell: {
       flex: 1,
@@ -659,41 +650,41 @@ export function createTimetableChoicePreviewStyles(normalize) {
       justifyContent: 'center',
       alignItems: 'center',
       borderLeftWidth: 1,
-      borderLeftColor: COLORS.timetableBorder,
+      borderLeftColor: colors.textLight1,
     },
     choicePreviewDayText: {
       fontFamily: fonts.regular,
       fontSize: fontSizes.md,
-      color: COLORS.textSecondary,
+      color: colors.textLight4,
     },
     choicePreviewRow: {
       flexDirection: 'row',
       borderTopWidth: 1,
-      borderTopColor: COLORS.timetableBorder,
+      borderTopColor: colors.textLight1,
     },
     choicePreviewPeriodCell: {
       width: normalize(20),
       height: normalize(40),
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: COLORS.textLight5,
+      backgroundColor: colors.textLight05,
     },
     choicePreviewPeriodText: {
       fontFamily: fonts.regular,
       fontSize: fontSizes.md,
-      color: COLORS.textSecondary,
+      color: colors.textLight4,
     },
     choicePreviewMergedFooterRow: {
       flexDirection: 'row',
       borderTopWidth: 1,
-      borderTopColor: COLORS.timetableBorder,
+      borderTopColor: colors.textLight1,
     },
     choicePreviewMergedFooterFullCell: {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
       minHeight: normalize(35),
-      backgroundColor: COLORS.background,
+      backgroundColor: colors.white,
     },
     choicePreviewMergedFooterActionRow: {
       flex: 1,
@@ -709,23 +700,23 @@ export function createTimetableChoicePreviewStyles(normalize) {
       justifyContent: 'center',
       alignItems: 'center',
       borderLeftWidth: 1,
-      borderLeftColor: COLORS.timetableBorder,
-      backgroundColor: COLORS.background,
+      borderLeftColor: colors.textLight1,
+      backgroundColor: colors.white,
       padding: normalize(2),
     },
     choicePreviewClassCellFilled: {
-      backgroundColor: COLORS.primaryLight30,
+      backgroundColor: colors.primaryLight4,
     },
     choicePreviewClassCellText: {
       fontFamily: fonts.regular,
       fontSize: fontSizes.md,
-      color: COLORS.textLight20,
+      color: colors.textLight2,
       textAlign: 'center',
     },
     choicePreviewClassCellTextFilled: {
       fontFamily: fonts.regular,
       fontSize: fontSizes.md,
-      color: COLORS.textPrimary,
+      color: colors.text,
     },
   });
 }
@@ -734,7 +725,7 @@ export function createTimetableChoicePreviewStyles(normalize) {
 export const MANUAL_TS_VISIBLE_PERIOD_ROWS = 6;
 
 /** 직접 선택(TimetableScreen) — 미리보기와 동일 레이아웃 규격, 스타일 키만 분리 */
-export function createManualTimetableScreenStyles(normalize) {
+export function createManualTimetableScreenStyles(normalize, width) {
   /** 요일 헤더 행(교시 코너·요일 칸 공통 높이 `normalize(20)`) */
   const manualTsDaysHeaderHeight = normalize(20);
   /** 한 교시 행 높이(교시 셀 `normalize(40)`) + 행 구분 `borderTop` 1px 근사 */
@@ -744,7 +735,7 @@ export function createManualTimetableScreenStyles(normalize) {
     manualTsHint: {
       fontFamily: fonts.regular,
       fontSize: fontSizes.lg,
-      color: COLORS.textSecondary,
+      color: colors.textLight4,
       marginBottom: normalize(10),
       lineHeight: normalize(15),
       textAlign: 'center',
@@ -752,7 +743,7 @@ export function createManualTimetableScreenStyles(normalize) {
     /** 페이지 전체 스크롤 없음 — 상단 고정 + 하단 과목 영역만 스크롤 */
     manualTsPageBody: {
       flex: 1,
-      paddingHorizontal: normalize(16),
+      paddingHorizontal: width * 0.04,
       paddingTop: normalize(12),
     },
     manualTsSubjectSectionScroll: {
@@ -768,21 +759,21 @@ export function createManualTimetableScreenStyles(normalize) {
       borderRadius: normalize(8),
       overflow: 'hidden',
       borderWidth: 1,
-      borderColor: COLORS.timetableBorder,
+      borderColor: colors.textLight1,
       marginBottom: normalize(14),
     },
     manualTsGrid: {
-      backgroundColor: COLORS.background,
+      backgroundColor: colors.white,
     },
     /** 이미지 저장: 격자(스크롤)만 캡처, 푸터 제외 */
     manualTsTimetableViewShot: {
-      backgroundColor: COLORS.background,
+      backgroundColor: colors.white,
     },
     manualTsRefreshButton: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: COLORS.background,
+      backgroundColor: colors.white,
       paddingHorizontal: normalize(8),
       paddingVertical: normalize(4),
       borderRadius: normalize(20),
@@ -790,19 +781,19 @@ export function createManualTimetableScreenStyles(normalize) {
     manualTsFooterIconLabel: {
       fontFamily: fonts.bold,
       fontSize: fontSizes.lg,
-      color: COLORS.textLight70,
+      color: colors.textLight5,
     },
     manualTsMergedFooterRow: {
       flexDirection: 'row',
       borderTopWidth: 1,
-      borderTopColor: COLORS.timetableBorder,
+      borderTopColor: colors.textLight1,
     },
     manualTsMergedFooterFullCell: {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
       minHeight: normalize(30),
-      backgroundColor: COLORS.background,
+      backgroundColor: colors.white,
     },
     manualTsMergedFooterActionRow: {
       flex: 1,
@@ -823,12 +814,12 @@ export function createManualTimetableScreenStyles(normalize) {
     },
     manualTsDaysRow: {
       flexDirection: 'row',
-      backgroundColor: COLORS.textLight5,
+      backgroundColor: colors.textLight05,
     },
     manualTsPeriodHeaderCell: {
       width: normalize(20),
       height: normalize(20),
-      backgroundColor: COLORS.textLight5,
+      backgroundColor: colors.textLight05,
     },
     manualTsDayCell: {
       flex: 1,
@@ -836,29 +827,29 @@ export function createManualTimetableScreenStyles(normalize) {
       justifyContent: 'center',
       alignItems: 'center',
       borderLeftWidth: 1,
-      borderLeftColor: COLORS.timetableBorder,
+      borderLeftColor: colors.textLight1,
     },
     manualTsDayText: {
       fontFamily: fonts.regular,
       fontSize: fontSizes.md,
-      color: COLORS.textSecondary,
+      color: colors.textLight4,
     },
     manualTsRow: {
       flexDirection: 'row',
       borderTopWidth: 1,
-      borderTopColor: COLORS.timetableBorder,
+      borderTopColor: colors.textLight1,
     },
     manualTsPeriodCell: {
       width: normalize(20),
       height: normalize(40),
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: COLORS.textLight5,
+      backgroundColor: colors.textLight05,
     },
     manualTsPeriodText: {
       fontFamily: fonts.regular,
       fontSize: fontSizes.md,
-      color: COLORS.textSecondary,
+      color: colors.textLight4,
     },
     manualTsClassCell: {
       flex: 1,
@@ -866,40 +857,40 @@ export function createManualTimetableScreenStyles(normalize) {
       justifyContent: 'center',
       alignItems: 'center',
       borderLeftWidth: 1,
-      borderLeftColor: COLORS.timetableBorder,
-      backgroundColor: COLORS.background,
+      borderLeftColor: colors.textLight1,
+      backgroundColor: colors.white,
       padding: normalize(2),
     },
     manualTsClassCellFilled: {
-      backgroundColor: COLORS.primaryLight30,
+      backgroundColor: colors.primaryLight4,
     },
     manualTsClassCellPaintReady: {
       borderWidth: 1,
-      borderColor: COLORS.background,
+      borderColor: colors.white,
     },
     /** 목록에서 선택한 과목이 격자에 배치된 칸 강조(배경색은 기존 과목색 유지) */
     manualTsClassCellSubjectHighlight: {
-      backgroundColor: COLORS.textLight20,
+      backgroundColor: colors.textLight2,
     },
     manualTsClassCellText: {
       fontFamily: fonts.regular,
       fontSize: fontSizes.md,
-      color: COLORS.textLight20,
+      color: colors.textLight2,
       textAlign: 'center',
     },
     manualTsClassCellTextFilled: {
       fontFamily: fonts.regular,
       fontSize: fontSizes.md,
-      color: COLORS.textPrimary,
+      color: colors.text,
     },
     manualTsSearchInput: {
       borderRadius: normalize(10),
-      backgroundColor: COLORS.textLight5,
+      backgroundColor: colors.textLight05,
       paddingHorizontal: normalize(12),
       paddingVertical: normalize(10),
       fontFamily: fonts.regular,
       fontSize: fontSizes.lg,
-      color: COLORS.textPrimary,
+      color: colors.text,
       marginBottom: normalize(12),
     },
     manualTsSubjectList: {},
@@ -909,10 +900,10 @@ export function createManualTimetableScreenStyles(normalize) {
       paddingVertical: normalize(16),
       paddingHorizontal: normalize(8),
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: COLORS.textLight10,
+      borderBottomColor: colors.textLight1,
     },
     manualTsSubjectRowPaintSelected: {
-      backgroundColor: COLORS.primaryLight20,
+      backgroundColor: colors.primaryLight3,
       borderBottomWidth: 0,
     },
     manualTsSubjectDot: {
@@ -927,19 +918,19 @@ export function createManualTimetableScreenStyles(normalize) {
     manualTsSubjectTitle: {
       fontFamily: fonts.bold,
       fontSize: fontSizes.lg,
-      color: COLORS.textPrimary,
+      color: colors.text,
     },
     manualTsSubjectMeta: {
       fontFamily: fonts.regular,
       fontSize: fontSizes.sm,
-      color: COLORS.textSecondary,
+      color: colors.textLight4,
       marginTop: normalize(2),
     },
     /** 완료 후 확인 모달 — timetabelChoice 자동선택 모달과 동일 카피, 스타일만 분리 */
     manualTsDoneModalTitle: {
       fontFamily: fonts.bold,
       fontSize: fontSizes.title,
-      color: COLORS.textPrimary,
+      color: colors.text,
       textAlign: 'center',
       marginBottom: normalize(10),
     },
@@ -950,7 +941,7 @@ export function createManualTimetableScreenStyles(normalize) {
     manualTsDoneModalHintLine: {
       fontFamily: fonts.regular,
       fontSize: fontSizes.xl,
-      color: COLORS.textSecondary,
+      color: colors.textLight4,
       textAlign: 'center',
       lineHeight: normalize(22),
     },
@@ -964,30 +955,30 @@ export function createManualTimetableScreenStyles(normalize) {
     manualTsDoneModalHintAfterIcon: {
       fontFamily: fonts.regular,
       fontSize: fontSizes.xl,
-      color: COLORS.textSecondary,
+      color: colors.textLight4,
       lineHeight: normalize(22),
     },
     manualTsDoneModalConfirmBtn: {
       height: normalize(42),
       borderRadius: normalize(10),
-      backgroundColor: COLORS.primary,
+      backgroundColor: colors.primary,
       alignItems: 'center',
       justifyContent: 'center',
     },
     manualTsDoneModalConfirmText: {
       fontFamily: fonts.bold,
       fontSize: fontSizes.xl,
-      color: COLORS.textWhite,
+      color: colors.white,
     },
   });
 }
 
 /** 편집 화면(EditTimetable) — manualTs와 동일 격자 규격; 최소 10교시, 아코디언에서 최대 교시(상한) 확장 */
-export function createEditTimetableScreenStyles(normalize) {
+export function createEditTimetableScreenStyles(normalize, width) {
   return StyleSheet.create({
     /** 시간표 높이만큼만 차지 — 아코디언이 격자 바로 아래 오도록 flex 미사용 */
     editTsPageBody: {
-      paddingHorizontal: normalize(16),
+      paddingHorizontal: width * 0.04,
       paddingTop: normalize(12),
     },
     editTsWrapper: {
@@ -997,23 +988,23 @@ export function createEditTimetableScreenStyles(normalize) {
       borderRadius: normalize(8),
       overflow: 'hidden',
       borderWidth: 1,
-      borderColor: COLORS.timetableBorder,
+      borderColor: colors.textLight1,
     },
     editTsGrid: {
-      backgroundColor: COLORS.background,
+      backgroundColor: colors.white,
     },
     /** 교시 추가 푸터(+ 행) — EditTimetable 전용 키 */
     editTsAddPeriodFooterRow: {
       flexDirection: 'row',
       borderTopWidth: 1,
-      borderTopColor: COLORS.timetableBorder,
+      borderTopColor: colors.textLight1,
     },
     editTsAddPeriodFooterCell: {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
       minHeight: normalize(35),
-      backgroundColor: COLORS.background,
+      backgroundColor: colors.white,
     },
     editTsAddPeriodFooterActions: {
       flex: 1,
@@ -1027,19 +1018,19 @@ export function createEditTimetableScreenStyles(normalize) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: COLORS.background,
+      backgroundColor: colors.white,
       paddingHorizontal: normalize(8),
       paddingVertical: normalize(4),
       borderRadius: normalize(20),
     },
     editTsDaysRow: {
       flexDirection: 'row',
-      backgroundColor: COLORS.textLight5,
+      backgroundColor: colors.textLight05,
     },
     editTsPeriodHeaderCell: {
       width: normalize(20),
       height: normalize(20),
-      backgroundColor: COLORS.textLight5,
+      backgroundColor: colors.textLight05,
     },
     editTsDayCell: {
       flex: 1,
@@ -1047,29 +1038,29 @@ export function createEditTimetableScreenStyles(normalize) {
       justifyContent: 'center',
       alignItems: 'center',
       borderLeftWidth: 1,
-      borderLeftColor: COLORS.timetableBorder,
+      borderLeftColor: colors.textLight1,
     },
     editTsDayText: {
       fontFamily: fonts.regular,
       fontSize: fontSizes.md,
-      color: COLORS.textSecondary,
+      color: colors.textLight4,
     },
     editTsRow: {
       flexDirection: 'row',
       borderTopWidth: 1,
-      borderTopColor: COLORS.timetableBorder,
+      borderTopColor: colors.textLight1,
     },
     editTsPeriodCell: {
       width: normalize(20),
       height: normalize(40),
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: COLORS.textLight5,
+      backgroundColor: colors.textLight05,
     },
     editTsPeriodText: {
       fontFamily: fonts.regular,
       fontSize: fontSizes.md,
-      color: COLORS.textSecondary,
+      color: colors.textLight4,
     },
     editTsClassCell: {
       flex: 1,
@@ -1077,26 +1068,26 @@ export function createEditTimetableScreenStyles(normalize) {
       justifyContent: 'center',
       alignItems: 'center',
       borderLeftWidth: 1,
-      borderLeftColor: COLORS.timetableBorder,
-      backgroundColor: COLORS.background,
+      borderLeftColor: colors.textLight1,
+      backgroundColor: colors.white,
       padding: normalize(2),
     },
     editTsClassCellFilled: {
-      backgroundColor: COLORS.primaryLight30,
+      backgroundColor: colors.primaryLight4,
     },
     editTsClassCellText: {
       fontFamily: fonts.regular,
       fontSize: fontSizes.md,
-      color: COLORS.textLight20,
+      color: colors.textLight2,
       textAlign: 'center',
     },
     editTsClassCellTextFilled: {
       fontFamily: fonts.regular,
       fontSize: fontSizes.md,
-      color: COLORS.textPrimary,
+      color: colors.text,
     },
     editTsClassCellSelected: {
-      backgroundColor: COLORS.background2,
+      backgroundColor: colors.textLight2,
     },
     editTsKeyboardRoot: {
       flex: 1,
@@ -1106,7 +1097,7 @@ export function createEditTimetableScreenStyles(normalize) {
     },
     editTsAccordion: {
       marginTop: normalize(4),
-      marginHorizontal: normalize(6),
+      marginHorizontal: width * 0.04,
       borderRadius: normalize(10),
       overflow: 'hidden',
     },
@@ -1120,12 +1111,12 @@ export function createEditTimetableScreenStyles(normalize) {
     editTsAccordionHeaderTitle: {
       fontFamily: fonts.bold,
       fontSize: fontSizes.xl,
-      color: COLORS.textPrimary,
+      color: colors.text,
     },
     editTsAccordionChevron: {
       fontFamily: fonts.regular,
       fontSize: fontSizes.md,
-      color: COLORS.textSecondary,
+      color: colors.textLight4,
       marginLeft: normalize(8),
     },
     editTsAccordionBody: {
@@ -1136,19 +1127,19 @@ export function createEditTimetableScreenStyles(normalize) {
     editTsAccordionCellTitle: {
       fontFamily: fonts.bold,
       fontSize: fontSizes.xl,
-      color: COLORS.textPrimary,
+      color: colors.text,
       marginBottom: normalize(6),
     },
     editTsAccordionInput: {
       borderWidth: 1,
-      borderColor: COLORS.textLight10,
+      borderColor: colors.textLight1,
       borderRadius: normalize(10),
       paddingHorizontal: normalize(12),
       paddingVertical: normalize(10),
       fontFamily: fonts.regular,
       fontSize: fontSizes.xl,
-      color: COLORS.textPrimary,
-      backgroundColor: COLORS.background,
+      color: colors.text,
+      backgroundColor: colors.white,
       marginBottom: normalize(12),
     },
     editTsAccordionActions: {
@@ -1163,28 +1154,28 @@ export function createEditTimetableScreenStyles(normalize) {
       justifyContent: 'center',
     },
     editTsAccordionBtnMuted: {
-      backgroundColor: COLORS.textLight5,
+      backgroundColor: colors.textLight05,
     },
     editTsAccordionBtnDanger: {
-      backgroundColor: COLORS.alert,
+      backgroundColor: colors.alert,
     },
     editTsAccordionBtnPrimary: {
-      backgroundColor: COLORS.primary,
+      backgroundColor: colors.primary,
     },
     editTsAccordionBtnTextMuted: {
       fontFamily: fonts.bold,
       fontSize: fontSizes.lg,
-      color: COLORS.textSecondary,
+      color: colors.textLight4,
     },
     editTsAccordionBtnTextDanger: {
       fontFamily: fonts.bold,
       fontSize: fontSizes.lg,
-      color: COLORS.background,
+      color: colors.white,
     },
     editTsAccordionBtnTextPrimary: {
       fontFamily: fonts.bold,
       fontSize: fontSizes.lg,
-      color: COLORS.background,
+      color: colors.white,
     },
   });
 }
@@ -1193,16 +1184,16 @@ export function createEditTimetableScreenStyles(normalize) {
 export const editTsScreenChromeStyles = StyleSheet.create({
   rootFill: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.white,
   },
   safeFill: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.white,
   },
 });
 
 /** EditTimetable TextInput placeholderTextColor */
-export const EDIT_TIMETABLE_INPUT_PLACEHOLDER_COLOR = COLORS.textSecondary;
+export const EDIT_TIMETABLE_INPUT_PLACEHOLDER_COLOR = colors.textLight4;
 
 /** EditTimetable 아코디언 하단 패딩과 함께 쓸 최소값용(scale 반영) */
 export function getEditTimetableAccordionMinFooterPadding(normalize) {

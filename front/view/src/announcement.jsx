@@ -38,8 +38,8 @@ const Announcement = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(
-    () => createNotificationStyles(normalize),
-    [normalize],
+    () => createNotificationStyles(normalize, width),
+    [normalize, width],
   );
   const isEmpty = !loading && announcements.length === 0;
 

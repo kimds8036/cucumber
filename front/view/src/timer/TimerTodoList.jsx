@@ -33,21 +33,6 @@ export default function TimerTodoList({
   const Wrap = guideTarget ? GuideFocusTarget : View;
   return (
     <Wrap name={T.TIMER_TODO_COLUMN} style={[styles.todoColumn, tdb('#FF2D55')]}>
-      {isViewingToday && (
-        <View style={[styles.todoHeader, tdb('#64D2FF')]}>
-          <TouchableOpacity
-            style={styles.todoAddBtn}
-            onPress={() => setShowAddSubject(true)}
-          >
-            <Ionicons
-              name="add"
-              size={14}
-              color={colors.textLight4}
-            />
-            <Text style={styles.todoAddBtnText}>과목 추가</Text>
-          </TouchableOpacity>
-        </View>
-      )}
       <ScrollView
         style={[styles.todoList, tdb('#AC8E68')]}
         showsVerticalScrollIndicator={false}
@@ -176,6 +161,21 @@ export default function TimerTodoList({
             </View>
           );
         })}
+        {isViewingToday && (
+          <View style={[styles.todoHeader, tdb('#64D2FF')]}>
+            <TouchableOpacity
+              style={styles.todoAddBtn}
+              onPress={() => setShowAddSubject(true)}
+            >
+              <Ionicons
+                name="add"
+                size={14}
+                color={colors.textLight4}
+              />
+              <Text style={styles.todoAddBtnText}>과목 추가</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
     </Wrap>
   );
