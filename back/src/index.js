@@ -51,6 +51,7 @@ import inicisRoutes from './routes/inicis.js';
 import developerFeedbackRoutes from './routes/developerFeedback.js';
 import hallOfFameRoutes from './routes/hallOfFame.js';
 import adminHallOfFameRoutes from './routes/adminHallOfFame.js';
+import adminFeatureTestsRoutes from './routes/adminFeatureTests.js';
 import swaggerSpec from './swagger.js';
 import { initSocketServer } from './socketServer.js';
 import { initFirebase } from './config/firebase.js';
@@ -334,6 +335,7 @@ app.use('/api/admin/system', adminSystemRoutes);
 app.use('/api/admin/accounts', adminAccountsRoutes);
 app.use('/api/admin/legal', adminLegalRoutes);
 app.use('/api/admin/hall-of-fame', adminHallOfFameRoutes);
+app.use('/api/admin/feature-tests', adminFeatureTestsRoutes);
 app.use('/api/test', testRoutes);
 
 // ============ 글로벌 에러 핸들러 ============

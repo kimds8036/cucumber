@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
+  PanResponder,
   Text,
   TouchableOpacity,
   View,
@@ -26,13 +27,71 @@ export default function GlobalToast({
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const translateY = useRef(new Animated.Value(-80)).current;
+  const dragY = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const contentOpacity = useRef(new Animated.Value(1)).current;
   const contentTranslateY = useRef(new Animated.Value(0)).current;
   const progress = useRef(new Animated.Value(1)).current;
   const prevVisibleRef = useRef(false);
   const prevToastIdRef = useRef(null);
+  const dismissingRef = useRef(false);
+  const onHideRef = useRef(onHide);
+  const normalizeRef = useRef(normalize);
   const [exiting, setExiting] = useState(false);
+
+  onHideRef.current = onHide;
+  normalizeRef.current = normalize;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponderCapture: (_, gesture) => {
+        if (dismissingRef.current) return false;
+        return gesture.dy < -8 && Math.abs(gesture.dy) > Math.abs(gesture.dx);
+      },
+      onPanResponderMove: (_, gesture) => {
+        dragY.setValue(Math.min(0, gesture.dy));
+      },
+      onPanResponderRelease: (_, gesture) => {
+        const n = normalizeRef.current;
+        const dismiss = gesture.dy < -n(28) || gesture.vy < -0.55;
+        if (!dismiss) {
+          Animated.spring(dragY, {
+            toValue: 0,
+            friction: 7,
+            tension: 80,
+            useNativeDriver: true,
+          }).start();
+          return;
+        }
+        dismissingRef.current = true;
+        Animated.parallel([
+          Animated.timing(dragY, {
+            toValue: -n(140),
+            duration: 180,
+            easing: Easing.in(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacity, {
+            toValue: 0,
+            duration: 160,
+            easing: Easing.in(Easing.cubic),
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          dragY.setValue(0);
+          onHideRef.current?.();
+        });
+      },
+      onPanResponderTerminate: () => {
+        if (dismissingRef.current) return;
+        Animated.spring(dragY, {
+          toValue: 0,
+          friction: 7,
+          useNativeDriver: true,
+        }).start();
+      },
+    }),
+  ).current;
 
   const showBar = Boolean(showProgress || isChat);
   const titleText =
@@ -44,22 +103,26 @@ export default function GlobalToast({
     if (!message) return;
 
     if (visible) {
+      dismissingRef.current = false;
+      dragY.setValue(0);
       if (!prevVisibleRef.current) {
-        translateY.setValue(-normalize(80));
+        translateY.stopAnimation();
+        opacity.stopAnimation();
+        translateY.setValue(-normalize(28));
         opacity.setValue(0);
         contentOpacity.setValue(1);
         contentTranslateY.setValue(0);
         Animated.parallel([
           Animated.timing(translateY, {
             toValue: 0,
-            duration: 320,
-            easing: Easing.out(Easing.back(1.2)),
+            duration: 240,
+            easing: Easing.out(Easing.cubic),
             useNativeDriver: true,
           }),
           Animated.timing(opacity, {
             toValue: 1,
-            duration: 320,
-            easing: Easing.out(Easing.cubic),
+            duration: 180,
+            easing: Easing.out(Easing.quad),
             useNativeDriver: true,
           }),
         ]).start();
@@ -90,6 +153,11 @@ export default function GlobalToast({
 
     if (prevVisibleRef.current) {
       prevVisibleRef.current = false;
+      if (dismissingRef.current) {
+        dismissingRef.current = false;
+        setExiting(false);
+        return;
+      }
       setExiting(true);
       Animated.parallel([
         Animated.timing(translateY, {
@@ -146,8 +214,9 @@ export default function GlobalToast({
         left: normalize(16),
         right: normalize(16),
         opacity,
-        transform: [{ translateY }],
+        transform: [{ translateY: Animated.add(translateY, dragY) }],
       }}
+      {...panResponder.panHandlers}
     >
       <TouchableOpacity
         activeOpacity={0.92}

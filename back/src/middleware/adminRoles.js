@@ -36,6 +36,7 @@ export function canAccessPanel(role, panel) {
     legalDocuments: [ADMIN_ROLES.SUPER, ADMIN_ROLES.MODERATOR],
     announcements: [ADMIN_ROLES.SUPER, ADMIN_ROLES.MODERATOR, ADMIN_ROLES.SUPPORT],
     hallOfFame: [ADMIN_ROLES.SUPER, ADMIN_ROLES.MODERATOR],
+    featureTests: [ADMIN_ROLES.SUPER, ADMIN_ROLES.MODERATOR],
     adminAccounts: [ADMIN_ROLES.SUPER],
   };
   return (map[panel] || []).includes(r);
