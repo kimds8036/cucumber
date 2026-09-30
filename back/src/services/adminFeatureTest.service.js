@@ -4,6 +4,31 @@ import { resolveAnonNo } from '../utils/resolveAnonNo.js';
 import { API_ERROR_CODES } from '../constants/apiErrorCodes.js';
 import { getIO } from '../socketServer.js';
 
+export async function listFeatureTestUsers(query) {
+  const q = String(query || '').trim();
+  const params = [];
+  let where = 'u.is_deleted = FALSE';
+  if (q) {
+    where += ' AND (CAST(u.id AS CHAR) LIKE ? OR u.username LIKE ?)';
+    const like = `%${q}%`;
+    params.push(like, like);
+  }
+  const [rows] = await pool.execute(
+    `SELECT u.id, u.username, sch.name AS school_name
+     FROM users u
+     LEFT JOIN schools sch ON sch.school_id = u.school_id
+     WHERE ${where}
+     ORDER BY u.id DESC
+     LIMIT 200`,
+    params,
+  );
+  return rows.map((row) => ({
+    id: row.id,
+    username: row.username || '',
+    schoolName: row.school_name || '',
+  }));
+}
+
 function fail(status, message, extra = {}) {
   const error = new Error(message);
   error.status = status;

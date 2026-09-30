@@ -5,6 +5,7 @@ import {
   dryRunComment,
   dryRunPost,
   dispatchSocketToast,
+  listFeatureTestUsers,
 } from '../services/adminFeatureTest.service.js';
 
 const router = express.Router();
@@ -20,6 +21,15 @@ function sendError(res, error) {
     message: '기능 테스트 중 오류가 발생했습니다.',
   });
 }
+
+router.get('/users', requireAdminApi, moderator, async (req, res) => {
+  try {
+    const users = await listFeatureTestUsers(req.query?.q);
+    return res.json({ success: true, data: { users } });
+  } catch (error) {
+    return sendError(res, error);
+  }
+});
 
 router.post('/dry-run', requireAdminApi, moderator, async (req, res) => {
   try {
