@@ -29,6 +29,10 @@ export async function fetchStudyGrassMonth(year, month) {
   for (let day = 1; day <= daysInMonth; day += 1) {
     const dayKey = `${year}-${pad2(month + 1)}-${pad2(day)}`;
     if (dayKey > todayKey) break;
+    if (dayKey === todayKey) {
+      result[dayKey] = 0;
+      continue;
+    }
     const r = seededRandom(dayKey);
     if (r < 0.3) continue;
     const hours = seededRandom(`${dayKey}-h`) * 14;

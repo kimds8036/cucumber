@@ -14,9 +14,6 @@ import { tdb, formatHMS } from './timerHelpers';
 /** 날짜 이동(이전·달력·다음) 버튼. 숨김 상태이며 코드는 남겨 둔다 */
 const SHOW_DATE_NAV = false;
 
-/** 백엔드 연결 전 표시용 더미 값 */
-const DUMMY_STREAK_DAYS = 50;
-
 export default function TimerCard({
   styles,
   normalize,
@@ -32,6 +29,7 @@ export default function TimerCard({
   onOpenStudyRoom,
   toggleTimer,
   weeklyRate = 0,
+  streakDays = 0,
 }) {
   return (
     <GuideFocusTarget
@@ -152,7 +150,7 @@ export default function TimerCard({
               연속 공부
             </Text>
             <Text style={styles.timerMenuValue} numberOfLines={1}>
-              {DUMMY_STREAK_DAYS}일
+              {streakDays}일
             </Text>
           </View>
         </TouchableOpacity>

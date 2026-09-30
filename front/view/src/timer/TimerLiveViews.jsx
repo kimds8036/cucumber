@@ -101,6 +101,7 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
   deleteTask,
   onOpenDayRecord,
   weekly,
+  streakDays,
 }) {
   const liveExtraMs = useContext(LiveElapsedMsContext);
   const displayTotalMs = isViewingToday
@@ -136,6 +137,7 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
         onOpenStudyRoom={onOpenStudyRoom}
         toggleTimer={toggleTimer}
         weeklyRate={weekly?.rate ?? 0}
+        streakDays={streakDays ?? 0}
       />
     );
   }

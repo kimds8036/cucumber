@@ -57,6 +57,7 @@ import { TimerPlannerTabBar } from './TimerPlannerTabs';
 import TimerDayRecordSheet from './TimerDayRecordSheet';
 import { useTimerDayRecord } from './useTimerDayRecord';
 import { useTimerWeekly } from './useTimerWeekly';
+import { useStudyStreak } from './useStudyStreak';
 import {
   preloadTimerCaptureWatermark,
   waitForTimerCapturePaint,
@@ -342,6 +343,7 @@ export function TimerContent() {
 
   const dayRecordData = useTimerDayRecord(dayRecord?.dayKey ?? null);
   const weekly = useTimerWeekly();
+  const streakDays = useStudyStreak();
   const dayRecordCaptureRef = useRef(null);
 
   const captureToGallery = async (captureRef) => {
@@ -461,6 +463,7 @@ export function TimerContent() {
     deleteTask: timer.deleteTask,
     onOpenDayRecord: openDayRecord,
     weekly,
+    streakDays,
   };
 
   return (
