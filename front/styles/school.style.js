@@ -202,7 +202,7 @@ export const createOurSchoolStyles = (normalize) => {
     },
     mealModalBackdrop: {
       flex: 1,
-      backgroundColor: colors.textLight4,
+      backgroundColor: 'rgba(0,0,0,0.5)',
       justifyContent: 'center',
       alignItems: 'center',
       paddingHorizontal: normalize(18),
