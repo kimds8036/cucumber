@@ -1980,7 +1980,6 @@ export const createTimerSettingsStyles = (width, normalize) =>
     },
     sectionTitle: {
       marginTop: normalize(16),
-      marginBottom: normalize(8),
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.textLight4,
@@ -1990,6 +1989,7 @@ export const createTimerSettingsStyles = (width, normalize) =>
       borderColor: colors.textLight1,
       borderRadius: normalize(16),
       paddingHorizontal: normalize(14),
+      marginTop: normalize(8),
       backgroundColor: colors.white,
     },
     row: {
@@ -2085,7 +2085,6 @@ export const createTimerSettingsStyles = (width, normalize) =>
       color: colors.text,
     },
     footNote: {
-      marginTop: normalize(8),
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
       color: colors.textLight4,

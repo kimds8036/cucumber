@@ -119,7 +119,10 @@ export default function TimerSettings({ navigation }) {
         </View>
 
         <Text style={styles.sectionTitle}>스터디룸 캐릭터</Text>
-        <View style={styles.card}>
+        <Text style={styles.footNote}>
+          선택한 캐릭터는 다른 친구들의 스터디룸 화면에도 똑같이 보여요
+        </Text>
+        <View style={styles.characterCard}>
           <View style={styles.genderRow}>
             {GENDER_OPTIONS.map((opt) => {
               const active = gender === opt.key;
@@ -147,9 +150,7 @@ export default function TimerSettings({ navigation }) {
             })}
           </View>
         </View>
-        <Text style={styles.footNote}>
-          선택한 캐릭터는 다른 친구들의 스터디룸 화면에도 똑같이 보여요
-        </Text>
+        
       </ScrollView>
     </SafeAreaView>
   );
