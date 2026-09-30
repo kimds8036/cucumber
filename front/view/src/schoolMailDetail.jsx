@@ -22,7 +22,7 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useKeyboardHandler } from 'react-native-keyboard-controller';
 import SubHeader from '../frame/subHeader';
-import Skeleton from '../../components/common/Skeleton';
+import BoardDetailSkeleton from './board/BoardDetailSkeleton';
 import CommentInput from '../../components/CommentInput.jsx';
 import ReportModal from '../../components/common/ReportModal.jsx';
 import TopAdBanner from '../../components/ads/TopAdBanner';
@@ -717,104 +717,6 @@ export default function SchoolMailDetail({ navigation, route }) {
 
   if (!allowed) return <Gate />;
 
-  const renderSkeleton = () => (
-    <View
-      pointerEvents="none"
-      style={{
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        top: 0,
-        bottom: 0,
-        backgroundColor: colors.white,
-      }}
-    >
-      <View style={styles.contentSection}>
-        <View style={{ flexDirection: 'row', marginBottom: normalize(8) }}>
-          <Skeleton
-            width={normalize(52)}
-            height={normalize(12)}
-            borderRadius={normalize(6)}
-          />
-          <View style={{ width: normalize(8) }} />
-          <Skeleton
-            width={normalize(68)}
-            height={normalize(12)}
-            borderRadius={normalize(6)}
-          />
-        </View>
-        <Skeleton
-          width="100%"
-          height={normalize(14)}
-          borderRadius={normalize(6)}
-          style={{ marginBottom: normalize(6) }}
-        />
-        <Skeleton
-          width="90%"
-          height={normalize(14)}
-          borderRadius={normalize(6)}
-          style={{ marginBottom: normalize(10) }}
-        />
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: normalize(14),
-          }}
-        >
-          <Skeleton
-            width={normalize(34)}
-            height={normalize(14)}
-            borderRadius={normalize(6)}
-          />
-          <Skeleton
-            width={normalize(34)}
-            height={normalize(14)}
-            borderRadius={normalize(6)}
-          />
-        </View>
-      </View>
-      <View style={styles.adSection}>
-        <View style={styles.adSectionRow}>
-          <Skeleton
-            width={normalize(28)}
-            height={normalize(16)}
-            borderRadius={normalize(8)}
-          />
-          <Skeleton
-            width="72%"
-            height={normalize(14)}
-            borderRadius={normalize(6)}
-          />
-        </View>
-      </View>
-      <View style={styles.commentSection}>
-        {[0, 1, 2].map((idx) => (
-          <View key={`mail-detail-comment-skel-${idx}`} style={styles.commentItem}>
-            <Skeleton
-              width={normalize(120)}
-              height={normalize(11)}
-              borderRadius={normalize(6)}
-              style={{ marginBottom: normalize(8) }}
-            />
-            <Skeleton
-              width="100%"
-              height={normalize(13)}
-              borderRadius={normalize(6)}
-              style={{ marginBottom: normalize(6) }}
-            />
-            <Skeleton
-              width={normalize(140)}
-              height={normalize(11)}
-              borderRadius={normalize(6)}
-              style={{ marginBottom: normalize(12) }}
-            />
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-
   return (
     <View style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}>
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -914,7 +816,16 @@ export default function SchoolMailDetail({ navigation, route }) {
                   keyboardDismissMode="on-drag"
                 />
               </Animated.View>
-              {loading ? renderSkeleton() : null}
+              {loading ? (
+                <BoardDetailSkeleton
+                  styles={styles}
+                  normalize={normalize}
+                  width={width}
+                  showDistanceBadge={false}
+                  showImage={false}
+                  showScrap={false}
+                />
+              ) : null}
 
               <Animated.View
                 style={[

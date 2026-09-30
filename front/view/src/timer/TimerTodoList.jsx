@@ -38,9 +38,9 @@ export default function TimerTodoList({
             onPress={() => setShowAddSubject(true)}
           >
             <Ionicons
-              name="add-circle-outline"
-              size={18}
-              color={colors.primaryDark}
+              name="add"
+              size={14}
+              color={colors.textLight4}
             />
             <Text style={styles.todoAddBtnText}>과목 추가</Text>
           </TouchableOpacity>

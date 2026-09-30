@@ -325,7 +325,7 @@ export const createTimerStyles = (width, normalize) => {
     todoHeader: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'flex-end',
+      justifyContent: 'flex-start',
       marginBottom: normalize(10),
     },
     todoHeaderButtons: {
@@ -335,18 +335,23 @@ export const createTimerStyles = (width, normalize) => {
     },
     todoAddBtn: {
       flexDirection: 'row',
+      justifyContent: 'center',
       alignItems: 'center',
       alignSelf: 'flex-start',
-      paddingVertical: normalize(6),
-      paddingHorizontal: normalize(6),
-      borderRadius: normalize(10),
-      backgroundColor: colors.green,
+      width: '100%',
+      paddingVertical: normalize(4),
+      borderRadius: normalize(20),
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      borderColor: colors.textLight3,
+      backgroundColor: colors.white,
       gap: normalize(4),
     },
     todoAddBtnText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.primaryDark,
+      color: colors.textLight4,
+      textAlign: 'center',
     },
     todoList: {
       flex: 1,
@@ -357,7 +362,7 @@ export const createTimerStyles = (width, normalize) => {
     },
     subjectBlock: {
       marginBottom: normalize(8),
-      borderRadius: normalize(12),
+      borderRadius: normalize(14),
       overflow: 'hidden',
       borderWidth: 0.5,
       borderColor: colors.textLight1,
@@ -1306,7 +1311,7 @@ export const createTimerModalsStyles = (normalize) =>
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: colors.textLight3,
+      backgroundColor: 'rgba(0,0,0,0.5)',
     },
     overlay: {
       position: 'absolute',
@@ -1365,7 +1370,7 @@ export const createTimerModalsStyles = (normalize) =>
       borderColor: colors.textLight1,
       borderRadius: normalize(10),
       paddingHorizontal: normalize(12),
-      paddingVertical: normalize(8),
+      paddingVertical: normalize(10),
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.text,
@@ -1375,7 +1380,7 @@ export const createTimerModalsStyles = (normalize) =>
     },
     inputMultiline: {
       minHeight: normalize(60),
-      textAlignVertical: 'top',
+      textAlignVertical: 'center',
     },
     subjectPresetSection: {
       marginBottom: normalize(10),
@@ -1397,9 +1402,7 @@ export const createTimerModalsStyles = (normalize) =>
       paddingHorizontal: normalize(10),
       paddingVertical: normalize(6),
       borderRadius: normalize(14),
-      backgroundColor: colors.textLight1,
-      borderWidth: 1,
-      borderColor: colors.textLight1,
+      backgroundColor: colors.textLight05,
     },
     subjectPresetDot: {
       width: normalize(10),
@@ -1417,11 +1420,13 @@ export const createTimerModalsStyles = (normalize) =>
       color: colors.textLight4,
       marginBottom: normalize(16),
     },
+    colorSection: {
+      marginTop: normalize(8),
+      marginBottom: normalize(14),
+    },
     colorRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginTop: normalize(8),
-      marginBottom: normalize(14),
     },
     colorLabelRow: {
       flexDirection: 'row',
@@ -1431,7 +1436,7 @@ export const createTimerModalsStyles = (normalize) =>
     },
     colorScroll: {
       flexGrow: 0,
-      marginLeft: normalize(8),
+      flexShrink: 1,
     },
     colorWrap: {
       flexDirection: 'row',
@@ -1455,7 +1460,7 @@ export const createTimerModalsStyles = (normalize) =>
       paddingHorizontal: normalize(10),
       paddingVertical: normalize(6),
       borderRadius: normalize(12),
-      backgroundColor: colors.textLight1,
+      backgroundColor: colors.textLight05,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
@@ -1481,7 +1486,7 @@ export const createTimerModalsStyles = (normalize) =>
       paddingHorizontal: normalize(14),
       paddingVertical: normalize(10),
       borderRadius: normalize(10),
-      backgroundColor: colors.textLight1,
+      backgroundColor: colors.textLight05,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',

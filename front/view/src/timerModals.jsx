@@ -236,39 +236,39 @@ export const AddSubjectModal = ({ visible, onClose, onAdd }) => {
                   </ScrollView>
                 </View>
               ) : null}
-              <View style={m.colorRow}>
-                <View style={m.colorLabelRow}>
-                  <Text style={[m.label, m.labelNoMargin]}>색상</Text>
+              <View style={m.colorSection}>
+                <Text style={m.label}>색상</Text>
+                <View style={m.colorRow}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={m.colorScroll}
+                    keyboardShouldPersistTaps="always"
+                  >
+                    <View style={m.colorWrap}>
+                      {SUBJECT_COLORS.map((c) => (
+                        <TouchableOpacity
+                          key={c}
+                          onPress={() => setColor(c)}
+                          style={[
+                            m.colorDot,
+                            { backgroundColor: c },
+                            color === c && m.colorDotSelected,
+                          ]}
+                        />
+                      ))}
+                    </View>
+                  </ScrollView>
+                  <TouchableOpacity onPress={pickRandom} style={m.randomBtn}>
+                    <Ionicons
+                      name="shuffle"
+                      size={normalize(14)}
+                      color={colors.textLight4}
+                      style={m.randomIcon}
+                    />
+                    <Text style={m.randomText}>랜덤</Text>
+                  </TouchableOpacity>
                 </View>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={m.colorScroll}
-                  keyboardShouldPersistTaps="always"
-                >
-                  <View style={m.colorWrap}>
-                    {SUBJECT_COLORS.map((c) => (
-                      <TouchableOpacity
-                        key={c}
-                        onPress={() => setColor(c)}
-                        style={[
-                          m.colorDot,
-                          { backgroundColor: c },
-                          color === c && m.colorDotSelected,
-                        ]}
-                      />
-                    ))}
-                  </View>
-                </ScrollView>
-                <TouchableOpacity onPress={pickRandom} style={m.randomBtn}>
-                  <Ionicons
-                    name="shuffle"
-                    size={normalize(14)}
-                    color={colors.textLight4}
-                    style={m.randomIcon}
-                  />
-                  <Text style={m.randomText}>랜덤</Text>
-                </TouchableOpacity>
               </View>
               <View style={m.row}>
                 <TouchableOpacity style={m.cancelBtn} onPress={onClose}>

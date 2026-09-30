@@ -26,7 +26,7 @@ import { useBoardDetail } from './board/useBoardDetail';
 import BoardPostContent from './board/BoardPostContent';
 import BoardCommentTree from './board/BoardCommentTree';
 import BoardFloatingMenu from './board/BoardFloatingMenu';
-import Skeleton from '../../components/common/Skeleton';
+import BoardDetailSkeleton from './board/BoardDetailSkeleton';
 import ReportModal from '../../components/common/ReportModal.jsx';
 import { filterCommentTreeExcludingUser } from '../../utils/blockUser';
 import TopAdBanner from '../../components/ads/TopAdBanner';
@@ -521,117 +521,12 @@ export default function BoardDetail({ navigation, route }) {
               />
             </Animated.View>
             {showInitialSkeleton ? (
-              <View
-                pointerEvents="none"
-                style={{
-                  position: 'absolute',
-                  left: 0,
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  backgroundColor: colors.white,
-                }}
-              >
-                <View style={styles.contentSection}>
-                  <View
-                    style={{ flexDirection: 'row', marginBottom: normalize(8) }}
-                  >
-                    <Skeleton
-                      width={normalize(52)}
-                      height={normalize(12)}
-                      borderRadius={normalize(6)}
-                    />
-                    <View style={{ width: normalize(8) }} />
-                    <Skeleton
-                      width={normalize(68)}
-                      height={normalize(12)}
-                      borderRadius={normalize(6)}
-                    />
-                  </View>
-                  <Skeleton
-                    width="100%"
-                    height={normalize(14)}
-                    borderRadius={normalize(6)}
-                    style={{ marginBottom: normalize(6) }}
-                  />
-                  <Skeleton
-                    width="90%"
-                    height={normalize(14)}
-                    borderRadius={normalize(6)}
-                    style={{ marginBottom: normalize(10) }}
-                  />
-                  <Skeleton
-                    width="100%"
-                    height={normalize(260)}
-                    borderRadius={normalize(10)}
-                    style={{ marginBottom: normalize(10) }}
-                  />
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: normalize(14),
-                    }}
-                  >
-                    <Skeleton
-                      width={normalize(34)}
-                      height={normalize(14)}
-                      borderRadius={normalize(6)}
-                    />
-                    <Skeleton
-                      width={normalize(34)}
-                      height={normalize(14)}
-                      borderRadius={normalize(6)}
-                    />
-                    <Skeleton
-                      width={normalize(34)}
-                      height={normalize(14)}
-                      borderRadius={normalize(6)}
-                    />
-                  </View>
-                </View>
-                <View style={styles.adSection}>
-                  <View style={styles.adSectionRow}>
-                    <Skeleton
-                      width={normalize(28)}
-                      height={normalize(16)}
-                      borderRadius={normalize(8)}
-                    />
-                    <Skeleton
-                      width="72%"
-                      height={normalize(14)}
-                      borderRadius={normalize(6)}
-                    />
-                  </View>
-                </View>
-                <View style={styles.commentSection}>
-                  {[0, 1, 2].map((idx) => (
-                    <View
-                      key={`board-detail-comment-skel-${idx}`}
-                      style={styles.commentItem}
-                    >
-                      <Skeleton
-                        width={normalize(120)}
-                        height={normalize(11)}
-                        borderRadius={normalize(6)}
-                        style={{ marginBottom: normalize(8) }}
-                      />
-                      <Skeleton
-                        width="100%"
-                        height={normalize(13)}
-                        borderRadius={normalize(6)}
-                        style={{ marginBottom: normalize(6) }}
-                      />
-                      <Skeleton
-                        width={normalize(140)}
-                        height={normalize(11)}
-                        borderRadius={normalize(6)}
-                        style={{ marginBottom: normalize(12) }}
-                      />
-                    </View>
-                  ))}
-                </View>
-              </View>
+              <BoardDetailSkeleton
+                styles={styles}
+                normalize={normalize}
+                width={width}
+                showDistanceBadge={permissionGranted}
+              />
             ) : null}
 
             <Animated.View
