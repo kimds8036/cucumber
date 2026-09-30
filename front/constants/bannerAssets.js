@@ -18,6 +18,15 @@ export const BANNER_PLACEMENT_ASSETS = {
   timer: require('../assets/banner/timer.png'),
 };
 
+/** 타이머 전용. 랜덤 풀에 넣지 않는다. 게시된 공지가 배너 기간 안일 때만 쓴다. */
+export const NOTICE_BANNER_ASSET = require('../assets/banner/notice.png');
+
+export const NOTICE_BANNER_LINE1 = '📢 새 공지가 올라왔어요';
+
+/** 공지 배너 게재 기간. API 광고가 생기면 그 슬롯을 3일만 차지한다. */
+export const NOTICE_BANNER_DAYS = 7;
+export const NOTICE_BANNER_DAYS_WITH_API_AD = 3;
+
 /** @typedef {'board' | 'message' | 'school' | 'timer'} BannerPlacement */
 /** @typedef {{ line1: string, line2: string }} BannerCopy */
 
@@ -137,4 +146,37 @@ export function pickBanner(placement) {
 /** @deprecated use pickBanner */
 export function pickBannerAsset(placement) {
   return pickBanner(placement).source;
+}
+
+/**
+ * 타이머 배너 우선순위
+ * 1. 앱에 직접 요청한 기업 광고 (미도입)
+ * 2. 공지 — API 광고가 있으면 게시 후 3일, 없으면 7일
+ * 3. 애드몹·API 광고 (미도입)
+ * 4. 타이머 기본 에셋
+ *
+ * @param {Array<{ id?: number, title?: string, publishedAt?: string }> | null | undefined} items
+ * @param {{ hasApiAd?: boolean, now?: number }} [options]
+ */
+export function pickActiveNoticeForBanner(items, { hasApiAd = false, now = Date.now() } = {}) {
+  const days = hasApiAd ? NOTICE_BANNER_DAYS_WITH_API_AD : NOTICE_BANNER_DAYS;
+  const windowMs = days * 24 * 60 * 60 * 1000;
+  const list = Array.isArray(items) ? items : [];
+  for (const item of list) {
+    const title = String(item?.title ?? '').trim();
+    const published = new Date(item?.publishedAt).getTime();
+    if (!title || !Number.isFinite(published)) continue;
+    if (now >= published && now - published <= windowMs) {
+      return {
+        id: item.id,
+        title,
+        source: NOTICE_BANNER_ASSET,
+        copy: {
+          line1: NOTICE_BANNER_LINE1,
+          line2: title,
+        },
+      };
+    }
+  }
+  return null;
 }

@@ -47,6 +47,7 @@ import {
 import { preloadStudyRoomAssets } from '../../../utils/preloadStudyRoomAssets';
 import { tdb } from './timerHelpers';
 import TopAdBanner from '../../../components/ads/TopAdBanner';
+import { pickActiveNoticeForBanner, pickBanner } from '../../../constants/bannerAssets';
 import { useTimerDay } from './useTimerDay';
 import {
   LiveElapsedTicker,
@@ -74,6 +75,41 @@ export function TimerContent() {
     [width, normalize],
   );
   const isFocused = useIsFocused();
+  const [timerBanner] = useState(() => pickBanner('timer'));
+  const [noticeBanner, setNoticeBanner] = useState(null);
+  const [timerBannerReady, setTimerBannerReady] = useState(isGuidePreview);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isGuidePreview) {
+        setNoticeBanner(null);
+        setTimerBannerReady(true);
+        return undefined;
+      }
+      let cancelled = false;
+      (async () => {
+        try {
+          const res = await api.get('/api/announcements', {
+            params: { limit: 20 },
+          });
+          const items = Array.isArray(res.data?.data?.items)
+            ? res.data.data.items
+            : [];
+          // API 광고가 연결되면 hasApiAd를 true로 넘겨 공지 배너를 3일로 줄인다.
+          const active = pickActiveNoticeForBanner(items, { hasApiAd: false });
+          if (!cancelled) setNoticeBanner(active);
+        } catch (error) {
+          console.warn('[Timer] 공지 배너 조회 실패', error?.message || error);
+          if (!cancelled) setNoticeBanner(null);
+        } finally {
+          if (!cancelled) setTimerBannerReady(true);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [isGuidePreview]),
+  );
 
   const [friends, setFriends] = useState(INITIAL_FRIENDS);
   const [suggestions, setSuggestions] = useState([]);
@@ -378,6 +414,27 @@ export function TimerContent() {
     paddingTop: normalize(8),
   };
 
+  const timerBannerNode = !timer.initialLoadDone || !timerBannerReady ? (
+    <View
+      style={{
+        height: normalize(80),
+        marginBottom: normalize(10),
+        backgroundColor: colors.white,
+      }}
+    />
+  ) : (
+    <TopAdBanner
+      placement="timer"
+      inset={false}
+      picked={noticeBanner ?? timerBanner}
+      onPress={
+        noticeBanner
+          ? () => navigation.navigate('Announcement')
+          : undefined
+      }
+    />
+  );
+
   if (!timer.initialLoadDone) {
     return (
       <ScrollView
@@ -413,7 +470,7 @@ export function TimerContent() {
           </View>
         </View>
         <View style={{ paddingHorizontal: timerGutter }}>
-          <TopAdBanner placement="timer" inset={false} />
+          {timerBannerNode}
           <TimerDayContentSkeleton styles={styles} normalize={normalize} />
         </View>
       </ScrollView>
@@ -506,7 +563,7 @@ export function TimerContent() {
                   paddingHorizontal: timerGutter,
                 }}
               >
-                <TopAdBanner placement="timer" inset={false} />
+                {timerBannerNode}
               </View>
               {showDayContentSkeleton ? (
                 <View style={{ paddingHorizontal: timerGutter }}>
