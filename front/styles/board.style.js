@@ -1110,10 +1110,16 @@ export const createDetailStyles = (width, normalize) => {
     },
     commentRow: {
       paddingVertical: normalize(10),
+      paddingHorizontal: width * 0.04,
     },
     commentRowDivider: {
       borderBottomWidth: 1,
-      borderBottomColor: '#EFEFEF',
+      borderBottomColor: colors.textLight1,
+    },
+    commentRowDividerInset: {
+      height: 1,
+      backgroundColor: colors.textLight1,
+      marginHorizontal: width * 0.04,
     },
     /** 대댓글 묶음: 화살표 1개 + inset well
      * marginLeft = (부모 아바타 폭 - 화살표 size) / 2 → 아바타·화살표 중심 정렬
@@ -1122,11 +1128,10 @@ export const createDetailStyles = (width, normalize) => {
       flexDirection: 'row',
       alignItems: 'flex-start',
       marginLeft: (normalize(30) - normalize(18)) / 2,
-      marginTop: normalize(10),
       gap: normalize(4),
     },
     commentReplyArrow: {
-      paddingTop: normalize(12),
+      paddingTop: normalize(4),
     },
     commentReplyWell: {
       flex: 1,
@@ -1136,13 +1141,15 @@ export const createDetailStyles = (width, normalize) => {
       paddingVertical: normalize(12),
       paddingHorizontal: normalize(14),
       overflow: 'hidden',
-      boxShadow:
-        'inset 2px 2px 6px rgba(0,0,0,0.07), inset -2px -2px 6px rgba(255,255,255,0.9)',
     },
-    commentReplyDivider: {
-      height: 0.5,
-      backgroundColor: colors.replyWellLine,
-      marginVertical: normalize(10),
+    commentReplyGroupNext: {
+      marginTop: normalize(8),
+    },
+    commentReplyGroupLast: {
+      marginBottom: normalize(8),
+    },
+    commentReplyArrowSpacer: {
+      width: normalize(18),
     },
     /** well 안 대댓글 — 세로 여백은 well·구분선이 담당 */
     commentReplyItem: {},
@@ -1161,7 +1168,7 @@ export const createDetailStyles = (width, normalize) => {
     },
     /** 댓글 달기 포커스 (= smDetailCommentBubbleReplying, 그림자 없음) */
     commentBubbleReplying: {
-      backgroundColor: colors.primaryLight2,
+      backgroundColor: colors.primaryLight3,
     },
     commentReplyBody: {
       flex: 1,
@@ -1180,7 +1187,9 @@ export const createDetailStyles = (width, normalize) => {
     },
     commentAuthorName: {
       fontSize: normalize(fontSizes.lg),
+      height: normalize(18),
       lineHeight: normalize(18),
+      textAlignVertical: 'center',
       fontFamily: fonts.bold,
       color: colors.textLight4,
       includeFontPadding: false,
@@ -1222,7 +1231,9 @@ export const createDetailStyles = (width, normalize) => {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
       color: colors.textLight4,
+      height: normalize(18),
       lineHeight: normalize(18),
+      textAlignVertical: 'center',
       includeFontPadding: false,
       ...metaTextAndroid,
     },
@@ -1255,7 +1266,7 @@ export const createDetailStyles = (width, normalize) => {
     commentReplyLabel: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
-      color: colors.primaryDark,
+      color: colors.textLight5,
       lineHeight: normalize(20),
     },
     commentFooter: {
@@ -1312,7 +1323,6 @@ export const createDetailStyles = (width, normalize) => {
       flexDirection: 'row',
       alignItems: 'center',
       alignSelf: 'flex-start',
-      paddingTop: normalize(8),
       paddingBottom: normalize(8),
       paddingRight: normalize(4),
       gap: normalize(4),

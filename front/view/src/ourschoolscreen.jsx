@@ -675,7 +675,7 @@ const OurSchoolScreen = ({ navigation }) => {
         {/* 실시간 인기 */}
         <View style={styles.popularSection}>
           <View style={styles.popularHeader}>
-            <Ionicons name="flame" size={normalize(20)} color={colors.alert} />
+            <Ionicons name="flame" size={normalize(20)} color={colors.scrap} />
             <Text style={styles.popularTitle}>실시간 인기</Text>
           </View>
 

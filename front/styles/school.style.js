@@ -28,7 +28,6 @@ export const createOurSchoolStyles = (normalize) => {
       padding: normalize(16),
       borderWidth: 2,
       borderColor: colors.primary,
-      ...shadow.md,
     },
     schoolNameRow: {
       flexDirection: 'row',
@@ -95,7 +94,8 @@ export const createOurSchoolStyles = (normalize) => {
       borderRadius: normalize(16),
       paddingHorizontal: normalize(10),
       paddingVertical: normalize(10),
-      ...shadow.md,
+      borderWidth: 1,
+      borderColor: colors.textLight1,
     },
     mealSectionHeader: {
       flexDirection: 'row',
@@ -350,7 +350,8 @@ export const createOurSchoolStyles = (normalize) => {
       backgroundColor: colors.white,
       borderRadius: normalize(16),
       padding: normalize(16),
-      ...shadow.md,
+      borderWidth: 1,
+      borderColor: colors.textLight1,
     },
     shortcutTopRow: {
       flexDirection: 'row',
@@ -373,7 +374,8 @@ export const createOurSchoolStyles = (normalize) => {
       borderRadius: normalize(16),
       padding: normalize(16),
       marginBottom: normalize(12),
-      ...shadow.md,
+      borderWidth: 1,
+      borderColor: colors.textLight1,
     },
     popularHeader: {
       flexDirection: 'row',

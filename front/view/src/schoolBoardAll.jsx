@@ -10,22 +10,19 @@ import {
   useWindowDimensions,
   View,
   Text,
-  TouchableOpacity,
   Alert,
-  FlatList,
+  SectionList,
 } from 'react-native';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import FloatingButton from '../../components/common/FloatingButton';
 import SubHeader from '../frame/subHeader';
-import {
-  createSchoolBoardStyles,
-  getNormalize,
-} from '../../styles/schoolBoard.style';
-import { colors, fonts } from '../../styles/colors';
+import { createSchoolBoardStyles } from '../../styles/schoolBoard.style';
+import { createBoardStyles, getNormalize } from '../../styles/board.style';
+import { colors } from '../../styles/colors';
 import { api } from '../../utils/api';
 import { normalizeTagsFromApi } from '../../utils/normalizePostTags';
 import { equippedBadgeFromApiRow } from '../../constants/badges';
 import BoardPostCard from '../../components/Boardpostcard';
+import BoardPostCardSkeleton from '../../components/board/BoardPostCardSkeleton';
 import AdPlaceholder from '../../src/screens/ad/AdPlaceholder';
 import TopAdBanner from '../../components/ads/TopAdBanner';
 import SortChips from '../../components/common/SortChips';
@@ -64,14 +61,21 @@ function formatTimeAgo(createdAt) {
   return date.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
 }
 
+const SKELETON_ITEMS = [0, 1, 2, 3].map((idx) => ({
+  type: 'skeleton',
+  id: `school-list-skel-${idx}`,
+}));
+
 const SchoolBoardAll = ({ navigation, route }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(
+  const styles = useMemo(() => createBoardStyles(width, normalize), [width]);
+  const listStyles = useMemo(
     () => createSchoolBoardStyles(width, normalize),
     [width],
   );
-  const { coords, refreshLocation } = useLocationContext();
+  const { coords, refreshLocation, permissionGranted } = useLocationContext();
+  const distanceStale = permissionGranted && !coords;
   // TODO: /api/ads 연동 후 useAdSlots(AD_PLACEMENTS.FEED_BOARD)
   const adSlots = [];
 
@@ -166,6 +170,7 @@ const SchoolBoardAll = ({ navigation, route }) => {
             isMyPost: !!p.is_author,
             authorUserId: p.author_user_id,
             thumbnail: thumb,
+            images: Array.isArray(p.images) ? p.images : [],
             tags,
             distanceKm:
               typeof p.distanceKm === 'number' && !Number.isNaN(p.distanceKm)
@@ -207,23 +212,6 @@ const SchoolBoardAll = ({ navigation, route }) => {
     fetchSchoolPosts(1, false);
   }, [sortType]);
 
-  useEffect(() => {
-    if (!__DEV__) return;
-    const sample = schoolPosts.slice(0, 8).map((p) => ({
-      id: p.id,
-      tagsLen: Array.isArray(p.tags)
-        ? p.tags.length
-        : p.tags == null
-          ? 'null'
-          : typeof p.tags,
-    }));
-    console.log('[SchoolBoardAll:list]', {
-      dataSource: 'serverPosts(API)',
-      total: schoolPosts.length,
-      sample,
-    });
-  }, [schoolPosts]);
-
   const handleRefresh = async () => {
     await refreshLocation();
     await fetchSchoolPosts(1, false);
@@ -234,62 +222,63 @@ const SchoolBoardAll = ({ navigation, route }) => {
     fetchSchoolPosts(page + 1, true);
   };
 
-  const hideListBehindLoader = loading;
-  const dataWithAds = useMemo(
-    () =>
-      injectAdSlots(schoolPosts, adSlots, {
-        placement: AD_PLACEMENTS.FEED_BOARD,
-        adType: 'ad',
-        idPrefix: 'ad',
-        skipFirstIndex: true,
-        wrapItem: (post) => ({ ...post, type: 'post' }),
-      }),
-    [schoolPosts, adSlots],
-  );
+  const showSkeleton = loading && schoolPosts.length === 0;
 
-  const renderPostItem = ({ item: post }) => (
-    <BoardPostCard
-      key={post.id}
-      post={post}
-      normalize={normalize}
-      styles={styles}
-      onPress={() =>
-        navigation.navigate('BoardDetail', {
-          post: { ...post, author: post.author },
-          isMyPost: post.isMyPost ?? false,
-        })
-      }
-    />
-  );
+  const listData = useMemo(() => {
+    if (showSkeleton) return SKELETON_ITEMS;
+    return injectAdSlots(schoolPosts, adSlots, {
+      placement: AD_PLACEMENTS.FEED_BOARD,
+      adType: 'ad',
+      idPrefix: 'ad',
+      skipFirstIndex: true,
+      wrapItem: (post) => ({ ...post, type: 'post' }),
+    });
+  }, [showSkeleton, schoolPosts, adSlots]);
+
+  const sections = useMemo(() => [{ data: listData }], [listData]);
+
   const renderItem = ({ item }) => {
-    if (item.type === 'ad') {
-      return (
+    let body;
+    if (item.type === 'skeleton') {
+      body = <BoardPostCardSkeleton styles={styles} normalize={normalize} />;
+    } else if (item.type === 'ad') {
+      body = (
         <AdPlaceholder
           normalize={normalize}
           styles={styles}
           adData={item.adData}
         />
       );
+    } else {
+      const postHasKm =
+        typeof item.distanceKm === 'number' && !Number.isNaN(item.distanceKm);
+      body = (
+        <BoardPostCard
+          post={item}
+          normalize={normalize}
+          styles={styles}
+          showDistanceBadge={permissionGranted}
+          distanceStale={distanceStale}
+          distanceLoading={permissionGranted && !postHasKm && distanceStale}
+          onPress={() =>
+            navigation.navigate('BoardDetail', {
+              post: {
+                ...item,
+                boardType: 'school',
+                schoolName: schoolMeta.name,
+              },
+              isMyPost: item.isMyPost ?? false,
+            })
+          }
+        />
+      );
     }
-    return renderPostItem({ item });
+    return <View style={listStyles.cardGutter}>{body}</View>;
   };
 
-  return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <SubHeader
-        title="학교 게시판"
-        onBack={() => navigation?.goBack()}
-        rightIcon="search"
-        onRightPress={() => navigation?.navigate('SearchScreen')}
-        rightElement={
-          <Ionicons
-            name="search"
-            size={normalize(22)}
-            color={colors.text}
-          />
-        }
-      />
-      <TopAdBanner placement="board" />
+  const listHeader = <TopAdBanner placement="board" />;
+  const stickyHeader = (
+    <View style={{ backgroundColor: colors.white }} collapsable={false}>
       <SortChips
         value={section}
         onChange={setSection}
@@ -297,6 +286,15 @@ const SchoolBoardAll = ({ navigation, route }) => {
           { value: 'board', label: '게시판' },
           { value: 'mail', label: '우편함' },
         ]}
+      />
+    </View>
+  );
+
+  return (
+    <SafeAreaView style={listStyles.container} edges={['top']}>
+      <SubHeader
+        title={section === 'mail' ? '학교 우편함' : '학교 게시판'}
+        onBack={() => navigation?.goBack()}
       />
 
       {section === 'mail' ? (
@@ -309,129 +307,51 @@ const SchoolBoardAll = ({ navigation, route }) => {
               schoolName: schoolMeta.name,
             },
           }}
+          listHeader={listHeader}
+          stickyHeader={stickyHeader}
         />
-      ) : null}
-
-      {/* 게시글 목록 — 로딩 중에는 목록을 그리되 가려 두고, 게이트 종료 후 한 번에 표시 */}
-      {section === 'board' ? (
-      <View style={{ flex: 1 }}>
-        <FlatList
-          style={[styles.postList, hideListBehindLoader && { opacity: 0 }]}
-          pointerEvents={hideListBehindLoader ? 'none' : 'auto'}
-          data={dataWithAds}
-          keyExtractor={(item) =>
-            item.type === 'ad' ? item.id : String(item.id)
-          }
-          renderItem={renderItem}
-          showsVerticalScrollIndicator={false}
-          refreshing={loading && !hideListBehindLoader}
-          onRefresh={handleRefresh}
-          onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.5}
-          ListEmptyComponent={
-            !loading ? (
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>
-                  아직 학교 게시판에 글이 없습니다.
-                </Text>
-              </View>
-            ) : null
-          }
-          ListFooterComponent={
-            loadingMore && hasMore ? (
-              <View style={styles.loadingMoreContainer}>
-                <Skeleton
-                  width={normalize(16)}
-                  height={normalize(16)}
-                  borderRadius={normalize(8)}
-                />
-              </View>
-            ) : null
-          }
-          contentContainerStyle={styles.listContentContainer}
-        />
-        {hideListBehindLoader ? (
-          <View
-            pointerEvents="box-none"
-            style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              top: 0,
-              bottom: 0,
-              backgroundColor: colors.white,
-              paddingHorizontal: width * 0.04,
-              paddingTop: normalize(8),
-              zIndex: 2,
-            }}
-          >
-            {[0, 1, 2, 3].map((idx) => (
-              <View key={`school-list-skel-${idx}`} style={styles.postItem}>
-                <View
-                  style={{ flexDirection: 'row', marginBottom: normalize(8) }}
-                >
+      ) : (
+        <View style={{ flex: 1 }}>
+          <SectionList
+            style={{ flex: 1 }}
+            sections={sections}
+            keyExtractor={(item) => String(item.id)}
+            renderItem={renderItem}
+            renderSectionHeader={() => stickyHeader}
+            stickySectionHeadersEnabled
+            ListHeaderComponent={listHeader}
+            showsVerticalScrollIndicator={false}
+            refreshing={loading && !showSkeleton}
+            onRefresh={handleRefresh}
+            onEndReached={handleLoadMore}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={
+              !loading && listData.length === 0 ? (
+                <View style={listStyles.emptyContainer}>
+                  <Text style={listStyles.emptyText}>
+                    아직 학교 게시판에 글이 없습니다.
+                  </Text>
+                </View>
+              ) : loadingMore && hasMore ? (
+                <View style={listStyles.loadingMoreContainer}>
                   <Skeleton
-                    width={normalize(52)}
-                    height={normalize(12)}
-                    borderRadius={normalize(6)}
-                  />
-                  <View style={{ width: normalize(8) }} />
-                  <Skeleton
-                    width={normalize(44)}
-                    height={normalize(12)}
-                    borderRadius={normalize(6)}
+                    width={normalize(16)}
+                    height={normalize(16)}
+                    borderRadius={normalize(8)}
                   />
                 </View>
-                <Skeleton
-                  width="100%"
-                  height={normalize(14)}
-                  borderRadius={normalize(6)}
-                  style={{ marginBottom: normalize(6) }}
-                />
-                <Skeleton
-                  width="86%"
-                  height={normalize(14)}
-                  borderRadius={normalize(6)}
-                  style={{ marginBottom: normalize(10) }}
-                />
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: normalize(12),
-                  }}
-                >
-                  <Skeleton
-                    width={normalize(26)}
-                    height={normalize(12)}
-                    borderRadius={normalize(6)}
-                  />
-                  <Skeleton
-                    width={normalize(26)}
-                    height={normalize(12)}
-                    borderRadius={normalize(6)}
-                  />
-                  <Skeleton
-                    width={normalize(26)}
-                    height={normalize(12)}
-                    borderRadius={normalize(6)}
-                  />
-                </View>
-              </View>
-            ))}
-          </View>
-        ) : null}
-      </View>
-      ) : null}
-
-      {section === 'board' ? (
-        <FloatingButton
-          aboveFooter
-          onPress={() =>
-            navigation.navigate('BoardWrite', { boardContext: 'school' })
-          }
-        />
-      ) : null}
+              ) : null
+            }
+            contentContainerStyle={listStyles.listContentContainer}
+          />
+          <FloatingButton
+            aboveFooter
+            onPress={() =>
+              navigation.navigate('BoardWrite', { boardContext: 'school' })
+            }
+          />
+        </View>
+      )}
     </SafeAreaView>
   );
 };

@@ -19,7 +19,8 @@ export default function BoardPollCard({ poll, styles, normalize }) {
     return base.map((opt) => {
       const wasMine = initialMine.includes(opt.id);
       const isMine = myVotes.includes(opt.id);
-      const votes = (Number(opt.votes) || 0) - (wasMine ? 1 : 0) + (isMine ? 1 : 0);
+      const votes =
+        (Number(opt.votes) || 0) - (wasMine ? 1 : 0) + (isMine ? 1 : 0);
       return { ...opt, votes: Math.max(0, votes), isMine };
     });
   }, [poll, myVotes]);
@@ -63,7 +64,9 @@ export default function BoardPollCard({ poll, styles, normalize }) {
           color={colors.primary}
         />
         <Text style={styles.detailPollTitle}>투표</Text>
-        {multi ? <Text style={styles.detailPollHint}>복수 선택 가능</Text> : null}
+        {multi ? (
+          <Text style={styles.detailPollHint}>복수 선택 가능</Text>
+        ) : null}
       </View>
 
       {options.map((opt) => {
@@ -98,7 +101,11 @@ export default function BoardPollCard({ poll, styles, normalize }) {
                 ]}
               >
                 {isSelected ? (
-                  <Ionicons name="checkmark" size={normalize(12)} color={colors.white} />
+                  <Ionicons
+                    name="checkmark"
+                    size={normalize(12)}
+                    color={colors.white}
+                  />
                 ) : null}
               </View>
             )}

@@ -205,8 +205,8 @@ export default function BoardCommentTree({
         const rowStyle = [
           isReply ? styles.commentReplyItem : styles.commentRow,
           item.isPinned && styles.commentPinned,
-          isReplyingToThis && styles.commentBubbleReplying,
-          showDivider && styles.commentRowDivider,
+          isReplyingToThis && !isReply && styles.commentBubbleReplying,
+          showDivider && !wrapInGutter && styles.commentRowDivider,
         ];
 
         const inner = (
@@ -220,12 +220,9 @@ export default function BoardCommentTree({
         if (!wrapInGutter) return inner;
 
         return (
-          <View
-            key={item.id}
-            style={styles.commentGutter}
-            collapsable={false}
-          >
+          <View key={item.id} collapsable={false}>
             {inner}
+            {showDivider ? <View style={styles.commentRowDividerInset} /> : null}
           </View>
         );
       },
@@ -248,46 +245,40 @@ export default function BoardCommentTree({
       return renderComment(item.data, false, null, showDivider);
     }
     if (item.type === 'reply') {
-      const prevType = flatComments[index - 1]?.type;
-      // 연속 대댓글은 ReplyGroup 하나로 묶어 inset이 끊기지 않게 함
-      if (isReplyBlock(prevType)) {
-        return null;
-      }
-      const group = [];
-      for (let i = index; i < flatComments.length; i += 1) {
-        if (!isReplyBlock(flatComments[i]?.type)) break;
-        group.push(flatComments[i]);
-      }
-      const lastInGroupIndex = index + group.length - 1;
-      const groupShowDivider = showGroupDivider(lastInGroupIndex);
+      const isFirstReply = !isReplyBlock(flatComments[index - 1]?.type);
+      const isLastReply = !isReplyBlock(flatComments[index + 1]?.type);
+      const isReplyingToThis = replyToCommentId === item.data.id;
       return (
         <View
-          style={[
-            styles.commentGutter,
-            groupShowDivider && styles.commentRowDivider,
-          ]}
+          style={[styles.commentGutter, showDivider && styles.commentRowDivider]}
           collapsable={false}
         >
-          <View style={styles.commentReplyGroup}>
-            <Ionicons
-              name="return-down-forward"
-              size={normalize(18)}
-              color={colors.replyArrow}
-              style={styles.commentReplyArrow}
-            />
-            <View style={styles.commentReplyWell}>
-              {group.map((entry, i) => (
-                <View key={`reply-${entry.data.id}`}>
-                  {i > 0 ? <View style={styles.commentReplyDivider} /> : null}
-                  {renderComment(
-                    entry.data,
-                    true,
-                    entry.parentAuthorLabel,
-                    false,
-                    { wrapInGutter: false },
-                  )}
-                </View>
-              ))}
+          <View
+            style={[
+              styles.commentReplyGroup,
+              !isFirstReply && styles.commentReplyGroupNext,
+              isLastReply && styles.commentReplyGroupLast,
+            ]}
+          >
+            {isFirstReply ? (
+              <Ionicons
+                name="return-down-forward"
+                size={normalize(18)}
+                color={colors.replyArrow}
+                style={styles.commentReplyArrow}
+              />
+            ) : (
+              <View style={styles.commentReplyArrowSpacer} />
+            )}
+            <View
+              style={[
+                styles.commentReplyWell,
+                isReplyingToThis && styles.commentBubbleReplying,
+              ]}
+            >
+              {renderComment(item.data, true, item.parentAuthorLabel, false, {
+                wrapInGutter: false,
+              })}
             </View>
           </View>
         </View>

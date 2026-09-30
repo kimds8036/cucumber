@@ -50,6 +50,8 @@ export default function BoardPostContent({
   distanceStale = false,
   distanceLoading = false,
   showDistanceBadge = true,
+  hideScrap = false,
+  hidePoll = false,
 }) {
   const distanceValid =
     typeof post.distanceKm === 'number' && !Number.isNaN(post.distanceKm);
@@ -109,7 +111,7 @@ export default function BoardPostContent({
       <Text style={[styles.detailBody, { marginBottom: normalize(7) }]}>
         {post.content}
       </Text>
-      {post.poll || SHOW_DUMMY_POLL ? (
+      {!hidePoll && (post.poll || SHOW_DUMMY_POLL) ? (
         <BoardPollCard
           key={post.id ?? 'poll'}
           poll={post.poll ?? DUMMY_POLL}
@@ -203,23 +205,25 @@ export default function BoardPostContent({
               {formatStatCount(post.comments)}
             </Text>
           </View>
-          <TouchableOpacity
-            style={styles.detailStatItem}
-            onPress={onScrap}
-            activeOpacity={0.7}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <View style={styles.detailStatIcon}>
-              <Ionicons
-                name={postScrapped ? 'bookmark' : 'bookmark-outline'}
-                size={normalize(14)}
-                color={colors.scrap}
-              />
-            </View>
-            <Text style={styles.detailStatText}>
-              {formatStatCount(post.scraps ?? 0)}
-            </Text>
-          </TouchableOpacity>
+          {hideScrap ? null : (
+            <TouchableOpacity
+              style={styles.detailStatItem}
+              onPress={onScrap}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <View style={styles.detailStatIcon}>
+                <Ionicons
+                  name={postScrapped ? 'bookmark' : 'bookmark-outline'}
+                  size={normalize(14)}
+                  color={colors.scrap}
+                />
+              </View>
+              <Text style={styles.detailStatText}>
+                {formatStatCount(post.scraps ?? 0)}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
         <View ref={postMenuButtonRef} collapsable={false}>
           <TouchableOpacity

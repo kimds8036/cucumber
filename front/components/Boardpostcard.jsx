@@ -23,6 +23,7 @@ import { collectPostImageUris } from './board/PostImageSlider';
  *  - distanceStale : 좌표 없음(주황 칩), coords 있으면 캐시·GPS 모두 초록
  *  - distanceLoading : 거리 미계산 시 주황 칩 + 점 로딩
  *  - featured : 인기 1등 고정 카드. 배경 primaryLight2, 윤곽선 없음, 인기 뱃지
+ *  - authorLabel : 시간 앞에 붙는 보낸 사람 라벨 (학교 우편 카드용)
  */
 const BoardPostCard = ({
   post,
@@ -37,6 +38,7 @@ const BoardPostCard = ({
   distanceStale = false,
   distanceLoading = false,
   featured = false,
+  authorLabel = '',
 }) => {
   const thumbUri = collectPostImageUris(post)[0] || '';
   const hasThumb = thumbUri.length > 0;
@@ -194,6 +196,14 @@ const BoardPostCard = ({
                 인기
               </Text>
             </View>
+          ) : null}
+          {authorLabel ? (
+            <Text
+              style={[styles.postAuthor, { marginRight: normalize(4) }]}
+              numberOfLines={1}
+            >
+              {authorLabel}
+            </Text>
           ) : null}
           <Text style={styles.postTime} numberOfLines={1}>
             {post.time}

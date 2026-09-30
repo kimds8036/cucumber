@@ -408,8 +408,10 @@ export default function BoardDetail({ navigation, route }) {
       ? '전체 게시판'
       : post?.boardType === 'student'
         ? '학생 게시판'
-        : post?.boardType === 'school' && post?.schoolName
-          ? post.schoolName
+        : post?.boardType === 'school'
+          ? post?.schoolName
+            ? `${post.schoolName} 게시판`
+            : '학교 게시판'
           : '게시판';
   const hasFirstImageRatio =
     postImages.length === 0 || Boolean(imageRatios[postImages[0]]);

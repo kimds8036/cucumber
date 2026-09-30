@@ -34,7 +34,7 @@ export default function BoardFloatingMenu({
   visible,
   anchor,
   context,
-  allComments,
+  allComments = [],
   isMyPostFromApi,
   currentUserId,
   postAuthorId,
@@ -47,6 +47,7 @@ export default function BoardFloatingMenu({
   onReportPost,
   onReportComment,
   onReplyComment,
+  items,
   styles,
   normalize,
   width,
@@ -54,7 +55,9 @@ export default function BoardFloatingMenu({
   const isPostMenu = context === 'post';
   const isCommentMenu = isPostMenu ? null : normalizeCommentId(context);
   const commentForMenu =
-    isCommentMenu != null ? findCommentById(allComments, isCommentMenu) : null;
+    isCommentMenu != null && !Array.isArray(items)
+      ? findCommentById(allComments ?? [], isCommentMenu)
+      : null;
   const isPostAuthor =
     postAuthorId != null &&
     currentUserId != null &&
@@ -69,7 +72,9 @@ export default function BoardFloatingMenu({
   if (!visible || context == null) return null;
 
   let menuItems;
-  if (isPostMenu && isMyPostFromApi) {
+  if (Array.isArray(items)) {
+    menuItems = items;
+  } else if (isPostMenu && isMyPostFromApi) {
     menuItems = [
       { label: '공유하기', iconName: 'share-outline', onPress: onSharePost },
       { label: '삭제하기', iconName: 'trash-outline', onPress: onDeletePost },
