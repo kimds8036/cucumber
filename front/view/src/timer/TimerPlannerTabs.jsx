@@ -16,10 +16,10 @@ export const PLANNER_TABS = [
   { key: 'weekly', label: '위클리' },
 ];
 
-export function TimerPlannerTabBar({ value, onChange, styles }) {
+export function TimerPlannerTabBar({ value, onChange, styles, tabs = PLANNER_TABS }) {
   return (
     <View style={styles.plannerTabBar}>
-      {PLANNER_TABS.map((tab) => {
+      {tabs.map((tab) => {
         const active = value === tab.key;
         return (
           <TouchableOpacity
@@ -57,7 +57,13 @@ export default function TimerPlannerTabs({ value, ...panelProps }) {
         />
       );
     case 'grass':
-      return <TimerStudyGrass />;
+      return (
+        <TimerStudyGrass
+          styles={panelProps.styles}
+          normalize={panelProps.normalize}
+          onOpenDayRecord={panelProps.onOpenDayRecord}
+        />
+      );
     case 'weekly':
       return <TimerWeekly />;
     default:

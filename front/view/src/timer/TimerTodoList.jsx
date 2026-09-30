@@ -28,9 +28,11 @@ export default function TimerTodoList({
   setTaskStatus,
   deleteSubject,
   deleteTask,
+  guideTarget = true,
 }) {
+  const Wrap = guideTarget ? GuideFocusTarget : View;
   return (
-    <GuideFocusTarget name={T.TIMER_TODO_COLUMN} style={[styles.todoColumn, tdb('#FF2D55')]}>
+    <Wrap name={T.TIMER_TODO_COLUMN} style={[styles.todoColumn, tdb('#FF2D55')]}>
       {isViewingToday && (
         <View style={[styles.todoHeader, tdb('#64D2FF')]}>
           <TouchableOpacity
@@ -175,6 +177,6 @@ export default function TimerTodoList({
           );
         })}
       </ScrollView>
-    </GuideFocusTarget>
+    </Wrap>
   );
 }

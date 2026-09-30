@@ -42,7 +42,7 @@ function createSortChipStyles(width, normalize) {
       borderColor: colors.textLight1,
     },
     chipActive: {
-      backgroundColor: colors.textLight3,
+      backgroundColor: colors.primary,
       borderWidth: 0,
     },
     chipActiveMint: {
@@ -115,7 +115,8 @@ export default function SortChips({
   const [menuPos, setMenuPos] = useState(null);
   const showSort = sortValue != null && typeof onSortChange === 'function';
   const sortLabel =
-    SORT_OPTIONS.find((option) => option.value === sortValue)?.label ?? '최신순';
+    SORT_OPTIONS.find((option) => option.value === sortValue)?.label ??
+    '최신순';
 
   const openMenu = () => {
     triggerRef.current?.measureInWindow((x, y, w, h) => {

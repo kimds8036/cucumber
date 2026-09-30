@@ -54,6 +54,8 @@ import {
   TimerLivePlannerCapture,
 } from './TimerLiveViews';
 import { TimerPlannerTabBar } from './TimerPlannerTabs';
+import TimerDayRecordSheet from './TimerDayRecordSheet';
+import { useTimerDayRecord } from './useTimerDayRecord';
 import {
   preloadTimerCaptureWatermark,
   waitForTimerCapturePaint,
@@ -78,6 +80,8 @@ export function TimerContent() {
   const [pokeTarget, setPokeTarget] = useState(null);
   const [pokeVisible, setPokeVisible] = useState(false);
   const [plannerTab, setPlannerTab] = useState('todo');
+  /** 공부 잔디에서 연 지난 날짜 기록 시트 — { dayKey, seconds } | null */
+  const [dayRecord, setDayRecord] = useState(null);
   const captureWatermarkReadyRef = useRef(false);
   const captureReadyWaitersRef = useRef([]);
 
@@ -335,21 +339,27 @@ export function TimerContent() {
     ]),
   );
 
-  const handleSaveAsImage = async () => {
-    if (!timer.capturePlannerRef.current?.capture) {
+  const dayRecordData = useTimerDayRecord(dayRecord?.dayKey ?? null);
+  const dayRecordCaptureRef = useRef(null);
+
+  const captureToGallery = async (captureRef) => {
+    if (!captureRef.current?.capture) {
       return;
     }
     try {
       await preloadTimerCaptureWatermark();
       await waitForCaptureWatermarkReady();
       await waitForTimerCapturePaint();
-      const uri = await timer.capturePlannerRef.current.capture();
+      const uri = await captureRef.current.capture();
       await saveImageUriToGallery(uri);
       appAlert.alert('저장 완료', '갤러리에 저장되었어요.');
     } catch (e) {
       alertGallerySaveFailure(e);
     }
   };
+
+  const handleSaveAsImage = () => captureToGallery(timer.capturePlannerRef);
+  const handleSaveDayRecord = () => captureToGallery(dayRecordCaptureRef);
 
   const timerGutter = width * 0.04;
   const scrollingHeader = (
@@ -406,7 +416,16 @@ export function TimerContent() {
     );
   }
 
-  const showDayContentSkeleton = timer.isDayLoading;
+  const showDayContentSkeleton = timer.isDayLoading && plannerTab !== 'grass';
+
+  const openDayRecord = (dayKey, seconds) => {
+    setDayRecord({ dayKey, seconds });
+  };
+
+  const closeDayRecord = () => {
+    setDayRecord(null);
+  };
+
   const liveScrollProps = {
     styles,
     normalize,
@@ -438,6 +457,7 @@ export function TimerContent() {
     setTaskStatus: timer.setTaskStatus,
     deleteSubject: timer.deleteSubject,
     deleteTask: timer.deleteTask,
+    onOpenDayRecord: openDayRecord,
   };
 
   return (
@@ -529,6 +549,23 @@ export function TimerContent() {
                 onWatermarkLoad={notifyCaptureWatermarkReady}
               />
             ) : null}
+            {dayRecord && !dayRecordData.loading ? (
+              <TimerLivePlannerCapture
+                capturePlannerRef={dayRecordCaptureRef}
+                styles={styles}
+                normalize={normalize}
+                isViewingToday={false}
+                isRunning={false}
+                activeSubjectId={null}
+                totalElapsedMs={0}
+                displayTotalElapsedMs={dayRecordData.totalElapsedMs}
+                displaySessions={dayRecordData.displaySessions}
+                displaySubjects={dayRecordData.displaySubjects}
+                displayTasks={dayRecordData.displayTasks}
+                selectedDayKey={dayRecord.dayKey}
+                onWatermarkLoad={notifyCaptureWatermarkReady}
+              />
+            ) : null}
           </>
         </LiveElapsedTicker>
       ) : null}
@@ -553,6 +590,20 @@ export function TimerContent() {
         onClose={() => timer.setShowCalendar(false)}
         currentDayKey={timer.selectedDayKey}
         onSelectDay={timer.setSelectedDayKey}
+      />
+      <TimerDayRecordSheet
+        dayKey={dayRecord?.dayKey ?? null}
+        seconds={dayRecord?.seconds ?? 0}
+        loading={dayRecordData.loading}
+        onClose={closeDayRecord}
+        onSave={handleSaveDayRecord}
+        styles={styles}
+        normalize={normalize}
+        displaySessions={dayRecordData.displaySessions}
+        displaySubjects={dayRecordData.displaySubjects}
+        displayTasks={dayRecordData.displayTasks}
+        collapsedSubjects={dayRecordData.collapsedSubjects}
+        toggleSubjectCollapsed={dayRecordData.toggleSubjectCollapsed}
       />
 
       <FriendPokeController

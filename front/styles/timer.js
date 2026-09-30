@@ -313,6 +313,219 @@ export const createTimerStyles = (width, normalize) => {
       height: 2,
       backgroundColor: colors.text,
     },
+    /** 공부 잔디 달력 */
+    grassWrap: {
+      alignSelf: 'stretch',
+    },
+    grassHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(8),
+      marginBottom: normalize(12),
+    },
+    grassMonthLabel: {
+      fontSize: normalize(fontSizes.xxl),
+      fontFamily: fonts.bold,
+      color: colors.text,
+    },
+    /** 공부 잔디 — 연·월 휠 시트 (회원가입 생년월일 picker 시트와 같은 모양) */
+    ymOverlay: {
+      ...StyleSheet.absoluteFill,
+      backgroundColor: 'rgba(0,0,0,0.3)',
+    },
+    ymOverlayTouch: {
+      flex: 1,
+    },
+    ymSheet: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: colors.white,
+      borderTopLeftRadius: normalize(20),
+      borderTopRightRadius: normalize(20),
+      paddingBottom: normalize(24),
+    },
+    ymToolbar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: normalize(16),
+      paddingVertical: normalize(12),
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.textLight1,
+    },
+    ymToolbarTitle: {
+      fontFamily: fonts.bold,
+      fontSize: normalize(fontSizes.xl),
+      color: colors.text,
+    },
+    ymToolbarBtn: {
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.xl),
+      color: colors.textLight4,
+      minWidth: normalize(44),
+    },
+    ymToolbarOk: {
+      color: colors.primaryDark,
+      textAlign: 'right',
+      fontFamily: fonts.bold,
+    },
+    ymWheelWrap: {
+      flexDirection: 'row',
+      marginVertical: normalize(8),
+      paddingHorizontal: normalize(16),
+    },
+    ymWheelHighlight: {
+      position: 'absolute',
+      left: normalize(16),
+      right: normalize(16),
+      borderRadius: normalize(10),
+      backgroundColor: colors.textLight05,
+    },
+    ymWheelColumn: {
+      flex: 1,
+    },
+    ymWheelItem: {
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    ymWheelText: {
+      fontFamily: fonts.regular,
+      fontSize: normalize(fontSizes.xxl),
+      color: colors.textLight4,
+    },
+    ymWheelTextSelected: {
+      fontFamily: fonts.bold,
+      color: colors.text,
+    },
+    ymWheelTextDisabled: {
+      color: colors.textLight2,
+    },
+    grassWeekdayRow: {
+      flexDirection: 'row',
+      marginBottom: normalize(6),
+    },
+    grassWeekdayText: {
+      flex: 1,
+      textAlign: 'center',
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textLight4,
+    },
+    grassWeekRow: {
+      flexDirection: 'row',
+    },
+    grassDayCell: {
+      flex: 1,
+      height: normalize(48),
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      paddingTop: normalize(4),
+    },
+    grassDayCellToday: {
+      borderWidth: 1,
+      borderColor: colors.text,
+    },
+    grassDayText: {
+      fontSize: normalize(fontSizes.md),
+      fontFamily: fonts.regular,
+      color: colors.text,
+    },
+    grassDayTextOutside: {
+      color: colors.textLight3,
+    },
+    grassFooter: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: normalize(12),
+    },
+    grassMonthTotal: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.bold,
+      color: colors.text,
+    },
+    grassLegend: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(3),
+    },
+    grassLegendChip: {
+      minWidth: normalize(22),
+      paddingHorizontal: normalize(4),
+      paddingVertical: normalize(2),
+      borderRadius: normalize(3),
+      alignItems: 'center',
+    },
+    grassLegendText: {
+      fontSize: normalize(fontSizes.md),
+      fontFamily: fonts.bold,
+      color: colors.text,
+    },
+    grassDurationText: {
+      marginTop: normalize(2),
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.text,
+    },
+    /** 공부 잔디 — 지난 날짜 기록 시트 */
+    dayRecordBackdrop: {
+      ...StyleSheet.absoluteFill,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+    },
+    dayRecordBackdropTouch: {
+      flex: 1,
+    },
+    dayRecordSheet: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: colors.white,
+      borderTopLeftRadius: normalize(24),
+      borderTopRightRadius: normalize(24),
+      paddingHorizontal: width * 0.04,
+      paddingTop: normalize(18),
+    },
+    dayRecordHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: normalize(8),
+    },
+    dayRecordTitle: {
+      flex: 1,
+      minWidth: 0,
+      marginRight: normalize(10),
+      fontSize: normalize(fontSizes.xxl),
+      fontFamily: fonts.bold,
+      color: colors.text,
+    },
+    dayRecordHeaderActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(8),
+    },
+    dayRecordSaveBtn: {
+      padding: normalize(4),
+    },
+    dayRecordCloseBtn: {
+      padding: normalize(2),
+    },
+    dayRecordSaveBtnDisabled: {
+      opacity: 0.4,
+    },
+    dayRecordScroll: {
+      flex: 1,
+    },
+    dayRecordEmptyText: {
+      marginTop: normalize(24),
+      textAlign: 'center',
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textLight4,
+    },
     todoTimetableRow: {
       flex: 1,
       minHeight: normalize(320),

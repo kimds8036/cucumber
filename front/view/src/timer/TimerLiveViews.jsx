@@ -99,6 +99,7 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
   setTaskStatus,
   deleteSubject,
   deleteTask,
+  onOpenDayRecord,
 }) {
   const liveExtraMs = useContext(LiveElapsedMsContext);
   const displayTotalMs = isViewingToday
@@ -160,6 +161,7 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
           setTaskStatus={setTaskStatus}
           deleteSubject={deleteSubject}
           deleteTask={deleteTask}
+          onOpenDayRecord={onOpenDayRecord}
         />
       </View>
   );

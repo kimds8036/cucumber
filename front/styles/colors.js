@@ -4,6 +4,7 @@
 export const colors = {
   // 브랜드
   primaryDark: '#6F9163',
+  primaryMid: '#8BB67C',
   primary: '#A6DA95',
   primaryLight6: '#C1E5B5',
   primaryLight5: '#D3EDCA',

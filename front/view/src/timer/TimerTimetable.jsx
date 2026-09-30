@@ -18,7 +18,9 @@ export default function TimerTimetable({
   styles,
   displaySessions,
   displaySubjects,
+  guideTarget = true,
 }) {
+  const Wrap = guideTarget ? GuideFocusTarget : View;
   const getSlotSegments = (slotStartSeconds) => {
     const slotStart = toTimerDayTimelineSeconds(slotStartSeconds);
     const slotEnd = slotStart + 600;
@@ -39,7 +41,7 @@ export default function TimerTimetable({
   };
 
   return (
-    <GuideFocusTarget
+    <Wrap
       name={T.TIMER_TIMETABLE_COLUMN}
       style={[styles.timetableColumn, tdb('#4682B4')]}
     >
@@ -107,6 +109,6 @@ export default function TimerTimetable({
           );
         })}
       </View>
-    </GuideFocusTarget>
+    </Wrap>
   );
 }
