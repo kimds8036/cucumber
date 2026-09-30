@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import Skeleton from '../../../components/common/Skeleton';
 import { tdb } from './timerHelpers';
 
-/** 타이머 카드·투두·타임테이블 로딩 스켈레톤 */
+/** 타이머 카드·플래너 메뉴·투두리스트 로딩 스켈레톤 */
 export default function TimerDayContentSkeleton({ styles, normalize }) {
   return (
     <>
@@ -55,46 +55,34 @@ export default function TimerDayContentSkeleton({ styles, normalize }) {
         </View>
       </View>
 
+      <View style={styles.plannerTabBar}>
+        {[0, 1, 2, 3].map((idx) => (
+          <View key={`timer-tab-skel-${idx}`} style={styles.plannerTab}>
+            <Skeleton
+              width={normalize(50)}
+              height={normalize(12)}
+              borderRadius={normalize(6)}
+            />
+          </View>
+        ))}
+      </View>
+
       <View style={[styles.todoTimetableRow, tdb('#0A84FF')]}>
         <View style={[styles.todoColumn, tdb('#5E5CE6')]}>
-          <Skeleton
-            width={normalize(80)}
-            height={normalize(13)}
-            borderRadius={normalize(6)}
-            style={styles.timerSkelColTitle}
-          />
-          {[0, 1, 2].map((idx) => (
-            <View
-              key={`timer-task-skel-${idx}`}
-              style={[styles.timerSkelTaskRow, tdb('#BF5AF2')]}
-            >
-              <Skeleton
-                width={normalize(22)}
-                height={normalize(22)}
-                borderRadius={normalize(4)}
-              />
-              <Skeleton
-                width="70%"
-                height={normalize(13)}
-                borderRadius={normalize(6)}
-              />
-            </View>
-          ))}
-        </View>
-        <View style={[styles.timetableColumn, tdb('#FF2D55')]}>
-          <Skeleton
-            width={normalize(80)}
-            height={normalize(13)}
-            borderRadius={normalize(6)}
-            style={styles.timerSkelColTitle}
-          />
-          {[0, 1, 2, 3].map((idx) => (
+          <View style={styles.todoHeader}>
             <Skeleton
-              key={`timer-table-skel-${idx}`}
-              width="100%"
-              height={normalize(42)}
+              width={normalize(70)}
+              height={normalize(28)}
               borderRadius={normalize(10)}
-              style={styles.timerSkelTtRow}
+            />
+          </View>
+          {[0, 1, 2].map((idx) => (
+            <Skeleton
+              key={`timer-subject-skel-${idx}`}
+              width="100%"
+              height={normalize(48)}
+              borderRadius={normalize(12)}
+              style={styles.timerSkelSubjectBlock}
             />
           ))}
         </View>

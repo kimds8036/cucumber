@@ -53,6 +53,7 @@ import {
   TimerLiveScrollInner,
   TimerLivePlannerCapture,
 } from './TimerLiveViews';
+import { TimerPlannerTabBar } from './TimerPlannerTabs';
 import {
   preloadTimerCaptureWatermark,
   waitForTimerCapturePaint,
@@ -76,6 +77,7 @@ export function TimerContent() {
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [pokeTarget, setPokeTarget] = useState(null);
   const [pokeVisible, setPokeVisible] = useState(false);
+  const [plannerTab, setPlannerTab] = useState('todo');
   const captureWatermarkReadyRef = useRef(false);
   const captureReadyWaitersRef = useRef([]);
 
@@ -493,11 +495,20 @@ export function TimerContent() {
                   collapsable={false}
                 >
                   <TimerLiveScrollInner segment="card" {...liveScrollProps} />
+                  <TimerPlannerTabBar
+                    value={plannerTab}
+                    onChange={setPlannerTab}
+                    styles={styles}
+                  />
                 </View>
               )}
               {showDayContentSkeleton ? null : (
                 <View style={{ paddingHorizontal: timerGutter }}>
-                  <TimerLiveScrollInner segment="body" {...liveScrollProps} />
+                  <TimerLiveScrollInner
+                    segment="body"
+                    plannerTab={plannerTab}
+                    {...liveScrollProps}
+                  />
                 </View>
               )}
             </ScrollView>

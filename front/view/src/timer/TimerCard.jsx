@@ -89,7 +89,7 @@ export default function TimerCard({
                 <Feather
                   name="download"
                   size={normalize(16)}
-                  color={colors.textLight4}
+                  color={colors.textLight3}
                 />
               </TouchableOpacity>
               <TouchableOpacity
@@ -100,7 +100,7 @@ export default function TimerCard({
                 <Ionicons
                   name="settings-outline"
                   size={normalize(16)}
-                  color={colors.textLight4}
+                  color={colors.textLight3}
                 />
               </TouchableOpacity>
             </View>
@@ -165,7 +165,7 @@ export default function TimerCard({
             <Ionicons
               name="checkmark-circle"
               size={normalize(22)}
-              color={colors.subcolor}
+              color={colors.primary}
             />
           </View>
           <View style={styles.timerMenuTextCol}>
@@ -197,7 +197,7 @@ export default function TimerCard({
             <MaterialCommunityIcons
               name="door-open"
               size={normalize(22)}
-              color={isRunning ? colors.primary : colors.textLight3}
+              color={isRunning ? colors.subcolor : colors.textLight3}
             />
           </View>
           <View style={styles.timerMenuTextCol}>

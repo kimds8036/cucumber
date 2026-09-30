@@ -9,23 +9,14 @@ import React, {
   createContext,
   useCallback,
 } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  Image,
-} from 'react-native';
+import { View, Text, Image } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import ViewShot from 'react-native-view-shot';
 import { colors } from '../../../styles/colors';
-import { GuideFocusTarget } from '../../../components/guide/GuideFocusTarget';
-import { GUIDE_FOCUS_TARGETS as T } from '../../../src/screens/UserGuide/guideFocusTargets';
 import {
   HOURS,
   tdb,
   formatHMS,
-  lightenHex,
   getSecondsFromSixAM,
   getSessionDurationMs,
   toTimerDayTimelineSeconds,
@@ -36,6 +27,7 @@ import {
   preloadTimerCaptureWatermark,
 } from './timerCaptureWatermark';
 import TimerCard from './TimerCard';
+import TimerPlannerTabs from './TimerPlannerTabs';
 
 const LiveElapsedMsContext = createContext(0);
 
@@ -79,6 +71,7 @@ export function LiveElapsedTicker({
 
 const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
   segment,
+  plannerTab,
   styles,
   normalize,
   isViewingToday,
@@ -124,85 +117,6 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
       }, 0);
   };
 
-  const getSlotSegments = (slotStartSeconds) => {
-    const slotStart = toTimerDayTimelineSeconds(slotStartSeconds);
-    const slotEnd = slotStart + 600;
-    const nowSec = getSecondsFromSixAM(new Date());
-    const segments = [];
-    displaySessions.forEach((s) => {
-      appendSessionSegmentsForSlot(
-        segments,
-        s,
-        slotStart,
-        slotEnd,
-        nowSec,
-        displaySubjects,
-      );
-    });
-    segments.sort((a, b) => a.startFraction - b.startFraction);
-    return segments;
-  };
-
-  const renderTimetable = () =>
-    HOURS.map((rowIndex) => {
-      const hour = (6 + rowIndex) % 24;
-      const slotStartBaseSeconds = ((hour - 6 + 24) % 24) * 3600;
-      return (
-        <View
-          key={rowIndex}
-          style={[styles.timetableRow, tdb('#708090')]}
-        >
-          <View style={[styles.timetableHourCell, tdb('#B8860B')]}>
-            <Text style={styles.timetableHourText}>
-              {hour.toString().padStart(2, '0')}
-            </Text>
-          </View>
-          <View style={[styles.timetableSlotsRow, tdb('#556B2F')]}>
-            {[0, 10, 20, 30, 40, 50].map((m) => {
-              const slotStartSeconds = slotStartBaseSeconds + m * 60;
-              const segments = getSlotSegments(slotStartSeconds);
-              let pos = 0;
-              return (
-                <View
-                  key={m}
-                  style={[styles.timetableSlotCell, tdb('#8B4513')]}
-                >
-                  {segments.map((seg, idx) => {
-                    const spacerFlex = Math.max(0, seg.startFraction - pos);
-                    pos = seg.startFraction + seg.widthFraction;
-                    return (
-                      <React.Fragment key={idx}>
-                        {spacerFlex > 0 && (
-                          <View
-                            style={[
-                              styles.timetableSlotSegment,
-                              {
-                                flex: spacerFlex,
-                                backgroundColor: colors.white,
-                              },
-                            ]}
-                          />
-                        )}
-                        <View
-                          style={[
-                            styles.timetableSlotSegment,
-                            {
-                              backgroundColor: seg.color,
-                              flex: seg.widthFraction,
-                            },
-                          ]}
-                        />
-                      </React.Fragment>
-                    );
-                  })}
-                </View>
-              );
-            })}
-          </View>
-        </View>
-      );
-    });
-
   if (segment === 'card') {
     return (
       <TimerCard
@@ -225,163 +139,28 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
 
   return (
       <View style={[styles.todoTimetableRow, tdb('#BF5AF2')]}>
-        <GuideFocusTarget name={T.TIMER_TODO_COLUMN} style={[styles.todoColumn, tdb('#FF2D55')]}>
-          <View style={[styles.todoHeader, tdb('#64D2FF')]}>
-            <Text style={styles.todoTitle}>투두리스트</Text>
-            {isViewingToday && (
-              <TouchableOpacity
-                style={styles.todoAddBtn}
-                onPress={() => setShowAddSubject(true)}
-              >
-                <Ionicons
-                  name="add-circle-outline"
-                  size={18}
-                  color={colors.primaryDark}
-                />
-                <Text style={styles.todoAddBtnText}>과목 추가</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-          <ScrollView
-            style={[styles.todoList, tdb('#AC8E68')]}
-            showsVerticalScrollIndicator={false}
-          >
-            {displaySubjects.map((sub) => {
-              const subTasks = displayTasks.filter(
-                (t) => t.subjectId === sub.id,
-              );
-              const totalMs = getSubjectTotalMs(sub.id);
-              const isThisRunning = isRunning && activeSubjectId === sub.id;
-              const totalStr = isThisRunning
-                ? formatHMS(totalMs + liveExtraMs)
-                : formatHMS(totalMs);
-              const isCollapsed = collapsedSubjects[sub.id] === true;
-              return (
-                <View
-                  key={sub.id}
-                  style={[styles.subjectAccordionWrap, tdb('#FF6B35')]}
-                >
-                  <View
-                    style={[
-                      styles.subjectBlock,
-                      { backgroundColor: lightenHex(sub.color, 0.9) },
-                      tdb('#7B68EE'),
-                    ]}
-                  >
-                    <TouchableOpacity
-                      style={[styles.subjectRow, tdb('#20B2AA')]}
-                      activeOpacity={1}
-                      onLongPress={() => deleteSubject?.(sub)}
-                      delayLongPress={350}
-                      disabled={!isViewingToday}
-                    >
-                      <View style={[styles.subjectBody, tdb('#DA70D6')]}>
-                        <Text style={styles.subjectName}>{sub.name}</Text>
-                        <Text style={styles.subjectTime}>{totalStr}</Text>
-                      </View>
-                      <TouchableOpacity
-                        style={[
-                          styles.subjectPlayBtn,
-                          { backgroundColor: sub.color },
-                          isThisRunning && styles.subjectPlayBtnActive,
-                        ]}
-                        onPress={() =>
-                          isRunning && activeSubjectId === sub.id
-                            ? pauseTimer()
-                            : startForSubject(sub.id)
-                        }
-                        disabled={!isViewingToday}
-                      >
-                        <Ionicons
-                          name={isThisRunning ? 'pause' : 'play'}
-                          size={normalize(18)}
-                          color={colors.white}
-                        />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={styles.subjectCollapseBtn}
-                        onPress={() => toggleSubjectCollapsed(sub.id)}
-                      >
-                        <Ionicons
-                          name={isCollapsed ? 'chevron-down' : 'chevron-up'}
-                          size={normalize(20)}
-                          color={colors.textLight4}
-                        />
-                      </TouchableOpacity>
-                    </TouchableOpacity>
-                    {!isCollapsed && (
-                      <View style={[styles.subjectTasksArea, tdb('#9ACD32')]}>
-                        {subTasks.map((task) => (
-                          <TouchableOpacity
-                            key={task.id}
-                            style={[styles.taskRow, tdb('#2E8B57')]}
-                            activeOpacity={1}
-                            onLongPress={() => deleteTask?.(task)}
-                            delayLongPress={350}
-                            disabled={!isViewingToday}
-                          >
-                            <TouchableOpacity
-                              style={[
-                                styles.taskCheckbox,
-                                task.status === 'done' &&
-                                  styles.taskCheckboxChecked,
-                              ]}
-                              onPress={() =>
-                                isViewingToday &&
-                                setTaskStatus(
-                                  task.id,
-                                  task.status === 'done' ? 'pending' : 'done',
-                                )
-                              }
-                              disabled={!isViewingToday}
-                            >
-                              {task.status === 'done' && (
-                                <Ionicons
-                                  name="checkmark"
-                                  size={normalize(14)}
-                                  color={colors.white}
-                                />
-                              )}
-                            </TouchableOpacity>
-                            <Text
-                              style={[
-                                styles.taskContent,
-                                task.status === 'done' &&
-                                  styles.taskContentDone,
-                              ]}
-                              numberOfLines={1}
-                            >
-                              {task.content}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                        <TouchableOpacity
-                          style={styles.todoAddUnderSubject}
-                          onPress={() => openAddTaskForSubject(sub.id)}
-                          disabled={!isViewingToday}
-                        >
-                          <Text style={styles.todoAddUnderSubjectText}>
-                            + 할 일 추가
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
-                  </View>
-                </View>
-              );
-            })}
-          </ScrollView>
-        </GuideFocusTarget>
-
-        <GuideFocusTarget
-          name={T.TIMER_TIMETABLE_COLUMN}
-          style={[styles.timetableColumn, tdb('#4682B4')]}
-        >
-          <Text style={styles.timetableTitle}>공부 기록</Text>
-          <View style={[styles.timetableScroll, tdb('#CD853F')]}>
-            {renderTimetable()}
-          </View>
-        </GuideFocusTarget>
+        <TimerPlannerTabs
+          value={plannerTab}
+          styles={styles}
+          normalize={normalize}
+          liveExtraMs={liveExtraMs}
+          isViewingToday={isViewingToday}
+          isRunning={isRunning}
+          activeSubjectId={activeSubjectId}
+          displaySessions={displaySessions}
+          displaySubjects={displaySubjects}
+          displayTasks={displayTasks}
+          getSubjectTotalMs={getSubjectTotalMs}
+          collapsedSubjects={collapsedSubjects}
+          toggleSubjectCollapsed={toggleSubjectCollapsed}
+          startForSubject={startForSubject}
+          pauseTimer={pauseTimer}
+          setShowAddSubject={setShowAddSubject}
+          openAddTaskForSubject={openAddTaskForSubject}
+          setTaskStatus={setTaskStatus}
+          deleteSubject={deleteSubject}
+          deleteTask={deleteTask}
+        />
       </View>
   );
 }

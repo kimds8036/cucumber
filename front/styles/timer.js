@@ -20,7 +20,7 @@ export const getNormalize = (width) => {
 };
 
 /** 타이머 탭 레이아웃 확인용 윤곽선. 확인이 끝나면 false로 바꾼다 */
-const DEBUG_TIMER_OUTLINE = __DEV__ && true;
+const DEBUG_TIMER_OUTLINE = __DEV__ && false;
 const DEBUG_OUTLINE_COLORS = [
   '#FF3B30',
   '#FF9500',
@@ -173,8 +173,8 @@ export const createTimerStyles = (width, normalize) => {
     timerCard: {
       backgroundColor: colors.white,
       borderRadius: normalize(16),
-      paddingHorizontal: normalize(10),
-      paddingVertical: normalize(16),
+      paddingHorizontal: normalize(6),
+      paddingVertical: normalize(6),
       marginBottom: normalize(10),
       borderWidth: 1,
       borderColor: colors.textLight1,
@@ -189,7 +189,7 @@ export const createTimerStyles = (width, normalize) => {
     timerCardDivider: {
       width: 1,
       backgroundColor: colors.textLight1,
-      marginHorizontal: normalize(10),
+      marginHorizontal: normalize(6),
     },
     /** 카드 오른쪽 메뉴 영역 */
     timerMenuCol: {
@@ -234,7 +234,7 @@ export const createTimerStyles = (width, normalize) => {
     timerMenuProgressFill: {
       height: '100%',
       borderRadius: normalize(2),
-      backgroundColor: colors.subcolor,
+      backgroundColor: colors.primary,
     },
     // 타이머 블록 (시·분·초) — 카드 안 정렬
     timerBlock: {
@@ -260,7 +260,7 @@ export const createTimerStyles = (width, normalize) => {
       alignItems: 'center',
       justifyContent: 'center',
       gap: normalize(8),
-      paddingVertical: normalize(8),
+      paddingVertical: normalize(6),
       paddingHorizontal: normalize(20),
       borderRadius: normalize(24),
       backgroundColor: colors.primary,
@@ -285,30 +285,48 @@ export const createTimerStyles = (width, normalize) => {
     },
 
     // 투두 + 타임테이블 수평 배치
-    todoTimetableRow: {
+    /** 플래너 메뉴 줄 (투두리스트 · 타임테이블 · 공부 잔디 · 위클리) */
+    plannerTabBar: {
       flexDirection: 'row',
+      borderBottomWidth: 1,
+      borderBottomColor: colors.textLight1,
+    },
+    plannerTab: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: normalize(2),
+    },
+    plannerTabText: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.bold,
+      color: colors.textLight3,
+    },
+    plannerTabTextActive: {
+      color: colors.text,
+    },
+    plannerTabIndicator: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: -1,
+      height: 2,
+      backgroundColor: colors.text,
+    },
+    todoTimetableRow: {
       flex: 1,
       minHeight: normalize(320),
-      gap: normalize(12),
-      alignItems: 'stretch',
+      marginTop: normalize(8),
     },
     todoColumn: {
       flex: 1,
-      minWidth: width * 0.5,
-      maxWidth: width * 0.6,
       alignSelf: 'stretch',
     },
     todoHeader: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
+      justifyContent: 'flex-end',
       marginBottom: normalize(10),
-    },
-    todoTitle: {
-      fontSize: normalize(fontSizes.xxl),
-      fontFamily: fonts.bold,
-      color: colors.text,
-      marginBottom: 0,
     },
     todoHeaderButtons: {
       flexDirection: 'row',
@@ -474,7 +492,6 @@ export const createTimerStyles = (width, normalize) => {
     },
     timetableColumn: {
       flex: 1,
-      minWidth: width * 0.35,
       alignSelf: 'stretch',
     },
     timetableScroll: {
@@ -669,12 +686,6 @@ export const createTimerStyles = (width, normalize) => {
       paddingVertical: normalize(14),
       paddingHorizontal: normalize(20),
       ...shadow.sm,
-    },
-    timetableTitle: {
-      fontSize: normalize(fontSizes.xl),
-      fontFamily: fonts.bold,
-      color: colors.text,
-      marginBottom: normalize(10),
     },
     timetableHeaderRow: {
       flexDirection: 'row',
@@ -900,19 +911,10 @@ export const createTimerStyles = (width, normalize) => {
     timerSkelTimerBtn: {
       alignSelf: 'center',
     },
-    timerSkelColTitle: {
-      marginBottom: normalize(10),
-    },
-    timerSkelTaskRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: normalize(10),
-      gap: normalize(8),
-    },
     timerSkelTtTitle: {
       marginBottom: normalize(10),
     },
-    timerSkelTtRow: {
+    timerSkelSubjectBlock: {
       marginBottom: normalize(8),
     },
     safeAreaFlex: {
