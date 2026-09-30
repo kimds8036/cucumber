@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
   ImageBackground,
+  Pressable,
   StyleSheet,
   Text,
   View,
@@ -14,15 +15,17 @@ import { pickBanner } from '../../constants/bannerAssets';
  * 헤더 아래(또는 게시글과 댓글 사이) 배너.
  * 배경 이미지 위에 왼쪽 두 줄 문구를 올린다.
  *
- * @param {{ inset?: boolean, placement?: 'board' | 'message' | 'school' | 'timer' }} props
+ * picked 를 넘기면 마운트마다 다시 뽑지 않는다.
+ * @param {{ inset?: boolean, placement?: 'board' | 'message' | 'school' | 'timer', picked?: { source: number, copy: { line1: string, line2: string } }, onPress?: () => void }} props
  */
-export default function TopAdBanner({ inset = true, placement }) {
+export default function TopAdBanner({ inset = true, placement, picked: pickedProp, onPress }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const [picked] = useState(() => pickBanner(placement));
+  const [pickedState] = useState(() => pickedProp ?? pickBanner(placement));
+  const picked = pickedProp ?? pickedState;
   const styles = useMemo(() => createStyles(normalize), [normalize]);
 
-  return (
+  const banner = (
     <ImageBackground
       source={picked.source}
       style={[
@@ -36,7 +39,7 @@ export default function TopAdBanner({ inset = true, placement }) {
       accessibilityIgnoresInvertColors
     >
       <View style={styles.copyCol} pointerEvents="none">
-        <Text style={styles.line1} numberOfLines={2}>
+        <Text style={styles.line1} numberOfLines={1}>
           {picked.copy.line1}
         </Text>
         <Text style={styles.line2} numberOfLines={2}>
@@ -44,6 +47,18 @@ export default function TopAdBanner({ inset = true, placement }) {
         </Text>
       </View>
     </ImageBackground>
+  );
+
+  if (!onPress) return banner;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${picked.copy.line1} ${picked.copy.line2}`}
+    >
+      {banner}
+    </Pressable>
   );
 }
 

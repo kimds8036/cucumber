@@ -12,6 +12,7 @@ import { softDeletePostComment } from '../services/commentCount.service.js';
 import { blockWhenFlag } from '../middleware/systemFlags.js';
 import { API_ERROR_CODES } from '../constants/apiErrorCodes.js';
 import { resolveAnonNo } from '../utils/resolveAnonNo.js';
+import { attachDryRun } from '../utils/dryRun.js';
 
 const router = express.Router();
 
@@ -80,7 +81,7 @@ router.delete('/comments/:commentId', authenticate, async (req, res) => {
 });
 
 // 댓글 작성 (대댓글 포함)
-router.post('/:postId/comments', authenticate, blockWhenFlag('comment_write_disabled'), uploadComment.array('images', 5), validate(commentCreateValidators), async (req, res) => {
+router.post('/:postId/comments', authenticate, attachDryRun, blockWhenFlag('comment_write_disabled'), uploadComment.array('images', 5), validate(commentCreateValidators), async (req, res) => {
   const connection = await pool.getConnection();
   try {
     const userId = req.user.userId;
@@ -199,9 +200,32 @@ router.post('/:postId/comments', authenticate, blockWhenFlag('comment_write_disa
       [commentId],
     );
 
-    await connection.commit();
-
     const post = posts[0];
+
+    if (req.dryRun) {
+      const bypassedExternalCalls = [];
+      if (post.user_id && post.user_id !== userId) {
+        bypassedExternalCalls.push('enqueueNotification:postAuthor');
+      }
+      if (
+        parentComment &&
+        parentComment.user_id &&
+        parentComment.user_id !== userId &&
+        parentComment.user_id !== post.user_id
+      ) {
+        bypassedExternalCalls.push('enqueueNotification:parentComment');
+      }
+      await connection.rollback();
+      return res.status(201).json({
+        success: true,
+        message: 'Dry-run: 댓글은 저장되지 않았습니다.',
+        dryRun: true,
+        bypassedExternalCalls,
+        data: comments[0],
+      });
+    }
+
+    await connection.commit();
 
     // 게시글 작성자에게 댓글/대댓글 알림 (비동기 큐로 위임)
     if (post.user_id && post.user_id !== userId) {

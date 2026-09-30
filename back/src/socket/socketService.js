@@ -136,20 +136,20 @@ export async function sendFriendPoke({ fromUserId, targetUserId }) {
   lastPokeAtMap.set(key, now);
 
   const io = getIO();
-  let senderName = '친구';
+  let senderName = '';
   try {
     const [senderRows] = await pool.execute(
-      'SELECT name FROM users WHERE id = ? LIMIT 1',
+      'SELECT name_enc FROM users WHERE id = ? LIMIT 1',
       [fromUserId],
     );
-    const resolved = String(senderRows?.[0]?.name ?? '').trim();
-    if (resolved) senderName = resolved;
+    senderName = String(senderRows?.[0]?.name ?? '').trim();
   } catch (error) {
     console.warn('[FriendSocket] friend_poke sender 조회 실패:', {
       fromUserId,
       message: error?.message,
     });
   }
+  if (!senderName) senderName = '친구';
 
   const payload = {
     type: 'friend_poke',
