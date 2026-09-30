@@ -56,6 +56,7 @@ import {
 import { TimerPlannerTabBar } from './TimerPlannerTabs';
 import TimerDayRecordSheet from './TimerDayRecordSheet';
 import { useTimerDayRecord } from './useTimerDayRecord';
+import { useTimerWeekly } from './useTimerWeekly';
 import {
   preloadTimerCaptureWatermark,
   waitForTimerCapturePaint,
@@ -340,6 +341,7 @@ export function TimerContent() {
   );
 
   const dayRecordData = useTimerDayRecord(dayRecord?.dayKey ?? null);
+  const weekly = useTimerWeekly();
   const dayRecordCaptureRef = useRef(null);
 
   const captureToGallery = async (captureRef) => {
@@ -458,6 +460,7 @@ export function TimerContent() {
     deleteSubject: timer.deleteSubject,
     deleteTask: timer.deleteTask,
     onOpenDayRecord: openDayRecord,
+    weekly,
   };
 
   return (
@@ -476,6 +479,8 @@ export function TimerContent() {
               scrollIndicatorInsets={{ bottom: tabBarInset }}
               stickyHeaderIndices={showDayContentSkeleton ? undefined : [3]}
               showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              automaticallyAdjustKeyboardInsets
             >
               {scrollingHeader}
               <View

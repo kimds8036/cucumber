@@ -33,13 +33,20 @@ const DEBUG_OUTLINE_COLORS = [
   '#FF2D55',
 ];
 
+/** 타이머 카드 오른쪽 메뉴(timerMenu*)에만 윤곽선 — 테스트 끝나면 false */
+const DEBUG_TIMER_MENU_OUTLINE = __DEV__ && false;
+
+const shouldOutlineKey = (key) =>
+  DEBUG_TIMER_OUTLINE ||
+  (DEBUG_TIMER_MENU_OUTLINE && key.startsWith('timerMenu'));
+
 const withDebugOutline = (styleMap) => {
-  if (!DEBUG_TIMER_OUTLINE) return styleMap;
+  if (!DEBUG_TIMER_OUTLINE && !DEBUG_TIMER_MENU_OUTLINE) return styleMap;
   const result = {};
   Object.keys(styleMap).forEach((key, i) => {
     const value = styleMap[key];
     result[key] =
-      value && typeof value === 'object'
+      value && typeof value === 'object' && shouldOutlineKey(key)
         ? {
             ...value,
             borderWidth: 1,
@@ -201,7 +208,7 @@ export const createTimerStyles = (width, normalize) => {
     timerMenuItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: normalize(6),
+      gap: normalize(4),
     },
     timerMenuIconBox: {
       width: normalize(24),
@@ -229,7 +236,6 @@ export const createTimerStyles = (width, normalize) => {
       height: normalize(4),
       borderRadius: normalize(2),
       backgroundColor: colors.textLight1,
-      marginTop: normalize(3),
       overflow: 'hidden',
     },
     timerMenuProgressFill: {
@@ -314,6 +320,71 @@ export const createTimerStyles = (width, normalize) => {
       height: 2,
       backgroundColor: colors.text,
     },
+    /** 위클리 — 일~토 세로 체크리스트 */
+    weeklyWrap: {
+      flex: 1,
+    },
+    weeklyDayRow: {
+      flexDirection: 'row',
+      paddingVertical: normalize(10),
+      paddingHorizontal: normalize(8),
+      marginBottom: normalize(8),
+      borderWidth: 1,
+      borderColor: colors.textLight1,
+      borderRadius: normalize(12),
+      backgroundColor: colors.white,
+    },
+    weeklyDayRowToday: {
+      borderColor: colors.primary,
+      backgroundColor: colors.primaryLight1,
+    },
+    weeklyDayLabelCol: {
+      width: normalize(36),
+      alignItems: 'center',
+    },
+    weeklyDayLabel: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.bold,
+      color: colors.text,
+    },
+    weeklyDayDate: {
+      fontSize: normalize(fontSizes.md),
+      fontFamily: fonts.regular,
+      color: colors.textLight4,
+    },
+    weeklyDayBody: {
+      flex: 1,
+      minWidth: 0,
+      marginLeft: normalize(8),
+    },
+    weeklyItemRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(8),
+      paddingVertical: normalize(4),
+    },
+    weeklyItemText: {
+      flex: 1,
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.regular,
+      color: colors.text,
+    },
+    weeklyInput: {
+      flex: 1,
+      paddingVertical: 0,
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.regular,
+      color: colors.text,
+    },
+    weeklyAddBtn: {
+      alignSelf: 'flex-start',
+      paddingVertical: normalize(4),
+    },
+    weeklyAddBtnText: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textLight4,
+    },
     /** 공부 잔디 달력 */
     grassWrap: {
       alignSelf: 'stretch',
@@ -371,6 +442,11 @@ export const createTimerStyles = (width, normalize) => {
       color: colors.primaryDark,
       textAlign: 'right',
       fontFamily: fonts.bold,
+    },
+    datePickerWheelWrap: {
+      width: '100%',
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     ymWheelWrap: {
       flexDirection: 'row',

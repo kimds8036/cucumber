@@ -1107,11 +1107,11 @@ export const createDetailStyles = (width, normalize) => {
     },
     commentRowDivider: {
       borderBottomWidth: 1,
-      borderBottomColor: colors.textLight1,
+      borderBottomColor: colors.textLight0,
     },
     commentRowDividerInset: {
       height: 1,
-      backgroundColor: colors.textLight1,
+      backgroundColor: colors.textLight0,
       marginHorizontal: width * 0.04,
     },
     /** 대댓글 묶음: 화살표 1개 + inset well

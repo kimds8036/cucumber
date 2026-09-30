@@ -65,7 +65,13 @@ export default function TimerPlannerTabs({ value, ...panelProps }) {
         />
       );
     case 'weekly':
-      return <TimerWeekly />;
+      return (
+        <TimerWeekly
+          styles={panelProps.styles}
+          normalize={panelProps.normalize}
+          weekly={panelProps.weekly}
+        />
+      );
     default:
       return null;
   }

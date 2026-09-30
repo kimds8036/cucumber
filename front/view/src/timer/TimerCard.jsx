@@ -16,7 +16,6 @@ const SHOW_DATE_NAV = false;
 
 /** 백엔드 연결 전 표시용 더미 값 */
 const DUMMY_STREAK_DAYS = 50;
-const DUMMY_WEEKLY_RATE = 50;
 
 export default function TimerCard({
   styles,
@@ -32,6 +31,7 @@ export default function TimerCard({
   handleSaveAsImage,
   onOpenStudyRoom,
   toggleTimer,
+  weeklyRate = 0,
 }) {
   return (
     <GuideFocusTarget
@@ -173,13 +173,13 @@ export default function TimerCard({
               위클리 달성률
             </Text>
             <Text style={styles.timerMenuValue} numberOfLines={1}>
-              {DUMMY_WEEKLY_RATE}%
+              {weeklyRate}%
             </Text>
             <View style={styles.timerMenuProgressTrack}>
               <View
                 style={[
                   styles.timerMenuProgressFill,
-                  { width: `${DUMMY_WEEKLY_RATE}%` },
+                  { width: `${weeklyRate}%` },
                 ]}
               />
             </View>

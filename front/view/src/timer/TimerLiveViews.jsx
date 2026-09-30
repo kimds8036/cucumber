@@ -100,6 +100,7 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
   deleteSubject,
   deleteTask,
   onOpenDayRecord,
+  weekly,
 }) {
   const liveExtraMs = useContext(LiveElapsedMsContext);
   const displayTotalMs = isViewingToday
@@ -134,6 +135,7 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
         handleSaveAsImage={handleSaveAsImage}
         onOpenStudyRoom={onOpenStudyRoom}
         toggleTimer={toggleTimer}
+        weeklyRate={weekly?.rate ?? 0}
       />
     );
   }
@@ -162,6 +164,7 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
           deleteSubject={deleteSubject}
           deleteTask={deleteTask}
           onOpenDayRecord={onOpenDayRecord}
+          weekly={weekly}
         />
       </View>
   );
