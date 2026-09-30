@@ -34,6 +34,56 @@ function featureTestMock(status, body) {
   featureTestRenderResult(Date.now(), status, body);
 }
 
+function featureTestSelectedUserId() {
+  return document.getElementById('ft-user-select')?.value || '';
+}
+
+function featureTestEscape(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function featureTestUserLabel(user) {
+  const name = featureTestEscape(user.username || '아이디 없음');
+  const school = user.schoolName ? ` · ${featureTestEscape(user.schoolName)}` : '';
+  return `${name} · #${user.id}${school}`;
+}
+
+async function loadFeatureTestUsers() {
+  const select = document.getElementById('ft-user-select');
+  if (!select) return;
+  const previous = select.value;
+  const q = document.getElementById('ft-user-search')?.value?.trim() || '';
+  select.innerHTML = '<option value="">불러오는 중…</option>';
+  try {
+    const token = getAdminToken();
+    const qs = q ? `?q=${encodeURIComponent(q)}` : '';
+    const res = await fetch(`${getApiBase()}/feature-tests/users${qs}`, {
+      credentials: 'include',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    const body = await res.json().catch(() => ({}));
+    const users = Array.isArray(body?.data?.users) ? body.data.users : [];
+    const options = ['<option value="">유저를 선택하세요</option>'];
+    users.forEach((user) => {
+      const id = String(user.id);
+      const selected = id === previous ? ' selected' : '';
+      options.push(
+        `<option value="${id}"${selected}>${featureTestUserLabel(user)}</option>`,
+      );
+    });
+    select.innerHTML = options.join('');
+    if (!users.length) {
+      select.innerHTML = '<option value="">검색 결과가 없습니다</option>';
+    }
+  } catch {
+    select.innerHTML = '<option value="">유저 목록을 불러오지 못했습니다</option>';
+  }
+}
+
 function featureTestShowTrack(name) {
   const dry = document.getElementById('ft-track-dry');
   const toast = document.getElementById('ft-track-toast');
@@ -46,14 +96,17 @@ function mountFeatureTests() {
   if (!host || host.dataset.ready === '1') return;
   host.dataset.ready = '1';
   host.innerHTML = `
+    <div style="margin-bottom:12px;">
+      <label>대상 유저</label>
+      <input id="ft-user-search" class="input" placeholder="아이디 또는 번호 검색" style="width:100%;margin:4px 0 8px;" />
+      <select id="ft-user-select" class="input" style="width:100%;margin:0 0 8px;"></select>
+    </div>
     <div style="display:flex;gap:8px;margin-bottom:12px;">
       <button type="button" class="btn" id="ft-tab-dry">게시글 · 댓글 Dry-Run</button>
       <button type="button" class="btn" id="ft-tab-toast">알림 토스트</button>
     </div>
     <div id="ft-track-dry" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;">
       <div>
-        <label>대상 유저 ID</label>
-        <input id="ft-user" class="input" style="width:100%;margin:4px 0 8px;" />
         <label>종류</label>
         <select id="ft-kind" class="input" style="width:100%;margin:4px 0 8px;">
           <option value="comment">댓글</option>
@@ -89,8 +142,6 @@ function mountFeatureTests() {
     </div>
     <div id="ft-track-toast" style="display:none;grid-template-columns:1fr 1fr;gap:16px;align-items:start;">
       <div>
-        <label>대상 유저 ID (앱이 켜져 있어야 함)</label>
-        <input id="ft-toast-user" class="input" style="width:100%;margin:4px 0 8px;" />
         <div style="display:flex;flex-wrap:wrap;gap:6px;">
           <button type="button" class="btn" data-ft-event="notification" data-ft-variant="comment">notification 댓글</button>
           <button type="button" class="btn" data-ft-event="notification" data-ft-variant="reply">notification 답글</button>
@@ -115,7 +166,7 @@ function mountFeatureTests() {
     const kind = document.getElementById('ft-kind')?.value;
     featureTestRequest('/feature-tests/dry-run', {
       kind,
-      targetUserId: document.getElementById('ft-user')?.value,
+      targetUserId: featureTestSelectedUserId(),
       postId: document.getElementById('ft-post')?.value,
       parentCommentId: document.getElementById('ft-parent')?.value,
       boardType: document.getElementById('ft-board')?.value,
@@ -138,10 +189,16 @@ function mountFeatureTests() {
   document.getElementById('ft-mock-500')?.addEventListener('click', () => {
     featureTestMock(500, { success: false, message: '서버 오류' });
   });
+  let searchTimer = null;
+  document.getElementById('ft-user-search')?.addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(loadFeatureTestUsers, 250);
+  });
+  loadFeatureTestUsers();
   host.querySelectorAll('[data-ft-event]').forEach((button) => {
     button.addEventListener('click', () => {
       featureTestRequest('/feature-tests/socket-toast', {
-        targetUserId: document.getElementById('ft-toast-user')?.value,
+        targetUserId: featureTestSelectedUserId(),
         eventType: button.getAttribute('data-ft-event'),
         variant: button.getAttribute('data-ft-variant') || undefined,
       });
