@@ -464,6 +464,7 @@ export function TimerContent() {
     onOpenDayRecord: openDayRecord,
     weekly,
     streakDays,
+    onOpenSettings: () => navigation.navigate('TimerSettings'),
   };
 
   return (

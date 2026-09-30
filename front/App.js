@@ -43,6 +43,7 @@ import OtherSchoolScreen from './view/src/otherschool';
 import MealCalender from './view/src/mealcalender';
 import Timer from './view/src/timer';
 import TimerAniLab from './view/src/TimerAniLab';
+import TimerSettings from './view/src/timer/TimerSettings';
 import FriendsScreen from './view/src/friendsscreen';
 import CommuteBreakoutGame from './view/src/CommuteBreakoutGame';
 import HiddenPostsAppeals from './view/src/hiddenPostsAppeals';
@@ -279,6 +280,7 @@ function MainStack({ initialRouteName = 'Main' }) {
       <Stack.Screen name="SendSchoolMail" component={SendSchoolMailScreen} />
       <Stack.Screen name="Timer" component={Timer} />
       <Stack.Screen name="TimerAniLab" component={TimerAniLab} />
+      <Stack.Screen name="TimerSettings" component={TimerSettings} />
       <Stack.Screen name="Friends" component={FriendsScreen} />
       <Stack.Screen
         name="CommuteBreakout"

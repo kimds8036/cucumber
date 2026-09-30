@@ -14,6 +14,9 @@ import { tdb, formatHMS } from './timerHelpers';
 /** 날짜 이동(이전·달력·다음) 버튼. 숨김 상태이며 코드는 남겨 둔다 */
 const SHOW_DATE_NAV = false;
 
+/** 뽀모도로 카드 화면 미리보기 — 설정 연결 전 임시 스위치 */
+const PREVIEW_POMODORO_CARD = false;
+
 export default function TimerCard({
   styles,
   normalize,
@@ -30,6 +33,8 @@ export default function TimerCard({
   toggleTimer,
   weeklyRate = 0,
   streakDays = 0,
+  onOpenSettings,
+  pomodoroEnabled = PREVIEW_POMODORO_CARD,
 }) {
   return (
     <GuideFocusTarget
@@ -92,6 +97,7 @@ export default function TimerCard({
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.timerCardIconBtn}
+                onPress={onOpenSettings}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 accessibilityLabel="설정"
               >
@@ -104,6 +110,52 @@ export default function TimerCard({
             </View>
           </View>
         </View>
+        {pomodoroEnabled ? (
+          <View style={[styles.timerBlock, tdb('#5E5CE6')]}>
+            <View style={styles.pomoPhaseRow}>
+              <View style={styles.pomoPhaseChip}>
+                <Text style={styles.pomoPhaseChipText}>집중</Text>
+              </View>
+              <View style={styles.pomoCycleDots}>
+                {[0, 1, 2, 3].map((i) => (
+                  <View
+                    key={`pomo-dot-${i}`}
+                    style={[styles.pomoCycleDot, i === 0 && styles.pomoCycleDotActive]}
+                  />
+                ))}
+              </View>
+            </View>
+            <Text style={styles.timerTime} numberOfLines={1} adjustsFontSizeToFit>
+              25:00
+            </Text>
+            <View style={styles.pomoProgressTrack}>
+              <View style={[styles.pomoProgressFill, { width: '0%' }]} />
+            </View>
+            <View style={styles.pomoBtnRow}>
+              <TouchableOpacity style={styles.timerBtn} activeOpacity={0.8}>
+                <Ionicons name="play" size={normalize(20)} color={colors.white} />
+                <Text style={styles.timerBtnText}>시작</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.pomoSubBtn}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityLabel="건너뛰기"
+              >
+                <Ionicons name="play-skip-forward" size={normalize(16)} color={colors.textLight4} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.pomoSubBtn}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityLabel="초기화"
+              >
+                <Ionicons name="refresh" size={normalize(16)} color={colors.textLight4} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.pomoTodayText}>
+              {`오늘 공부 ${formatHMS(displayTotalMs)}`}
+            </Text>
+          </View>
+        ) : (
         <View style={[styles.timerBlock, tdb('#5E5CE6')]}>
           <Text
             style={styles.timerTime}
@@ -134,6 +186,7 @@ export default function TimerCard({
             </TouchableOpacity>
           )}
         </View>
+        )}
       </View>
       <View style={styles.timerCardDivider} />
       <View style={styles.timerMenuCol}>

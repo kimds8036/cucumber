@@ -283,6 +283,70 @@ export const createTimerStyles = (width, normalize) => {
     timerBtnTextPause: {
       color: colors.text,
     },
+    /** 뽀모도로 ON — 시간 카드 안 */
+    pomoPhaseRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(8),
+      marginBottom: normalize(4),
+    },
+    pomoPhaseChip: {
+      paddingHorizontal: normalize(10),
+      paddingVertical: normalize(2),
+      borderRadius: normalize(999),
+      backgroundColor: colors.primaryLight3,
+    },
+    pomoPhaseChipText: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.bold,
+      color: colors.primaryDark,
+    },
+    pomoCycleDots: {
+      flexDirection: 'row',
+      gap: normalize(4),
+    },
+    pomoCycleDot: {
+      width: normalize(6),
+      height: normalize(6),
+      borderRadius: normalize(3),
+      backgroundColor: colors.textLight1,
+    },
+    pomoCycleDotActive: {
+      backgroundColor: colors.primary,
+    },
+    pomoProgressTrack: {
+      alignSelf: 'stretch',
+      height: normalize(4),
+      borderRadius: normalize(2),
+      backgroundColor: colors.textLight1,
+      overflow: 'hidden',
+      marginBottom: normalize(10),
+    },
+    pomoProgressFill: {
+      height: '100%',
+      borderRadius: normalize(2),
+      backgroundColor: colors.primary,
+    },
+    pomoBtnRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(12),
+    },
+    pomoSubBtn: {
+      width: normalize(32),
+      height: normalize(32),
+      borderRadius: normalize(16),
+      borderWidth: 1,
+      borderColor: colors.textLight1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    pomoTodayText: {
+      marginTop: normalize(8),
+      fontSize: normalize(fontSizes.md),
+      fontFamily: fonts.regular,
+      color: colors.textLight4,
+    },
 
     // 구분선
     divider: {
@@ -1899,5 +1963,131 @@ export const createTimerModalsStyles = (normalize) =>
     dayTextSelected: {
       fontFamily: fonts.bold,
       color: colors.white,
+    },
+  });
+
+/** 타이머 설정 화면 — 뽀모도로 · 스터디룸 캐릭터 */
+export const createTimerSettingsStyles = (width, normalize) =>
+  StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: colors.white,
+    },
+    scrollContent: {
+      paddingHorizontal: width * 0.04,
+      paddingTop: normalize(8),
+      paddingBottom: normalize(32),
+    },
+    sectionTitle: {
+      marginTop: normalize(16),
+      marginBottom: normalize(8),
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.bold,
+      color: colors.textLight4,
+    },
+    card: {
+      borderWidth: 1,
+      borderColor: colors.textLight1,
+      borderRadius: normalize(16),
+      paddingHorizontal: normalize(14),
+      backgroundColor: colors.white,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: normalize(14),
+    },
+    rowBorder: {
+      borderTopWidth: 1,
+      borderTopColor: colors.textLight05,
+    },
+    rowTextCol: {
+      flex: 1,
+      minWidth: 0,
+      marginRight: normalize(12),
+    },
+    rowLabel: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.bold,
+      color: colors.text,
+    },
+    rowLabelDisabled: {
+      color: colors.textLight3,
+    },
+    rowDesc: {
+      marginTop: normalize(2),
+      fontSize: normalize(fontSizes.md),
+      fontFamily: fonts.regular,
+      color: colors.textLight4,
+    },
+    stepper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(10),
+    },
+    stepperBtn: {
+      width: normalize(28),
+      height: normalize(28),
+      borderRadius: normalize(14),
+      borderWidth: 1,
+      borderColor: colors.textLight1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    stepperValue: {
+      minWidth: normalize(44),
+      textAlign: 'center',
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.bold,
+      color: colors.text,
+    },
+    stepperValueDisabled: {
+      color: colors.textLight3,
+    },
+    genderRow: {
+      flexDirection: 'row',
+      gap: normalize(8),
+      paddingVertical: normalize(14),
+    },
+    genderOption: {
+      flex: 1,
+      alignItems: 'center',
+      paddingVertical: normalize(12),
+      borderWidth: 1,
+      borderColor: colors.textLight1,
+      borderRadius: normalize(12),
+      backgroundColor: colors.white,
+    },
+    genderOptionActive: {
+      borderColor: colors.primary,
+      backgroundColor: colors.primaryLight1,
+    },
+    genderImage: {
+      width: normalize(48),
+      height: normalize(48),
+      marginBottom: normalize(6),
+    },
+    genderRandomBox: {
+      width: normalize(48),
+      height: normalize(48),
+      marginBottom: normalize(6),
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    genderLabel: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textLight4,
+    },
+    genderLabelActive: {
+      fontFamily: fonts.bold,
+      color: colors.text,
+    },
+    footNote: {
+      marginTop: normalize(8),
+      fontSize: normalize(fontSizes.md),
+      fontFamily: fonts.regular,
+      color: colors.textLight4,
     },
   });
