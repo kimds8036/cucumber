@@ -7,8 +7,11 @@ private let rowSpacing: CGFloat = 8
 private let attachButtonSize: CGFloat = 44
 private let capsuleMinHeight: CGFloat = 44
 private let capsuleMaxHeight: CGFloat = 80
-private let sendButtonSize: CGFloat = 36
-private let sendButtonInset: CGFloat = 4
+private let sendButtonSize: CGFloat = 32
+// 한 줄일 때 전송 버튼이 캡슐 세로 가운데에 오게 한다.
+private let sendButtonInset: CGFloat = (capsuleMinHeight - sendButtonSize) / 2
+/// 캡슐 오른쪽 끝에서 전송 버튼 가운데까지. 답글 X 버튼을 전송 버튼과 세로로 맞춘다.
+let capsuleSendButtonCenterInset: CGFloat = sendButtonInset + sendButtonSize / 2
 private let textLeadingInset: CGFloat = 16
 
 /// iOS 26 이상은 유리, 그 아래는 흰 입력줄 바탕과 회색 입력칸.
@@ -71,7 +74,7 @@ class YouthPaperInputBarView: ExpoView, UITextViewDelegate {
   private var pendingEventCount = 0
 
   private let stackView = UIStackView()
-  private let replyRow = InputBarReplyRow(horizontalPadding: rowPaddingHorizontal, glass: inputBarUsesGlass)
+  private let replyRow = InputBarReplyRow(textInset: textLeadingInset)
   private let imageStrip = InputBarImageStrip(horizontalPadding: rowPaddingHorizontal)
   private let inputRow = UIView()
   private let topBorder = UIView()
@@ -80,6 +83,9 @@ class YouthPaperInputBarView: ExpoView, UITextViewDelegate {
   private let attachContent: UIView
   private let capsuleView: UIView
   private let capsuleContent: UIView
+  // 답글 줄과 글 입력줄을 캡슐 하나 안에 세로로 쌓는다.
+  private let capsuleStack = UIStackView()
+  private let textRow = UIView()
   private let textView = UITextView()
   private let placeholderLabel = UILabel()
   private let sendButton = UIButton(type: .system)
@@ -104,9 +110,12 @@ class YouthPaperInputBarView: ExpoView, UITextViewDelegate {
     stackView.axis = .vertical
     stackView.translatesAutoresizingMaskIntoConstraints = false
     addSubview(stackView)
-    stackView.addArrangedSubview(replyRow)
     stackView.addArrangedSubview(imageStrip)
     stackView.addArrangedSubview(inputRow)
+
+    capsuleStack.axis = .vertical
+    capsuleStack.addArrangedSubview(replyRow)
+    capsuleStack.addArrangedSubview(textRow)
 
     replyRow.isHidden = true
     replyRow.onCancel = { [weak self] in self?.handleCancelReply() }
@@ -114,7 +123,7 @@ class YouthPaperInputBarView: ExpoView, UITextViewDelegate {
     imageStrip.onRemove = { [weak self] index in self?.handleRemoveImage(index) }
 
     attachButton.setImage(
-      UIImage(systemName: "photo", withConfiguration: UIImage.SymbolConfiguration(pointSize: 20, weight: .regular)),
+      UIImage(systemName: "photo", withConfiguration: UIImage.SymbolConfiguration(pointSize: 14, weight: .regular)),
       for: .normal
     )
     attachButton.tintColor = attachIconColor
@@ -133,7 +142,7 @@ class YouthPaperInputBarView: ExpoView, UITextViewDelegate {
     placeholderLabel.isUserInteractionEnabled = false
 
     sendButton.setImage(
-      UIImage(systemName: "arrow.up", withConfiguration: UIImage.SymbolConfiguration(pointSize: 16, weight: .semibold)),
+      UIImage(systemName: "arrow.up", withConfiguration: UIImage.SymbolConfiguration(pointSize: 14.5, weight: .semibold)),
       for: .normal
     )
     sendButton.tintColor = sendIconColor
@@ -142,16 +151,17 @@ class YouthPaperInputBarView: ExpoView, UITextViewDelegate {
     sendButton.addTarget(self, action: #selector(handleSend), for: .touchUpInside)
 
     topBorder.isHidden = inputBarUsesGlass
-    for view in [topBorder, attachSurface, attachButton, capsuleView, textView, placeholderLabel, sendButton] {
+    for view in [topBorder, attachSurface, attachButton, capsuleView, capsuleStack, textView, placeholderLabel, sendButton] {
       view.translatesAutoresizingMaskIntoConstraints = false
     }
     addSubview(topBorder)
     inputRow.addSubview(attachSurface)
     attachContent.addSubview(attachButton)
     inputRow.addSubview(capsuleView)
-    capsuleContent.addSubview(textView)
-    capsuleContent.addSubview(placeholderLabel)
-    capsuleContent.addSubview(sendButton)
+    capsuleContent.addSubview(capsuleStack)
+    textRow.addSubview(textView)
+    textRow.addSubview(placeholderLabel)
+    textRow.addSubview(sendButton)
 
     textHeightConstraint = textView.heightAnchor.constraint(equalToConstant: capsuleMinHeight)
     capsuleLeadingToAttach = capsuleView.leadingAnchor.constraint(equalTo: attachSurface.trailingAnchor, constant: rowSpacing)
@@ -182,18 +192,23 @@ class YouthPaperInputBarView: ExpoView, UITextViewDelegate {
       capsuleView.topAnchor.constraint(equalTo: inputRow.topAnchor, constant: rowPaddingVertical),
       capsuleView.bottomAnchor.constraint(equalTo: inputRow.bottomAnchor, constant: -rowPaddingVertical),
 
-      textView.topAnchor.constraint(equalTo: capsuleView.topAnchor),
-      textView.bottomAnchor.constraint(equalTo: capsuleView.bottomAnchor),
-      textView.leadingAnchor.constraint(equalTo: capsuleView.leadingAnchor, constant: textLeadingInset),
+      capsuleStack.topAnchor.constraint(equalTo: capsuleContent.topAnchor),
+      capsuleStack.leadingAnchor.constraint(equalTo: capsuleContent.leadingAnchor),
+      capsuleStack.trailingAnchor.constraint(equalTo: capsuleContent.trailingAnchor),
+      capsuleStack.bottomAnchor.constraint(equalTo: capsuleContent.bottomAnchor),
+
+      textView.topAnchor.constraint(equalTo: textRow.topAnchor),
+      textView.bottomAnchor.constraint(equalTo: textRow.bottomAnchor),
+      textView.leadingAnchor.constraint(equalTo: textRow.leadingAnchor, constant: textLeadingInset),
       textView.trailingAnchor.constraint(equalTo: sendButton.leadingAnchor, constant: -8),
       textHeightConstraint,
 
       placeholderLabel.leadingAnchor.constraint(equalTo: textView.leadingAnchor),
       placeholderLabel.trailingAnchor.constraint(equalTo: textView.trailingAnchor),
-      placeholderLabel.centerYAnchor.constraint(equalTo: capsuleView.topAnchor, constant: capsuleMinHeight / 2),
+      placeholderLabel.centerYAnchor.constraint(equalTo: textView.topAnchor, constant: capsuleMinHeight / 2),
 
-      sendButton.trailingAnchor.constraint(equalTo: capsuleView.trailingAnchor, constant: -sendButtonInset),
-      sendButton.bottomAnchor.constraint(equalTo: capsuleView.bottomAnchor, constant: -sendButtonInset),
+      sendButton.trailingAnchor.constraint(equalTo: textRow.trailingAnchor, constant: -sendButtonInset),
+      sendButton.bottomAnchor.constraint(equalTo: textRow.bottomAnchor, constant: -sendButtonInset),
       sendButton.widthAnchor.constraint(equalToConstant: sendButtonSize),
       sendButton.heightAnchor.constraint(equalToConstant: sendButtonSize),
     ])

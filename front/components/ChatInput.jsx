@@ -37,10 +37,15 @@ export default function ChatInput({
   onImagesChange = () => {},
   isSending = false,
   inputScrollEnabled = true,
-  /** iOS 네이티브 입력칸만 답장 미리보기를 안에 그린다. JS 입력칸은 ChatScreen이 바깥에 그린다. */
+  /**
+   * 답장 중이면 사진 버튼을 숨기고 입력칸을 넓힌다.
+   * 답장 미리보기는 iOS 네이티브 입력칸만 안에 그리고, JS 입력칸은 ChatScreen이 바깥에 그린다.
+   */
   replyToMessage = null,
   clearReplyTarget,
 }) {
+  const showAttach = !replyToMessage;
+
   const send = () => {
     if (isSending) return;
     if (value.trim() || selectedImages.length > 0) {
@@ -58,7 +63,7 @@ export default function ChatInput({
         placeholder={placeholder}
         editable={!isSending}
         fontSize={normalize(fontSizes.xl)}
-        showAttach
+        showAttach={showAttach}
         onPressAttach={() => pickImages(selectedImages, onImagesChange)}
         images={selectedImages}
         onRemoveImage={(index) =>
@@ -125,12 +130,14 @@ export default function ChatInput({
         </ScrollView>
       )}
       <View style={styles.bottomInputInner}>
-        <TouchableOpacity
-          onPress={() => pickImages(selectedImages, onImagesChange)}
-          style={{ paddingHorizontal: 8, justifyContent: 'center' }}
-        >
-          <Ionicons name="image-outline" size={normalize(24)} color="#888" />
-        </TouchableOpacity>
+        {showAttach && (
+          <TouchableOpacity
+            onPress={() => pickImages(selectedImages, onImagesChange)}
+            style={{ paddingHorizontal: 8, justifyContent: 'center' }}
+          >
+            <Ionicons name="image-outline" size={normalize(24)} color="#888" />
+          </TouchableOpacity>
+        )}
         <TextInput
           ref={inputRef}
           style={styles.bottomInput}
@@ -156,7 +163,7 @@ export default function ChatInput({
         >
           <Ionicons
             name="arrow-up"
-            size={normalize(22)}
+            size={normalize(20)}
             color={colors.white}
           />
         </TouchableOpacity>

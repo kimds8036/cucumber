@@ -26,28 +26,9 @@ final class InputBarReplyRow: UIView {
   private let subtitleLabel = UILabel()
   private let cancelButton = UIButton(type: .system)
 
-  /// `glass`면 콘텐츠가 뒤로 비쳐도 글이 읽히도록 답글 줄을 유리 카드에 담는다.
-  init(horizontalPadding: CGFloat, glass: Bool) {
+  /// 입력 캡슐 안 맨 위에 놓인다. `textInset`은 아래 글 입력칸과 글 시작 위치를 맞춘다.
+  init(textInset: CGFloat) {
     super.init(frame: .zero)
-
-    let container: UIView
-    let textInset: CGFloat
-    if glass {
-      let (card, content) = makeInputBarSurface(cornerRadius: 18, interactive: false)
-      card.translatesAutoresizingMaskIntoConstraints = false
-      addSubview(card)
-      NSLayoutConstraint.activate([
-        card.topAnchor.constraint(equalTo: topAnchor, constant: 8),
-        card.bottomAnchor.constraint(equalTo: bottomAnchor),
-        card.leadingAnchor.constraint(equalTo: leadingAnchor, constant: horizontalPadding),
-        card.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -horizontalPadding),
-      ])
-      container = content
-      textInset = 14
-    } else {
-      container = self
-      textInset = horizontalPadding + 4
-    }
 
     titleLabel.numberOfLines = 1
     subtitleLabel.numberOfLines = 1
@@ -57,23 +38,23 @@ final class InputBarReplyRow: UIView {
     labels.spacing = 2
 
     cancelButton.setImage(
-      UIImage(systemName: "xmark.circle.fill", withConfiguration: UIImage.SymbolConfiguration(pointSize: 18)),
+      UIImage(systemName: "xmark.circle.fill", withConfiguration: UIImage.SymbolConfiguration(pointSize: 12)),
       for: .normal
     )
     cancelButton.addTarget(self, action: #selector(handleCancel), for: .touchUpInside)
 
     for view in [labels, cancelButton] {
       view.translatesAutoresizingMaskIntoConstraints = false
-      container.addSubview(view)
+      addSubview(view)
     }
 
     NSLayoutConstraint.activate([
-      labels.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: textInset),
-      labels.topAnchor.constraint(equalTo: container.topAnchor, constant: 8),
-      labels.bottomAnchor.constraint(equalTo: container.bottomAnchor, constant: glass ? -8 : -4),
+      labels.leadingAnchor.constraint(equalTo: leadingAnchor, constant: textInset),
+      labels.topAnchor.constraint(equalTo: topAnchor, constant: 10),
+      labels.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -2),
       labels.trailingAnchor.constraint(lessThanOrEqualTo: cancelButton.leadingAnchor, constant: -8),
 
-      cancelButton.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: glass ? -6 : -(horizontalPadding - 8)),
+      cancelButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -(capsuleSendButtonCenterInset - 17)),
       cancelButton.centerYAnchor.constraint(equalTo: labels.centerYAnchor),
       cancelButton.widthAnchor.constraint(equalToConstant: 34),
       cancelButton.heightAnchor.constraint(equalToConstant: 34),

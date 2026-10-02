@@ -1374,9 +1374,9 @@ export const createDetailStyles = (width, normalize) => {
       }),
     },
     sendButton: {
-      width: normalize(44),
-      height: normalize(44),
-      borderRadius: normalize(22),
+      width: normalize(40),
+      height: normalize(40),
+      borderRadius: normalize(20),
       backgroundColor: colors.primary,
       justifyContent: 'center',
       alignItems: 'center',

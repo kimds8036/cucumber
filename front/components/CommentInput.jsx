@@ -176,7 +176,7 @@ export default function CommentInput({
         >
           <Ionicons
             name="arrow-up"
-            size={normalize(22)}
+            size={normalize(20)}
             color={colors.white}
           />
         </TouchableOpacity>
