@@ -24,7 +24,31 @@ import { collectPostImageUris } from './board/PostImageSlider';
  *  - distanceLoading : 거리 미계산 시 주황 칩 + 점 로딩
  *  - featured : 인기 1등 고정 카드. 배경 primaryLight2, 윤곽선 없음, 인기 뱃지
  *  - authorLabel : 시간 앞에 붙는 보낸 사람 라벨 (학교 우편 카드용)
+ *  - highlightQuery : 본문에서 강조할 검색어 (검색 결과용)
+ *  - highlightStyle : 강조 글자 스타일
  */
+function escapeRegExp(text) {
+  return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function renderHighlightedContent(content, query, highlightStyle) {
+  const text = String(content ?? '');
+  const q = String(query ?? '').trim();
+  if (!q) return text;
+  const lowerQ = q.toLowerCase();
+  return text
+    .split(new RegExp(`(${escapeRegExp(q)})`, 'gi'))
+    .map((part, i) =>
+      part.toLowerCase() === lowerQ ? (
+        <Text key={i} style={highlightStyle}>
+          {part}
+        </Text>
+      ) : (
+        part
+      ),
+    );
+}
+
 const BoardPostCard = ({
   post,
   normalize,
@@ -39,6 +63,8 @@ const BoardPostCard = ({
   distanceLoading = false,
   featured = false,
   authorLabel = '',
+  highlightQuery = '',
+  highlightStyle,
 }) => {
   const thumbUri = collectPostImageUris(post)[0] || '';
   const hasThumb = thumbUri.length > 0;
@@ -234,7 +260,13 @@ const BoardPostCard = ({
             numberOfLines={3}
             ellipsizeMode="tail"
           >
-            {post.content}
+            {highlightQuery
+              ? renderHighlightedContent(
+                  post.content,
+                  highlightQuery,
+                  highlightStyle,
+                )
+              : post.content}
           </Text>
 
           {tags.length > 0 ? (

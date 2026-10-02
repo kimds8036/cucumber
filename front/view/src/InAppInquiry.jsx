@@ -495,7 +495,7 @@ const createStyles = (width, normalize) => ({
     borderRadius: normalize(14),
     paddingHorizontal: normalize(14),
     paddingVertical: normalize(10),
-    backgroundColor: colors.textLight1,
+    backgroundColor: colors.textLight05,
     marginBottom: normalize(8),
     justifyContent: 'center',
   },

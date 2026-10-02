@@ -93,7 +93,7 @@ export const createBoardStyles = (width, normalize) => {
     },
     postAuthor: {
       fontSize: normalize(fontSizes.lg),
-      fontFamily: fonts.regular,
+      fontFamily: fonts.bold,
       color: colors.textLight4,
       lineHeight: metaLineHeight,
       textAlignVertical: 'center',

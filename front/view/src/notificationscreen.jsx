@@ -52,7 +52,7 @@ const INITIAL_PREFETCH_PAGES = 3;
 const MAX_INITIAL_PAGE_SWEEP = 30;
 /** 초기 진입 시 최소 확보할 표시 알림 수 (필터 적용 후 기준) */
 const MIN_INITIAL_VISIBLE_COUNT = 20;
-const SHOW_LAYOUT_BORDERS = false;
+const SHOW_LAYOUT_BORDERS = __DEV__ && false;
 
 const popToMainRoot = (navigation) => {
   navigation?.dispatch?.(StackActions.popToTop());
@@ -951,7 +951,12 @@ const NotificationScreen = ({ navigation }) => {
                 onPress={() => handlePressNotification(notification)}
                 activeOpacity={0.7}
               >
-                <View style={[styles.iconContainer]}>
+                <View
+                  style={[
+                    styles.iconContainer,
+                    getDebugBorderStyle('#FF2D55'),
+                  ]}
+                >
                   <Ionicons
                     name={notification.icon}
                     size={styles.notificationIcon.size}

@@ -15,6 +15,9 @@ export const createSearchResultStyles = (normalize, width) => {
       flex: 1,
       paddingTop: normalize(8),
     },
+    resultScrollView: {
+      flex: 1,
+    },
     scrollBottomSpacer: {
       height: normalize(32),
     },
@@ -58,27 +61,30 @@ export const createSearchResultStyles = (normalize, width) => {
       marginLeft: 'auto',
     },
     tabContent: {
+      alignItems: 'center',
       paddingHorizontal: gutter,
-      paddingVertical: normalize(8),
+      paddingBottom: normalize(10),
       gap: normalize(8),
     },
     tabBtn: {
       paddingHorizontal: normalize(12),
-      paddingVertical: normalize(5),
+      paddingVertical: normalize(6),
       borderRadius: normalize(20),
-      backgroundColor: colors.textLight1,
+      backgroundColor: colors.white,
+      borderWidth: 1,
+      borderColor: colors.textLight1,
     },
     tabBtnActive: {
-      backgroundColor: colors.text,
+      backgroundColor: colors.primary,
+      borderWidth: 0,
     },
     tabText: {
       fontSize: normalize(fontSizes.xl),
-      fontFamily: fonts.regular,
+      fontFamily: fonts.bold,
       color: colors.textLight4,
     },
     tabTextActive: {
       color: colors.white,
-      fontFamily: fonts.bold,
     },
 
     section: {
@@ -87,13 +93,9 @@ export const createSearchResultStyles = (normalize, width) => {
     /** 학교 섹션 아래에 게시판 등 다른 섹션이 올 때 블록 간 간격 */
     sectionGapAfterSchool: {
       marginBottom: normalize(10),
-      borderBottomWidth: 7,
-      borderBottomColor: colors.textLight1,
     },
     sectionGapBetweenTargetSections: {
       marginBottom: normalize(10),
-      borderBottomWidth: 7,
-      borderBottomColor: colors.textLight1,
     },
     sectionRecommendTags: {
       backgroundColor: colors.white,
@@ -160,105 +162,12 @@ export const createSearchResultStyles = (normalize, width) => {
       color: colors.text,
     },
 
-    card: {
+    cardGutter: {
       paddingHorizontal: gutter,
-      paddingVertical: normalize(14),
-    },
-    cardBorder: {
-      borderBottomWidth: 1,
-      borderBottomColor: colors.textLight1,
-    },
-    cardTitle: {
-      fontSize: normalize(fontSizes.xl),
-      fontFamily: fonts.bold,
-      color: colors.text,
-      marginBottom: normalize(4),
-      lineHeight: normalize(20),
-    },
-    cardSnippet: {
-      fontSize: normalize(fontSizes.xl),
-      fontFamily: fonts.regular,
-      color: colors.textLight4,
-      lineHeight: normalize(18),
-      marginBottom: normalize(6),
     },
     highlightText: {
       color: colors.primaryDark,
       fontFamily: fonts.bold,
-    },
-
-    fullCard: {
-      paddingHorizontal: gutter,
-      paddingVertical: normalize(16),
-      borderBottomWidth: 1,
-      borderBottomColor: colors.textLight1,
-    },
-    fullCardBorder: {},
-
-    searchAdBorder: {
-      borderTopWidth: 7,
-      borderTopColor: colors.textLight1,
-    },
-
-    fullTitle: {
-      fontSize: normalize(fontSizes.xxl),
-      fontFamily: fonts.bold,
-      color: colors.text,
-      marginBottom: normalize(6),
-      lineHeight: normalize(22),
-    },
-    fullSnippet: {
-      fontSize: normalize(fontSizes.xl),
-      fontFamily: fonts.regular,
-      color: colors.textLight4,
-      lineHeight: normalize(19),
-      marginBottom: normalize(8),
-    },
-
-    metaText: {
-      fontSize: normalize(fontSizes.lg),
-      fontFamily: fonts.regular,
-      color: colors.textLight2,
-    },
-    metaTopRow: {
-      flexDirection: 'row',
-      justifyContent: 'flex-end',
-      marginBottom: normalize(4),
-    },
-    contentTimeRow: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      justifyContent: 'space-between',
-      gap: normalize(8),
-    },
-    snippetWrap: {
-      flex: 1,
-    },
-    metaTime: {
-      fontSize: normalize(fontSizes.lg),
-      fontFamily: fonts.regular,
-      color: colors.textLight2,
-    },
-    metaTimeInline: {
-      fontSize: normalize(fontSizes.lg),
-      fontFamily: fonts.regular,
-      color: colors.textLight2,
-    },
-    metaBottomRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: normalize(12),
-      marginTop: normalize(3),
-    },
-    metaStatItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: normalize(4),
-    },
-    metaStatText: {
-      fontSize: normalize(fontSizes.lg),
-      fontFamily: fonts.regular,
-      color: colors.textLight4,
     },
 
     moreBtn: {

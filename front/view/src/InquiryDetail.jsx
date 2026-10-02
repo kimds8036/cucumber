@@ -136,12 +136,12 @@ const InquiryDetail = ({
         lineHeight: normalize(22),
       },
       answerBox: {
-        backgroundColor: colors.textLight1,
+        backgroundColor: colors.textLight05,
         borderRadius: normalize(12),
         padding: normalize(14),
       },
       pendingBox: {
-        backgroundColor: colors.textLight1,
+        backgroundColor: colors.textLight05,
         borderRadius: normalize(12),
         paddingVertical: normalize(28),
         paddingHorizontal: normalize(20),
