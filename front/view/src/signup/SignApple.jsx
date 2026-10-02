@@ -208,23 +208,6 @@ const SignApple = ({ navigation }) => {
     setSchoolGradeNum((prev) => prev || String(Number(g)));
   }, [schoolEnrollmentPreview.grade]);
 
-  const progressWidth = useMemo(() => {
-    const total = 4;
-    const map = {
-      [STEP.APPLE_AUTH]: 0,
-      [STEP.BIRTH_DATE]: (1 / total) * 100,
-      [STEP.SCHOOL_SELECT]: (2 / total) * 100,
-      [STEP.STUDENT_VERIFY]: studentVerified
-        ? (4 / total) * 100
-        : (3 / total) * 100,
-      [STEP.ALT_VERIFY_CHOICE]: (3 / total) * 100,
-      [STEP.CERTIFICATE_GUIDE]: (4 / total) * 100,
-      [STEP.CERTIFICATE_SUBMIT]: (4 / total) * 100,
-      [STEP.NEIS_PLUS_SUBMIT]: (4 / total) * 100,
-    };
-    return map[currentStep] ?? 0;
-  }, [currentStep, studentVerified]);
-
   const buildSessionSnapshot = useCallback(
     () => ({
       currentStep,
@@ -1557,7 +1540,6 @@ const SignApple = ({ navigation }) => {
           styles={styles}
           normalize={normalize}
           title={getStepTitle()}
-          progressWidth={progressWidth}
           onAbort={requestAbortSignup}
           abortDisabled={submitting}
         />

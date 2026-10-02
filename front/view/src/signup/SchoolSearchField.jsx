@@ -479,8 +479,8 @@ export function createSchoolSearchRowStyles(
       justifyContent: 'center',
     },
     rowWrapSelected: {
-      borderColor: colors.primaryDark,
-      backgroundColor: colors.white,
+      borderColor: colors.primary,
+      backgroundColor: colors.primaryLight3,
     },
     row: {
       flexDirection: 'row',

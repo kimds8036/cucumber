@@ -22,12 +22,11 @@ const AltVerifyChoiceResubmit = ({
         title="인증 방법 선택"
         onBack={() => navigation.goBack()}
       />
-      <View style={[styles.body, { paddingHorizontal: width * 0.07 }]}>
+      <View style={[styles.body, { paddingHorizontal: width * 0.04 }]}>
         <SignStepAltVerifyChoice
           normalize={normalize}
           onSelectNeisPlus={onSelectNeisPlus}
           onSelectCertificate={onSelectCertificate}
-          insetBody={false}
         />
       </View>
     </View>

@@ -6,7 +6,6 @@ import {
   ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
 
 const AuthPrimaryButton = ({
@@ -34,19 +33,10 @@ const AuthPrimaryButton = ({
     >
       {blocked ? (
         <Text style={[styles.label, styles.labelDisabled]}>{label}</Text>
+      ) : loading ? (
+        <ActivityIndicator color={colors.white} />
       ) : (
-        <LinearGradient
-          colors={['#86C478', colors.primaryDark]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.gradient}
-        >
-          {loading ? (
-            <ActivityIndicator color={colors.white} />
-          ) : (
-            <Text style={styles.label}>{label}</Text>
-          )}
-        </LinearGradient>
+        <Text style={styles.label}>{label}</Text>
       )}
     </TouchableOpacity>
   );
@@ -61,16 +51,10 @@ function createStyles(normalize) {
       overflow: 'hidden',
       justifyContent: 'center',
       alignItems: 'center',
+      backgroundColor: colors.primary,
     },
     wrapDisabled: {
       backgroundColor: colors.textLight1,
-    },
-    gradient: {
-      flex: 1,
-      width: '100%',
-      height: '100%',
-      justifyContent: 'center',
-      alignItems: 'center',
     },
     label: {
       fontSize: normalize(fontSizes.xxl),

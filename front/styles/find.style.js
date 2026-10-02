@@ -119,14 +119,14 @@ export const createFindStyles = (width, normalize) => {
     },
     primaryButton: {
       width: '100%',
-      backgroundColor: colors.primaryDark,
+      backgroundColor: colors.primary,
       borderRadius: normalize(24),
       justifyContent: 'center',
       alignItems: 'center',
       paddingVertical: normalize(14),
     },
     primaryButtonDisabled: {
-      backgroundColor: colors.textLight2,
+      backgroundColor: colors.textLight05,
     },
     primaryButtonText: {
       fontSize: normalize(fontSizes.xxl),
@@ -147,13 +147,13 @@ export const createFindStyles = (width, normalize) => {
     verifyButton: {
       paddingHorizontal: normalize(18),
       height: normalize(50),
-      backgroundColor: colors.primaryDark,
+      backgroundColor: colors.primary,
       borderRadius: normalize(24),
       justifyContent: 'center',
       alignItems: 'center',
     },
     verifyButtonDisabled: {
-      backgroundColor: colors.textLight2,
+      backgroundColor: colors.textLight05,
     },
     verifyButtonWide: {
       width: '100%',
@@ -173,7 +173,7 @@ export const createFindStyles = (width, normalize) => {
       marginLeft: normalize(20),
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.primaryDark,
+      color: colors.textLight2,
     },
   });
 };

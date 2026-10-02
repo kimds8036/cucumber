@@ -172,22 +172,6 @@ const SignKakao = ({ navigation }) => {
     setSchoolGradeNum((prev) => prev || String(Number(g)));
   }, [schoolEnrollmentPreview.grade]);
 
-  const progressWidth = useMemo(() => {
-    const total = 3;
-    const map = {
-      [STEP.KAKAO_AUTH]: 0,
-      [STEP.SCHOOL_SELECT]: (1 / total) * 100,
-      [STEP.STUDENT_VERIFY]: studentVerified
-        ? (3 / total) * 100
-        : (2 / total) * 100,
-      [STEP.ALT_VERIFY_CHOICE]: (2 / total) * 100,
-      [STEP.CERTIFICATE_GUIDE]: (3 / total) * 100,
-      [STEP.CERTIFICATE_SUBMIT]: (3 / total) * 100,
-      [STEP.NEIS_PLUS_SUBMIT]: (3 / total) * 100,
-    };
-    return map[currentStep] ?? 0;
-  }, [currentStep, studentVerified]);
-
   const buildSessionSnapshot = useCallback(
     () => ({
       currentStep,
@@ -926,7 +910,6 @@ const SignKakao = ({ navigation }) => {
           styles={styles}
           normalize={normalize}
           title={getStepTitle()}
-          progressWidth={progressWidth}
           onAbort={requestAbortSignup}
           abortDisabled={submitting}
         />

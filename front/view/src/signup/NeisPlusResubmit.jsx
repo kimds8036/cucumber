@@ -30,13 +30,12 @@ const NeisPlusResubmit = ({ navigation }) => {
         title="NEIS+ 제출"
         onBack={() => navigation.goBack()}
       />
-      <View style={[local.body, { paddingHorizontal: width * 0.07 }]}>
+      <View style={[local.body, { paddingHorizontal: width * 0.04 }]}>
         <SignStepNeisPlusSubmit
           styles={styles}
           normalize={normalize}
           mode="resubmit"
           layout="stable"
-          insetBody={false}
           onSubmitted={async (data) => {
             await refreshStudentVerification();
             appAlert.alert(

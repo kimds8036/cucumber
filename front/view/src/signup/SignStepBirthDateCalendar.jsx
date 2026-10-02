@@ -87,7 +87,7 @@ const SignStepBirthDateCalendar = ({
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const dismissingRef = useRef(false);
   const calendarMetrics = useMemo(() => {
-    const gridWidth = width - width * 0.14;
+    const gridWidth = width - width * 0.08;
     const cellSize = gridWidth / 7;
     return {
       gridHeight: cellSize * CALENDAR_ROW_COUNT,
@@ -438,8 +438,6 @@ function createStyles(normalize, width, calendarMetrics) {
   return StyleSheet.create({
     body: {
       flex: 1,
-      marginHorizontal: -width * 0.04,
-      paddingHorizontal: width * 0.07,
     },
     mainContent: {
       flex: 1,

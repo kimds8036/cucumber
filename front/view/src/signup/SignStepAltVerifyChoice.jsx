@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, useWindowDimensions } from 'react-native';
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons, Foundation } from '@expo/vector-icons';
 import { colors, fonts } from '../../../styles/colors';
 
@@ -11,26 +11,9 @@ const SignStepAltVerifyChoice = ({
   normalize = (n) => n,
   onSelectNeisPlus,
   onSelectCertificate,
-  /** false면 부모가 좌우 여백을 잡음 (재제출 SubHeader 플로우) */
-  insetBody = true,
 }) => {
-  const { width } = useWindowDimensions();
-  const bodyStyle = useMemo(
-    () => ({
-      flex: 1,
-      minHeight: 0,
-      ...(insetBody
-        ? {
-            marginHorizontal: -width * 0.04,
-            paddingHorizontal: width * 0.07,
-          }
-        : null),
-    }),
-    [width, insetBody],
-  );
-
   return (
-  <View style={bodyStyle}>
+  <View style={{ flex: 1, minHeight: 0 }}>
     <TouchableOpacity
       style={[
         styles.card,

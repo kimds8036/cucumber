@@ -35,7 +35,6 @@ const SignStepNeisPlusSubmit = ({
   schoolId,
   onVerified,
   onSubmitted,
-  insetBody = true,
 }) => {
   const { width } = useWindowDimensions();
   const [pickedUri, setPickedUri] = useState(null);
@@ -43,19 +42,7 @@ const SignStepNeisPlusSubmit = ({
   const [pickedAspect, setPickedAspect] = useState(1 / 1.4);
   const [busy, setBusy] = useState(false);
   const stable = layout === 'stable' || mode === 'resubmit';
-  const bodyStyle = useMemo(
-    () => ({
-      flex: 1,
-      minHeight: 0,
-      ...(insetBody
-        ? {
-            marginHorizontal: -width * 0.04,
-            paddingHorizontal: width * 0.07,
-          }
-        : {}),
-    }),
-    [width, insetBody],
-  );
+  const bodyStyle = { flex: 1, minHeight: 0 };
 
   const pickImage = async () => {
     if (busy) return;

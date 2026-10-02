@@ -586,7 +586,7 @@ export const FriendStoryBar = memo(function FriendStoryBar({
                   >
                     <Ionicons
                       name="person-add"
-                      size={normalize(8)}
+                      size={normalize(10)}
                       color={colors.white}
                     />
                   </View>

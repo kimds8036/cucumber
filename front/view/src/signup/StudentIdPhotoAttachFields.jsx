@@ -133,10 +133,10 @@ export default function StudentIdPhotoAttachFields({
     <View style={styles.root}>
       <Text style={styles.slotLabel}>
         학생증 사진
-        <Text style={styles.required}> (필수 · 최대 2장)</Text>
+        <Text style={styles.required}>   (최대 2장 첨부 가능)</Text>
       </Text>
       <Text style={styles.hint}>
-        학생증의 이름과 학교명이 잘 보이도록 사진을 첨부해 주세요. 앞·뒷면이
+        학생증의 이름과 학교명이 잘 보이도록 사진을 첨부해 주세요. {'\n'}앞 · 뒷면이
         필요하면 두 장까지 연속으로 선택할 수 있어요.
       </Text>
 
@@ -225,23 +225,22 @@ export default function StudentIdPhotoAttachFields({
 function createStyles(normalize) {
   return StyleSheet.create({
     root: {
-      gap: normalize(12),
+      gap: normalize(6),
     },
     slotLabel: {
       fontFamily: fonts.bold,
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       color: colors.text,
     },
     required: {
       fontFamily: fonts.regular,
       color: colors.primaryDark,
-      fontSize: normalize(fontSizes.sm),
+      fontSize: normalize(fontSizes.md),
     },
     hint: {
       fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.md),
+      fontSize: normalize(fontSizes.lg),
       color: colors.textLight4,
-      lineHeight: normalize(22),
     },
     attachBox: {
       borderWidth: 1.5,
@@ -256,7 +255,7 @@ function createStyles(normalize) {
     },
     attachText: {
       fontFamily: fonts.regular,
-      fontSize: normalize(15),
+      fontSize: normalize(fontSizes.xl + 1),
       color: colors.primaryDark,
     },
     photoStrip: {

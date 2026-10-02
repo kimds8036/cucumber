@@ -277,8 +277,6 @@ function createLocalStyles(normalize, width) {
   return StyleSheet.create({
     body: {
       flex: 1,
-      marginHorizontal: -width * 0.04,
-      paddingHorizontal: width * 0.07,
     },
     stepRoot: {
       flex: 1,
@@ -306,7 +304,7 @@ function createLocalStyles(normalize, width) {
       width: normalize(56),
       height: normalize(56),
       borderRadius: normalize(28),
-      backgroundColor: colors.primaryDark,
+      backgroundColor: colors.primary,
       alignItems: 'center',
       justifyContent: 'center',
       marginBottom: normalize(16),

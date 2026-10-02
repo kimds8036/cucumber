@@ -325,8 +325,6 @@ function createAccountStyles(normalize, width) {
   return StyleSheet.create({
     body: {
       flex: 1,
-      marginHorizontal: -width * 0.04,
-      paddingHorizontal: width * 0.07,
       paddingTop: normalize(4),
     },
     fieldGap: {

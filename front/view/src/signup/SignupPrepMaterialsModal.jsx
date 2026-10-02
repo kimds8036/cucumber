@@ -152,7 +152,7 @@ const SignupPrepMaterialsModal = ({
           marginTop: 8,
           height: 42,
           borderRadius: 10,
-          backgroundColor: colors.textLight5,
+          backgroundColor: colors.textLight05,
           alignItems: 'center',
           justifyContent: 'center',
         }}

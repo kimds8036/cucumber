@@ -210,23 +210,6 @@ const SignPhone = ({ navigation }) => {
     setSchoolGradeNum((prev) => prev || String(Number(g)));
   }, [schoolEnrollmentPreview.grade]);
 
-  const progressWidth = useMemo(() => {
-    const total = 5;
-    const map = {
-      [STEP.BIRTH_DATE]: (1 / total) * 100,
-      [STEP.ACCOUNT]: (2 / total) * 100,
-      [STEP.SCHOOL_SELECT]: (3 / total) * 100,
-      [STEP.STUDENT_VERIFY]: studentVerified
-        ? (5 / total) * 100
-        : (4 / total) * 100,
-      [STEP.ALT_VERIFY_CHOICE]: (4 / total) * 100,
-      [STEP.CERTIFICATE_GUIDE]: (5 / total) * 100,
-      [STEP.CERTIFICATE_SUBMIT]: (5 / total) * 100,
-      [STEP.NEIS_PLUS_SUBMIT]: (5 / total) * 100,
-    };
-    return map[currentStep] ?? (1 / total) * 100;
-  }, [currentStep, studentVerified]);
-
   const buildSessionSnapshot = useCallback(
     () => ({
       currentStep,
@@ -1458,7 +1441,6 @@ const SignPhone = ({ navigation }) => {
           styles={styles}
           normalize={normalize}
           title={getStepTitle()}
-          progressWidth={progressWidth}
           onAbort={requestAbortSignup}
           abortDisabled={submitting}
         />

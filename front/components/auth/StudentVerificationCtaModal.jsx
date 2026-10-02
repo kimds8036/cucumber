@@ -123,15 +123,15 @@ function createStyles(normalize) {
     },
     btnPrimaryText: {
       fontFamily: fonts.bold,
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       color: colors.white,
     },
     btnSecondary: {
-      backgroundColor: colors.textLight5 || 'rgba(0,0,0,0.05)',
+      backgroundColor: colors.textLight05 || 'rgba(0,0,0,0.05)',
     },
     btnSecondaryText: {
       fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       color: colors.textLight4,
     },
   };

@@ -138,8 +138,6 @@ function createLocalStyles(normalize, width) {
   return StyleSheet.create({
     body: {
       flex: 1,
-      marginHorizontal: -width * 0.04,
-      paddingHorizontal: width * 0.07,
     },
     fieldLabel: {
       marginBottom: normalize(6),

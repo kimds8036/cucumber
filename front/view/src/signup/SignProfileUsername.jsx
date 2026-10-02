@@ -185,7 +185,7 @@ const SignProfileUsername = () => {
 };
 
 function createStyles(normalize, width) {
-  const gutter = width * 0.07;
+  const gutter = width * 0.04;
   return StyleSheet.create({
     flex: {
       flex: 1,

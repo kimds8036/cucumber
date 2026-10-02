@@ -147,31 +147,6 @@ const STEP = {
   NEIS_PLUS_SUBMIT: 8,
 };
 
-function getSignupProgressStep(currentStep, { studentVerified }) {
-  const total = 6;
-
-  switch (currentStep) {
-    case STEP.CONSENT:
-      return { step: 1, total };
-    case STEP.BIRTH_DATE:
-      return { step: 2, total };
-    case STEP.ACCOUNT:
-      return { step: 3, total };
-    case STEP.SCHOOL_SELECT:
-      return { step: 4, total };
-    case STEP.STUDENT_VERIFY:
-      return { step: studentVerified ? 6 : 5, total };
-    case STEP.ALT_VERIFY_CHOICE:
-    case STEP.CERTIFICATE_GUIDE:
-    case STEP.NEIS_PLUS_SUBMIT:
-      return { step: 5, total };
-    case STEP.CERTIFICATE_SUBMIT:
-      return { step: 6, total };
-    default:
-      return { step: 1, total };
-  }
-}
-
 const Sign = ({ navigation }) => {
   const route = useRoute();
   const { login } = useAuth();
@@ -369,9 +344,6 @@ const Sign = ({ navigation }) => {
   );
 
   const styles = useMemo(() => createSignupStyles(width, normalize), [width]);
-
-  const progress = getSignupProgressStep(currentStep, { studentVerified });
-  const progressWidth = (progress.step / progress.total) * 100;
 
   const hideFooter =
     currentStep === STEP.STUDENT_VERIFY ||
@@ -1880,11 +1852,6 @@ const Sign = ({ navigation }) => {
                 />
               </TouchableOpacity>
               <Text style={styles.headerTitle}>{getStepTitle()}</Text>
-            </View>
-            <View style={styles.progressBarContainer}>
-              <View
-                style={[styles.progressBar, { width: `${progressWidth}%` }]}
-              />
             </View>
           </View>
         </View>

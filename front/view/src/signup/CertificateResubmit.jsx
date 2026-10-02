@@ -79,7 +79,7 @@ const CertificateResubmit = ({ navigation }) => {
         }}
       />
 
-      <View style={[styles.body, { paddingHorizontal: width * 0.07 }]}>
+      <View style={[styles.body, { paddingHorizontal: width * 0.04 }]}>
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingBottom: normalize(16) }}

@@ -18,7 +18,7 @@ export function createSignupEntryStyles(width, normalize) {
       marginTop: normalize(12),
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.heading),
-      color: colors.text,
+      color: colors.primary,
     },
     titleEn: {
       marginTop: normalize(2),
@@ -70,7 +70,8 @@ export function createSignupEntryStyles(width, normalize) {
     },
     phoneButton: {
       backgroundColor: colors.white,
-      ...shadow.sm,
+      borderWidth: 1,
+      borderColor: colors.textLight1,
     },
     socialButtonDisabled: {
       opacity: 0.45,

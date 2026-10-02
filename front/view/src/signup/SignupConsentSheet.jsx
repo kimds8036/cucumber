@@ -365,7 +365,7 @@ function createStyles(normalize) {
   return StyleSheet.create({
     modalOverlay: {
       flex: 1,
-      backgroundColor: colors.overlayLight,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
     },
     sheet: {
       position: 'absolute',
@@ -394,7 +394,7 @@ function createStyles(normalize) {
     },
     bulkCard: {
       borderWidth: 1.5,
-      borderColor: colors.textLight2,
+      borderColor: colors.textLight1,
       borderRadius: normalize(20),
       backgroundColor: colors.white,
       paddingHorizontal: normalize(16),
@@ -520,7 +520,7 @@ function createStyles(normalize) {
       marginTop: normalize(8),
       height: normalize(52),
       borderRadius: normalize(26),
-      backgroundColor: colors.primaryDark,
+      backgroundColor: colors.primary,
       alignItems: 'center',
       justifyContent: 'center',
     },

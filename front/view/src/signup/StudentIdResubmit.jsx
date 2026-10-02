@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-  Platform,
   ScrollView,
   useWindowDimensions,
 } from 'react-native';
@@ -15,7 +14,7 @@ import { colors, fonts, fontSizes } from '../../../styles/colors';
 import { getNormalize } from '../../../styles/frame.style';
 import { api } from '../../../utils/api';
 import { appAlert } from '../../../utils/appAlert';
-import SchoolSearchField, { GrowingUnderline } from './SchoolSearchField';
+import SchoolSearchField, { createSchoolSearchRowStyles } from './SchoolSearchField';
 import SubHeader from '../../frame/subHeader';
 import { useAuth } from '../../../context/AuthContext';
 import SubmittingLockModal from '../../../components/common/SubmittingLockModal';
@@ -31,7 +30,7 @@ const makeFieldStyles = (normalize) =>
   StyleSheet.create({
     inputLabel: {
       fontFamily: fonts.regular,
-      fontSize: normalize(14),
+      fontSize: normalize(fontSizes.xl),
       color: colors.text,
       marginBottom: normalize(6),
     },
@@ -43,7 +42,7 @@ const makeFieldStyles = (normalize) =>
     },
     input: {
       fontFamily: fonts.regular,
-      fontSize: normalize(15),
+      fontSize: normalize(fontSizes.xl + 1),
       color: colors.text,
       paddingHorizontal: normalize(14),
       paddingVertical: normalize(12),
@@ -82,6 +81,10 @@ const StudentIdResubmit = ({ mode: modeProp, navigation, route }) => {
     [normalize],
   );
   const localStyles = useMemo(() => createLocalStyles(normalize), [normalize]);
+  const boxStyles = useMemo(
+    () => createSchoolSearchRowStyles(normalize, { marginHorizontal: 0 }),
+    [normalize],
+  );
   const headerTitle = isReverification
     ? '학생 재인증'
     : isFirstVerify
@@ -121,9 +124,6 @@ const StudentIdResubmit = ({ mode: modeProp, navigation, route }) => {
         }
         if (me?.grade != null && me.grade !== '') {
           setSchoolGradeNum(String(me.grade));
-        }
-        if (me?.classNumber != null && me.classNumber !== '') {
-          setSchoolClassNum(String(me.classNumber));
         }
       } catch {
         // ignore
@@ -262,7 +262,7 @@ const StudentIdResubmit = ({ mode: modeProp, navigation, route }) => {
         style={localStyles.scroll}
         contentContainerStyle={[
           localStyles.scrollContent,
-          { paddingHorizontal: width * 0.07 },
+          { paddingHorizontal: width * 0.04 },
         ]}
         keyboardShouldPersistTaps="handled"
       >
@@ -296,47 +296,51 @@ const StudentIdResubmit = ({ mode: modeProp, navigation, route }) => {
             <View style={enrollmentStyles.gradeClassRow}>
               <View style={enrollmentStyles.gradeClassCol}>
                 <Text style={enrollmentStyles.fieldLabel}>학년</Text>
-                <View style={enrollmentStyles.underlineField}>
-                  <TextInput
-                    style={enrollmentStyles.fieldInput}
-                    value={schoolGradeNum}
-                    onChangeText={(text) =>
-                      setSchoolGradeNum(text.replace(/\D/g, '').slice(0, 1))
-                    }
-                    keyboardType="number-pad"
-                    maxLength={1}
-                    placeholder=""
-                    placeholderTextColor={colors.textLight4}
-                    returnKeyType="next"
-                  />
+                <View
+                  style={[
+                    boxStyles.rowWrap,
+                    Boolean(schoolGradeNum) && boxStyles.rowWrapSelected,
+                  ]}
+                >
+                  <View style={[boxStyles.row, boxStyles.rowCompact]}>
+                    <TextInput
+                      style={boxStyles.input}
+                      value={schoolGradeNum}
+                      onChangeText={(text) =>
+                        setSchoolGradeNum(text.replace(/\D/g, '').slice(0, 1))
+                      }
+                      keyboardType="number-pad"
+                      maxLength={1}
+                      placeholder=""
+                      placeholderTextColor={colors.textLight4}
+                      returnKeyType="next"
+                    />
+                  </View>
                 </View>
-                <GrowingUnderline
-                  active={Boolean(schoolGradeNum)}
-                  normalize={normalize}
-                  fillColor={colors.textLight4}
-                />
               </View>
               <View style={enrollmentStyles.gradeClassCol}>
                 <Text style={enrollmentStyles.fieldLabel}>반</Text>
-                <View style={enrollmentStyles.underlineField}>
-                  <TextInput
-                    style={enrollmentStyles.fieldInput}
-                    value={schoolClassNum}
-                    onChangeText={(text) =>
-                      setSchoolClassNum(text.replace(/\D/g, '').slice(0, 2))
-                    }
-                    keyboardType="number-pad"
-                    maxLength={2}
-                    placeholder=""
-                    placeholderTextColor={colors.textLight4}
-                    returnKeyType="done"
-                  />
+                <View
+                  style={[
+                    boxStyles.rowWrap,
+                    Boolean(schoolClassNum) && boxStyles.rowWrapSelected,
+                  ]}
+                >
+                  <View style={[boxStyles.row, boxStyles.rowCompact]}>
+                    <TextInput
+                      style={boxStyles.input}
+                      value={schoolClassNum}
+                      onChangeText={(text) =>
+                        setSchoolClassNum(text.replace(/\D/g, '').slice(0, 2))
+                      }
+                      keyboardType="number-pad"
+                      maxLength={2}
+                      placeholder=""
+                      placeholderTextColor={colors.textLight4}
+                      returnKeyType="done"
+                    />
+                  </View>
                 </View>
-                <GrowingUnderline
-                  active={Boolean(schoolClassNum)}
-                  normalize={normalize}
-                  fillColor={colors.textLight4}
-                />
               </View>
             </View>
           ) : null}
@@ -382,7 +386,7 @@ const StudentIdResubmit = ({ mode: modeProp, navigation, route }) => {
         />
       </ScrollView>
 
-      <View style={[localStyles.footer, { paddingHorizontal: width * 0.07 }]}>
+      <View style={[localStyles.footer, { paddingHorizontal: width * 0.04 }]}>
         <TouchableOpacity
           style={[
             localStyles.submitBtn,
@@ -427,27 +431,9 @@ function createEnrollmentStyles(normalize) {
     fieldLabel: {
       marginBottom: normalize(6),
       fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.md),
+      fontSize: normalize(fontSizes.lg),
       letterSpacing: 0.2,
       color: colors.textLight4,
-    },
-    underlineField: {
-      paddingVertical: normalize(10),
-      paddingHorizontal: normalize(2),
-      minHeight: normalize(40),
-      justifyContent: 'center',
-    },
-    fieldInput: {
-      paddingVertical: 0,
-      paddingHorizontal: 0,
-      fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.xxl),
-      minHeight: normalize(fontSizes.xxl),
-      color: colors.text,
-      ...Platform.select({
-        android: { includeFontPadding: false, textAlignVertical: 'center' },
-        ios: {},
-      }),
     },
   });
 }

@@ -5,7 +5,6 @@ import {
   TextInput,
   StyleSheet,
   Platform,
-  useWindowDimensions,
 } from 'react-native';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
 import SignupStepScroll from './SignupStepScroll';
@@ -16,9 +15,7 @@ const SignStepCertificate = ({
   normalize,
   bottomOffset,
   onChange,
-  insetBody = true,
 }) => {
-  const { width } = useWindowDimensions();
   const [certificateUrl, setCertificateUrl] = useState('');
   const [accessNumber, setAccessNumber] = useState('');
   const [urlFocused, setUrlFocused] = useState(false);
@@ -27,18 +24,6 @@ const SignStepCertificate = ({
     () => createLocalStyles(normalize),
     [normalize],
   );
-  const bodyStyle = useMemo(
-    () => ({
-      ...(insetBody
-        ? {
-            marginHorizontal: -width * 0.04,
-            paddingHorizontal: width * 0.07,
-          }
-        : {}),
-    }),
-    [width, insetBody],
-  );
-
   const notifyChange = (override = {}) => {
     onChange?.({
       certificateUrl,
@@ -55,7 +40,7 @@ const SignStepCertificate = ({
     accessNumber.length > 0 && accessNumber.length !== 6;
 
   return (
-    <View style={[styles.certificateSubmitContainer, bodyStyle]}>
+    <View style={styles.certificateSubmitContainer}>
       <SignupStepScroll normalize={normalize} bottomOffset={bottomOffset}>
         <Text style={localStyles.fieldLabel}>열람용 주소</Text>
         <View style={localStyles.underlineField}>

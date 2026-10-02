@@ -32,7 +32,7 @@ export const createLoginStyles = (width, normalize) => {
       marginTop: normalize(10),
       fontSize: normalize(fontSizes.heading),
       fontFamily: fonts.bold,
-      color: colors.text,
+      color: colors.primary,
     },
     brandEn: {
       marginTop: normalize(2),
@@ -370,27 +370,11 @@ export const createSignupStyles = (width, normalize) => {
     },
     headerTitle: {
       width: '100%',
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textLight4,
+      color: colors.text,
       textAlign: 'center',
       lineHeight: normalize(22),
-    },
-
-    // 진행바
-    progressBarContainer: {
-      width: '100%',
-      height: normalize(4),
-      backgroundColor: colors.textLight1,
-      borderRadius: normalize(999),
-      overflow: 'hidden',
-      marginTop: normalize(8),
-      ...debugBorder,
-    },
-    progressBar: {
-      height: '100%',
-      backgroundColor: colors.primary,
-      borderRadius: normalize(999),
     },
 
     // 컨텐츠 영역
