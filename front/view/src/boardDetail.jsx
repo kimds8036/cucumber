@@ -15,6 +15,12 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SubHeader from '../frame/subHeader';
 import CommentInput from '../../components/CommentInput.jsx';
+import {
+  INPUT_BAR_OVERLAY_STYLE,
+  INPUT_BAR_WRAPPER_BACKGROUND,
+  USES_NATIVE_INPUT_BAR,
+  useInputBarOverlay,
+} from '../../components/NativeInputBarIOS.jsx';
 import { usePlatformInsets } from '../../hooks/usePlatformInsets';
 import { colors } from '../../styles/colors';
 import { createDetailStyles, getNormalize } from '../../styles/board.style';
@@ -64,6 +70,7 @@ export default function BoardDetail({ navigation, route }) {
   const inputTranslateY = useSharedValue(0);
   const keyboardOffset = useSharedValue(0);
   const bottomInputRef = useRef(null);
+  const { overlayHeight, onOverlayLayout } = useInputBarOverlay();
   const scrollViewRef = useRef(null);
   const postMenuButtonRef = useRef(null);
   const commentMenuRefs = useRef({});
@@ -504,7 +511,7 @@ export default function BoardDetail({ navigation, route }) {
                 }
                 contentContainerStyle={[
                   styles.scrollContent,
-                  { paddingBottom: 0 },
+                  { paddingBottom: overlayHeight },
                 ]}
                 onScrollToIndexFailed={(info) => {
                   setTimeout(() => {
@@ -531,12 +538,16 @@ export default function BoardDetail({ navigation, route }) {
 
             <Animated.View
               style={[
+                INPUT_BAR_OVERLAY_STYLE,
                 {
-                  backgroundColor: colors.white,
-                  paddingBottom: Math.max(insets.bottom, normalize(12)),
+                  backgroundColor: INPUT_BAR_WRAPPER_BACKGROUND,
+                  paddingBottom: USES_NATIVE_INPUT_BAR
+                    ? insets.bottom
+                    : Math.max(insets.bottom, normalize(12)),
                 },
                 inputAnimStyle,
               ]}
+              onLayout={onOverlayLayout}
             >
               <CommentInput
                 bottomInputRef={bottomInputRef}

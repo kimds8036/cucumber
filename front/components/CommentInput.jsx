@@ -9,7 +9,21 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { colors } from '../styles/colors';
+import { colors, fontSizes } from '../styles/colors';
+import NativeInputBarIOS, { USES_NATIVE_INPUT_BAR } from './NativeInputBarIOS';
+
+async function pickImages(selectedImages, onImagesChange) {
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: 'images',
+    allowsMultipleSelection: true,
+    quality: 0.8,
+    selectionLimit: 5,
+  });
+  if (!result.canceled) {
+    const uris = result.assets.map((a) => a.uri);
+    onImagesChange([...selectedImages, ...uris].slice(0, 5));
+  }
+}
 
 export default function CommentInput({
   bottomInputRef,
@@ -29,6 +43,42 @@ export default function CommentInput({
   isSendingComment = false,
   inputScrollEnabled = true,
 }) {
+  const placeholder = replyToCommentId
+    ? `${replyToAuthorLabel}에게 답글 입력...`
+    : (mainPlaceholder ?? '댓글을 입력하세요');
+
+  if (USES_NATIVE_INPUT_BAR) {
+    return (
+      <NativeInputBarIOS
+        ref={bottomInputRef}
+        value={bottomComment}
+        onChangeText={setBottomComment}
+        onSend={() => {
+          if (isSendingComment) return;
+          handleSendComment();
+        }}
+        placeholder={placeholder}
+        editable={!isSendingComment}
+        fontSize={normalize(fontSizes.xl)}
+        showAttach={showImageAttach}
+        onPressAttach={() => pickImages(selectedImages, onImagesChange)}
+        images={selectedImages}
+        onRemoveImage={(index) =>
+          onImagesChange(selectedImages.filter((_, i) => i !== index))
+        }
+        reply={
+          replyToCommentId ? { title: `${replyToAuthorLabel}에게 답글` } : null
+        }
+        replyStyle={{
+          titleColor: colors.primary,
+          titleFontSize: normalize(fontSizes.lg),
+          cancelColor: colors.textLight4,
+        }}
+        onCancelReply={clearReplyTarget}
+      />
+    );
+  }
+
   return (
     <View style={styles.bottomInputRow}>
       {replyToCommentId ? (
@@ -90,18 +140,7 @@ export default function CommentInput({
       <View style={styles.bottomInputInner}>
         {showImageAttach && (
           <TouchableOpacity
-            onPress={async () => {
-              const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: 'images',
-                allowsMultipleSelection: true,
-                quality: 0.8,
-                selectionLimit: 5,
-              });
-              if (!result.canceled) {
-                const uris = result.assets.map((a) => a.uri);
-                onImagesChange([...selectedImages, ...uris].slice(0, 5));
-              }
-            }}
+            onPress={() => pickImages(selectedImages, onImagesChange)}
             style={{ paddingHorizontal: 8, justifyContent: 'center' }}
           >
             <Ionicons name="image-outline" size={normalize(24)} color="#888" />
@@ -110,11 +149,7 @@ export default function CommentInput({
         <TextInput
           ref={bottomInputRef}
           style={styles.bottomInput}
-          placeholder={
-            replyToCommentId
-              ? `${replyToAuthorLabel}에게 답글 입력...`
-              : (mainPlaceholder ?? '댓글을 입력하세요')
-          }
+          placeholder={placeholder}
           placeholderTextColor={colors.textLight4}
           value={bottomComment}
           onChangeText={setBottomComment}

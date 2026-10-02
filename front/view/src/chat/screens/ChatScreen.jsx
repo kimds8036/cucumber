@@ -41,6 +41,12 @@ import {
   injectDateBanners,
 } from '../utils/messageUtils';
 import PostCard from '../components/PostCard';
+import {
+  INPUT_BAR_OVERLAY_STYLE,
+  INPUT_BAR_WRAPPER_BACKGROUND,
+  USES_NATIVE_INPUT_BAR,
+  useInputBarOverlay,
+} from '../../../../components/NativeInputBarIOS.jsx';
 
 export default function ChatScreen({
   roomId,
@@ -72,6 +78,7 @@ export default function ChatScreen({
   );
   const inputTranslateY = useSharedValue(0);
   const keyboardOffset = useSharedValue(0);
+  const { overlayHeight, onOverlayLayout } = useInputBarOverlay();
 
   // 훅 호출: (roomId, socket) 2개 인자
   const chat = useChatHook(hookConfig.roomId, hookConfig.socket);
@@ -340,6 +347,7 @@ export default function ChatScreen({
               normalize={normalize}
               handleContentSizeChange={scroll.handleContentSizeChange}
               onViewableItemsChanged={scroll.handleViewableItemsChanged}
+              bottomSpacerHeight={overlayHeight}
             />
             {shouldShowChatSkeleton ? (
               <View pointerEvents="auto" style={chatStyles.chatSkeletonOverlay}>
@@ -357,9 +365,16 @@ export default function ChatScreen({
             </View>
           ) : null}
 
-          <Animated.View style={inputAnimStyle}>
-            {/* 답장 프리뷰 */}
-            {replyToMessage ? (
+          <Animated.View
+            style={[
+              INPUT_BAR_OVERLAY_STYLE,
+              { backgroundColor: INPUT_BAR_WRAPPER_BACKGROUND },
+              inputAnimStyle,
+            ]}
+            onLayout={onOverlayLayout}
+          >
+            {/* 답장 프리뷰: iOS 네이티브 입력칸은 입력칸 안에 그린다 */}
+            {replyToMessage && !USES_NATIVE_INPUT_BAR ? (
               <TouchableOpacity
                 onPress={() => setReplyToMessage(null)}
                 style={

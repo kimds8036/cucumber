@@ -7,3 +7,7 @@ import {
 export const NativeTabBarView = requireOptionalNativeModule('YouthPaperTabBar')
   ? requireNativeViewManager('YouthPaperTabBar')
   : null;
+
+export const NativeInputBarView = requireOptionalNativeModule('YouthPaperInputBar')
+  ? requireNativeViewManager('YouthPaperInputBar')
+  : null;

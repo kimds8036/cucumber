@@ -24,6 +24,12 @@ import { useKeyboardHandler } from 'react-native-keyboard-controller';
 import SubHeader from '../frame/subHeader';
 import BoardDetailSkeleton from './board/BoardDetailSkeleton';
 import CommentInput from '../../components/CommentInput.jsx';
+import {
+  INPUT_BAR_OVERLAY_STYLE,
+  INPUT_BAR_WRAPPER_BACKGROUND,
+  USES_NATIVE_INPUT_BAR,
+  useInputBarOverlay,
+} from '../../components/NativeInputBarIOS.jsx';
 import ReportModal from '../../components/common/ReportModal.jsx';
 import TopAdBanner from '../../components/ads/TopAdBanner';
 import { colors, fonts } from '../../styles/colors';
@@ -243,6 +249,7 @@ export default function SchoolMailDetail({ navigation, route }) {
 
   const scrollViewRef = useRef(null);
   const inputRef = useRef(null);
+  const { overlayHeight, onOverlayLayout } = useInputBarOverlay();
   const postMenuButtonRef = useRef(null);
   const commentMenuRefs = useRef({});
   const scrollToCommentIdRef = useRef(null);
@@ -800,7 +807,7 @@ export default function SchoolMailDetail({ navigation, route }) {
                   }
                   contentContainerStyle={[
                     styles.scrollContent,
-                    { paddingBottom: 0 },
+                    { paddingBottom: overlayHeight },
                   ]}
                   onScrollToIndexFailed={(info) => {
                     setTimeout(() => {
@@ -829,12 +836,16 @@ export default function SchoolMailDetail({ navigation, route }) {
 
               <Animated.View
                 style={[
+                  INPUT_BAR_OVERLAY_STYLE,
                   {
-                    backgroundColor: colors.white,
-                    paddingBottom: Math.max(insets.bottom, normalize(12)),
+                    backgroundColor: INPUT_BAR_WRAPPER_BACKGROUND,
+                    paddingBottom: USES_NATIVE_INPUT_BAR
+                      ? insets.bottom
+                      : Math.max(insets.bottom, normalize(12)),
                   },
                   inputAnimStyle,
                 ]}
+                onLayout={onOverlayLayout}
               >
                 <CommentInput
                   bottomInputRef={inputRef}

@@ -1,6 +1,6 @@
 {
   "platforms": ["ios"],
   "ios": {
-    "modules": ["YouthPaperTabBarModule"]
+    "modules": ["YouthPaperTabBarModule", "YouthPaperInputBarModule"]
   }
 }

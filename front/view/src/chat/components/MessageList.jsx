@@ -45,6 +45,8 @@ export default function MessageList({
   normalize,
   handleContentSizeChange,
   onViewableItemsChanged,
+  /** 목록 위에 띄운 입력칸 높이. 마지막 메시지가 입력칸에 가려지지 않게 끝에 빈 칸을 둔다. */
+  bottomSpacerHeight = 0,
 }) {
   const { width } = useWindowDimensions();
   const initialScrollIndex = Math.max(0, (data?.length ?? 1) - 1);
@@ -126,6 +128,11 @@ export default function MessageList({
             >
               <Skeleton width={14} height={14} borderRadius={7} />
             </View>
+          ) : null
+        }
+        ListFooterComponent={
+          bottomSpacerHeight > 0 ? (
+            <View style={{ height: bottomSpacerHeight }} />
           ) : null
         }
         keyboardShouldPersistTaps="handled"
