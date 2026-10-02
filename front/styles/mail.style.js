@@ -252,6 +252,24 @@ export function createMailStyles(normalize, width) {
     bottomCtaDisabled: {
       backgroundColor: colors.primaryLight4,
     },
+    /** 서브헤더 우측 전송 pill — 게시글 작성 완료 pill과 동일 */
+    sendPill: {
+      backgroundColor: colors.primaryLight6,
+      borderRadius: normalize(20),
+      paddingHorizontal: normalize(14),
+      paddingVertical: normalize(6),
+    },
+    sendPillText: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.bold,
+      color: colors.primaryDark,
+    },
+    sendPillDisabled: {
+      backgroundColor: colors.textLight1,
+    },
+    sendPillTextDisabled: {
+      color: colors.textLight4,
+    },
     bottomWaitingText: {
       fontSize: normalize(fontSizes.xl),
       color: colors.textLight4,
@@ -450,9 +468,9 @@ export function createMailStyles(normalize, width) {
       marginBottom: normalize(20),
     },
     label: {
-      fontSize: normalize(fontSizes.xxl),
-      fontFamily: fonts.bold,
-      color: colors.text,
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.regular,
+      color: colors.textLight4,
       marginBottom: normalize(6),
     },
     required: {
@@ -467,6 +485,10 @@ export function createMailStyles(normalize, width) {
       paddingHorizontal: normalize(12),
       borderWidth: normalize(1),
       borderColor: colors.textLight1,
+    },
+    inputWrapperSelected: {
+      borderColor: colors.primary,
+      backgroundColor: colors.primaryLight2,
     },
     input: {
       flex: 1,
@@ -556,17 +578,21 @@ export function createMailStyles(normalize, width) {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.textLight05,
-      borderRadius: normalize(8),
-      paddingHorizontal: normalize(10),
+      borderRadius: normalize(14),
+      paddingHorizontal: normalize(12),
+      borderWidth: normalize(1),
+      borderColor: colors.textLight1,
       height: normalize(48),
     },
     recipientSubField: {
       flex: 1,
       height: normalize(48),
       justifyContent: 'center',
-      backgroundColor: colors.textLight05,
-      borderRadius: normalize(8),
+      backgroundColor: colors.white,
+      borderRadius: normalize(14),
+      paddingHorizontal: normalize(12),
+      borderWidth: normalize(1),
+      borderColor: colors.textLight1,
     },
     recipientFieldInput: {
       flex: 1,

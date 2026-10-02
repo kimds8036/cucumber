@@ -59,12 +59,9 @@ const SendMailScreen = ({ navigation, route }) => {
   const [subHeaderHeight, setSubHeaderHeight] = useState(0);
   const [schoolSectionHeight, setSchoolSectionHeight] = useState(0);
   const [recipientSectionHeight, setRecipientSectionHeight] = useState(0);
-  const [bottomCtaHeight, setBottomCtaHeight] = useState(0);
-  const bottomCtaHeightRef = useRef(0);
   const prefillAppliedRef = useRef(false);
 
-  const scrollBottomInset =
-    bottomCtaHeight > 0 ? bottomCtaHeight : normalize(72);
+  const scrollBottomInset = Math.max(normalize(16), insets.bottom);
 
   const recipientFilled =
     recipientGrade.trim().length > 0 &&
@@ -206,24 +203,39 @@ const SendMailScreen = ({ navigation, route }) => {
       subHeaderHeight -
       schoolSectionHeight -
       recipientSectionHeight -
-      bottomCtaHeight -
+      scrollBottomInset -
       scrollPadding -
       sectionGap,
   );
-
-  const handleBottomCtaLayout = (e) => {
-    const next = e.nativeEvent.layout.height;
-    if (Math.abs(next - bottomCtaHeightRef.current) < 1) return;
-    bottomCtaHeightRef.current = next;
-    setBottomCtaHeight(next);
-  };
 
   if (!allowed) return <Gate />;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View onLayout={(e) => setSubHeaderHeight(e.nativeEvent.layout.height)}>
-        <SubHeader title="우편 보내기" onBack={() => navigation?.goBack()} />
+        <SubHeader
+          title="우편 보내기"
+          onBack={() => navigation?.goBack()}
+          onRightPress={handleSend}
+          rightDisabled={!canSend || sending}
+          rightElement={
+            <View
+              style={[
+                styles.sendPill,
+                (!canSend || sending) && styles.sendPillDisabled,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.sendPillText,
+                  (!canSend || sending) && styles.sendPillTextDisabled,
+                ]}
+              >
+                {sending ? '•••' : showHomonymUI ? '재전송' : '전송'}
+              </Text>
+            </View>
+          }
+        />
       </View>
 
       <View style={styles.keyboardView}>
@@ -329,7 +341,7 @@ const SendMailScreen = ({ navigation, route }) => {
                     )}
                 </View>
               ) : (
-                <View style={styles.inputWrapper}>
+                <View style={[styles.inputWrapper, styles.inputWrapperSelected]}>
                   <MaterialCommunityIcons
                     name="school-outline"
                     size={normalize(18)}
@@ -474,7 +486,7 @@ const SendMailScreen = ({ navigation, route }) => {
                   onChangeText={handleMailContentChange}
                   multiline
                   textAlignVertical="top"
-                  placeholderTextColor={colors.textLight4}
+                  placeholderTextColor={colors.textLight3}
                 />
                 <View style={styles.replyFormMetaRow}>
                   <View style={styles.sendMetaRight}>
@@ -502,32 +514,6 @@ const SendMailScreen = ({ navigation, route }) => {
             <Text style={styles.replyFormChipTextNotice}>받는 사람을 잘못 입력하면 반송될 수 있어요</Text>
           </View>
         </KeyboardAwareScrollView>
-
-        <View
-          style={[
-            styles.bottomCtaWrapper,
-            { paddingBottom: Math.max(normalize(16), insets.bottom) },
-          ]}
-          onLayout={handleBottomCtaLayout}
-        >
-          <TouchableOpacity
-            style={[
-              styles.bottomCtaButton,
-              (!canSend || sending) && styles.bottomCtaDisabled,
-            ]}
-            onPress={handleSend}
-            disabled={!canSend || sending}
-            activeOpacity={0.9}
-          >
-            {sending ? (
-              <Loading color={colors.white} />
-            ) : (
-              <Text style={styles.bottomCtaText}>
-                {showHomonymUI ? '재전송' : '전송하기'}
-              </Text>
-            )}
-          </TouchableOpacity>
-        </View>
       </View>
     </SafeAreaView>
   );

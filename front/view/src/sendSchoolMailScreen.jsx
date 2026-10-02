@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -21,9 +21,9 @@ import { StackActions } from '@react-navigation/native';
 import { getNormalize } from '../../styles/frame.style';
 import { createMailStyles } from '../../styles/mail.style';
 import { colors } from '../../styles/colors';
-import Loading from '../../components/Loading';
 import { api } from '../../utils/api';
 import { useRequireStudentVerified } from '../../hooks/useRequireStudentVerified';
+import { usePersonalMailCharLimit } from '../../hooks/usePersonalMailCharLimit';
 
 const SendSchoolMailScreen = ({ navigation, route }) => {
   const { allowed, Gate } = useRequireStudentVerified(navigation, {
@@ -40,26 +40,17 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
   const sourceScreen = route?.params?.sourceScreen ?? null;
 
   const [mailContent, setMailContent] = useState('');
-  const [charLimit, setCharLimit] = useState(50);
+  const { charLimit, adRewardAvailable, guardTextLength, handleAdReward } =
+    usePersonalMailCharLimit();
   const [sending, setSending] = useState(false);
   const [subHeaderHeight, setSubHeaderHeight] = useState(0);
   const [schoolSectionHeight, setSchoolSectionHeight] = useState(0);
-  const [bottomCtaHeight, setBottomCtaHeight] = useState(0);
-  const bottomCtaHeightRef = useRef(0);
 
-  const scrollBottomInset =
-    bottomCtaHeight > 0 ? bottomCtaHeight : normalize(72);
+  const scrollBottomInset = Math.max(normalize(16), insets.bottom);
 
   const handleMailContentChange = (text) => {
-    if (text.length > charLimit) {
-      Alert.alert('알림', '광고를 보면 더 길게 작성할 수 있어요.');
-      return;
-    }
+    if (!guardTextLength(text)) return;
     setMailContent(text);
-  };
-
-  const handleAdReward = () => {
-    setCharLimit((prev) => prev * 2);
   };
 
   const handleSend = async () => {
@@ -105,24 +96,38 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
       insets.bottom -
       subHeaderHeight -
       schoolSectionHeight -
-      bottomCtaHeight -
+      scrollBottomInset -
       scrollPadding -
       sectionGap,
   );
 
-  const handleBottomCtaLayout = (e) => {
-    const next = e.nativeEvent.layout.height;
-    if (Math.abs(next - bottomCtaHeightRef.current) < 1) return;
-    bottomCtaHeightRef.current = next;
-    setBottomCtaHeight(next);
-  };
+  const sendDisabled = !mailContent.trim() || !schoolId || sending;
 
   if (!allowed) return <Gate />;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View onLayout={(e) => setSubHeaderHeight(e.nativeEvent.layout.height)}>
-        <SubHeader title="우편 보내기" onBack={() => navigation?.goBack()} />
+        <SubHeader
+          title="우편 보내기"
+          onBack={() => navigation?.goBack()}
+          onRightPress={handleSend}
+          rightDisabled={sendDisabled}
+          rightElement={
+            <View
+              style={[styles.sendPill, sendDisabled && styles.sendPillDisabled]}
+            >
+              <Text
+                style={[
+                  styles.sendPillText,
+                  sendDisabled && styles.sendPillTextDisabled,
+                ]}
+              >
+                {sending ? '•••' : '전송'}
+              </Text>
+            </View>
+          }
+        />
       </View>
 
       <View style={styles.keyboardView}>
@@ -180,52 +185,29 @@ const SendSchoolMailScreen = ({ navigation, route }) => {
                 />
                 <View style={styles.replyFormMetaRow}>
                   <View style={styles.sendMetaRight}>
+                    {adRewardAvailable ? (
+                      <TouchableOpacity
+                        style={styles.replyFormChip}
+                        onPress={handleAdReward}
+                        activeOpacity={0.8}
+                      >
+                        <MaterialCommunityIcons
+                          name="television-classic"
+                          size={15}
+                          color={colors.text}
+                        />
+                        <Text style={styles.replyFormChipText}>x 2</Text>
+                      </TouchableOpacity>
+                    ) : null}
                     <Text style={styles.replyFormCount}>
                       {mailContent.length}/{charLimit}자
                     </Text>
-                    <TouchableOpacity
-                      style={styles.replyFormChip}
-                      onPress={handleAdReward}
-                      activeOpacity={0.8}
-                    >
-                      <MaterialCommunityIcons
-                        name="television-classic"
-                        size={15}
-                        color={colors.text}
-                      />
-                      <Text style={styles.replyFormChipText}>x 2</Text>
-                    </TouchableOpacity>
                   </View>
                 </View>
               </View>
             </View>
           </View>
         </KeyboardAwareScrollView>
-
-        <View
-          style={[
-            styles.bottomCtaWrapper,
-            { paddingBottom: Math.max(normalize(16), insets.bottom) },
-          ]}
-          onLayout={handleBottomCtaLayout}
-        >
-          <TouchableOpacity
-            style={[
-              styles.bottomCtaButton,
-              (!mailContent.trim() || !schoolId || sending) &&
-                styles.bottomCtaDisabled,
-            ]}
-            onPress={handleSend}
-            disabled={!mailContent.trim() || !schoolId || sending}
-            activeOpacity={0.9}
-          >
-            {sending ? (
-              <Loading color={colors.white} />
-            ) : (
-              <Text style={styles.bottomCtaText}>전송하기</Text>
-            )}
-          </TouchableOpacity>
-        </View>
       </View>
     </SafeAreaView>
   );
