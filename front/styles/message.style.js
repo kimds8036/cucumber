@@ -204,7 +204,7 @@ export const createChatStyles = (width, normalize) => {
       borderBottomLeftRadius: normalize(16),
       borderTopRightRadius: normalize(16),
       borderBottomRightRadius: normalize(16),
-      backgroundColor: colors.textLight1,
+      backgroundColor: colors.textLight05,
       alignSelf: 'flex-start',
     },
     opponentBubbleText: {
@@ -289,7 +289,7 @@ export const createChatStyles = (width, normalize) => {
     // 답장 UI
     // ─────────────────────────────────────────────
     replyPreviewContainer: {
-      backgroundColor: colors.textLight1,
+      backgroundColor: colors.textLight05,
       paddingHorizontal: width * 0.04,
       paddingVertical: normalize(8),
       flexDirection: 'row',
@@ -399,7 +399,7 @@ export const createChatStyles = (width, normalize) => {
       alignItems: 'center',
     },
     chatToastCard: {
-      backgroundColor: colors.textLight1,
+      backgroundColor: colors.textLight05,
       borderRadius: normalize(999),
       paddingHorizontal: normalize(16),
       paddingVertical: normalize(10),
@@ -414,9 +414,9 @@ export const createChatStyles = (width, normalize) => {
       alignItems: 'center',
       paddingHorizontal: normalize(16),
       paddingVertical: normalize(8),
-      backgroundColor: colors.textLight1,
+      backgroundColor: colors.textLight05,
       borderTopWidth: 1,
-      borderTopColor: colors.textLight2,
+      borderTopColor: colors.textLight1,
     },
     replyPreviewMetaWrap: {
       flex: 1,

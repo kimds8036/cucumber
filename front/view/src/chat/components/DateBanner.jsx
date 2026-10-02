@@ -26,7 +26,7 @@ export default function DateBanner({ date, normalize }) {
     <View style={{ alignItems: 'center', paddingVertical: n(10) }}>
       <View
         style={{
-          backgroundColor: colors.textLight1,
+          backgroundColor: colors.textLight05,
           paddingHorizontal: n(14),
           borderRadius: n(12),
           height: n(24),
@@ -36,7 +36,7 @@ export default function DateBanner({ date, normalize }) {
         <Text
           style={{
             fontSize: n(fontSizes.md),
-            color: colors.textLight4,
+            color: colors.textLight5,
             fontFamily: fonts?.regular,
           }}
         >

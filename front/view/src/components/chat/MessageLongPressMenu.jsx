@@ -414,7 +414,7 @@ const styles = StyleSheet.create({
   },
   overlayFill: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: colors.textLight3,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   confirmLayer: {
     ...StyleSheet.absoluteFill,
