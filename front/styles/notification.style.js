@@ -129,17 +129,18 @@ export const createNotificationStyles = (normalize, width) =>
     },
     notificationContent: {
       flex: 1,
+      paddingVertical: normalize(6),
     },
     notificationTitle: {
-      fontSize: normalize(fontSizes.lg),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textLight4,
+      color: colors.text,
       marginBottom: normalize(2),
     },
     notificationText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.text,
+      color: colors.textLight4,
     },
     notificationTime: {
       fontSize: normalize(fontSizes.lg),
@@ -249,7 +250,7 @@ export const createNotificationStyles = (normalize, width) =>
     },
     announcementTitle: {
       fontSize: normalize(fontSizes.xl),
-      fontFamily: fonts.bold,
+      fontFamily: fonts.regular,
       color: colors.text,
       marginBottom: normalize(4),
     },

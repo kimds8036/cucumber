@@ -109,10 +109,10 @@ const Announcement = ({ navigation }) => {
               }
             >
               <View style={styles.announcementContent}>
-                <Text style={styles.announcementTitle}>{item.title}</Text>
                 <Text style={styles.announcementMeta}>
                   {formatAnnouncementDate(item.publishedAt)}
                 </Text>
+                <Text style={styles.announcementTitle}>{item.title}</Text>
               </View>
               <Ionicons
                 name="chevron-forward"

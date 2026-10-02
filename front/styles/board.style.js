@@ -42,24 +42,22 @@ export const createBoardStyles = (width, normalize) => {
       marginBottom: normalize(12),
     },
     postItemFeatured: {
-      backgroundColor: colors.primaryLight2,
+      backgroundColor: colors.alertLight,
       borderWidth: 1,
-      borderColor: colors.primaryLight4,
+      borderColor: colors.alertLight,
+      borderRadius: normalize(18),
     },
-    popularBadge: {
-      marginRight: normalize(6),
-      borderWidth: 1,
-      borderColor: colors.scrap,
-      borderRadius: normalize(10),
-      paddingHorizontal: normalize(6),
+    /** 인기 카드: 불꽃 아이콘 + 본문 한 줄 */
+    featuredRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
     },
-    popularBadgeText: {
-      fontSize: normalize(fontSizes.md),
-      fontFamily: fonts.bold,
-      color: colors.scrap,
-      lineHeight: metaLineHeight,
-      textAlignVertical: 'center',
-      ...metaTextAndroid,
+    featuredContent: {
+      flex: 1,
+      marginLeft: normalize(6),
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.regular,
+      color: colors.text,
     },
 
     // 게시글 헤더 (좌: 시간, 우: 거리 배지)

@@ -6,7 +6,9 @@ import {
   useWindowDimensions,
   Pressable,
   Image,
+  Modal,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Feather from '@expo/vector-icons/Feather';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,13 +24,11 @@ import { getProfileHexByColorId } from '../utils/profileColor';
 import { useGuidePreview } from '../context/GuidePreviewContext';
 import EquippedBadge from './EquippedBadge';
 import { getGuideMyPageStats } from '../src/screens/UserGuide/guidePreviewData';
-import { colors, fonts } from '../styles/colors';
+import { colors } from '../styles/colors';
 import { useFriend } from '../context/FriendContext';
 import { useAuth } from '../context/AuthContext';
 import { useMainShellOptional } from '../context/MainShellContext';
 import StudentVerificationRejectedModal from './auth/StudentVerificationRejectedModal';
-import AppPopupModal from './common/AppPopupModal';
-
 const PROFILE_COUNTS_CACHE_TTL_MS = 10 * 60 * 1000;
 const ENROLLMENT_TOOLTIP_MS = 3000;
 
@@ -42,6 +42,7 @@ const ProfileCard = ({
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createProfileCardStyles(normalize, width), [normalize, width]);
+  const insets = useSafeAreaInsets();
   const { studentVerificationStatus, rejectReason, refreshStudentVerification } =
     useAuth();
   const shell = useMainShellOptional();
@@ -560,72 +561,67 @@ const ProfileCard = ({
         onCancel={handleCropCancel}
         onConfirm={handleCropConfirm}
       />
-      <AppPopupModal
+      <Modal
         visible={avatarMenuVisible}
-        onClose={() => setAvatarMenuVisible(false)}
-        dismissOnBackdrop={!savingAvatar}
-        cardStyle={{ paddingVertical: 22 }}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!savingAvatar) setAvatarMenuVisible(false);
+        }}
       >
-        <Text
-          style={{
-            fontSize: 18,
-            color: colors.text,
-            fontFamily: fonts.bold,
-            textAlign: 'center',
-            marginBottom: 16,
+        <TouchableOpacity
+          style={styles.avatarSheetOverlay}
+          onPress={() => {
+            if (!savingAvatar) setAvatarMenuVisible(false);
           }}
+          activeOpacity={1}
+        />
+        <View
+          style={[
+            styles.avatarSheet,
+            { paddingBottom: Math.max(normalize(40), insets.bottom) },
+          ]}
         >
-          프로필 사진
-        </Text>
-        <View style={{ gap: 8 }}>
+          <View style={styles.avatarSheetHandle} />
+          <Text style={styles.avatarSheetTitle}>프로필 사진</Text>
           <TouchableOpacity
-            style={{
-              height: 42,
-              borderRadius: 10,
-              backgroundColor: colors.primary,
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: savingAvatar ? 0.6 : 1,
-            }}
+            style={[
+              styles.avatarSheetAction,
+              styles.avatarSheetActionPrimary,
+              savingAvatar && styles.avatarSheetActionDisabled,
+            ]}
             onPress={handleChangePhoto}
             disabled={savingAvatar}
             activeOpacity={0.85}
           >
-            <Text
-              style={{
-                fontSize: 14,
-                fontFamily: fonts.bold,
-                color: colors.white,
-              }}
-            >
-              사진 변경
-            </Text>
+            <Ionicons
+              name="image-outline"
+              size={normalize(18)}
+              color={colors.text}
+            />
+            <Text style={styles.avatarSheetActionTextPrimary}>사진 변경</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={{
-              height: 42,
-              borderRadius: 10,
-              backgroundColor: colors.textLight5,
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: savingAvatar ? 0.6 : 1,
-            }}
+            style={[
+              styles.avatarSheetAction,
+              styles.avatarSheetActionSecondary,
+              savingAvatar && styles.avatarSheetActionDisabled,
+            ]}
             onPress={handleResetAvatar}
             disabled={savingAvatar}
             activeOpacity={0.85}
           >
-            <Text
-              style={{
-                fontSize: 14,
-                fontFamily: fonts.bold,
-                color: colors.textLight4,
-              }}
-            >
+            <Ionicons
+              name="trash-outline"
+              size={normalize(18)}
+              color={colors.text}
+            />
+            <Text style={styles.avatarSheetActionTextSecondary}>
               {savingAvatar ? '변경 중...' : '기본 프로필 변경'}
             </Text>
           </TouchableOpacity>
         </View>
-      </AppPopupModal>
+      </Modal>
     </View>
   );
 };

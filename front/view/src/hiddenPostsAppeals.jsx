@@ -2,13 +2,11 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Animated,
   ScrollView,
   Text,
   TextInput,
@@ -21,6 +19,7 @@ import Feather from '@expo/vector-icons/Feather';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SubHeader from '../frame/subHeader';
+import SortChips from '../../components/common/SortChips';
 import { api } from '../../utils/api';
 import { colors } from '../../styles/colors';
 import {
@@ -28,6 +27,11 @@ import {
   getHiddenPostsAppealsStatusColor,
   getNormalize,
 } from '../../styles/mypage.style';
+
+const TAB_OPTIONS = [
+  { value: 'myReports', label: '내가 한 신고' },
+  { value: 'restricted', label: '제한된 내역' },
+];
 
 function formatTimeAgo(createdAt) {
   if (!createdAt) return '';
@@ -153,7 +157,6 @@ export default function HiddenPostsAppeals({ navigation }) {
   );
 
   const [tab, setTab] = useState('myReports');
-  const slideAnim = useRef(new Animated.Value(0)).current;
   const [loading, setLoading] = useState(false);
   const [submittingPostId, setSubmittingPostId] = useState(null);
   const [myReports, setMyReports] = useState([]);
@@ -382,58 +385,16 @@ export default function HiddenPostsAppeals({ navigation }) {
     });
   };
 
-  const TAB_ITEMS = [
-    { key: 'myReports', label: '내가 한 신고' },
-    { key: 'restricted', label: '제한된 내역' },
-  ];
-
-  const handleTabChange = (key) => {
-    setTab(key);
-    const toValue = key === 'myReports' ? 0 : 1;
-    Animated.spring(slideAnim, {
-      toValue,
-      useNativeDriver: false,
-      tension: 60,
-      friction: 10,
-    }).start();
-  };
-
   return (
     <SafeAreaView style={hpa.safeArea} edges={['top']}>
       <SubHeader title="클린 센터" onBack={() => navigation.goBack()} />
 
-      <View style={hpa.toggleContainer}>
-        <View style={hpa.toggleTrack}>
-          <Animated.View
-            style={[
-              hpa.togglePill,
-              {
-                left: slideAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['0%', '50%'],
-                }),
-              },
-            ]}
-          />
-          {TAB_ITEMS.map(({ key, label }) => (
-            <TouchableOpacity
-              key={key}
-              style={hpa.toggleOption}
-              onPress={() => handleTabChange(key)}
-              activeOpacity={1}
-            >
-              <Text
-                style={[
-                  hpa.toggleOptionText,
-                  tab === key && hpa.toggleOptionTextActive,
-                ]}
-              >
-                {label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
+      <SortChips
+        value={tab}
+        onChange={setTab}
+        options={TAB_OPTIONS}
+        containerStyle={{ paddingTop: normalize(8) }}
+      />
 
       <ScrollView
         style={hpa.scroll}

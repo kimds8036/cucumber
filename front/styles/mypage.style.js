@@ -31,7 +31,8 @@ export const createMyPageStyles = (normalize, width) => {
       backgroundColor: colors.white,
       borderRadius: normalize(999),
       marginBottom: normalize(10),
-      ...shadow.md,
+      borderWidth: 1,
+      borderColor: colors.textLight1,
     },
     menuLeft: {
       flexDirection: 'row',
@@ -167,7 +168,6 @@ export const createMyPageStyles = (normalize, width) => {
       padding: normalize(16),
       borderRadius: normalize(16),
       minHeight: normalize(180),
-      ...shadow.md,
     },
     profileSkeletonHeader: {
       flexDirection: 'row',
@@ -233,7 +233,6 @@ export const createProfileCardStyles = (normalize, width) =>
       borderRadius: normalize(16),
       borderWidth: 2,
       borderColor: colors.primary,
-      ...shadow.md,
     },
     profileHeader: {
       flexDirection: 'row',
@@ -242,7 +241,7 @@ export const createProfileCardStyles = (normalize, width) =>
     profileCircle: {
       width: normalize(70),
       height: normalize(70),
-      borderRadius: normalize(28),
+      borderRadius: normalize(50),
       justifyContent: 'center',
       alignItems: 'center',
       overflow: 'hidden',
@@ -264,7 +263,7 @@ export const createProfileCardStyles = (normalize, width) =>
       width: normalize(22),
       height: normalize(22),
       borderRadius: normalize(11),
-      backgroundColor: colors.primaryDark,
+      backgroundColor: colors.primary,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 2,
@@ -495,6 +494,53 @@ export const createProfileCardStyles = (normalize, width) =>
       color: colors.textLight4,
       textAlign: 'center',
     },
+    /** 프로필 사진 하단 시트 — mailInboxMenuSheet.style.js 바텀시트와 동일 규격 */
+    avatarSheetOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    },
+    avatarSheet: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: colors.white,
+      borderTopLeftRadius: normalize(24),
+      borderTopRightRadius: normalize(24),
+      paddingTop: normalize(12),
+    },
+    avatarSheetTitle: {
+      fontSize: normalize(fontSizes.xxl),
+      fontFamily: fonts.bold,
+      color: colors.text,
+      textAlign: 'center',
+      marginBottom: normalize(16),
+      marginTop: normalize(6),
+    },
+    avatarSheetAction: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(6),
+      paddingVertical: normalize(12),
+      borderBottomColor: colors.textLight1,
+      borderBottomWidth: 1,
+      borderRadius: normalize(10),
+      marginBottom: normalize(10),
+      paddingHorizontal: normalize(24),
+    },
+    avatarSheetActionDisabled: {
+      opacity: 0.6,
+    },
+    avatarSheetActionTextPrimary: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.regular,
+      color: colors.text,
+    },
+    avatarSheetActionTextSecondary: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.regular,
+      color: colors.text,
+    },
   });
 
 /** 알림/설정 화면 (`notificationsettings.jsx`) */
@@ -541,7 +587,8 @@ export const createNotificationSettingsStyles = (normalize, width) => {
       backgroundColor: colors.white,
       borderRadius: normalize(16),
       paddingHorizontal: normalize(18),
-      ...shadow.md,
+      borderWidth: 1,
+      borderColor: colors.textLight1,
     },
 
     notifRow: {
@@ -998,49 +1045,6 @@ export const createHiddenPostsAppealsStyles = (width, normalize) =>
     loadingWrap: {
       paddingTop: normalize(36),
       alignItems: 'center',
-    },
-    toggleContainer: {
-      flexDirection: 'row',
-      paddingHorizontal: width * 0.04,
-      paddingVertical: normalize(10),
-      paddingTop: normalize(8),
-      gap: normalize(8),
-    },
-    toggleTrack: {
-      flex: 1,
-      flexDirection: 'row',
-      backgroundColor: colors.white,
-      borderRadius: normalize(20),
-      borderWidth: 1,
-      borderColor: colors.primaryLight5,
-      position: 'relative',
-      height: normalize(40),
-    },
-    togglePill: {
-      position: 'absolute',
-      width: '50%',
-      top: 0,
-      bottom: 0,
-      backgroundColor: colors.primary,
-      borderRadius: normalize(18),
-      ...shadow.sm,
-    },
-    toggleOption: {
-      flex: 1,
-      paddingVertical: normalize(6),
-      borderRadius: normalize(16),
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1,
-    },
-    toggleOptionText: {
-      fontSize: normalize(fontSizes.xl),
-      fontFamily: fonts.bold,
-      color: colors.textLight4,
-    },
-    toggleOptionTextActive: {
-      color: colors.white,
-      fontFamily: fonts.bold,
     },
     statSummaryBox: {
       flexDirection: 'row',

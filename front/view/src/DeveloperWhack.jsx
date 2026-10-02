@@ -10,7 +10,7 @@ import {
   Platform,
   useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useFocusEffect } from '@react-navigation/native';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -37,16 +37,16 @@ const wFont = {
   badge: fontSizes.md,
   name: fontSizes.md,
   body: fontSizes.xl,
-  label: fontSizes.md,
-  input: fontSizes.lg,
-  section: fontSizes.lg,
-  tab: fontSizes.md,
+  label: fontSizes.lg,
+  input: fontSizes.xl,
+  section: fontSizes.xl,
+  tab: fontSizes.lg,
   caption: fontSizes.sm,
   empty: fontSizes.lg,
   thanksTitle: fontSizes.xl,
   thanksBody: fontSizes.lg,
-  button: fontSizes.lg,
-  counter: fontSizes.md,
+  button: fontSizes.xl,
+  counter: fontSizes.lg,
   reply: fontSizes.md,
 };
 
@@ -135,6 +135,7 @@ function adminStatusMeta(status) {
 
 const DeveloperWhack = ({ navigation }) => {
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const normalize = useMemo(() => getNormalize(width), [width]);
 
   const [items, setItems] = useState([]);
@@ -259,7 +260,7 @@ const DeveloperWhack = ({ navigation }) => {
     borderRadius: normalize(10),
     borderWidth: 1,
     borderColor: colors.textLight1,
-    backgroundColor: colors.textLight05,
+    backgroundColor: colors.textLight0,
     fontFamily: fonts.regular,
     fontSize: normalize(wFont.input),
     color: colors.text,
@@ -553,17 +554,50 @@ const DeveloperWhack = ({ navigation }) => {
         />
       )}
 
-      <Modal visible={composeVisible} animationType="slide" onRequestClose={closeCompose}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: colors.white }} edges={['top']}>
+      <Modal
+        visible={composeVisible}
+        animationType="slide"
+        statusBarTranslucent
+        onRequestClose={closeCompose}
+      >
+        {/* Modal 안에서는 SafeAreaView 상단 inset이 0으로 잡힐 수 있어 바깥 inset을 직접 적용 */}
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: colors.white,
+            paddingTop: insets.top,
+          }}
+        >
           <SubHeader
             title="제보하기"
             onBack={closeCompose}
-            rightButtonText="전달"
             onRightPress={handleSubmit}
             rightDisabled={!canSubmit}
+            rightElement={
+              <View
+                style={{
+                  backgroundColor: canSubmit
+                    ? colors.primaryLight6
+                    : colors.textLight1,
+                  borderRadius: normalize(20),
+                  paddingHorizontal: normalize(14),
+                  paddingVertical: normalize(6),
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: normalize(fontSizes.xl),
+                    fontFamily: fonts.bold,
+                    color: canSubmit ? colors.primaryDark : colors.textLight4,
+                  }}
+                >
+                  {submitting ? '•••' : '전달'}
+                </Text>
+              </View>
+            }
           />
           {composeForm}
-        </SafeAreaView>
+        </View>
       </Modal>
 
       <AppPopupModal
