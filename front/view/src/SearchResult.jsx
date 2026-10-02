@@ -27,31 +27,40 @@ import { getSchoolMailFromLabel } from './utils/schoolMailFromLabel';
 
 const TABS_FOR_TEXT = [
   '전체',
-  '전체 게시판',
-  '학생 게시판',
-  '학교 게시판',
-  '학교 우편함',
+  '전체게시판',
+  '학생게시판',
+  '학교게시판',
+  '학교우편함',
 ];
 const TABS_FOR_HASHTAG = [
   '전체',
-  '전체 게시판',
-  '학생 게시판',
-  '학교 게시판',
-  '학교 우편함',
+  '전체게시판',
+  '학생게시판',
+  '학교게시판',
+  '학교우편함',
 ];
 const RECENT_KEY = '@search_recent_keywords';
 const SECTIONS_WITH_EXTRA_GAP = [
-  '전체 게시판',
-  '학생 게시판',
-  '학교 게시판',
-  '학교 우편함',
+  '전체게시판',
+  '학생게시판',
+  '학교게시판',
+  '학교우편함',
 ];
 const SECTION_BY_BOARD_TYPE = {
-  national: '전체 게시판',
-  student: '학생 게시판',
-  school: '학교 게시판',
+  national: '전체게시판',
+  student: '학생게시판',
+  school: '학교게시판',
 };
-const MAIL_SECTION = '학교 우편함';
+const MAIL_SECTION = '학교우편함';
+
+/** 레이아웃 확인용. 크기에 영향 없는 outline·글자 배경만 쓴다. 확인 후 false */
+const SHOW_LAYOUT_BORDERS = __DEV__ && false;
+const debugBox = (color = '#FF3B30') =>
+  SHOW_LAYOUT_BORDERS
+    ? { outlineWidth: 1, outlineStyle: 'solid', outlineColor: color }
+    : null;
+const debugText = (color = '#007AFF') =>
+  SHOW_LAYOUT_BORDERS ? { backgroundColor: `${color}33` } : null;
 
 function normalizeSearchText(q) {
   return String(q ?? '').trim();
@@ -206,7 +215,7 @@ export default function SearchResult({ route, navigation }) {
     const highlightQuery = searchIntent.isHashtag ? '' : normalizedQuery;
     const card = mapResultForCard(item, isMail, highlightQuery);
     return (
-      <View key={item.id} style={s.cardGutter}>
+      <View key={item.id} style={[s.cardGutter, debugBox('#AF52DE')]}>
         <BoardPostCard
           post={card}
           normalize={normalize}
@@ -285,7 +294,7 @@ export default function SearchResult({ route, navigation }) {
 
       const nextSections = nextPage === 1 ? {} : { ...sections };
       filteredPosts.forEach((p) => {
-        const key = SECTION_BY_BOARD_TYPE[p.boardType] ?? '전체 게시판';
+        const key = SECTION_BY_BOARD_TYPE[p.boardType] ?? '전체게시판';
         if (!nextSections[key]) nextSections[key] = [];
         nextSections[key].push(p);
       });
@@ -454,7 +463,7 @@ export default function SearchResult({ route, navigation }) {
 
           {mode === 'result' && (
             <ScrollView
-              style={s.resultScrollView}
+              style={[s.resultScrollView, debugBox('#8E8E93')]}
               stickyHeaderIndices={[1]}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
@@ -463,11 +472,14 @@ export default function SearchResult({ route, navigation }) {
               <TopAdBanner />
 
               {/* 탭 — 맨 위에 닿으면 고정 */}
-              <View style={s.tabBar} collapsable={false}>
+              <View
+                style={[s.tabBar, debugBox('#FF9500')]}
+                collapsable={false}
+              >
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={s.tabContent}
+                  contentContainerStyle={[s.tabContent, debugBox('#34C759')]}
                 >
                   {activeTabs.map((tab) => {
                     const isActive = activeTab === tab;
@@ -475,10 +487,20 @@ export default function SearchResult({ route, navigation }) {
                       <TouchableOpacity
                         key={tab}
                         onPress={() => setActiveTab(tab)}
-                        style={[s.tabBtn, isActive && s.tabBtnActive]}
+                        style={[
+                          s.tabBtn,
+                          isActive && s.tabBtnActive,
+                          debugBox(),
+                        ]}
                         activeOpacity={0.7}
                       >
-                        <Text style={[s.tabText, isActive && s.tabTextActive]}>
+                        <Text
+                          style={[
+                            s.tabText,
+                            isActive && s.tabTextActive,
+                            debugText(),
+                          ]}
+                        >
                           {tab}
                         </Text>
                       </TouchableOpacity>
@@ -487,11 +509,14 @@ export default function SearchResult({ route, navigation }) {
                 </ScrollView>
               </View>
 
-              <View>
+              <View style={debugBox('#5856D6')}>
                 {!isInitialRenderReady ? (
                   <View>
                     {[0, 1, 2, 3].map((idx) => (
-                      <View key={`search-skel-${idx}`} style={s.cardGutter}>
+                      <View
+                        key={`search-skel-${idx}`}
+                        style={[s.cardGutter, debugBox('#AF52DE')]}
+                      >
                         <BoardPostCardSkeleton
                           styles={boardStyles}
                           normalize={normalize}
@@ -503,13 +528,21 @@ export default function SearchResult({ route, navigation }) {
                   <>
                     {/* 학교 매칭 카드들 (최대 5개) */}
                     {activeTab === '전체' && matchedSchools.length > 0 && (
-                      <View style={[s.section, s.sectionGapAfterSchool]}>
-                        <View style={s.sectionHeader}>
-                          <View style={s.sectionTitleRow}>
-                            <Text style={s.sectionTitle}>학교</Text>
+                      <View
+                        style={[
+                          s.section,
+                          s.sectionGapAfterSchool,
+                          debugBox('#FF2D55'),
+                        ]}
+                      >
+                        <View style={[s.sectionHeader, debugBox('#FF9500')]}>
+                          <View style={[s.sectionTitleRow, debugBox('#34C759')]}>
+                            <Text style={[s.sectionTitle, debugText()]}>
+                              학교
+                            </Text>
                           </View>
-                          <View style={s.countBadge}>
-                            <Text style={s.countBadgeText}>
+                          <View style={[s.countBadge, debugBox()]}>
+                            <Text style={[s.countBadgeText, debugText()]}>
                               {matchedSchools.length}건
                             </Text>
                           </View>
@@ -517,7 +550,7 @@ export default function SearchResult({ route, navigation }) {
                         {matchedSchools.map((school) => (
                           <TouchableOpacity
                             key={school.schoolId}
-                            style={s.schoolCard}
+                            style={[s.schoolCard, debugBox('#AF52DE')]}
                             activeOpacity={0.7}
                             onPress={() =>
                               navigation.navigate('OtherSchool', {
@@ -526,14 +559,16 @@ export default function SearchResult({ route, navigation }) {
                               })
                             }
                           >
-                            <View style={s.schoolIconBox}>
+                            <View style={[s.schoolIconBox, debugBox()]}>
                               <Ionicons
                                 name="school-outline"
                                 size={normalize(16)}
                                 color={colors.textLight4}
                               />
                             </View>
-                            <Text style={s.schoolName}>{school.name}</Text>
+                            <Text style={[s.schoolName, debugText()]}>
+                              {school.name}
+                            </Text>
                             <Ionicons
                               name="chevron-forward"
                               size={normalize(16)}
@@ -553,14 +588,19 @@ export default function SearchResult({ route, navigation }) {
                             s.section,
                             SECTIONS_WITH_EXTRA_GAP.includes(section) &&
                               s.sectionGapBetweenTargetSections,
+                            debugBox('#FF2D55'),
                           ]}
                         >
-                          <View style={s.sectionHeader}>
-                            <View style={s.sectionTitleRow}>
-                              <Text style={s.sectionTitle}>{section}</Text>
+                          <View style={[s.sectionHeader, debugBox('#FF9500')]}>
+                            <View
+                              style={[s.sectionTitleRow, debugBox('#34C759')]}
+                            >
+                              <Text style={[s.sectionTitle, debugText()]}>
+                                {section}
+                              </Text>
                             </View>
-                            <View style={s.countBadge}>
-                              <Text style={s.countBadgeText}>
+                            <View style={[s.countBadge, debugBox()]}>
+                              <Text style={[s.countBadgeText, debugText()]}>
                                 {items.length}건
                               </Text>
                             </View>
@@ -572,11 +612,11 @@ export default function SearchResult({ route, navigation }) {
 
                           {items.length > 3 && (
                             <TouchableOpacity
-                              style={s.moreBtn}
+                              style={[s.moreBtn, debugBox()]}
                               onPress={() => setActiveTab(section)}
                               activeOpacity={0.7}
                             >
-                              <Text style={s.moreBtnText}>
+                              <Text style={[s.moreBtnText, debugText()]}>
                                 {section} 결과 더보기
                               </Text>
                               <Ionicons
@@ -593,7 +633,7 @@ export default function SearchResult({ route, navigation }) {
                     {activeTab !== '전체' &&
                       sections[activeTab] &&
                       sections[activeTab].length > 0 && (
-                        <View style={s.section}>
+                        <View style={[s.section, debugBox('#FF2D55')]}>
                           {sections[activeTab].map((item) =>
                             renderResultCard(activeTab, item),
                           )}
@@ -602,7 +642,7 @@ export default function SearchResult({ route, navigation }) {
 
                     {/* 로딩 */}
                     {loading && (
-                      <View style={s.centerBox}>
+                      <View style={[s.centerBox, debugBox()]}>
                         <Skeleton
                           width={normalize(16)}
                           height={normalize(16)}
@@ -613,16 +653,18 @@ export default function SearchResult({ route, navigation }) {
 
                     {/* 결과 없음 */}
                     {!loading && !hasResults && (
-                      <View style={s.emptyBox}>
-                        <View style={s.emptyIconBox}>
+                      <View style={[s.emptyBox, debugBox('#FF2D55')]}>
+                        <View style={[s.emptyIconBox, debugBox()]}>
                           <Ionicons
                             name="search-outline"
                             size={normalize(26)}
                             color={colors.textLight2}
                           />
                         </View>
-                        <Text style={s.emptyTitle}>검색 결과가 없습니다</Text>
-                        <Text style={s.emptyDesc}>
+                        <Text style={[s.emptyTitle, debugText()]}>
+                          검색 결과가 없습니다
+                        </Text>
+                        <Text style={[s.emptyDesc, debugText()]}>
                           다른 검색어로 다시 시도해보세요
                         </Text>
                       </View>
@@ -630,8 +672,8 @@ export default function SearchResult({ route, navigation }) {
 
                     {/* 결과 있음 + 마지막 페이지: 안내 */}
                     {!loading && hasVisibleResultsInTab && !hasMore && (
-                      <View style={s.endOfResultsBox}>
-                        <Text style={s.endOfResultsText}>
+                      <View style={[s.endOfResultsBox, debugBox()]}>
+                        <Text style={[s.endOfResultsText, debugText()]}>
                           검색 결과를 모두 확인했습니다
                         </Text>
                       </View>
@@ -639,13 +681,15 @@ export default function SearchResult({ route, navigation }) {
 
                     {/* 더 불러오기 */}
                     {hasMore && !loading && (
-                      <View style={s.centerBox}>
+                      <View style={[s.centerBox, debugBox()]}>
                         <TouchableOpacity
-                          style={s.loadMoreBtn}
+                          style={[s.loadMoreBtn, debugBox('#FF9500')]}
                           onPress={() => fetchSearch(page + 1)}
                           activeOpacity={0.7}
                         >
-                          <Text style={s.loadMoreText}>더 불러오기</Text>
+                          <Text style={[s.loadMoreText, debugText()]}>
+                            더 불러오기
+                          </Text>
                           <Ionicons
                             name="chevron-down"
                             size={normalize(14)}
@@ -655,7 +699,7 @@ export default function SearchResult({ route, navigation }) {
                         </TouchableOpacity>
                       </View>
                     )}
-                    <View style={s.scrollBottomSpacer} />
+                    <View style={[s.scrollBottomSpacer, debugBox('#8E8E93')]} />
                   </>
                 )}
               </View>

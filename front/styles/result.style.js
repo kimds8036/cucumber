@@ -79,7 +79,7 @@ export const createSearchResultStyles = (normalize, width) => {
       borderWidth: 0,
     },
     tabText: {
-      fontSize: normalize(fontSizes.xl),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
       color: colors.textLight4,
     },
@@ -130,7 +130,7 @@ export const createSearchResultStyles = (normalize, width) => {
       color: colors.textLight2,
     },
     countBadge: {
-      backgroundColor: colors.textLight1,
+      backgroundColor: colors.textLight05,
       paddingHorizontal: normalize(8),
       paddingVertical: normalize(2),
       borderRadius: normalize(999),
@@ -138,7 +138,7 @@ export const createSearchResultStyles = (normalize, width) => {
     countBadgeText: {
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
-      color: colors.textLight4,
+      color: colors.textLight5,
     },
 
     schoolCard: {
@@ -174,7 +174,6 @@ export const createSearchResultStyles = (normalize, width) => {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: normalize(13),
       gap: normalize(4),
     },
     moreBtnText: {

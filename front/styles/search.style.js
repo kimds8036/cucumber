@@ -431,8 +431,6 @@ export const createSearchScreenStyles = (width, normalize) => {
       marginHorizontal: width * 0.04,
       paddingVertical: normalize(13),
       gap: normalize(10),
-      borderBottomWidth: 1,
-      borderBottomColor: colors.textLight1,
     },
     recentText: {
       fontSize: normalize(fontSizes.xl),
