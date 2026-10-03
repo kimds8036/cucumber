@@ -337,6 +337,7 @@ export async function getStudyRoomSnapshotForUser(userId) {
     `SELECT id
      FROM study_sessions
      WHERE user_id = ? AND ended_at IS NULL AND day_key = ?
+       AND session_kind <> 'break'
      ORDER BY id DESC
      LIMIT 1`,
     [userId, todayTimerDayKey],
@@ -389,6 +390,7 @@ export async function getStudyRoomSnapshotForUser(userId) {
          WHERE ss.user_id = u.id
            AND ss.ended_at IS NULL
            AND ss.day_key = ?
+           AND ss.session_kind <> 'break'
          ORDER BY ss.id DESC
          LIMIT 1
        ) AS started_at_fmt,

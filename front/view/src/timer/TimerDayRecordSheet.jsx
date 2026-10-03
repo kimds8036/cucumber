@@ -105,15 +105,18 @@ export default function TimerDayRecordSheet({
 
   const renderBody = () => {
     if (loading) {
-      return [0, 1, 2].map((idx) => (
-        <Skeleton
-          key={`day-record-skel-${idx}`}
-          width="100%"
-          height={normalize(48)}
-          borderRadius={normalize(12)}
-          style={styles.timerSkelSubjectBlock}
-        />
-      ));
+      return (
+        <View style={styles.dayRecordSkeleton}>
+          {[0, 1, 2].map((idx) => (
+            <Skeleton
+              key={`day-record-skel-${idx}`}
+              width="100%"
+              height={normalize(64)}
+              borderRadius={normalize(14)}
+            />
+          ))}
+        </View>
+      );
     }
     if (isEmpty) {
       return <Text style={styles.dayRecordEmptyText}>이 날은 기록이 없어요</Text>;

@@ -22,6 +22,7 @@ import { getMainTabTitle } from '../../../context/MainShellContext';
 import { api, getApiUserFacingMessage } from '../../../utils/api';
 import { saveImageUriToGallery, alertGallerySaveFailure } from '../../../utils/saveImageToGallery';
 import TimerDayContentSkeleton from './TimerDayContentSkeleton';
+import TimerPhaseEndPopup from './TimerPhaseEndPopup';
 import Skeleton from '../../../components/common/Skeleton';
 import { AddSubjectModal, AddTaskModal, CalendarModal } from '../timerModals';
 import {
@@ -459,13 +460,13 @@ export function TimerContent() {
                 style={styles.friendStoryCircleWrap}
               >
                 <Skeleton
-                  width={normalize(56)}
-                  height={normalize(56)}
-                  borderRadius={normalize(28)}
+                  width={normalize(50)}
+                  height={normalize(50)}
+                  borderRadius={normalize(25)}
                 />
                 <Skeleton
-                  width={normalize(44)}
-                  height={normalize(11)}
+                  width={normalize(40)}
+                  height={normalize(20)}
                   borderRadius={normalize(6)}
                   style={styles.timerSkelFriendName}
                 />
@@ -515,6 +516,9 @@ export function TimerContent() {
     toggleTimer: timer.toggleTimer,
     pauseTimer: timer.pauseTimer,
     startForSubject: timer.startForSubject,
+    pomoClockOn: timer.pomoClockOn,
+    pomoSkip: timer.pomoSkip,
+    pomoResetClock: timer.pomoResetClock,
     collapsedSubjects: timer.collapsedSubjects,
     toggleSubjectCollapsed: timer.toggleSubjectCollapsed,
     openAddTaskForSubject: timer.openAddTaskForSubject,
@@ -543,10 +547,11 @@ export function TimerContent() {
               style={[styles.scroll, tdb('#FF3B30')]}
               contentContainerStyle={{ paddingBottom: normalize(24) + tabBarInset }}
               scrollIndicatorInsets={{ bottom: tabBarInset }}
-              stickyHeaderIndices={showDayContentSkeleton ? undefined : [3]}
+              stickyHeaderIndices={showDayContentSkeleton ? undefined : [4]}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
               bottomOffset={normalize(20)}
+              mode="layout"
             >
               {scrollingHeader}
               <View
@@ -583,9 +588,19 @@ export function TimerContent() {
                     backgroundColor: colors.white,
                     paddingHorizontal: timerGutter,
                   }}
-                  collapsable={false}
                 >
                   <TimerLiveScrollInner segment="card" {...liveScrollProps} />
+                </View>
+              )}
+              {showDayContentSkeleton ? null : (
+                <View
+                  collapsable={false}
+                  style={{
+                    backgroundColor: colors.white,
+                    paddingHorizontal: timerGutter,
+                    zIndex: 2,
+                  }}
+                >
                   <TimerPlannerTabBar
                     value={plannerTab}
                     onChange={setPlannerTab}
@@ -641,6 +656,12 @@ export function TimerContent() {
         </LiveElapsedTicker>
       ) : null}
 
+      <TimerPhaseEndPopup
+        notice={timer.phaseEndNotice}
+        onClose={timer.dismissPhaseEndNotice}
+        styles={styles}
+        normalize={normalize}
+      />
       <AddSubjectModal
         visible={timer.showAddSubject}
         onClose={() => timer.setShowAddSubject(false)}

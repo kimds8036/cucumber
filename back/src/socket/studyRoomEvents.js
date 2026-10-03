@@ -30,6 +30,7 @@ export function registerStudyRoomEvents(socket) {
       const [openRows] = await pool.execute(
         `SELECT id FROM study_sessions
          WHERE user_id = ? AND ended_at IS NULL AND day_key = ?
+           AND session_kind <> 'break'
          LIMIT 1`,
         [userId, todayTimerDayKey],
       );

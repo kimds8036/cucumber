@@ -198,7 +198,9 @@ export function pushSlotSegmentForRange(
   const overlapEnd = Math.min(rangeEnd, slotEnd);
   const widthFraction = (overlapEnd - overlapStart) / 600;
   if (widthFraction <= 0) return;
-  const color = resolveSessionColor(session, displaySubjects);
+  const base = resolveSessionColor(session, displaySubjects);
+  const color =
+    session?.kind === 'break' ? lightenHex(base, 0.7) : base;
   if (!color) return;
   segments.push({
     color,
@@ -363,6 +365,7 @@ export function buildSnapshotCompleteSessions(
       subjectId: session?.subjectId != null ? Number(session.subjectId) : null,
       subjectName: session?.subjectName ?? subjectMeta?.name ?? null,
       subjectColor: session?.subjectColor ?? subjectMeta?.color ?? null,
+      kind: session?.kind === 'break' ? 'break' : 'study',
       startedAt: startedIso,
       endedAt: endedIso,
     };

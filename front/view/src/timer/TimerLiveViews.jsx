@@ -92,6 +92,9 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
   toggleTimer,
   pauseTimer,
   startForSubject,
+  pomoClockOn,
+  pomoSkip,
+  pomoResetClock,
   collapsedSubjects,
   toggleSubjectCollapsed,
   openAddTaskForSubject,
@@ -115,6 +118,7 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
     return displaySessions
       .filter((s) => s.subjectId === subjectId)
       .reduce((sum, s) => {
+        if (s.kind === 'break') return sum;
         const isActiveOpenSession =
           s.endedAtMs == null && isRunning && activeSubjectId === subjectId;
         if (isActiveOpenSession) return sum;
@@ -138,6 +142,8 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
         handleSaveAsImage={handleSaveAsImage}
         onOpenStudyRoom={onOpenStudyRoom}
         toggleTimer={toggleTimer}
+        onPomodoroSkip={pomoSkip}
+        onPomodoroReset={pomoResetClock}
         weeklyRate={weekly?.rate ?? 0}
         streakDays={streakDays ?? 0}
         onOpenSettings={onOpenSettings}
@@ -154,6 +160,7 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
           liveExtraMs={liveExtraMs}
           isViewingToday={isViewingToday}
           isRunning={isRunning}
+          pomoClockOn={pomoClockOn}
           activeSubjectId={activeSubjectId}
           displaySessions={displaySessions}
           displaySubjects={displaySubjects}
@@ -207,6 +214,7 @@ export function TimerLivePlannerCapture({
     return displaySessions
       .filter((s) => s.subjectId === subjectId)
       .reduce((sum, s) => {
+        if (s.kind === 'break') return sum;
         const isActiveOpenSession =
           s.endedAtMs == null && isRunning && activeSubjectId === subjectId;
         if (isActiveOpenSession) return sum;

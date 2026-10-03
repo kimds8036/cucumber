@@ -9,6 +9,7 @@ const STORAGE_KEY = 'timerSettings:v1';
 export const DEFAULT_TIMER_SETTINGS = {
   pomodoroOn: false,
   autoStart: false,
+  phaseEndAlert: true,
   focusMin: 25,
   shortBreakMin: 5,
   longBreakMin: 15,
@@ -41,6 +42,7 @@ export function normalizeTimerSettings(raw) {
   return {
     pomodoroOn: src.pomodoroOn === true,
     autoStart: src.autoStart === true,
+    phaseEndAlert: src.phaseEndAlert !== false,
     focusMin: clampSetting('focusMin', src.focusMin),
     shortBreakMin: clampSetting('shortBreakMin', src.shortBreakMin),
     longBreakMin: clampSetting('longBreakMin', src.longBreakMin),

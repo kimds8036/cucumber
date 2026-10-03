@@ -95,26 +95,19 @@ export const PokeModal = ({
       <Animated.View
         style={[s.pokeWrapper, { transform: [{ translateY: sheetTranslateY }] }]}
       >
-        <View style={s.pokeOutsideDescWrap}>
-          {isStudying ? (
-            <Text style={s.pokeOutsideDesc}>
-              <Text style={s.pokeOutsideDescRest}>
+        {isStudying || pokeLockedSeconds > 0 ? (
+          <View style={s.pokeOutsideDescWrap}>
+            {isStudying ? (
+              <Text style={s.pokeOutsideDesc}>
                 공부가 끝나면 기다렸다고 알림을 보낼게요
               </Text>
-            </Text>
-          ) : pokeLockedSeconds > 0 ? (
-            <Text style={s.pokeOutsideDesc}>
-              {`${pokeLockedSeconds}초 후 다시 보낼 수 있어요`}
-            </Text>
-          ) : (
-            <Text style={s.pokeOutsideDesc}>
-              <Text style={s.pokeOutsideDescHighlight}>쿡 찌르기</Text>
-              <Text style={s.pokeOutsideDescRest}>
-                로 공부하자고 알림을 보내보세요!
+            ) : (
+              <Text style={s.pokeOutsideDesc}>
+                {`${pokeLockedSeconds}초 후 다시 보낼 수 있어요`}
               </Text>
-            </Text>
-          )}
-        </View>
+            )}
+          </View>
+        ) : null}
         <View style={s.pokePopup}>
           <Pressable
             onPress={avatarUri ? onAvatarPress : undefined}
@@ -153,50 +146,54 @@ export const PokeModal = ({
               </Text>
             </View>
           </Pressable>
-          {isStudying ? (
+          <View style={s.pokeActionRow}>
+            {isStudying ? (
+              <TouchableOpacity
+                style={s.pokeActionCard}
+                onPress={onNotifyLater}
+                activeOpacity={0.8}
+              >
+                <View style={s.pokeActionIcon}>
+                  <Ionicons
+                    name="notifications"
+                    size={normalize(22)}
+                    color={colors.primaryDark}
+                  />
+                </View>
+                <Text style={s.pokeActionCardText}>기다림 알림</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[s.pokeActionCard, pokeLockedSeconds > 0 && s.btnDisabled]}
+                onPress={onPoke}
+                activeOpacity={0.8}
+                disabled={pokeLockedSeconds > 0}
+              >
+                <View style={s.pokeActionIcon}>
+                  <MaterialCommunityIcons
+                    name="hand-pointing-right"
+                    size={normalize(22)}
+                    color={colors.primaryDark}
+                  />
+                </View>
+                <Text style={s.pokeActionCardText}>쿡 찌르기</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
-              style={s.pokePrimaryBtn}
-              onPress={onNotifyLater}
+              style={s.pokeMessageCard}
+              onPress={() => onMessage?.()}
               activeOpacity={0.8}
             >
-              <View style={s.pokePrimaryBtnContent}>
+              <View style={s.pokeMessageIcon}>
                 <Ionicons
-                  name="notifications"
-                  style={[s.pokeNotificationBtnIcon, { color: colors.primary }]}
+                  name="chatbubble-ellipses"
+                  size={normalize(22)}
+                  color={colors.text}
                 />
-                <Text style={s.pokeInfoTitle}>기다림 알림 보내기</Text>
               </View>
+              <Text style={s.pokeMessageCardText}>메시지 보내기</Text>
             </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={[
-                s.pokeActionBtn,
-                pokeLockedSeconds > 0 && s.btnDisabled,
-              ]}
-              onPress={onPoke}
-              activeOpacity={0.8}
-              disabled={pokeLockedSeconds > 0}
-            >
-              <View style={s.pokeActionBtnContent}>
-                <MaterialCommunityIcons
-                  name="hand-pointing-right"
-                  style={s.pokeInfoEmoji}
-                />
-                <Text style={s.pokeActionBtnText}>쿡 찌르기</Text>
-              </View>
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity
-            style={s.pokeMessageActionBtn}
-            onPress={() => onMessage?.()}
-            activeOpacity={0.8}
-          >
-            <View style={s.pokeMessageActionBtnContent}>
-              <Ionicons name="chatbubble" style={s.pokeMessageBtnIcon} />
-              <Text style={s.pokeMessageActionBtnText}>메시지 보내기</Text>
-            </View>
-          </TouchableOpacity>
+          </View>
         </View>
       </Animated.View>
     </Modal>

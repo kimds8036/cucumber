@@ -676,6 +676,7 @@ const NotificationScreen = ({ navigation }) => {
               name: room.other_user_name || watcher.name || '친구',
               schoolName: room.other_user_school_name || '',
               colorIndex: safeColorIndex,
+              avatarUrl: room.other_user_avatar_url || room.avatar_url || null,
             };
           }
         } catch (friendError) {

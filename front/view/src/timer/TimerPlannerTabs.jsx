@@ -1,6 +1,6 @@
 /**
  * 타이머 플래너 메뉴 — 투두리스트 · 타임테이블 · 공부 잔디 · 위클리
- * 메뉴 줄(TimerPlannerTabBar)은 시간 카드와 함께 고정되고, 내용(TimerPlannerTabs)은 그 아래에서 스크롤된다.
+ * 메뉴 줄(TimerPlannerTabBar)만 위에 고정되고, 내용(TimerPlannerTabs)은 그 아래에서 스크롤된다.
  */
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';

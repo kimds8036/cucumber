@@ -46,7 +46,7 @@ export default function TimerSettings({ navigation }) {
     [width, normalize],
   );
   const { settings, ready, update } = useTimerSettings();
-  const { pomodoroOn, autoStart, gender } = settings;
+  const { pomodoroOn, autoStart, phaseEndAlert, gender } = settings;
 
   const switchColors = {
     trackColor: { false: colors.textLight1, true: colors.primary },
@@ -63,20 +63,8 @@ export default function TimerSettings({ navigation }) {
       >
         <Text style={styles.sectionTitle}>뽀모도로</Text>
         <View style={styles.card}>
-          <View style={styles.row}>
-            <View style={styles.rowTextCol}>
-              <Text style={styles.rowLabel}>뽀모도로 사용</Text>
-              <Text style={styles.rowDesc}>켜면 시간 카드에 뽀모도로 타이머가 표시돼요</Text>
-            </View>
-            <Switch
-              value={pomodoroOn}
-              onValueChange={(value) => update({ pomodoroOn: value })}
-              disabled={!ready}
-              {...switchColors}
-            />
-          </View>
-          {POMODORO_ROWS.map((row) => (
-            <View key={row.key} style={[styles.row, styles.rowBorder]}>
+          {POMODORO_ROWS.map((row, index) => (
+            <View key={row.key} style={[styles.row, index > 0 && styles.rowBorder]}>
               <View style={styles.rowTextCol}>
                 <Text style={[styles.rowLabel, !pomodoroOn && styles.rowLabelDisabled]}>
                   {row.label}
@@ -124,6 +112,20 @@ export default function TimerSettings({ navigation }) {
             <Switch
               value={autoStart}
               onValueChange={(value) => update({ autoStart: value })}
+              disabled={!pomodoroOn || !ready}
+              {...switchColors}
+            />
+          </View>
+          <View style={[styles.row, styles.rowBorder]}>
+            <View style={styles.rowTextCol}>
+              <Text style={[styles.rowLabel, !pomodoroOn && styles.rowLabelDisabled]}>
+                종료 알림
+              </Text>
+              <Text style={styles.rowDesc}>집중·휴식이 끝나면 팝업으로 알려줘요</Text>
+            </View>
+            <Switch
+              value={phaseEndAlert}
+              onValueChange={(value) => update({ phaseEndAlert: value })}
               disabled={!pomodoroOn || !ready}
               {...switchColors}
             />
