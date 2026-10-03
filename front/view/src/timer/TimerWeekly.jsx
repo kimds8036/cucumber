@@ -7,7 +7,8 @@ import { View, Text, TouchableOpacity, TextInput, Alert } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../../../styles/colors';
 import TimerDatePicker from './TimerDatePicker';
-import { dateFromKey } from './useTimerWeekly';
+import { TIMER_WEEKLY_ITEM_MAX } from './timerHelpers';
+import { dateFromKey, WEEKLY_MIN_WEEK_KEY } from './useTimerWeekly';
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
@@ -31,8 +32,9 @@ export default function TimerWeekly({ styles, normalize, weekly }) {
   } = weekly;
 
   const changeDraft = (text) => {
-    draftRef.current = text;
-    setDraft(text);
+    const next = String(text || '').slice(0, TIMER_WEEKLY_ITEM_MAX);
+    draftRef.current = next;
+    setDraft(next);
   };
 
   const commitDraft = () => {
@@ -81,15 +83,22 @@ export default function TimerWeekly({ styles, normalize, weekly }) {
     shiftWeek(delta);
   };
 
+  const canPrevWeek = first.dayKey > WEEKLY_MIN_WEEK_KEY;
+
   return (
     <View style={styles.weeklyWrap}>
       <View style={styles.grassHeader}>
         <TouchableOpacity
           onPress={() => shift(-1)}
+          disabled={!canPrevWeek}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityLabel="이전 주"
         >
-          <Ionicons name="caret-back" size={normalize(14)} color={colors.text} />
+          <Ionicons
+            name="caret-back"
+            size={normalize(14)}
+            color={canPrevWeek ? colors.text : colors.textLight2}
+          />
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setPickerVisible(true)}
@@ -109,6 +118,7 @@ export default function TimerWeekly({ styles, normalize, weekly }) {
       <TimerDatePicker
         visible={pickerVisible}
         value={dateFromKey(first.dayKey)}
+        title="주 선택"
         onConfirm={selectDate}
         onClose={() => setPickerVisible(false)}
         styles={styles}
@@ -124,8 +134,24 @@ export default function TimerWeekly({ styles, normalize, weekly }) {
             style={[styles.weeklyDayRow, isToday && styles.weeklyDayRowToday]}
           >
             <View style={styles.weeklyDayLabelCol}>
-              <Text style={styles.weeklyDayLabel}>{day.label}</Text>
-              <Text style={styles.weeklyDayDate}>{day.date}</Text>
+              <Text
+                style={[
+                  styles.weeklyDayLabel,
+                  day.label === '일' && styles.weekCalSunday,
+                  day.label === '토' && styles.weekCalSaturday,
+                ]}
+              >
+                {day.label}
+              </Text>
+              <Text
+                style={[
+                  styles.weeklyDayDate,
+                  day.label === '일' && styles.weekCalSunday,
+                  day.label === '토' && styles.weekCalSaturday,
+                ]}
+              >
+                {day.date}
+              </Text>
             </View>
             <View style={styles.weeklyDayBody}>
               {items.map((item) => (
@@ -147,6 +173,7 @@ export default function TimerWeekly({ styles, normalize, weekly }) {
                   </TouchableOpacity>
                   <Text
                     style={[styles.weeklyItemText, item.done && styles.taskContentDone]}
+                    numberOfLines={2}
                   >
                     {item.content}
                   </Text>
@@ -161,6 +188,7 @@ export default function TimerWeekly({ styles, normalize, weekly }) {
                     onChangeText={changeDraft}
                     placeholder="할 일 입력"
                     placeholderTextColor={colors.textLight3}
+                    maxLength={TIMER_WEEKLY_ITEM_MAX}
                     autoFocus
                     returnKeyType="done"
                     submitBehavior="submit"

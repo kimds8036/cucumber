@@ -102,6 +102,7 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
   onOpenDayRecord,
   weekly,
   streakDays,
+  grassRefreshSec,
   onOpenSettings,
 }) {
   const liveExtraMs = useContext(LiveElapsedMsContext);
@@ -169,6 +170,7 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
           deleteTask={deleteTask}
           onOpenDayRecord={onOpenDayRecord}
           weekly={weekly}
+          grassRefreshSec={grassRefreshSec}
         />
       </View>
   );

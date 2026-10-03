@@ -167,12 +167,16 @@ const SearchScreen = ({ navigation, route }) => {
           >
             <SearchSubHeader
               ref={searchInputRef}
-              onBack={() =>
+              onBack={() => {
+                if (navigation.canGoBack()) {
+                  navigation.goBack();
+                  return;
+                }
                 navigation.reset({
                   index: 0,
                   routes: [{ name: 'Main' }],
-                })
-              }
+                });
+              }}
               value={searchText}
               onChangeText={handleChangeText}
               onSubmit={() => runSearch()}

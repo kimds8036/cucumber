@@ -46,6 +46,3 @@ export function formatGrassDurationHm(seconds) {
   const m = totalMinutes % 60;
   return `${h}h ${String(m).padStart(2, '0')}m`;
 }
-
-/** 가장 이른 달 — 백엔드 연결 전에는 2025년 1월, 연결 후 회원가입한 달로 바꾼다 */
-export const GRASS_FALLBACK_MIN_YEAR_MONTH = { year: 2025, month: 0 };

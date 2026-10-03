@@ -7,12 +7,11 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../../../styles/colors';
 import { getTimerDayKey } from '../../../utils/timerStorage';
 import TimerYearMonthPicker from './TimerYearMonthPicker';
-import { fetchStudyGrassMonth } from './studyGrassDummy';
+import { fetchStudyGrassMonth, getStudyGrassMemberSince } from './studyGrassApi';
 import {
   getGrassColor,
   formatGrassDuration,
   GRASS_LEGEND,
-  GRASS_FALLBACK_MIN_YEAR_MONTH,
 } from './studyGrassHelpers';
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -43,10 +42,15 @@ function buildMonthCells(year, month) {
   return cells;
 }
 
-export default function TimerStudyGrass({ styles, normalize, onOpenDayRecord }) {
+export default function TimerStudyGrass({
+  styles,
+  normalize,
+  onOpenDayRecord,
+  refreshSec = null,
+}) {
   const todayKey = getTimerDayKey(new Date());
   const maxMonth = parseDayKey(todayKey);
-  const minMonth = GRASS_FALLBACK_MIN_YEAR_MONTH;
+  const [minMonth, setMinMonth] = useState(maxMonth);
   const [view, setView] = useState(() => parseDayKey(todayKey));
   const [secondsByDay, setSecondsByDay] = useState({});
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -62,13 +66,23 @@ export default function TimerStudyGrass({ styles, normalize, onOpenDayRecord }) 
   useEffect(() => {
     let alive = true;
     setSecondsByDay({});
-    fetchStudyGrassMonth(view.year, view.month).then((data) => {
-      if (alive) setSecondsByDay(data || {});
-    });
+    fetchStudyGrassMonth(view.year, view.month)
+      .then((data) => {
+        if (!alive) return;
+        setSecondsByDay(data || {});
+        const since = getStudyGrassMemberSince();
+        if (since) {
+          const [y, m] = since.split('-').map(Number);
+          if (y && m) setMinMonth({ year: y, month: m - 1 });
+        }
+      })
+      .catch(() => {
+        if (alive) setSecondsByDay({});
+      });
     return () => {
       alive = false;
     };
-  }, [view.year, view.month]);
+  }, [view.year, view.month, refreshSec]);
 
   const monthTotalLabel = useMemo(() => {
     const totalSeconds = Object.values(secondsByDay).reduce((sum, s) => sum + (s || 0), 0);
@@ -139,18 +153,27 @@ export default function TimerStudyGrass({ styles, normalize, onOpenDayRecord }) 
         </TouchableOpacity>
       </View>
       <View style={styles.grassWeekdayRow}>
-        {WEEKDAY_LABELS.map((label) => (
-          <Text key={label} style={styles.grassWeekdayText}>
+        {WEEKDAY_LABELS.map((label, index) => (
+          <Text
+            key={label}
+            style={[
+              styles.grassWeekdayText,
+              index === 0 && styles.weekCalSunday,
+              index === 6 && styles.weekCalSaturday,
+            ]}
+          >
             {label}
           </Text>
         ))}
       </View>
       {weeks.map((week) => (
         <View key={week[0].dayKey} style={styles.grassWeekRow}>
-          {week.map((cell) => {
+          {week.map((cell, index) => {
             const seconds = cell.inMonth ? secondsByDay[cell.dayKey] : undefined;
             const bg = getGrassColor(seconds);
             const duration = formatGrassDuration(seconds);
+            const isSunday = index === 0;
+            const isSaturday = index === 6;
             return (
               <TouchableOpacity
                 key={cell.dayKey}
@@ -167,6 +190,10 @@ export default function TimerStudyGrass({ styles, normalize, onOpenDayRecord }) 
                   style={[
                     styles.grassDayText,
                     !cell.inMonth && styles.grassDayTextOutside,
+                    isSunday && styles.weekCalSunday,
+                    isSaturday && styles.weekCalSaturday,
+                    !cell.inMonth && isSunday && styles.weekCalSundayMuted,
+                    !cell.inMonth && isSaturday && styles.weekCalSaturdayMuted,
                   ]}
                 >
                   {cell.day}

@@ -1,12 +1,12 @@
 /**
  * 시간 카드 「연속 공부」 — 공부 잔디 기록(1분 이상)이 끊기지 않고 이어진 일수
  * 오늘 기록이 아직 없으면 어제부터 센다 (하루가 끝나기 전에는 끊긴 것으로 보지 않음).
- * 백엔드 연결 전이라 fetchStudyGrassMonth(더미)를 쓴다.
+ * 날짜별 초는 study_days 집계 API를 쓴다.
  */
 import { useEffect, useState } from 'react';
 import { getTimerDayKey } from '../../../utils/timerStorage';
-import { fetchStudyGrassMonth } from './studyGrassDummy';
-import { hasGrassRecord, GRASS_FALLBACK_MIN_YEAR_MONTH } from './studyGrassHelpers';
+import { fetchStudyGrassMonth, getStudyGrassMemberSince } from './studyGrassApi';
+import { hasGrassRecord } from './studyGrassHelpers';
 
 const pad2 = (n) => String(n).padStart(2, '0');
 const toDayKey = (date) =>
@@ -14,12 +14,16 @@ const toDayKey = (date) =>
 
 async function computeStudyStreak(todayKey) {
   const [y, m, d] = todayKey.split('-').map(Number);
-  const minIndex =
-    GRASS_FALLBACK_MIN_YEAR_MONTH.year * 12 + GRASS_FALLBACK_MIN_YEAR_MONTH.month;
   const monthCache = {};
   const getSeconds = async (date) => {
     const monthIndex = date.getFullYear() * 12 + date.getMonth();
-    if (monthIndex < minIndex) return null;
+    const since = getStudyGrassMemberSince();
+    let floor = y * 12 + (m - 1) - 24;
+    if (since) {
+      const [sy, sm] = since.split('-').map(Number);
+      if (sy && sm) floor = sy * 12 + (sm - 1);
+    }
+    if (monthIndex < floor) return null;
     if (!monthCache[monthIndex]) {
       monthCache[monthIndex] = await fetchStudyGrassMonth(
         date.getFullYear(),
@@ -41,7 +45,7 @@ async function computeStudyStreak(todayKey) {
   return streak;
 }
 
-export function useStudyStreak() {
+export function useStudyStreak(refreshSec = null) {
   const todayKey = getTimerDayKey(new Date());
   const [streak, setStreak] = useState(0);
 
@@ -57,7 +61,7 @@ export function useStudyStreak() {
     return () => {
       mounted = false;
     };
-  }, [todayKey]);
+  }, [todayKey, refreshSec]);
 
   return streak;
 }

@@ -67,7 +67,9 @@ export default function TimerTodoList({
                   disabled={!isViewingToday}
                 >
                   <View style={[styles.subjectBody, tdb('#DA70D6')]}>
-                    <Text style={styles.subjectName}>{sub.name}</Text>
+                    <Text style={styles.subjectName} numberOfLines={1}>
+                      {sub.name}
+                    </Text>
                     <Text style={styles.subjectTime}>{totalStr}</Text>
                   </View>
                   <TouchableOpacity
