@@ -15,6 +15,7 @@ export default function TimerTodoList({
   liveExtraMs,
   isViewingToday,
   isRunning,
+  pomoClockOn = false,
   activeSubjectId,
   displaySubjects,
   displayTasks,
@@ -43,6 +44,8 @@ export default function TimerTodoList({
           );
           const totalMs = getSubjectTotalMs(sub.id);
           const isThisRunning = isRunning && activeSubjectId === sub.id;
+          const isThisClock =
+            isThisRunning || (pomoClockOn && activeSubjectId === sub.id);
           const totalStr = isThisRunning
             ? formatHMS(totalMs + liveExtraMs)
             : formatHMS(totalMs);
@@ -76,17 +79,17 @@ export default function TimerTodoList({
                     style={[
                       styles.subjectPlayBtn,
                       { backgroundColor: sub.color },
-                      isThisRunning && styles.subjectPlayBtnActive,
+                      isThisClock && styles.subjectPlayBtnActive,
                     ]}
                     onPress={() =>
-                      isRunning && activeSubjectId === sub.id
+                      isThisClock
                         ? pauseTimer()
                         : startForSubject(sub.id)
                     }
                     disabled={!isViewingToday}
                   >
                     <Ionicons
-                      name={isThisRunning ? 'pause' : 'play'}
+                      name={isThisClock ? 'pause' : 'play'}
                       size={normalize(18)}
                       color={colors.white}
                     />
@@ -116,8 +119,11 @@ export default function TimerTodoList({
                         <TouchableOpacity
                           style={[
                             styles.taskCheckbox,
-                            task.status === 'done' &&
-                              styles.taskCheckboxChecked,
+                            { borderColor: sub.color },
+                            task.status === 'done' && {
+                              backgroundColor: sub.color,
+                              borderColor: sub.color,
+                            },
                           ]}
                           onPress={() =>
                             isViewingToday &&

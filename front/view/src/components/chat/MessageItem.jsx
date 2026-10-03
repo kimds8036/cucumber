@@ -3,8 +3,7 @@ import { View, Text, TouchableOpacity, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import Loading from '../../../../components/Loading';
 import { colors } from '../../../../styles/colors';
-import ProfileIcon from '../../../../assets/Profile.svg';
-import { getProfileInnerColor } from '../../../../utils/profileIconColor';
+import UserAvatar from '../../../../components/UserAvatar';
 
 function formatChatDateBanner(dateKey) {
   if (!dateKey) return '';
@@ -142,13 +141,9 @@ const DateBanner = ({ msg, normalize }) => (
  * 상대방 메시지일 때만 보이는 프로필 영역
  * @param {{ chatStyles: any, normalize: Function }} props
  */
-const SenderProfile = ({ chatStyles, normalize, colorId }) => (
+const SenderProfile = ({ chatStyles, normalize, colorId, uri }) => (
   <View style={chatStyles.chatProfileCircle}>
-    <ProfileIcon
-      width={normalize(30)}
-      height={normalize(30)}
-      color={getProfileInnerColor(colorId)}
-    />
+    <UserAvatar uri={uri} size={normalize(38)} colorId={colorId} />
   </View>
 );
 
@@ -529,9 +524,10 @@ const MessageItem = memo(
     onCopyMessage,
     onReplyMessage,
     onPressReplyTarget,
-    opponentName,
-    onOpenLongPressMenu,
-  }) => {
+  opponentName,
+  opponentAvatarUrl,
+  onOpenLongPressMenu,
+}) => {
     if (msg.type === 'dateBanner') {
       return <DateBanner msg={msg} normalize={normalize} />;
     }
@@ -571,6 +567,7 @@ const MessageItem = memo(
             chatStyles={chatStyles}
             normalize={normalize}
             colorId={msg.senderColorId}
+            uri={opponentAvatarUrl}
           />
         ) : (
           <View style={chatStyles.chatProfileSpacer} pointerEvents="none" />
@@ -599,6 +596,8 @@ const MessageItem = memo(
     if (prevProps.onPressReplyTarget !== nextProps.onPressReplyTarget)
       return false;
     if (prevProps.onOpenLongPressMenu !== nextProps.onOpenLongPressMenu)
+      return false;
+    if (prevProps.opponentAvatarUrl !== nextProps.opponentAvatarUrl)
       return false;
 
     const pm = prevProps.msg;

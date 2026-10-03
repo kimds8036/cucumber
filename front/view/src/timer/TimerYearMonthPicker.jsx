@@ -2,7 +2,7 @@
  * 공부 잔디 — 연·월 휠 시트. 회원가입 생년월일 picker 시트(취소 / 제목 / 확인)와 같은 모양.
  * DateTimePicker에 연·월 전용 모드가 없어서 두 칸 휠을 직접 그린다.
  */
-import React, { useEffect, useRef, useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import {
   Modal,
   View,
@@ -24,13 +24,25 @@ function clampYearMonth(v, min, max) {
   return v;
 }
 
-function WheelColumn({ items, selectedIndex, onChange, styles, itemHeight }) {
+const WheelColumn = forwardRef(function WheelColumn(
+  { items, selectedIndex, onChange, styles, itemHeight },
+  ref,
+) {
   const scrollRef = useRef(null);
   const lastIndexRef = useRef(selectedIndex);
+  const offsetYRef = useRef(selectedIndex * itemHeight);
+
+  useImperativeHandle(ref, () => ({
+    readIndex() {
+      const idx = Math.round(offsetYRef.current / itemHeight);
+      return Math.max(0, Math.min(items.length - 1, idx));
+    },
+  }), [itemHeight, items.length]);
 
   useEffect(() => {
     const animated = lastIndexRef.current !== selectedIndex;
     lastIndexRef.current = selectedIndex;
+    offsetYRef.current = selectedIndex * itemHeight;
     const t = setTimeout(() => {
       scrollRef.current?.scrollTo({ y: selectedIndex * itemHeight, animated });
     }, 0);
@@ -53,6 +65,10 @@ function WheelColumn({ items, selectedIndex, onChange, styles, itemHeight }) {
       snapToInterval={itemHeight}
       decelerationRate="fast"
       nestedScrollEnabled
+      scrollEventThrottle={16}
+      onScroll={(e) => {
+        offsetYRef.current = e.nativeEvent.contentOffset.y;
+      }}
       onMomentumScrollEnd={(e) => settle(e.nativeEvent.contentOffset.y)}
       onScrollEndDrag={(e) => {
         const v = e.nativeEvent.velocity?.y ?? 0;
@@ -79,7 +95,7 @@ function WheelColumn({ items, selectedIndex, onChange, styles, itemHeight }) {
       ))}
     </ScrollView>
   );
-}
+});
 
 export default function TimerYearMonthPicker({
   visible,
@@ -93,6 +109,8 @@ export default function TimerYearMonthPicker({
 }) {
   const itemHeight = normalize(40);
   const [draft, setDraft] = useState(value);
+  const yearWheelRef = useRef(null);
+  const monthWheelRef = useRef(null);
   const sheetTranslateY = useRef(new Animated.Value(600)).current;
   const dismissingRef = useRef(false);
 
@@ -122,13 +140,22 @@ export default function TimerYearMonthPicker({
     });
   };
 
-  const confirm = () => {
-    const picked = clampYearMonth(draft, min, max);
-    dismiss(() => onConfirm(picked));
-  };
-
   const years = [];
   for (let y = min.year; y <= max.year; y += 1) years.push(y);
+
+  const confirm = () => {
+    const yearIdx = yearWheelRef.current?.readIndex?.() ?? years.indexOf(draft.year);
+    const monthIdx = monthWheelRef.current?.readIndex?.() ?? draft.month;
+    const picked = clampYearMonth(
+      {
+        year: years[yearIdx] ?? draft.year,
+        month: MONTHS[monthIdx] ?? draft.month,
+      },
+      min,
+      max,
+    );
+    dismiss(() => onConfirm(picked));
+  };
   const yearItems = years.map((y) => ({ key: `y-${y}`, label: `${y}년` }));
   const monthItems = MONTHS.map((m) => ({
     key: `m-${m}`,
@@ -177,6 +204,7 @@ export default function TimerYearMonthPicker({
             ]}
           />
           <WheelColumn
+            ref={yearWheelRef}
             items={yearItems}
             selectedIndex={Math.max(0, years.indexOf(draft.year))}
             onChange={changeYear}
@@ -184,6 +212,7 @@ export default function TimerYearMonthPicker({
             itemHeight={itemHeight}
           />
           <WheelColumn
+            ref={monthWheelRef}
             items={monthItems}
             selectedIndex={draft.month}
             onChange={changeMonth}

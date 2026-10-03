@@ -5,9 +5,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../../../styles/colors';
+import Skeleton from '../../../components/common/Skeleton';
 import { getTimerDayKey } from '../../../utils/timerStorage';
 import TimerYearMonthPicker from './TimerYearMonthPicker';
-import { fetchStudyGrassMonth, getStudyGrassMemberSince } from './studyGrassApi';
+import { fetchStudyGrassMonth } from './studyGrassApi';
+import { WEEKLY_MIN_MONTH } from './useTimerWeekly';
 import {
   getGrassColor,
   formatGrassDuration,
@@ -50,34 +52,35 @@ export default function TimerStudyGrass({
 }) {
   const todayKey = getTimerDayKey(new Date());
   const maxMonth = parseDayKey(todayKey);
-  const [minMonth, setMinMonth] = useState(maxMonth);
+  const minMonth = WEEKLY_MIN_MONTH;
   const [view, setView] = useState(() => parseDayKey(todayKey));
   const [secondsByDay, setSecondsByDay] = useState({});
+  const [loading, setLoading] = useState(true);
   const [pickerVisible, setPickerVisible] = useState(false);
 
   const viewIdx = toMonthIndex(view);
   const canPrev = viewIdx > toMonthIndex(minMonth);
   const canNext = viewIdx < toMonthIndex(maxMonth);
   const shiftMonth = (delta) => {
-    const next = viewIdx + delta;
-    setView({ year: Math.floor(next / 12), month: next % 12 });
+    if (delta < 0 && !canPrev) return;
+    if (delta > 0 && !canNext) return;
+    const next = new Date(view.year, view.month + delta, 1);
+    setView({ year: next.getFullYear(), month: next.getMonth() });
   };
 
   useEffect(() => {
     let alive = true;
-    setSecondsByDay({});
+    setLoading(true);
     fetchStudyGrassMonth(view.year, view.month)
       .then((data) => {
         if (!alive) return;
         setSecondsByDay(data || {});
-        const since = getStudyGrassMemberSince();
-        if (since) {
-          const [y, m] = since.split('-').map(Number);
-          if (y && m) setMinMonth({ year: y, month: m - 1 });
-        }
       })
       .catch(() => {
         if (alive) setSecondsByDay({});
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
       });
     return () => {
       alive = false;
@@ -119,9 +122,9 @@ export default function TimerStudyGrass({
     <View style={styles.grassWrap}>
       <View style={styles.grassHeader}>
         <TouchableOpacity
+          style={styles.grassNavBtn}
           onPress={() => shiftMonth(-1)}
           disabled={!canPrev}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityLabel="이전 달"
         >
           <Ionicons
@@ -131,8 +134,8 @@ export default function TimerStudyGrass({
           />
         </TouchableOpacity>
         <TouchableOpacity
+          style={styles.grassMonthBtn}
           onPress={() => setPickerVisible(true)}
-          hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
           accessibilityLabel="연월 선택"
         >
           <Text style={styles.grassMonthLabel}>
@@ -140,9 +143,9 @@ export default function TimerStudyGrass({
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
+          style={styles.grassNavBtn}
           onPress={() => shiftMonth(1)}
           disabled={!canNext}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityLabel="다음 달"
         >
           <Ionicons
@@ -166,7 +169,21 @@ export default function TimerStudyGrass({
           </Text>
         ))}
       </View>
-      {weeks.map((week) => (
+      {loading
+        ? Array.from({ length: 5 }, (_, row) => (
+            <View key={`grass-skel-${row}`} style={styles.grassWeekRow}>
+              {Array.from({ length: 7 }, (_, col) => (
+                <View key={`grass-skel-${row}-${col}`} style={styles.grassDayCell}>
+                  <Skeleton
+                    width={normalize(28)}
+                    height={normalize(36)}
+                    borderRadius={normalize(8)}
+                  />
+                </View>
+              ))}
+            </View>
+          ))
+        : weeks.map((week) => (
         <View key={week[0].dayKey} style={styles.grassWeekRow}>
           {week.map((cell, index) => {
             const seconds = cell.inMonth ? secondsByDay[cell.dayKey] : undefined;
@@ -183,21 +200,23 @@ export default function TimerStudyGrass({
                 style={[
                   styles.grassDayCell,
                   bg && { backgroundColor: bg },
-                  cell.dayKey === todayKey && styles.grassDayCellToday,
                 ]}
               >
-                <Text
-                  style={[
-                    styles.grassDayText,
-                    !cell.inMonth && styles.grassDayTextOutside,
-                    isSunday && styles.weekCalSunday,
-                    isSaturday && styles.weekCalSaturday,
-                    !cell.inMonth && isSunday && styles.weekCalSundayMuted,
-                    !cell.inMonth && isSaturday && styles.weekCalSaturdayMuted,
-                  ]}
-                >
-                  {cell.day}
-                </Text>
+                <View style={cell.dayKey === todayKey ? styles.grassTodayBadge : null}>
+                  <Text
+                    style={[
+                      styles.grassDayText,
+                      cell.dayKey === todayKey && styles.grassTodayText,
+                      !cell.inMonth && styles.grassDayTextOutside,
+                      isSunday && cell.dayKey !== todayKey && styles.weekCalSunday,
+                      isSaturday && cell.dayKey !== todayKey && styles.weekCalSaturday,
+                      !cell.inMonth && isSunday && styles.weekCalSundayMuted,
+                      !cell.inMonth && isSaturday && styles.weekCalSaturdayMuted,
+                    ]}
+                  >
+                    {cell.day}
+                  </Text>
+                </View>
                 {duration ? (
                   <Text
                     style={styles.grassDurationText}
@@ -214,17 +233,26 @@ export default function TimerStudyGrass({
         </View>
       ))}
       <View style={styles.grassFooter}>
-        <Text style={styles.grassMonthTotal}>{monthTotalLabel}</Text>
-        <View style={styles.grassLegend}>
-          {GRASS_LEGEND.map((level) => (
-            <View
-              key={level.label}
-              style={[styles.grassLegendChip, { backgroundColor: level.color }]}
-            >
-              <Text style={styles.grassLegendText}>{level.label}</Text>
+        {loading ? (
+          <>
+            <Skeleton width={normalize(92)} height={normalize(16)} borderRadius={normalize(6)} />
+            <Skeleton width={normalize(120)} height={normalize(16)} borderRadius={normalize(6)} />
+          </>
+        ) : (
+          <>
+            <Text style={styles.grassMonthTotal}>{monthTotalLabel}</Text>
+            <View style={styles.grassLegend}>
+              {GRASS_LEGEND.map((level) => (
+                <View
+                  key={level.label}
+                  style={[styles.grassLegendChip, { backgroundColor: level.color }]}
+                >
+                  <Text style={styles.grassLegendText}>{level.label}</Text>
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
+          </>
+        )}
       </View>
       <TimerYearMonthPicker
         visible={pickerVisible}

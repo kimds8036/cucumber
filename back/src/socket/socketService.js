@@ -415,7 +415,8 @@ export async function getStudyingFriends({ userId }) {
      FROM study_sessions
        WHERE user_id IN (${placeholders})
        AND ended_at IS NULL
-       AND day_key = ?`,
+       AND day_key = ?
+       AND session_kind <> 'break'`,
     [...friendIds, todayTimerDayKey],
   );
 

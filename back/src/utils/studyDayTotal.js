@@ -15,7 +15,7 @@ export async function upsertStudyDayTotalForUserKey(
   const [sessionAggRows] = await connection.execute(
     `SELECT COALESCE(SUM(
       CASE
-        WHEN ended_at IS NULL THEN 0
+        WHEN ended_at IS NULL OR session_kind = 'break' THEN 0
         ELSE GREATEST(
           0,
           TIMESTAMPDIFF(MICROSECOND, started_at, ended_at) DIV 1000

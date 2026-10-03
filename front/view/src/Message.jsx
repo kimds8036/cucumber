@@ -1030,6 +1030,7 @@ export function MessageContent({ navigation }) {
                               name: item.other_user_name || item.name,
                               schoolName: item.other_user_school_name || '',
                               colorIndex: colorIdx,
+                              avatarUrl: item.avatarUrl || null,
                             },
                           });
                         }}
