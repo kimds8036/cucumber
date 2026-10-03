@@ -431,9 +431,6 @@ export default function TimerCard({
                 />
               </TouchableOpacity>
             </View>
-            <Text style={styles.pomoTodayText}>
-              {`오늘 공부 ${formatHMS(displayTotalMs)}`}
-            </Text>
           </View>
         ) : (
           <View style={[styles.timerBlock, tdb('#5E5CE6')]}>

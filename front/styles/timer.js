@@ -838,6 +838,10 @@ export const createTimerStyles = (width, normalize) => {
       dayRecordScroll: {
         flex: 1,
       },
+      /** 탭바 아래 내용 — 타이머 탭 todoTimetableRow.marginTop과 같은 값 */
+      dayRecordBody: {
+        marginTop: normalize(8),
+      },
       dayRecordSkeleton: {
         paddingTop: normalize(48),
         gap: normalize(14),

@@ -680,10 +680,13 @@ const OurSchoolScreen = ({ navigation }) => {
           </View>
 
           {popularPosts.length > 0 ? (
-            popularPosts.map((post) => (
+            popularPosts.map((post, index) => (
               <TouchableOpacity
                 key={post.id}
-                style={styles.popularItem}
+                style={[
+                  styles.popularItem,
+                  index === popularPosts.length - 1 && styles.popularItemLast,
+                ]}
                 activeOpacity={0.7}
                 onPress={() =>
                   navigation?.navigate('BoardDetail', {
@@ -702,7 +705,7 @@ const OurSchoolScreen = ({ navigation }) => {
               >
                 <View style={styles.popularItemLeft}>
                   <Ionicons
-                    name="chatbubble-ellipses"
+                    name="chatbubbles"
                     size={18}
                     color={colors.primary}
                   />

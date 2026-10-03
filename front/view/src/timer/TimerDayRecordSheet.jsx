@@ -123,34 +123,38 @@ export default function TimerDayRecordSheet({
     }
     if (tab === 'timetable') {
       return (
-        <TimerTimetable
-          styles={styles}
-          displaySessions={displaySessions}
-          displaySubjects={displaySubjects}
-          guideTarget={false}
-        />
+        <View style={styles.dayRecordBody}>
+          <TimerTimetable
+            styles={styles}
+            displaySessions={displaySessions}
+            displaySubjects={displaySubjects}
+            guideTarget={false}
+          />
+        </View>
       );
     }
     return (
-      <TimerTodoList
-        styles={styles}
-        normalize={normalize}
-        liveExtraMs={0}
-        isViewingToday={false}
-        isRunning={false}
-        activeSubjectId={null}
-        displaySubjects={displaySubjects}
-        displayTasks={displayTasks}
-        getSubjectTotalMs={getSubjectTotalMs}
-        collapsedSubjects={collapsedSubjects}
-        toggleSubjectCollapsed={toggleSubjectCollapsed}
-        startForSubject={noop}
-        pauseTimer={noop}
-        setShowAddSubject={noop}
-        openAddTaskForSubject={noop}
-        setTaskStatus={noop}
-        guideTarget={false}
-      />
+      <View style={styles.dayRecordBody}>
+        <TimerTodoList
+          styles={styles}
+          normalize={normalize}
+          liveExtraMs={0}
+          isViewingToday={false}
+          isRunning={false}
+          activeSubjectId={null}
+          displaySubjects={displaySubjects}
+          displayTasks={displayTasks}
+          getSubjectTotalMs={getSubjectTotalMs}
+          collapsedSubjects={collapsedSubjects}
+          toggleSubjectCollapsed={toggleSubjectCollapsed}
+          startForSubject={noop}
+          pauseTimer={noop}
+          setShowAddSubject={noop}
+          openAddTaskForSubject={noop}
+          setTaskStatus={noop}
+          guideTarget={false}
+        />
+      </View>
     );
   };
 
