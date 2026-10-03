@@ -579,7 +579,7 @@ export const FriendStoryBar = memo(function FriendStoryBar({
                 {isSuggestion ? (
                   <View
                     style={[
-                      styles.friendStatusDotOnCircle,
+                      styles.friendSuggestDotOnCircle,
                       styles.friendSuggestBadge,
                       debugFriendStoryBorder('#BF5AF2'),
                     ]}
