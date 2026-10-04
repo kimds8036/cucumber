@@ -14,14 +14,11 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import ViewShot from 'react-native-view-shot';
 import { colors } from '../../../styles/colors';
 import {
-  HOURS,
   tdb,
   formatHMS,
-  getSecondsFromSixAM,
   getSessionDurationMs,
-  toTimerDayTimelineSeconds,
-  appendSessionSegmentsForSlot,
 } from './timerHelpers';
+import TimerTimetable from './TimerTimetable';
 import {
   TIMER_CAPTURE_WATERMARK,
   preloadTimerCaptureWatermark,
@@ -178,6 +175,7 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
           onOpenDayRecord={onOpenDayRecord}
           weekly={weekly}
           grassRefreshSec={grassRefreshSec}
+          dayKey={selectedDayKey}
         />
       </View>
   );
@@ -221,85 +219,6 @@ export function TimerLivePlannerCapture({
         return sum + getSessionDurationMs(s);
       }, 0);
   };
-
-  const getSlotSegments = (slotStartSeconds) => {
-    const slotStart = toTimerDayTimelineSeconds(slotStartSeconds);
-    const slotEnd = slotStart + 600;
-    const nowSec = getSecondsFromSixAM(new Date());
-    const segments = [];
-    displaySessions.forEach((s) => {
-      appendSessionSegmentsForSlot(
-        segments,
-        s,
-        slotStart,
-        slotEnd,
-        nowSec,
-        displaySubjects,
-      );
-    });
-    segments.sort((a, b) => a.startFraction - b.startFraction);
-    return segments;
-  };
-
-  const renderTimetable = () =>
-    HOURS.map((rowIndex) => {
-      const hour = (6 + rowIndex) % 24;
-      const slotStartBaseSeconds = ((hour - 6 + 24) % 24) * 3600;
-      return (
-        <View
-          key={rowIndex}
-          style={[styles.timetableRow, tdb('#708090')]}
-        >
-          <View style={[styles.timetableHourCell, tdb('#B8860B')]}>
-            <Text style={styles.timetableHourText}>
-              {hour.toString().padStart(2, '0')}
-            </Text>
-          </View>
-          <View style={[styles.timetableSlotsRow, tdb('#556B2F')]}>
-            {[0, 10, 20, 30, 40, 50].map((m) => {
-              const slotStartSeconds = slotStartBaseSeconds + m * 60;
-              const segments = getSlotSegments(slotStartSeconds);
-              let pos = 0;
-              return (
-                <View
-                  key={m}
-                  style={[styles.timetableSlotCell, tdb('#8B4513')]}
-                >
-                  {segments.map((seg, idx) => {
-                    const spacerFlex = Math.max(0, seg.startFraction - pos);
-                    pos = seg.startFraction + seg.widthFraction;
-                    return (
-                      <React.Fragment key={idx}>
-                        {spacerFlex > 0 && (
-                          <View
-                            style={[
-                              styles.timetableSlotSegment,
-                              {
-                                flex: spacerFlex,
-                                backgroundColor: colors.white,
-                              },
-                            ]}
-                          />
-                        )}
-                        <View
-                          style={[
-                            styles.timetableSlotSegment,
-                            {
-                              backgroundColor: seg.color,
-                              flex: seg.widthFraction,
-                            },
-                          ]}
-                        />
-                      </React.Fragment>
-                    );
-                  })}
-                </View>
-              );
-            })}
-          </View>
-        </View>
-      );
-    });
 
   return (
     <View
@@ -389,7 +308,14 @@ export function TimerLivePlannerCapture({
             </View>
             <View style={[styles.plannerRightColumn, tdb('#B22222')]}>
               <View style={[styles.timetableScroll, tdb('#CD853F')]}>
-                {renderTimetable()}
+                <TimerTimetable
+                  styles={styles}
+                  displaySessions={displaySessions}
+                  displaySubjects={displaySubjects}
+                  dayKey={selectedDayKey}
+                  guideTarget={false}
+                  showHint={false}
+                />
               </View>
             </View>
           </View>

@@ -328,6 +328,24 @@ export function studyRoomSocketName(roomId) {
   return `study_room:${roomId}`;
 }
 
+/** 스터디룸 화면이 방 배정 전에도 시작/종료를 받기 위한 공용 채널 */
+export const STUDY_ROOM_LOBBY = 'study_room_lobby';
+
+/** 지금 사람이 있는 방 중 가장 가득 찬 방. 없으면 null */
+export async function getBusiestOpenRoomId() {
+  if ((await backend()) === 'redis') {
+    try {
+      const redis = await getBatchRedis();
+      const rooms = await listOpenRoomsByFillDescRedis(redis);
+      return rooms[0]?.roomId || null;
+    } catch {
+      // memory 폴백
+    }
+  }
+  const rooms = listOpenRoomsByFillDescMem();
+  return rooms[0]?.roomId || null;
+}
+
 /**
  * 스터디룸: 내 방 멤버만 (정원 STUDY_ROOM_CAPACITY)
  */
@@ -354,6 +372,11 @@ export async function getStudyRoomSnapshotForUser(userId) {
     relocated = !!assigned.relocated;
   } else {
     roomId = await getUserStudyRoomId(userId);
+    // 구경만 하는 화면은 방에 안 들어가 있어도, 이미 공부 중인 방을 보여 준다.
+    if (!roomId) {
+      roomId = await getBusiestOpenRoomId();
+      placement = roomId ? 'watch' : null;
+    }
   }
 
   if (!roomId) {

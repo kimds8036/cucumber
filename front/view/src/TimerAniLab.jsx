@@ -815,8 +815,12 @@ export default function TimerAniLab({ navigation }) {
 
     loadFriends();
     loadStudying();
+    const pollId = setInterval(() => {
+      loadStudying();
+    }, 8000);
     return () => {
       alive = false;
+      clearInterval(pollId);
     };
   }, [refreshStudyingFriends]);
 
@@ -834,8 +838,8 @@ export default function TimerAniLab({ navigation }) {
       }
       const list = payload.members;
       if (!Array.isArray(list)) return;
-      setStudyingUsers((prev) => {
-        const next = { ...prev };
+      setStudyingUsers(() => {
+        const next = {};
         list.forEach((item) => {
           if (item?.userId != null) next[String(item.userId)] = true;
         });
@@ -1019,13 +1023,11 @@ export default function TimerAniLab({ navigation }) {
 
   // 공부 ON → 즉시 출석 / OFF → 5초 뒤 퇴실
   useEffect(() => {
-    const selfUid = me.userId != null ? String(me.userId) : null;
     const rawOn = new Set(
       Object.entries(studyingUsers || {})
         .filter(([, v]) => v === true)
         .map(([id]) => String(id)),
     );
-    if (selfRunning && selfUid) rawOn.add(selfUid);
 
     rawOn.forEach((uid) => clearLeaveGrace(uid));
 
@@ -1044,13 +1046,7 @@ export default function TimerAniLab({ navigation }) {
     Object.keys(roomPresenceRef.current).forEach((uid) => {
       if (!rawOn.has(uid)) scheduleLeaveGrace(uid);
     });
-  }, [
-    studyingUsers,
-    selfRunning,
-    me.userId,
-    clearLeaveGrace,
-    scheduleLeaveGrace,
-  ]);
+  }, [studyingUsers, clearLeaveGrace, scheduleLeaveGrace]);
 
   useEffect(
     () => () => {

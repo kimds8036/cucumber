@@ -52,6 +52,7 @@ export default function BoardPostContent({
   showDistanceBadge = true,
   hideScrap = false,
   hidePoll = false,
+  onPollChange,
 }) {
   const distanceValid =
     typeof post.distanceKm === 'number' && !Number.isNaN(post.distanceKm);
@@ -114,7 +115,9 @@ export default function BoardPostContent({
       {!hidePoll && (post.poll || SHOW_DUMMY_POLL) ? (
         <BoardPollCard
           key={post.id ?? 'poll'}
+          postId={post.id}
           poll={post.poll ?? DUMMY_POLL}
+          onChange={onPollChange}
           styles={styles}
           normalize={normalize}
         />

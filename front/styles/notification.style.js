@@ -248,6 +248,23 @@ export const createNotificationStyles = (normalize, width) =>
       flex: 1,
       paddingRight: normalize(10),
     },
+    announcementTrailing: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(8),
+    },
+    announcementNewBadge: {
+      paddingHorizontal: normalize(6),
+      paddingVertical: normalize(2),
+      borderRadius: normalize(4),
+      backgroundColor: colors.alertLight,
+    },
+    announcementNewText: {
+      fontSize: normalize(10),
+      fontFamily: fonts.bold,
+      color: colors.alertDark,
+      letterSpacing: 0.3,
+    },
     announcementTitle: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,

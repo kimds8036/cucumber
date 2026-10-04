@@ -234,6 +234,7 @@ export function useBoardDetail({
           scraps: data.scrapCount ?? 0,
           images: imageUrls,
           tags: normalizeTagsFromApi(data.tags),
+          poll: data.poll ?? null,
           distanceKm:
             typeof data.distanceKm === 'number' &&
             !Number.isNaN(data.distanceKm)

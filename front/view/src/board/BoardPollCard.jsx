@@ -1,17 +1,25 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { colors } from '../../../styles/colors';
+import { api } from '../../../utils/api';
 
-/** 게시글 상세 투표. 서버 연동 전이라 선택·투표는 이 컴포넌트 안에서만 반영된다. */
-export default function BoardPollCard({ poll, styles, normalize }) {
+/** 게시글 상세 투표. 선택 결과는 서버에 저장된다. */
+export default function BoardPollCard({ poll, postId, onChange, styles, normalize }) {
   const multi = Boolean(poll?.multi);
   const [selected, setSelected] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
   const [myVotes, setMyVotes] = useState(
-    Array.isArray(poll?.myVotes) ? poll.myVotes : [],
+    Array.isArray(poll?.myVotes) ? poll.myVotes.map(Number) : [],
   );
   const voted = myVotes.length > 0;
+  const serverVoteKey = (poll?.myVotes || []).map(Number).join(',');
+
+  useEffect(() => {
+    setMyVotes(serverVoteKey ? serverVoteKey.split(',').map(Number) : []);
+    setSelected([]);
+  }, [postId, serverVoteKey]);
 
   const options = useMemo(() => {
     const base = Array.isArray(poll?.options) ? poll.options : [];
@@ -42,10 +50,29 @@ export default function BoardPollCard({ poll, styles, normalize }) {
     });
   };
 
-  const handleVote = () => {
-    if (selected.length === 0) return;
-    setMyVotes(selected);
-    setSelected([]);
+  const handleVote = async () => {
+    if (selected.length === 0 || submitting || postId == null) return;
+    setSubmitting(true);
+    try {
+      const res = await api.post(`/api/posts/${postId}/poll/vote`, {
+        optionIds: selected,
+      });
+      const next = res.data?.data?.poll;
+      if (next) {
+        onChange?.(next);
+        setMyVotes((next.myVotes || []).map(Number));
+      } else {
+        setMyVotes(selected);
+      }
+      setSelected([]);
+    } catch (error) {
+      Alert.alert(
+        '오류',
+        error.response?.data?.message || '투표 중 오류가 발생했습니다.',
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleRevote = () => {
@@ -61,7 +88,7 @@ export default function BoardPollCard({ poll, styles, normalize }) {
         <MaterialCommunityIcons
           name="vote"
           size={normalize(16)}
-          color={colors.primary}
+          color={colors.textLight5}
         />
         <Text style={styles.detailPollTitle}>투표</Text>
         {multi ? (
@@ -70,7 +97,6 @@ export default function BoardPollCard({ poll, styles, normalize }) {
       </View>
 
       {options.map((opt) => {
-        const isSelected = selected.includes(opt.id);
         const percent =
           totalVotes > 0 ? Math.round((opt.votes / totalVotes) * 100) : 0;
         return (
@@ -79,10 +105,7 @@ export default function BoardPollCard({ poll, styles, normalize }) {
             activeOpacity={voted ? 1 : 0.7}
             disabled={voted}
             onPress={() => toggleOption(opt.id)}
-            style={[
-              styles.detailPollOption,
-              !voted && isSelected && styles.detailPollOptionSelected,
-            ]}
+            style={styles.detailPollOption}
           >
             {voted ? (
               <View
@@ -97,34 +120,27 @@ export default function BoardPollCard({ poll, styles, normalize }) {
                 style={[
                   styles.detailPollRadio,
                   multi && styles.detailPollCheckbox,
-                  isSelected && styles.detailPollMarkOn,
                 ]}
-              >
-                {isSelected ? (
-                  <Ionicons
-                    name="checkmark"
-                    size={normalize(12)}
-                    color={colors.white}
-                  />
-                ) : null}
-              </View>
+              />
             )}
-            <Text
-              style={[
-                styles.detailPollOptionText,
-                voted && opt.isMine && styles.detailPollOptionTextMine,
-              ]}
-              numberOfLines={2}
-            >
-              {opt.text}
-            </Text>
+            <View style={styles.detailPollOptionTextWrap}>
+              <Text
+                style={[
+                  styles.detailPollOptionText,
+                  voted && opt.isMine && styles.detailPollOptionTextMine,
+                ]}
+                numberOfLines={2}
+              >
+                {opt.text}
+              </Text>
+            </View>
             {voted ? (
               <>
                 {opt.isMine ? (
                   <Ionicons
                     name="checkmark-circle"
                     size={normalize(16)}
-                    color={colors.primary}
+                    color={colors.textLight5}
                   />
                 ) : null}
                 <Text style={styles.detailPollPercent}>{percent}%</Text>
@@ -143,14 +159,22 @@ export default function BoardPollCard({ poll, styles, normalize }) {
         ) : (
           <TouchableOpacity
             onPress={handleVote}
-            disabled={selected.length === 0}
+            disabled={selected.length === 0 || submitting}
             activeOpacity={0.7}
             style={[
               styles.detailPollVoteButton,
               selected.length === 0 && styles.detailPollVoteButtonDisabled,
             ]}
           >
-            <Text style={styles.detailPollVoteButtonText}>투표하기</Text>
+            <Text
+              style={[
+                styles.detailPollVoteButtonText,
+                (selected.length === 0 || submitting) &&
+                  styles.detailPollVoteButtonTextDisabled,
+              ]}
+            >
+              투표하기
+            </Text>
           </TouchableOpacity>
         )}
       </View>

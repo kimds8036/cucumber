@@ -118,18 +118,19 @@ export default function TimerDayRecordSheet({
         </View>
       );
     }
-    if (isEmpty) {
-      return <Text style={styles.dayRecordEmptyText}>이 날은 기록이 없어요</Text>;
-    }
     if (tab === 'timetable') {
       return (
         <TimerTimetable
           styles={styles}
           displaySessions={displaySessions}
           displaySubjects={displaySubjects}
+          dayKey={dayKey}
           guideTarget={false}
         />
       );
+    }
+    if (isEmpty) {
+      return <Text style={styles.dayRecordEmptyText}>이 날은 기록이 없어요</Text>;
     }
     return (
       <TimerTodoList

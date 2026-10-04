@@ -6,6 +6,7 @@ import {
   Image,
   TouchableOpacity,
   TouchableWithoutFeedback,
+  Pressable,
   Keyboard,
   useWindowDimensions,
   Alert,
@@ -48,7 +49,7 @@ const POLL_MAX_OPTIONS = 10;
 
 const createPollOptions = () => ['', ''];
 
-const DUMMY_HASHTAGS = ['중간고사', '수행평가', '급식'];
+const FALLBACK_HASHTAGS = ['중간고사', '수행평가', '급식'];
 
 
 const BoardWrite = ({ navigation, route }) => {
@@ -66,6 +67,7 @@ const BoardWrite = ({ navigation, route }) => {
   const [hashtags, setHashtags] = useState([]); // 추가된 해시태그 배열 (서버에는 tags로 전달)
   const [hashtagInput, setHashtagInput] = useState(''); // 입력 중인 해시태그
   const [hashtagSuggestions, setHashtagSuggestions] = useState([]); // 추천 태그 목록
+  const [recommendedHashtags, setRecommendedHashtags] = useState(FALLBACK_HASHTAGS);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [postImages, setPostImages] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -92,6 +94,27 @@ const BoardWrite = ({ navigation, route }) => {
       setSelectedBoard(boardContext);
     }
   }, [studentBoardEnabled, boardContext]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get('/api/posts/tags/recommended');
+        const tags = res.data?.data?.tags;
+        if (cancelled || !Array.isArray(tags)) return;
+        setRecommendedHashtags(
+          tags
+            .map((tag) => String(tag?.name || '').replace(/^#/, '').trim())
+            .filter(Boolean),
+        );
+      } catch {
+        // 서버에 목록이 없으면 기존 세 개를 그대로 보여 준다.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const scrollFocusedFieldIntoView = useCallback(() => {
     const field = focusedFieldRef.current;
@@ -324,6 +347,17 @@ const BoardWrite = ({ navigation, route }) => {
           name: `image_${index}.jpg`,
         });
       });
+      if (pollOpen) {
+        const options = pollOptions.map((item) => item.trim()).filter(Boolean);
+        if (options.length < POLL_MIN_OPTIONS) {
+          Alert.alert('알림', '투표 항목을 2개 이상 입력해주세요.');
+          return;
+        }
+        formData.append(
+          'poll',
+          JSON.stringify({ multi: pollMulti, options }),
+        );
+      }
       if (locationEnabled) {
         let lat = coords?.latitude;
         let lng = coords?.longitude;
@@ -398,10 +432,16 @@ const BoardWrite = ({ navigation, route }) => {
           placeholder="내용을 입력해 주세요"
           placeholderTextColor={colors.textLight4}
           multiline
+          scrollEnabled={false}
           value={content}
           onChangeText={setContent}
-          onFocus={() => handleFieldFocus(bodyInputRef.current)}
-          onBlur={() => handleFieldBlur(bodyInputRef.current)}
+          onFocus={() => {
+            focusedFieldRef.current = null;
+          }}
+        />
+        <Pressable
+          style={styles.writeBodySpacer}
+          onPress={() => bodyInputRef.current?.focus()}
         />
         {pollOpen ? (
           <View style={styles.pollBox}>
@@ -519,7 +559,7 @@ const BoardWrite = ({ navigation, route }) => {
             <MaterialCommunityIcons
               name={pollOpen ? 'vote' : 'vote-outline'}
               size={22}
-              color={pollOpen ? colors.primary : colors.textLight4}
+              color={pollOpen ? colors.textLight6 : colors.textLight4}
             />
           </TouchableOpacity>
         </View>
@@ -534,8 +574,9 @@ const BoardWrite = ({ navigation, route }) => {
             placeholderTextColor={colors.textLight4}
             value={hashtagInput}
             onChangeText={handleHashtagInputChange}
-            onFocus={() => handleFieldFocus(hashtagFieldRef.current)}
-            onBlur={() => handleFieldBlur(hashtagFieldRef.current)}
+            onFocus={() => {
+              focusedFieldRef.current = null;
+            }}
             onSubmitEditing={handleAddHashtag}
             returnKeyType="done"
             maxLength={30}
@@ -580,7 +621,7 @@ const BoardWrite = ({ navigation, route }) => {
         <View style={styles.writeHashtagRecommend}>
           <Text style={styles.writeHashtagSuggestionTitle}>추천 해시태그</Text>
           <View style={styles.writeHashtagTagList}>
-            {DUMMY_HASHTAGS.map((tag) => (
+            {recommendedHashtags.map((tag) => (
               <TouchableOpacity
                 key={tag}
                 style={styles.writeHashtagRecommendChip}

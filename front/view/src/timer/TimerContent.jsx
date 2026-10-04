@@ -433,8 +433,12 @@ export function TimerContent() {
       inset={false}
       picked={noticeBanner ?? timerBanner}
       onPress={
-        noticeBanner
-          ? () => navigation.navigate('Announcement')
+        noticeBanner?.id
+          ? () =>
+              navigation.navigate('AnnouncementDetail', {
+                announcementId: noticeBanner.id,
+                title: noticeBanner.title,
+              })
           : undefined
       }
     />
@@ -453,30 +457,17 @@ export function TimerContent() {
           style={[styles.friendStoryRow, friendStoryStickyStyle, tdb('#FFCC00')]}
           collapsable={false}
         >
-          <View style={[styles.friendStoryScroll, tdb('#34C759')]}>
-            {[0, 1, 2, 3].map((idx) => (
-              <View
-                key={`timer-friend-skel-${idx}`}
-                style={styles.friendStoryCircleWrap}
-              >
-                <Skeleton
-                  width={normalize(50)}
-                  height={normalize(50)}
-                  borderRadius={normalize(25)}
-                />
-                <Skeleton
-                  width={normalize(40)}
-                  height={normalize(20)}
-                  borderRadius={normalize(6)}
-                  style={styles.timerSkelFriendName}
-                />
-              </View>
-            ))}
+          <View style={{ width: '100%', paddingRight: normalize(16) }}>
+            <Skeleton
+              width="100%"
+              height={normalize(74)}
+              borderRadius={normalize(16)}
+            />
           </View>
         </View>
         <View style={{ paddingHorizontal: timerGutter }}>
           {timerBannerNode}
-          <TimerDayContentSkeleton styles={styles} normalize={normalize} />
+          <TimerDayContentSkeleton normalize={normalize} />
         </View>
       </ScrollView>
     );
@@ -547,7 +538,8 @@ export function TimerContent() {
               style={[styles.scroll, tdb('#FF3B30')]}
               contentContainerStyle={{ paddingBottom: normalize(24) + tabBarInset }}
               scrollIndicatorInsets={{ bottom: tabBarInset }}
-              stickyHeaderIndices={showDayContentSkeleton ? undefined : [4]}
+              stickyHeaderIndices={showDayContentSkeleton ? undefined : [3]}
+              removeClippedSubviews={false}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
               bottomOffset={normalize(20)}
@@ -569,6 +561,7 @@ export function TimerContent() {
                 />
               </View>
               <View
+                collapsable={false}
                 style={{
                   paddingHorizontal: timerGutter,
                 }}
@@ -577,35 +570,26 @@ export function TimerContent() {
               </View>
               {showDayContentSkeleton ? (
                 <View style={{ paddingHorizontal: timerGutter }}>
-                  <TimerDayContentSkeleton
-                    styles={styles}
-                    normalize={normalize}
-                  />
+                  <TimerDayContentSkeleton normalize={normalize} />
                 </View>
               ) : (
-                <View
-                  style={{
-                    backgroundColor: colors.white,
-                    paddingHorizontal: timerGutter,
-                  }}
-                >
-                  <TimerLiveScrollInner segment="card" {...liveScrollProps} />
-                </View>
-              )}
-              {showDayContentSkeleton ? null : (
                 <View
                   collapsable={false}
                   style={{
                     backgroundColor: colors.white,
-                    paddingHorizontal: timerGutter,
-                    zIndex: 2,
+                    zIndex: 3,
                   }}
                 >
-                  <TimerPlannerTabBar
-                    value={plannerTab}
-                    onChange={setPlannerTab}
-                    styles={styles}
-                  />
+                  <View style={{ paddingHorizontal: timerGutter }}>
+                    <TimerLiveScrollInner segment="card" {...liveScrollProps} />
+                  </View>
+                  <View style={{ paddingHorizontal: timerGutter }}>
+                    <TimerPlannerTabBar
+                      value={plannerTab}
+                      onChange={setPlannerTab}
+                      styles={styles}
+                    />
+                  </View>
                 </View>
               )}
               {showDayContentSkeleton ? null : (

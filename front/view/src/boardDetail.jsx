@@ -494,6 +494,9 @@ export default function BoardDetail({ navigation, route }) {
                       normalize={normalize}
                       width={width}
                       postMenuButtonRef={postMenuButtonRef}
+                      onPollChange={(poll) =>
+                        setPost((prev) => ({ ...prev, poll }))
+                      }
                       showDistanceBadge={permissionGranted}
                       distanceStale={distanceStale}
                       distanceLoading={distanceLoading}

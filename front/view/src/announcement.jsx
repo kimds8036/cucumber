@@ -17,6 +17,15 @@ import { getNormalize } from '../../styles/mypage.style';
 import { createNotificationStyles } from '../../styles/notification.style';
 import { api } from '../../utils/api';
 
+const NEW_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
+
+function isRecentAnnouncement(iso, now = Date.now()) {
+  const published = new Date(iso).getTime();
+  if (!Number.isFinite(published)) return false;
+  const age = now - published;
+  return age >= 0 && age <= NEW_WINDOW_MS;
+}
+
 function formatAnnouncementDate(iso) {
   if (!iso) return '';
   try {
@@ -114,11 +123,18 @@ const Announcement = ({ navigation }) => {
                 </Text>
                 <Text style={styles.announcementTitle}>{item.title}</Text>
               </View>
-              <Ionicons
-                name="chevron-forward"
-                size={normalize(20)}
-                color={colors.textLight4}
-              />
+              <View style={styles.announcementTrailing}>
+                {isRecentAnnouncement(item.publishedAt) ? (
+                  <View style={styles.announcementNewBadge}>
+                    <Text style={styles.announcementNewText}>NEW</Text>
+                  </View>
+                ) : null}
+                <Ionicons
+                  name="chevron-forward"
+                  size={normalize(20)}
+                  color={colors.textLight4}
+                />
+              </View>
             </TouchableOpacity>
           ))
         )}
