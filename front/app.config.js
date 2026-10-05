@@ -90,6 +90,12 @@ export default ({ config }) => ({
     },
 
     plugins: [
+      [
+        'expo-notifications',
+        {
+          sounds: ['./assets/music.mp3'],
+        },
+      ],
       'expo-font',
       'expo-apple-authentication',
       '@react-native-community/datetimepicker',

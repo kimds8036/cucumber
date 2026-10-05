@@ -7,7 +7,8 @@ import * as Haptics from 'expo-haptics';
 import * as Notifications from 'expo-notifications';
 
 const PHASE_CUE_ID = 'focux-pomo-phase';
-const PHASE_CHANNEL = 'pomo-phase';
+const PHASE_CHANNEL = 'pomo-phase-music';
+const PHASE_SOUND = 'music.mp3';
 
 function copyFor(notice) {
   if (notice?.endedPhase === 'focus') {
@@ -32,6 +33,7 @@ async function ensurePhaseChannel() {
   await Notifications.setNotificationChannelAsync(PHASE_CHANNEL, {
     name: '뽀모도로 종료',
     importance: Notifications.AndroidImportance.HIGH,
+    sound: PHASE_SOUND,
     enableVibrate: false,
   });
 }
@@ -55,7 +57,7 @@ export async function playPhaseEndSound(notice) {
       content: {
         title: copy.title,
         body: copy.body,
-        sound: true,
+        sound: PHASE_SOUND,
         data: { kind: 'pomodoro-phase-cue', identifier: PHASE_CUE_ID },
       },
       trigger: Platform.OS === 'android' ? { channelId: PHASE_CHANNEL } : null,

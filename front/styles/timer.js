@@ -1393,9 +1393,6 @@ export const createTimerStyles = (width, normalize) => {
         flex: 0,
         minWidth: 0,
       },
-      timetableSlotSegment: {
-        minWidth: 0,
-      },
       timetableSlotActive: {
         backgroundColor: colors.primaryLight4,
       },
