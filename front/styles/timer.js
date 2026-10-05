@@ -36,12 +36,24 @@ const DEBUG_OUTLINE_COLORS = [
 /** 타이머 카드 오른쪽 메뉴(timerMenu*)에만 윤곽선 — 테스트 끝나면 false */
 const DEBUG_TIMER_MENU_OUTLINE = __DEV__ && false;
 
+/** 타이머 시간 카드(TimerCard.jsx) 전체에만 윤곽선 — 테스트 끝나면 false */
+export const DEBUG_TIMER_CARD_OUTLINE = __DEV__ && false;
+const TIMER_CARD_KEY =
+  /^(timerCard|timerMainCol|timerBlock|timerTime|timerBtn|dateBar|pomo|timerMenu)/;
+
 const shouldOutlineKey = (key) =>
   DEBUG_TIMER_OUTLINE ||
-  (DEBUG_TIMER_MENU_OUTLINE && key.startsWith('timerMenu'));
+  (DEBUG_TIMER_MENU_OUTLINE && key.startsWith('timerMenu')) ||
+  (DEBUG_TIMER_CARD_OUTLINE && TIMER_CARD_KEY.test(key));
 
 const withDebugOutline = (styleMap) => {
-  if (!DEBUG_TIMER_OUTLINE && !DEBUG_TIMER_MENU_OUTLINE) return styleMap;
+  if (
+    !DEBUG_TIMER_OUTLINE &&
+    !DEBUG_TIMER_MENU_OUTLINE &&
+    !DEBUG_TIMER_CARD_OUTLINE
+  ) {
+    return styleMap;
+  }
   const result = {};
   Object.keys(styleMap).forEach((key, i) => {
     const value = styleMap[key];
@@ -301,6 +313,8 @@ export const createTimerStyles = (width, normalize) => {
       pomoPhaseRow: {
         alignSelf: 'stretch',
         alignItems: 'center',
+        flexDirection: 'row',
+        justifyContent: 'center',
         marginBottom: normalize(4),
       },
       pomoPhaseChip: {

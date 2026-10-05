@@ -6,6 +6,7 @@ import {
   TouchableWithoutFeedback,
   StyleSheet,
   Modal,
+  ScrollView,
   useWindowDimensions,
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -32,6 +33,16 @@ function createSortChipStyles(width, normalize) {
       alignItems: 'center',
       gap: normalize(8),
       flexShrink: 1,
+    },
+    containerScrollable: {
+      paddingHorizontal: 0,
+    },
+    chipsScroll: {
+      flexGrow: 1,
+      flexShrink: 1,
+    },
+    chipsScrollContent: {
+      paddingHorizontal: width * 0.04,
     },
     chip: {
       paddingHorizontal: normalize(16),
@@ -104,6 +115,8 @@ export default function SortChips({
   /** 'default' | 'mint' — 활성 칩 배경 (mint: 파스텔 민트 + 흰 글자) */
   activeTone = 'default',
   containerStyle,
+  /** true면 칩 줄을 가로 스크롤 (칩이 화면 너비를 넘을 때) */
+  scrollable = false,
 }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
@@ -134,30 +147,45 @@ export default function SortChips({
     closeMenu();
   };
 
+  const chipNodes = options.map((option) => {
+    const active = value === option.value;
+    return (
+      <TouchableOpacity
+        key={option.value}
+        style={[
+          styles.chip,
+          active &&
+            (activeTone === 'mint' ? styles.chipActiveMint : styles.chipActive),
+        ]}
+        onPress={() => onChange(option.value)}
+      >
+        <Text style={[styles.label, active && styles.labelActive]}>
+          {option.label}
+        </Text>
+      </TouchableOpacity>
+    );
+  });
+
   return (
-    <View style={[styles.container, containerStyle]}>
-      <View style={styles.chips}>
-        {options.map((option) => {
-          const active = value === option.value;
-          return (
-            <TouchableOpacity
-              key={option.value}
-              style={[
-                styles.chip,
-                active &&
-                  (activeTone === 'mint'
-                    ? styles.chipActiveMint
-                    : styles.chipActive),
-              ]}
-              onPress={() => onChange(option.value)}
-            >
-              <Text style={[styles.label, active && styles.labelActive]}>
-                {option.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+    <View
+      style={[
+        styles.container,
+        scrollable && styles.containerScrollable,
+        containerStyle,
+      ]}
+    >
+      {scrollable ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.chipsScroll}
+          contentContainerStyle={[styles.chips, styles.chipsScrollContent]}
+        >
+          {chipNodes}
+        </ScrollView>
+      ) : (
+        <View style={styles.chips}>{chipNodes}</View>
+      )}
       {showSort ? (
         <View ref={triggerRef} collapsable={false}>
           <TouchableOpacity

@@ -7,6 +7,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { colors, fonts } from '../../../styles/colors';
+import { DEBUG_TIMER_CARD_OUTLINE } from '../../../styles/timer';
 import { GuideFocusTarget } from '../../../components/guide/GuideFocusTarget';
 import { GUIDE_FOCUS_TARGETS as T } from '../../../src/screens/UserGuide/guideFocusTargets';
 import { tdb, formatHMS } from './timerHelpers';
@@ -24,6 +25,10 @@ const POMO_PHASE_LABEL = {
   short_break: '짧은 휴식',
   long_break: '긴 휴식',
 };
+
+/** 스타일 키가 없는 인라인 요소용 — styles/timer.js의 DEBUG_TIMER_CARD_OUTLINE으로 켜고 끈다 */
+const cdb = (color) =>
+  DEBUG_TIMER_CARD_OUTLINE ? { borderWidth: 1, borderColor: color } : null;
 
 const MODE_COLORS = {
   pomodoro: '#FFF1EA',
@@ -86,6 +91,7 @@ function PomodoroModeToggle({ on, disabled, onPress, normalize }) {
           justifyContent: 'center',
           backgroundColor: trackColor,
           overflow: 'hidden',
+          ...cdb('#FF3B30'),
         }}
       >
         <Animated.Text
@@ -106,6 +112,7 @@ function PomodoroModeToggle({ on, disabled, onPress, normalize }) {
             textAlignVertical: 'center',
             includeFontPadding: false,
             opacity: pomoOpacity,
+            ...cdb('#FF9500'),
           }}
         >
           뽀모도로
@@ -128,6 +135,7 @@ function PomodoroModeToggle({ on, disabled, onPress, normalize }) {
             textAlignVertical: 'center',
             includeFontPadding: false,
             opacity: timerOpacity,
+            ...cdb('#34C759'),
           }}
         >
           타이머
@@ -150,6 +158,7 @@ function PomodoroModeToggle({ on, disabled, onPress, normalize }) {
             shadowRadius: 2,
             shadowOffset: { width: 0, height: 1 },
             elevation: 2,
+            ...cdb('#0A84FF'),
           }}
         >
           <Animated.Text
@@ -163,6 +172,7 @@ function PomodoroModeToggle({ on, disabled, onPress, normalize }) {
               textAlignVertical: 'center',
               includeFontPadding: false,
               opacity: pomoOpacity,
+              ...cdb('#BF5AF2'),
             }}
           >
             🍅
@@ -175,6 +185,7 @@ function PomodoroModeToggle({ on, disabled, onPress, normalize }) {
               alignItems: 'center',
               justifyContent: 'center',
               opacity: timerOpacity,
+              ...cdb('#FF2D55'),
             }}
           >
             <Ionicons
