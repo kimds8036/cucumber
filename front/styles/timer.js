@@ -1357,6 +1357,7 @@ export const createTimerStyles = (width, normalize) => {
         borderLeftWidth: 0.5,
         borderColor: colors.textLight1,
         backgroundColor: 'transparent',
+        paddingVertical: normalize(4),
       },
       timetableSlotSegment: {
         alignSelf: 'stretch',

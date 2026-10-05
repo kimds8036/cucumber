@@ -24,7 +24,7 @@ export const HOURS = Array.from({ length: 24 }, (_, i) => i);
 export const TIMETABLE_GRAY = '#A6DA95';
 export const SCHOOL_TIMETABLE_BG = '#E4E0D8';
 export const SCHOOL_TIMETABLE_HINT =
-  '등교인증을 하면 시간표에 저장된 학교 시간이 자동으로 채워져요';
+  '등교 인증을 하면 시간표에 저장된 학교 시간이 자동으로 채워져요';
 export const TIMER_DAY_START_HOUR = 6;
 export const TIMER_HEARTBEAT_MS = 60 * 1000;
 export const TIMER_BACKGROUND_AUTO_CLOSE_MS = 15 * 60 * 1000;
