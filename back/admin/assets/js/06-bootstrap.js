@@ -12,6 +12,7 @@ window.PANEL_LOADERS = {
   inquiries: () => loadInquiries(),
   announcements: () => loadAnnouncements(),
   tips: () => loadTips(),
+  recommendedHashtags: () => loadRecommendedHashtags(),
   processedInquiries: () => loadProcessedInquiries(),
   manualSignup: () => loadManualSignup(),
   studentIds: () => loadStudentIds(),

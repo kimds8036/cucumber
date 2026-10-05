@@ -28,6 +28,9 @@ const CHOSEONG_FULL = [
 const rooms = new Map();
 /** userId → roomId */
 const userRoom = new Map();
+/** 끊긴 뒤 바로 빼지 않고, 재접속하면 같은 방을 되돌린다. */
+const disconnectGrace = new Map();
+const HUNMIN_DISCONNECT_GRACE_MS = 12_000;
 
 function wordToChoseong(word) {
   const out = [];
@@ -132,6 +135,28 @@ function resetIfSolo(room, io) {
   for (const p of room.players) p.score = 0;
   for (const p of room.waiting) p.score = 0;
   emitRoom(room, io);
+}
+
+function cancelDisconnectGrace(userId) {
+  const timer = disconnectGrace.get(userId);
+  if (!timer) return false;
+  clearTimeout(timer);
+  disconnectGrace.delete(userId);
+  return true;
+}
+
+function scheduleDisconnectLeave(userId, io) {
+  cancelDisconnectGrace(userId);
+  const timer = setTimeout(() => {
+    disconnectGrace.delete(userId);
+    const prev = leaveInternal(userId, io);
+    if (prev?.room) {
+      emitRoom(prev.room, io);
+      if (prev.room.status === 'lobby') scheduleLobbyStart(prev.room, io);
+    }
+    console.log('[hunmin] 유예 후 퇴장', { userId });
+  }, HUNMIN_DISCONNECT_GRACE_MS);
+  disconnectGrace.set(userId, timer);
 }
 
 function leaveInternal(userId, io) {
@@ -408,17 +433,34 @@ export function registerHunminGameEvents(socket, io) {
 
   const handleMatch = async (payload = {}) => {
     const username = String(payload.username || `유저${userId}`).slice(0, 24);
+    if (cancelDisconnectGrace(userId)) {
+      console.log('[hunmin] 재연결 후 방 복구', { userId });
+    }
 
     let room = getRoomForUser(userId);
     if (room) {
       socket.join(`hunmin:${room.id}`);
+      const mode = room.players.some((p) => p.userId === userId)
+        ? 'player'
+        : 'waiting';
       socket.emit('hunmin:joined', {
         room: publicRoom(room),
         you: { userId, username },
-        mode: room.players.some((p) => p.userId === userId)
-          ? 'player'
-          : 'waiting',
+        mode,
       });
+      if (mode === 'player' && room.status === 'playing' && room.round) {
+        socket.emit('hunmin:round_start', {
+          roomId: room.id,
+          round: {
+            id: room.round.id,
+            choseong: room.round.choseong,
+            endsAt: room.round.endsAt,
+            startedAt: room.round.startedAt,
+            durationMs: HUNMIN_ROUND_MS,
+          },
+          players: room.players.map(publicPlayer),
+        });
+      }
       return;
     }
 
@@ -476,6 +518,14 @@ export function registerHunminGameEvents(socket, io) {
       });
       return;
     }
+    const roundId = payload.roundId != null ? String(payload.roundId) : '';
+    if (!roundId || roundId !== String(room.round.id)) {
+      socket.emit('hunmin:answer_result', {
+        ok: false,
+        message: '이번 라운드가 아니에요.',
+      });
+      return;
+    }
     if (!room.players.some((p) => p.userId === userId)) {
       socket.emit('hunmin:answer_result', {
         ok: false,
@@ -528,7 +578,7 @@ export function registerHunminGameEvents(socket, io) {
     }
 
     // await 이후 레이스: 방/라운드 상태·선착 여부 재확인
-    if (!room.round || room.status !== 'playing') {
+    if (!room.round || room.status !== 'playing' || String(room.round.id) !== roundId) {
       socket.emit('hunmin:answer_result', {
         ok: false,
         message: '라운드가 끝났어요.',
@@ -593,6 +643,7 @@ export function registerHunminGameEvents(socket, io) {
   });
 
   socket.on('hunmin:leave', () => {
+    cancelDisconnectGrace(userId);
     const prev = leaveInternal(userId, io);
     socket.rooms.forEach((r) => {
       if (String(r).startsWith('hunmin:')) socket.leave(r);
@@ -605,11 +656,9 @@ export function registerHunminGameEvents(socket, io) {
   });
 
   socket.on('disconnect', () => {
-    const prev = leaveInternal(userId, io);
-    if (prev?.room) {
-      emitRoom(prev.room, io);
-      if (prev.room.status === 'lobby') scheduleLobbyStart(prev.room, io);
-    }
+    if (!getRoomForUser(userId)) return;
+    console.log('[hunmin] 연결 끊김, 퇴장 유예', { userId });
+    scheduleDisconnectLeave(userId, io);
   });
 }
 

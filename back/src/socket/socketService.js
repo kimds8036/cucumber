@@ -5,11 +5,13 @@ import { getTimerDayKey } from '../utils/timerDayKey.js';
 import { isoFromMysqlKstNaiveString } from '../utils/timerSessionTimes.js';
 import { upsertStudyDayTotalForUserKey } from '../utils/studyDayTotal.js';
 import {
+  STUDY_ROOM_LOBBY,
   assignUserToStudyRoom,
   getStudyRoomSnapshotForUser,
   leaveStudyRoom,
   studyRoomSocketName,
 } from '../services/studyRoom.service.js';
+import { freshSeenSql } from '../services/studyPresence.service.js';
 
 export { getStudyRoomSnapshotForUser };
 
@@ -63,8 +65,8 @@ export async function upsertStudySessionStart({ userId, dayKey, subjectId, subje
       }
     }
     await connection.execute(
-      `INSERT INTO study_sessions (user_id, day_key, subject_id, subject_name, started_at, ended_at)
-       VALUES (?, ?, ?, ?, ${KST_NOW_DATETIME_SQL}, NULL)`,
+      `INSERT INTO study_sessions (user_id, day_key, subject_id, subject_name, started_at, ended_at, last_seen_at)
+       VALUES (?, ?, ?, ?, ${KST_NOW_DATETIME_SQL}, NULL, ${KST_NOW_DATETIME_SQL})`,
       [
         userId,
         dayKey,
@@ -253,18 +255,24 @@ export async function broadcastTimerStatus({ userId, status }) {
     console.warn('[FriendSocket] study_room 배정 실패', err?.message);
   }
 
+  const roomPayload = {
+    type: 'study_room_timer_status',
+    userId,
+    username,
+    avatarUrl,
+    status,
+    startedAt,
+    closedTotalMs,
+    roomId: studyRoomId,
+    updatedAt,
+  };
+  // 방에 아직 안 들어간 구경 화면도 시작/종료를 받도록 로비에 항상 보낸다.
+  io.to(STUDY_ROOM_LOBBY).emit('study_room_timer_status', roomPayload);
   if (studyRoomId) {
-    io.to(studyRoomSocketName(studyRoomId)).emit('study_room_timer_status', {
-      type: 'study_room_timer_status',
-      userId,
-      username,
-      avatarUrl,
-      status,
-      startedAt,
-      closedTotalMs,
-      roomId: studyRoomId,
-      updatedAt,
-    });
+    io.to(studyRoomSocketName(studyRoomId)).emit(
+      'study_room_timer_status',
+      roomPayload,
+    );
   }
 
   // 나와 친구 관계인 모든 유저 ID 조회
@@ -415,7 +423,9 @@ export async function getStudyingFriends({ userId }) {
      FROM study_sessions
        WHERE user_id IN (${placeholders})
        AND ended_at IS NULL
-       AND day_key = ?`,
+       AND day_key = ?
+       AND session_kind <> 'break'
+       AND ${freshSeenSql('')}`,
     [...friendIds, todayTimerDayKey],
   );
 

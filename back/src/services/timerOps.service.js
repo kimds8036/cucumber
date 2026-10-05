@@ -4,6 +4,10 @@ import { formatKstDateYmd } from './reverification.service.js';
 import { resolveUserName } from './userPii.service.js';
 import { getTimerDayKey } from '../utils/timerDayKey.js';
 import { isoFromMysqlKstNaiveString } from '../utils/timerSessionTimes.js';
+import {
+  freshSeenSql,
+  sweepStaleStudySessions,
+} from './studyPresence.service.js';
 
 const KST_NOW_SQL = `CONVERT_TZ(UTC_TIMESTAMP(3), '+00:00', '+09:00')`;
 
@@ -32,6 +36,7 @@ async function getTimerDayStats(dayKey) {
        UNION
        SELECT user_id FROM study_sessions
        WHERE day_key = ? AND ended_at IS NULL
+         AND ${freshSeenSql('')}
      ) u
      LEFT JOIN study_days sd ON sd.user_id = u.user_id AND sd.day_key = ?
      LEFT JOIN (
@@ -39,6 +44,7 @@ async function getTimerDayStats(dayKey) {
          SUM(GREATEST(0, TIMESTAMPDIFF(MICROSECOND, started_at, ${KST_NOW_SQL}) DIV 1000)) AS open_ms
        FROM study_sessions
        WHERE day_key = ? AND ended_at IS NULL
+         AND ${freshSeenSql('')}
        GROUP BY user_id
      ) open ON open.user_id = u.user_id`,
     [dayKey, dayKey, dayKey, dayKey],
@@ -54,6 +60,7 @@ async function getTimerDayStats(dayKey) {
  * day_key = 앱과 동일( KST 06:00 기준 ), 크론 집계 아님 · study_days/study_sessions 실시간 조회.
  */
 export async function getTimerOpsOverview({ days = 14 } = {}) {
+  await sweepStaleStudySessions();
   const windowDays = Math.min(Math.max(Number(days) || 14, 1), 31);
   const timerToday = getTimerDayKey();
   const calendarToday = formatKstDateYmd();
@@ -66,7 +73,10 @@ export async function getTimerOpsOverview({ days = 14 } = {}) {
        COUNT(*) AS open_sessions,
        COUNT(DISTINCT user_id) AS open_users
      FROM study_sessions
-     WHERE ended_at IS NULL`,
+     WHERE ended_at IS NULL
+       AND day_key = ?
+       AND ${freshSeenSql('')}`,
+    [timerToday],
   );
 
   const [[rangeRow]] = await pool.execute(
