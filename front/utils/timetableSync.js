@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from './api';
 import { fetchTimetableFromApi } from './timetableApi';
-import { syncTimetableWidgetFromFlat } from './widget';
+import { syncTimetableWidgetFromFlat } from './widget/widgetBridge.js';
 import { getKstWeekKey } from './timetableWeekKey';
 
 export const TIMETABLE_CACHE_KEY = '@mypage_timetable_cache_v1';

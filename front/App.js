@@ -786,14 +786,6 @@ export default function App() {
   const backgroundRetryTimerRef = useRef(null);
   const lastBackgroundAtRef = useRef(0);
   const TIMER_NOTIFICATION_HANDLE_WINDOW_MS = 4000;
-  const logTimerBg = (event, payload = {}) => {
-    if (!__DEV__) return;
-    console.log(`[TimerBG][${event}]`, {
-      at: new Date().toISOString(),
-      appState: appStateRef.current,
-      ...payload,
-    });
-  };
 
   useEffect(() => {
     if (Platform.OS !== 'android') return undefined;
@@ -943,7 +935,6 @@ export default function App() {
     const sub = AppState.addEventListener('change', (nextState) => {
       const prevState = appStateRef.current;
       appStateRef.current = nextState;
-      logTimerBg('appstate_change', { prevState, nextState });
 
       if (backgroundRetryTimerRef.current) {
         clearTimeout(backgroundRetryTimerRef.current);
@@ -953,11 +944,7 @@ export default function App() {
       if (nextState === 'inactive' || nextState === 'background') {
         lastBackgroundAtRef.current = Date.now();
         const runtime = getTimerRuntimeState();
-        logTimerBg('background_enter', {
-          runtimeRunning: Boolean(runtime?.isRunning),
-        });
         if (runtime?.isRunning) {
-          logTimerBg('show_request_primary');
           showTimerRunningNotification();
           // 간헐적 AppState 경계 누락 보정: 짧은 지연 후 1회 재확인
           backgroundRetryTimerRef.current = setTimeout(async () => {
@@ -966,24 +953,17 @@ export default function App() {
             const latestRuntime = getTimerRuntimeState();
             if (!latestRuntime?.isRunning) return;
             const exists = await hasTimerRunningNotification();
-            logTimerBg('show_retry_check', {
-              runtimeRunning: Boolean(latestRuntime?.isRunning),
-              exists,
-            });
             if (!exists) {
-              logTimerBg('show_request_retry');
               showTimerRunningNotification();
             }
           }, 700);
         } else {
-          logTimerBg('cancel_request_not_running');
           cancelTimerRunningNotification();
         }
         return;
       }
 
       if (prevState.match(/inactive|background/) && nextState === 'active') {
-        logTimerBg('foreground_enter_cancel');
         cancelTimerRunningNotification();
       }
     });
