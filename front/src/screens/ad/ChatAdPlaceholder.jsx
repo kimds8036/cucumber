@@ -3,6 +3,7 @@ import { View, Text, useWindowDimensions } from 'react-native';
 import { getNormalize } from '../../../styles/frame.style';
 import { createAdStyles } from '../../../styles/ad.style';
 import TipPlaceholder from '../../../components/ads/TipPlaceholder';
+import { AdMobOrTip } from '../../../components/ads/AdMobBanner';
 import { AdPill } from '../../../components/ads/PillBadge';
 
 const DEFAULT_CHAT_AD_ITEM = {
@@ -28,11 +29,13 @@ const ChatAdPlaceholder = ({
 
   if (adData == null) {
     return (
-      <TipPlaceholder
-        variant="chat"
-        styles={s}
-        normalize={externalNormalize || normalize}
-      />
+      <AdMobOrTip>
+        <TipPlaceholder
+          variant="chat"
+          styles={s}
+          normalize={externalNormalize || normalize}
+        />
+      </AdMobOrTip>
     );
   }
 

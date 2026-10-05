@@ -5,6 +5,7 @@ import { colors } from '../../../styles/colors';
 import { getNormalize } from '../../../styles/frame.style';
 import { createAdStyles } from '../../../styles/ad.style';
 import TipPlaceholder from '../../../components/ads/TipPlaceholder';
+import { AdMobOrTip } from '../../../components/ads/AdMobBanner';
 import { AdPill } from '../../../components/ads/PillBadge';
 
 const NotificationAdPlaceholder = ({ adData }) => {
@@ -17,7 +18,9 @@ const NotificationAdPlaceholder = ({ adData }) => {
 
   if (adData == null) {
     return (
-      <TipPlaceholder variant="alert" styles={styles} normalize={normalize} />
+      <AdMobOrTip>
+        <TipPlaceholder variant="alert" styles={styles} normalize={normalize} />
+      </AdMobOrTip>
     );
   }
 

@@ -29,7 +29,6 @@ const createValidators = [
   body('body').isString().trim().isLength({ min: 1, max: 500 })
     .withMessage('팁 문구는 1~500자여야 합니다.'),
   body('status').optional({ values: 'falsy' }).isIn(['draft', 'active']),
-  body('isPinned').optional().isBoolean(),
 ];
 
 const patchValidators = [
@@ -37,7 +36,6 @@ const patchValidators = [
     .isLength({ min: 1, max: 500 })
     .withMessage('팁 문구는 1~500자여야 합니다.'),
   body('status').optional({ values: 'falsy' }).isIn(['draft', 'active']),
-  body('isPinned').optional().isBoolean(),
 ];
 
 router.get(
@@ -102,7 +100,7 @@ router.post(
       const item = await createTip({
         body: req.body.body,
         status: req.body.status || 'draft',
-        isPinned: Boolean(req.body.isPinned),
+        isPinned: false,
         adminUserId,
       });
       await writeAuditLog({
@@ -110,7 +108,7 @@ router.post(
         actionType: 'tip.create',
         targetType: 'tip',
         targetId: item?.id,
-        extra: { status: item?.status, isPinned: item?.isPinned },
+        extra: { status: item?.status },
       });
       return res.status(201).json({ success: true, data: item });
     } catch (error) {
@@ -132,8 +130,7 @@ router.patch(
     try {
       const hasBody = Object.prototype.hasOwnProperty.call(req.body, 'body');
       const hasStatus = Object.prototype.hasOwnProperty.call(req.body, 'status');
-      const hasPin = Object.prototype.hasOwnProperty.call(req.body, 'isPinned');
-      if (!hasBody && !hasStatus && !hasPin) {
+      if (!hasBody && !hasStatus) {
         return res.status(400).json({
           success: false,
           message: '변경할 필드가 없습니다.',
@@ -151,7 +148,7 @@ router.patch(
       const item = await updateTip(req.params.id, {
         body: hasBody ? req.body.body : existing.body,
         status: hasStatus ? req.body.status : existing.status,
-        isPinned: hasPin ? Boolean(req.body.isPinned) : existing.isPinned,
+        isPinned: false,
         adminUserId: req.user.userId,
       });
       await writeAuditLog({
@@ -159,7 +156,7 @@ router.patch(
         actionType: 'tip.update',
         targetType: 'tip',
         targetId: item?.id,
-        extra: { status: item?.status, isPinned: item?.isPinned },
+        extra: { status: item?.status },
       });
       return res.json({ success: true, data: item });
     } catch (error) {

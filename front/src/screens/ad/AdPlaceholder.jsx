@@ -4,6 +4,7 @@ import { useWindowDimensions } from 'react-native';
 import { getNormalize } from '../../../styles/frame.style';
 import { createAdStyles } from '../../../styles/ad.style';
 import TipPlaceholder from '../../../components/ads/TipPlaceholder';
+import { AdMobOrTip } from '../../../components/ads/AdMobBanner';
 import { AdPill } from '../../../components/ads/PillBadge';
 
 const AdPlaceholder = ({ styles, normalize, adData }) => {
@@ -17,7 +18,9 @@ const AdPlaceholder = ({ styles, normalize, adData }) => {
 
   if (adData == null) {
     return (
-      <TipPlaceholder variant="board" styles={s} normalize={normalize || localNormalize} />
+      <AdMobOrTip>
+        <TipPlaceholder variant="board" styles={s} normalize={normalize || localNormalize} />
+      </AdMobOrTip>
     );
   }
 

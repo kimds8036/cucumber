@@ -1,6 +1,7 @@
 import React from 'react';
 import { getAdFallbackPolicy } from '../../constants/adPlacements';
 import TipPlaceholder from './TipPlaceholder';
+import { AdMobOrTip } from './AdMobBanner';
 
 /**
  * 광고 데이터가 있으면 Ad만, 없고 tip 정책이면 Tip만 렌더.
@@ -18,7 +19,11 @@ export default function AdOrTip({
   }
 
   if (getAdFallbackPolicy(placement) === 'tip') {
-    return <TipPlaceholder variant={tipVariant} {...(tipProps || {})} />;
+    return (
+      <AdMobOrTip>
+        <TipPlaceholder variant={tipVariant} {...(tipProps || {})} />
+      </AdMobOrTip>
+    );
   }
 
   return null;

@@ -108,6 +108,7 @@ import {
 } from './navigation/pushNavigation';
 import { colors } from './styles/colors';
 import { appAlert } from './utils/appAlert';
+import { initAdMob } from './utils/admob';
 import {
   cancelTimerRunningNotification,
   configureTimerNotificationHandler,
@@ -765,6 +766,10 @@ export default function App() {
     setBootPhase('ready');
     return undefined;
   }, [fontsLoaded]);
+
+  useEffect(() => {
+    initAdMob();
+  }, []);
 
   useEffect(() => {
     const originalAlert = Alert.alert;

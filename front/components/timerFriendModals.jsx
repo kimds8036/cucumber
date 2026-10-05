@@ -3,18 +3,23 @@
  * 친구 목록 UI + PokeModal + AddFriendModal + Toast
  */
 
-import React, { useState, useEffect, useMemo, memo } from 'react';
+import React, { useState, useEffect, useMemo, memo, useRef } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
+  Pressable,
   ScrollView,
   TextInput,
   Modal,
+  Dimensions,
+  Animated,
+  Easing,
   useWindowDimensions,
   Keyboard,
   TouchableWithoutFeedback,
 } from 'react-native';
+import ImageViewer from '../view/src/ImageViewer';
 import Reanimated, {
   useAnimatedStyle,
   useSharedValue,
@@ -25,7 +30,7 @@ import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { GuideFocusTarget } from './guide/GuideFocusTarget';
 import { GUIDE_FOCUS_TARGETS as T } from '../src/screens/UserGuide/guideFocusTargets';
-import ProfileIcon from '../assets/Profile.svg';
+import UserAvatar, { pickAvatarUrl } from './UserAvatar';
 import { colors } from '../styles/colors';
 import { createTimerFriendModalStyles, getNormalize } from '../styles/timer';
 import Skeleton from './common/Skeleton';
@@ -56,56 +61,74 @@ export const PokeModal = ({
   onPoke,
   onNotifyLater,
   onMessage,
+  onAvatarPress,
   pokeLockedSeconds = 0,
 }) => {
-  const { width } = useWindowDimensions();
+  const { width, height: screenH } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const s = useMemo(() => createTimerFriendModalStyles(normalize), [normalize]);
+  const sheetTranslateY = useRef(new Animated.Value(screenH)).current;
+
+  useEffect(() => {
+    if (!visible || !friend) return undefined;
+    sheetTranslateY.setValue(screenH);
+    const anim = Animated.timing(sheetTranslateY, {
+      toValue: 0,
+      duration: 280,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    });
+    anim.start();
+    return () => anim.stop();
+  }, [visible, friend, screenH, sheetTranslateY]);
 
   if (!visible || !friend) return null;
+  const avatarUri = pickAvatarUrl(friend);
   const isStudying = friend.isActive === true;
 
   return (
-    <Modal transparent animationType="fade" onRequestClose={onClose}>
+    <Modal transparent animationType="none" statusBarTranslucent navigationBarTranslucent onRequestClose={onClose}>
+      <View style={{ width: Dimensions.get('screen').width, height: Dimensions.get('screen').height }}>
       <TouchableOpacity
         style={s.pokeOverlay}
         onPress={onClose}
         activeOpacity={1}
       />
-      <View style={s.pokeWrapper}>
-        <View style={s.pokeOutsideDescWrap}>
-          {isStudying ? (
-            <Text style={s.pokeOutsideDesc}>
-              <Text style={s.pokeOutsideDescRest}>
+      <Animated.View
+        style={[s.pokeWrapper, { transform: [{ translateY: sheetTranslateY }] }]}
+      >
+        {isStudying || pokeLockedSeconds > 0 ? (
+          <View style={s.pokeOutsideDescWrap}>
+            {isStudying ? (
+              <Text style={s.pokeOutsideDesc}>
                 공부가 끝나면 기다렸다고 알림을 보낼게요
               </Text>
-            </Text>
-          ) : pokeLockedSeconds > 0 ? (
-            <Text style={s.pokeOutsideDesc}>
-              {`${pokeLockedSeconds}초 후 다시 보낼 수 있어요`}
-            </Text>
-          ) : (
-            <Text style={s.pokeOutsideDesc}>
-              <Text style={s.pokeOutsideDescHighlight}>쿡 찌르기</Text>
-              <Text style={s.pokeOutsideDescRest}>
-                로 공부하자고 알림을 보내보세요!
+            ) : (
+              <Text style={s.pokeOutsideDesc}>
+                {`${pokeLockedSeconds}초 후 다시 보낼 수 있어요`}
               </Text>
-            </Text>
-          )}
-        </View>
+            )}
+          </View>
+        ) : null}
         <View style={s.pokePopup}>
-          {/* 친구 정보 */}
-          <View style={s.pokeFriendRow}>
+          <Pressable
+            onPress={avatarUri ? onAvatarPress : undefined}
+            disabled={!avatarUri}
+            style={s.pokeFriendRow}
+            accessibilityLabel={
+              avatarUri ? '프로필 사진 크게 보기' : undefined
+            }
+          >
             <View style={s.pokeAvatar}>
-              <ProfileIcon
-                width={normalize(45)}
-                height={normalize(45)}
-                color={getProfileInnerColor(
+              <UserAvatar
+                uri={avatarUri}
+                size={normalize(45)}
+                colorId={
                   friend.colorId ??
-                    friend.profileColorId ??
-                    friend.profile_color_id ??
-                    friend.colorIndex,
-                )}
+                  friend.profileColorId ??
+                  friend.profile_color_id ??
+                  friend.colorIndex
+                }
               />
               {isStudying ? (
                 <View style={s.pokeStudyingBadge} />
@@ -113,7 +136,7 @@ export const PokeModal = ({
                 <View style={s.pokeIdleBadge} />
               )}
             </View>
-            <View>
+            <View style={s.pokeFriendTextBox}>
               <View style={s.pokeFriendNameRow}>
                 <Text style={s.pokeFriendName}>{friend.name}</Text>
                 {friend.username ? (
@@ -124,60 +147,57 @@ export const PokeModal = ({
                 {isStudying ? '공부 중' : '쉬는 중'}
               </Text>
             </View>
-          </View>
-          {/* 상태별 분기 */}
-          {isStudying ? (
-            <>
+          </Pressable>
+          <View style={s.pokeActionRow}>
+            {isStudying ? (
               <TouchableOpacity
-                style={s.pokePrimaryBtn}
+                style={s.pokeActionCard}
                 onPress={onNotifyLater}
                 activeOpacity={0.8}
               >
-                <View style={s.pokePrimaryBtnContent}>
+                <View style={s.pokeActionIcon}>
                   <Ionicons
                     name="notifications"
-                    style={[
-                      s.pokeNotificationBtnIcon,
-                      { color: colors.primary },
-                    ]}
+                    size={normalize(22)}
+                    color={colors.primaryDark}
                   />
-                  <Text style={s.pokeInfoTitle}>기다림 알림 보내기</Text>
                 </View>
+                <Text style={s.pokeActionCardText}>기다림 알림</Text>
               </TouchableOpacity>
-            </>
-          ) : (
-            <>
+            ) : (
               <TouchableOpacity
-                style={[
-                  s.pokeActionBtn,
-                  pokeLockedSeconds > 0 && s.btnDisabled,
-                ]}
+                style={[s.pokeActionCard, pokeLockedSeconds > 0 && s.btnDisabled]}
                 onPress={onPoke}
                 activeOpacity={0.8}
                 disabled={pokeLockedSeconds > 0}
               >
-                <View style={s.pokeActionBtnContent}>
+                <View style={s.pokeActionIcon}>
                   <MaterialCommunityIcons
                     name="hand-pointing-right"
-                    style={s.pokeInfoEmoji}
+                    size={normalize(22)}
+                    color={colors.primaryDark}
                   />
-                  <Text style={s.pokeActionBtnText}>쿡 찌르기</Text>
                 </View>
+                <Text style={s.pokeActionCardText}>쿡 찌르기</Text>
               </TouchableOpacity>
-            </>
-          )}
-
-          <TouchableOpacity
-            style={s.pokeMessageActionBtn}
-            onPress={() => onMessage?.()}
-            activeOpacity={0.8}
-          >
-            <View style={s.pokeMessageActionBtnContent}>
-              <Ionicons name="chatbubble" style={s.pokeMessageBtnIcon} />
-              <Text style={s.pokeMessageActionBtnText}>메시지 보내기</Text>
-            </View>
-          </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={s.pokeMessageCard}
+              onPress={() => onMessage?.()}
+              activeOpacity={0.8}
+            >
+              <View style={s.pokeMessageIcon}>
+                <Ionicons
+                  name="chatbubble-ellipses"
+                  size={normalize(22)}
+                  color={colors.text}
+                />
+              </View>
+              <Text style={s.pokeMessageCardText}>메시지 보내기</Text>
+            </TouchableOpacity>
+          </View>
         </View>
+      </Animated.View>
       </View>
     </Modal>
   );
@@ -192,6 +212,7 @@ export const FriendPokeController = ({ visible, friend, onClose }) => {
   const { showToast } = useToast();
   const [cooldownByUserId, setCooldownByUserId] = useState({});
   const [nowMs, setNowMs] = useState(Date.now());
+  const [viewerUri, setViewerUri] = useState(null);
   const activeFriendId = friend?.id != null ? String(friend.id) : null;
   const pokeLockedSeconds = activeFriendId
     ? Math.max(
@@ -214,11 +235,12 @@ export const FriendPokeController = ({ visible, friend, onClose }) => {
   });
   const navigation = useNavigation();
   useEffect(() => {
+    if (!visible) return undefined;
     const timer = setInterval(() => {
       setNowMs(Date.now());
     }, 500);
     return () => clearInterval(timer);
-  }, []);
+  }, [visible]);
 
   const pushToast = (senderName, body) => {
     const s = String(senderName || '').trim();
@@ -234,6 +256,7 @@ export const FriendPokeController = ({ visible, friend, onClose }) => {
   };
 
   const handleClose = () => {
+    setViewerUri(null);
     onClose?.();
   };
 
@@ -286,16 +309,33 @@ export const FriendPokeController = ({ visible, friend, onClose }) => {
     handleClose();
   };
 
+  const avatarUri = pickAvatarUrl(friend);
+
+  const handleAvatarPress = () => {
+    if (!avatarUri) return;
+    setViewerUri(avatarUri);
+  };
+
+  const handleViewerClose = () => setViewerUri(null);
+
   return (
-    <PokeModal
-      visible={visible}
-      friend={friend}
-      onClose={handleClose}
-      onPoke={handlePoke}
-      onNotifyLater={handleNotifyLater}
-      onMessage={handleMessage}
-      pokeLockedSeconds={pokeLockedSeconds}
-    />
+    <>
+      <PokeModal
+        visible={visible}
+        friend={friend}
+        onClose={handleClose}
+        onPoke={handlePoke}
+        onNotifyLater={handleNotifyLater}
+        onMessage={handleMessage}
+        onAvatarPress={handleAvatarPress}
+        pokeLockedSeconds={pokeLockedSeconds}
+      />
+      <ImageViewer
+        visible={Boolean(viewerUri)}
+        uri={viewerUri}
+        onClose={handleViewerClose}
+      />
+    </>
   );
 };
 
@@ -306,6 +346,20 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
   const normalize = useMemo(() => getNormalize(width), [width]);
   const s = useMemo(() => createTimerFriendModalStyles(normalize), [normalize]);
   const translateY = useSharedValue(0);
+  const fade = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!visible) return undefined;
+    fade.setValue(0);
+    const anim = Animated.timing(fade, {
+      toValue: 1,
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    });
+    anim.start();
+    return () => anim.stop();
+  }, [visible, fade]);
 
   useKeyboardHandler(
     {
@@ -341,7 +395,14 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
 
   if (!visible) return null;
   return (
-    <Modal transparent animationType="fade" onRequestClose={onClose}>
+    <Modal transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
+      <Animated.View
+        style={{
+          width: Dimensions.get('screen').width,
+          height: Dimensions.get('screen').height,
+          opacity: fade,
+        }}
+      >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={{ flex: 1 }}>
           <TouchableOpacity
@@ -357,12 +418,12 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
                 <Ionicons
                   name="search-outline"
                   size={normalize(18)}
-                  color={colors.textSecondary}
+                  color={colors.textLight4}
                 />
                 <TextInput
                   style={s.addFriendInput}
                   placeholder="@아이디 입력"
-                  placeholderTextColor={colors.textLight20}
+                  placeholderTextColor={colors.textLight2}
                   value={query}
                   onChangeText={setQuery}
                   autoFocus
@@ -372,7 +433,7 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
                     <Ionicons
                       name="close-circle"
                       size={normalize(18)}
-                      color={colors.textLight20}
+                      color={colors.textLight2}
                     />
                   </TouchableOpacity>
                 )}
@@ -390,7 +451,7 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
                 <FontAwesome5
                   name="user-plus"
                   size={normalize(16)}
-                  color={colors.textWhite}
+                  color={colors.white}
                   style={s.addFriendPrimaryBtnIcon}
                 />
                 <Text style={s.addFriendPrimaryBtnText}>추가하기</Text>
@@ -399,6 +460,7 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
           </Reanimated.View>
         </View>
       </TouchableWithoutFeedback>
+      </Animated.View>
     </Modal>
   );
 };
@@ -447,40 +509,41 @@ export const FriendStoryBar = memo(function FriendStoryBar({
       name={T.TIMER_FRIEND_BAR}
       style={[styles.friendStoryRow, debugFriendStoryBorder('#FF3B30')]}
     >
+      <TouchableOpacity
+        style={[
+          styles.friendStoryAddCircleWrap,
+          debugFriendStoryBorder('#FFCC00'),
+        ]}
+        onPress={onAddFriendPress}
+        activeOpacity={0.8}
+        disabled={loading}
+      >
+        <View
+          style={[
+            styles.friendStoryAddCircle,
+            debugFriendStoryBorder('#34C759'),
+          ]}
+        >
+          <Ionicons name="add" size={normalize(25)} color={colors.primary} />
+        </View>
+        <Text
+          style={[
+            styles.friendStoryAddLabel,
+            debugFriendStoryBorder('#30B0C7'),
+          ]}
+        >
+          친구 추가
+        </Text>
+      </TouchableOpacity>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        style={styles.friendStoryScrollView}
         contentContainerStyle={[
           styles.friendStoryScroll,
           debugFriendStoryBorder('#FF9500'),
         ]}
       >
-        <TouchableOpacity
-          style={[
-            styles.friendStoryAddCircleWrap,
-            debugFriendStoryBorder('#FFCC00'),
-          ]}
-          onPress={onAddFriendPress}
-          activeOpacity={0.8}
-          disabled={loading}
-        >
-          <View
-            style={[
-              styles.friendStoryAddCircle,
-              debugFriendStoryBorder('#34C759'),
-            ]}
-          >
-            <Ionicons name="add" size={normalize(28)} color={colors.primary} />
-          </View>
-          <Text
-            style={[
-              styles.friendStoryAddLabel,
-              debugFriendStoryBorder('#30B0C7'),
-            ]}
-          >
-            친구 추가
-          </Text>
-        </TouchableOpacity>
 
         {loading
           ? [0, 1, 2].map((i) => (
@@ -489,9 +552,9 @@ export const FriendStoryBar = memo(function FriendStoryBar({
                 style={styles.friendStoryCircleWrap}
               >
                 <Skeleton
-                  width={normalize(56)}
-                  height={normalize(56)}
-                  borderRadius={normalize(28)}
+                  width={normalize(50)}
+                  height={normalize(50)}
+                  borderRadius={normalize(25)}
                 />
                 <Skeleton
                   width={normalize(40)}
@@ -505,12 +568,6 @@ export const FriendStoryBar = memo(function FriendStoryBar({
           const isSuggestion = Boolean(friend.isSuggestion);
           const isActive =
             !isSuggestion && studyingFriends[friend.id] === true;
-          const iconColor = getProfileInnerColor(
-            friend.colorId ??
-              friend.profileColorId ??
-              friend.profile_color_id ??
-              friend.colorIndex,
-          );
           return (
             <TouchableOpacity
               key={
@@ -531,29 +588,35 @@ export const FriendStoryBar = memo(function FriendStoryBar({
                   debugFriendStoryBorder('#5E5CE6'),
                 ]}
               >
-                <ProfileIcon
-                  width={normalize(56)}
-                  height={normalize(56)}
-                  color={iconColor}
+                <UserAvatar
+                  uri={pickAvatarUrl(friend)}
+                  size={normalize(50)}
+                  colorId={
+                    friend.colorId ??
+                      friend.profileColorId ??
+                      friend.profile_color_id ??
+                      friend.colorIndex
+                  }
                 />
                 {isSuggestion ? (
                   <View
                     style={[
-                      styles.friendStatusDotOnCircle,
+                      styles.friendSuggestDotOnCircle,
                       styles.friendSuggestBadge,
                       debugFriendStoryBorder('#BF5AF2'),
                     ]}
                   >
                     <Ionicons
                       name="person-add"
-                      size={normalize(9)}
-                      color={colors.textWhite}
+                      size={normalize(10)}
+                      color={colors.white}
                     />
                   </View>
                 ) : (
                   <View
                     style={[
                       styles.friendStatusDotOnCircle,
+                      styles.friendStatusDotOnCircleMark,
                       isActive
                         ? styles.friendStatusDotActive
                         : styles.friendStatusDotInactive,

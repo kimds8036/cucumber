@@ -34,6 +34,7 @@ import {
   TIMER_RUNNING_AUTOSAVE_INTERVAL_MS,
   buildSnapshotCompleteSessions,
   dateFromDayKey,
+  getOpenSession,
   getOpenSessionStartedAtMs,
   getPayloadSignature,
   getPersistPayloadSignature,
@@ -43,6 +44,28 @@ import {
   normalizeDayPayload,
   sessionToDerivedTimelineSeconds,
 } from './timerHelpers';
+import {
+  getTimerSettings,
+  timerSettingsToPomodoroConfig,
+  updateTimerSettings,
+} from './timerSettingsStorage';
+import {
+  getPomodoroView,
+  pomodoroPause,
+  pomodoroReset,
+  pomodoroResume,
+  pomodoroSkip,
+  pomodoroStart,
+  subscribePomodoro,
+} from '../../../utils/pomodoroRuntimeStore';
+import {
+  getPhaseEndNotice,
+  publishPhaseEndNotice,
+  subscribePhaseEndNotice,
+} from './phaseEndNoticeStore';
+import { playPhaseEndSound, vibratePhaseEnd } from './phaseEndCue';
+import { registerPomodoroRoomActions } from './pomodoroRoomBridge';
+import { appAlert } from '../../../utils/appAlert';
 
 export function useTimerDay({
   isGuidePreview,
@@ -55,6 +78,7 @@ export function useTimerDay({
   const [sessions, setSessions] = useState([]);
   const [activeSubjectId, setActiveSubjectId] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [pomoClockOn, setPomoClockOn] = useState(false);
   const [totalElapsedMs, setTotalElapsedMs] = useState(0);
   const [liveElapsedResyncAt, setLiveElapsedResyncAt] = useState(0);
 
@@ -109,8 +133,10 @@ export function useTimerDay({
       totalElapsedMs,
       subjects,
       tasks,
+      activeSubjectId,
+      isViewingToday: selectedDayKey === todayKey,
     };
-  }, [timerDayKey, sessions, totalElapsedMs, subjects, tasks]);
+  }, [timerDayKey, sessions, totalElapsedMs, subjects, tasks, activeSubjectId, selectedDayKey, todayKey]);
 
   const persistTimerSnapshot = useCallback(
     (reason, override = null) => {
@@ -503,20 +529,161 @@ export function useTimerDay({
       return next;
     });
 
-  const pauseTimer = useCallback(() => {
-    if (!isRunning) return;
-    endCurrentSession();
-    closeOpenSession(activeSubjectId);
+  const pomoOnToday = () => {
+    const snap = latestSnapshotRef.current;
+    return getTimerSettings().pomodoroOn === true && snap?.isViewingToday === true;
+  };
+
+  const writeSnapshot = (patch) => {
+    latestSnapshotRef.current = { ...latestSnapshotRef.current, ...patch };
+  };
+
+  const subjectMeta = (subjectId) => {
+    if (subjectId == null) return { subjectName: null, subjectColor: null };
+    const found = (latestSnapshotRef.current?.subjects || []).find(
+      (s) => s.id === subjectId,
+    );
+    return {
+      subjectName: found?.name ?? null,
+      subjectColor: found?.color ?? null,
+    };
+  };
+
+  const finishOpenInterval = (countAsStudy, options = {}) => {
+    const keepPresence = options.keepPresence === true;
+    const snap = latestSnapshotRef.current;
+    const sessionsNow = snap?.sessions ?? [];
+    const open = getOpenSession(sessionsNow);
+    if (!open) {
+      setIsRunning(false);
+      if (!keepPresence) setPomoClockOn(false);
+      return;
+    }
+    const endedAtMs = Date.now();
+    const nextSessions = sessionsNow.map((session) =>
+      session === open || (session.endedAtMs == null && session.startedAtMs === open.startedAtMs)
+        ? { ...session, endedAtMs }
+        : session,
+    );
+    const addMs =
+      countAsStudy && open.kind !== 'break'
+        ? Math.max(0, endedAtMs - Number(open.startedAtMs || endedAtMs))
+        : 0;
+    const nextTotal = (snap.totalElapsedMs || 0) + addMs;
+    writeSnapshot({ sessions: nextSessions, totalElapsedMs: nextTotal });
+    setSessions(nextSessions);
+    if (addMs > 0) setTotalElapsedMs(nextTotal);
     setIsRunning(false);
+    if (!keepPresence) setPomoClockOn(false);
+    requestImmediatePersist('pomo-close');
+    if (!keepPresence) emitTimerStatus('idle');
+  };
+
+  const openPomoInterval = (phase, subjectId) => {
+    const kind = phase === 'focus' ? 'study' : 'break';
+    const meta = subjectMeta(subjectId);
+    const startWall = Date.now();
+    const nextSessions = [
+      ...(latestSnapshotRef.current?.sessions ?? []),
+      {
+        subjectId: subjectId ?? null,
+        subjectName: meta.subjectName,
+        subjectColor: meta.subjectColor,
+        kind,
+        startedAtMs: startWall,
+        endedAtMs: null,
+      },
+    ];
+    writeSnapshot({
+      sessions: nextSessions,
+      activeSubjectId: subjectId ?? null,
+    });
+    setActiveSubjectId(subjectId ?? null);
+    setSessions(nextSessions);
+    setIsRunning(kind === 'study');
+    setPomoClockOn(true);
+    if (kind === 'study') {
+      emitTimerStatus('studying', {
+        dayKey: latestSnapshotRef.current?.timerDayKey ?? getTimerDayKey(new Date()),
+        subjectId: subjectId ?? null,
+        subjectName: meta.subjectName,
+        startSeconds: normalizeClockSeconds(getSecondsFromSixAM(new Date()), 0),
+      });
+    }
+    requestImmediatePersist('pomo-open');
+  };
+
+  const dropOpenInterval = () => {
+    const sessionsNow = latestSnapshotRef.current?.sessions ?? [];
+    const nextSessions = sessionsNow.filter((session) => session.endedAtMs != null);
+    writeSnapshot({ sessions: nextSessions });
+    setSessions(nextSessions);
+    setIsRunning(false);
+    setPomoClockOn(false);
+    requestImmediatePersist('pomo-reset');
+    emitTimerStatus('idle');
+  };
+
+  const pausePomoClock = () => {
+    const view = getPomodoroView();
+    if (view.status !== 'running') return;
+    const phase = view.phase;
+    pomodoroPause();
+    finishOpenInterval(phase === 'focus');
+  };
+
+  const resumeOrStartPomo = (subjectId) => {
+    const open = getOpenSession(latestSnapshotRef.current?.sessions ?? []);
+    if (open) finishOpenInterval(open.kind !== 'break');
+    const view = getPomodoroView();
+    if (view.status === 'paused') pomodoroResume();
+    else if (view.status !== 'running') pomodoroStart();
+    const next = getPomodoroView();
+    openPomoInterval(next.phase, subjectId);
+  };
+
+  const stopOpenStudyRecord = () => {
+    const open = getOpenSession(latestSnapshotRef.current?.sessions ?? []);
+    if (!open && !isRunningRef.current) return false;
+    if (open && open.kind !== 'break') endCurrentSession();
+    closeOpenSession(open?.subjectId ?? latestSnapshotRef.current?.activeSubjectId ?? null);
+    setIsRunning(false);
+    setPomoClockOn(false);
     requestImmediatePersist('pause');
     emitTimerStatus('idle');
-  }, [isRunning, activeSubjectId, requestImmediatePersist, emitTimerStatus]);
+    return true;
+  };
+
+  const pauseTimer = useCallback(() => {
+    const view = getPomodoroView();
+    if (pomoOnToday() && view.status === 'running') {
+      pausePomoClock();
+      return;
+    }
+    stopOpenStudyRecord();
+  }, [requestImmediatePersist, emitTimerStatus]);
 
   const startForSubject = (subjectId) => {
+    if (pomoOnToday()) {
+      const view = getPomodoroView();
+      const currentId = latestSnapshotRef.current?.activeSubjectId;
+      if (view.status === 'running' && currentId === subjectId) {
+        pausePomoClock();
+        return;
+      }
+      if (view.status === 'running') {
+        finishOpenInterval(view.phase === 'focus');
+        openPomoInterval(view.phase, subjectId);
+        return;
+      }
+      resumeOrStartPomo(subjectId);
+      return;
+    }
     if (isRunning && activeSubjectId === subjectId) return;
-    if (isRunning) {
-      endCurrentSession();
-      closeOpenSession(activeSubjectId);
+    const openBeforeStart = getOpenSession(latestSnapshotRef.current?.sessions ?? []);
+    if (isRunning || openBeforeStart) {
+      if (!openBeforeStart || openBeforeStart.kind !== 'break') endCurrentSession();
+      closeOpenSession(openBeforeStart?.subjectId ?? activeSubjectId);
       requestImmediatePersist('subject-switch');
     }
     const selectedSubject = subjects.find((s) => s.id === subjectId);
@@ -550,9 +717,10 @@ export function useTimerDay({
 
   const startTimerTop = () => {
     if (isRunning && activeSubjectId === null) return;
-    if (isRunning) {
-      endCurrentSession();
-      closeOpenSession(activeSubjectId);
+    const open = getOpenSession(latestSnapshotRef.current?.sessions ?? []);
+    if (isRunning || open) {
+      if (!open || open.kind !== 'break') endCurrentSession();
+      closeOpenSession(open?.subjectId ?? activeSubjectId);
       requestImmediatePersist('subject-switch');
     }
     const nowSecForFriends = normalizeClockSeconds(
@@ -581,7 +749,165 @@ export function useTimerDay({
     requestImmediatePersist('timer-start');
   };
 
-  const toggleTimer = () => (isRunning ? pauseTimer() : startTimerTop());
+  const pomoPrimary = () => {
+    const view = getPomodoroView();
+    const subjectId = latestSnapshotRef.current?.activeSubjectId ?? null;
+    if (view.status === 'running') {
+      pausePomoClock();
+      return;
+    }
+    resumeOrStartPomo(subjectId);
+  };
+
+  const pomoSkip = () => {
+    pomodoroSkip();
+  };
+
+  const pomoResetClock = () => {
+    dropOpenInterval();
+    pomodoroReset(timerSettingsToPomodoroConfig(getTimerSettings()));
+  };
+
+  const announceStudying = (subjectId) => {
+    const meta = subjectMeta(subjectId);
+    emitTimerStatus('studying', {
+      dayKey: latestSnapshotRef.current?.timerDayKey ?? getTimerDayKey(new Date()),
+      subjectId: subjectId ?? null,
+      subjectName: meta.subjectName,
+      startSeconds: normalizeClockSeconds(getSecondsFromSixAM(new Date()), 0),
+    });
+  };
+
+  const setPomodoroMode = (nextOn) => {
+    const enable = nextOn === true;
+    if (getTimerSettings().pomodoroOn === enable) return;
+    updateTimerSettings({ pomodoroOn: enable });
+    if (enable) {
+      const cue = getTimerSettings().phaseEndCue || 'popup';
+      if (cue === 'sound' || cue === 'vibrate') {
+        const modeLabel = cue === 'sound' ? '소리' : '진동';
+        appAlert.alert(
+          '사용 안내',
+          `뽀모도로로 전환했어요.\n지금은 ${modeLabel} 모드예요.\n독서실이나 공공장소에서는 주의해 주세요.`,
+          undefined,
+          { emphasis: ['뽀모도로', modeLabel] },
+        );
+      } else if (cue === 'none') {
+        appAlert.alert(
+          '사용 안내',
+          '뽀모도로로 전환했어요.\n끝나면 따로 알리지 않아요.',
+          undefined,
+          { emphasis: ['뽀모도로'] },
+        );
+      } else {
+        appAlert.alert(
+          '사용 안내',
+          '뽀모도로로 전환했어요.\n끝나면 팝업으로 알려줘요.',
+          undefined,
+          { emphasis: ['뽀모도로', '팝업'] },
+        );
+      }
+    }
+
+    const open = getOpenSession(latestSnapshotRef.current?.sessions ?? []);
+    const view = getPomodoroView();
+    const studyOpen = Boolean(
+      isRunningRef.current && open && open.kind !== 'break',
+    );
+    const subjectId = open?.subjectId ?? latestSnapshotRef.current?.activeSubjectId ?? null;
+
+    if (enable) {
+      if (!studyOpen) return;
+      const config = timerSettingsToPomodoroConfig(getTimerSettings());
+      pomodoroReset(config);
+      pomodoroStart();
+      setPomoClockOn(true);
+      if (subjectId !== latestSnapshotRef.current?.activeSubjectId) {
+        setActiveSubjectId(subjectId ?? null);
+        writeSnapshot({ activeSubjectId: subjectId ?? null });
+      }
+      announceStudying(subjectId);
+      return;
+    }
+
+    if (view.phase !== 'focus' && (view.status === 'running' || open?.kind === 'break')) {
+      if (view.status === 'running') pomodoroPause();
+      finishOpenInterval(false);
+      pomodoroReset(timerSettingsToPomodoroConfig(getTimerSettings()));
+      return;
+    }
+    if (view.status === 'running') pomodoroPause();
+    if (studyOpen) {
+      setPomoClockOn(false);
+      return;
+    }
+    setPomoClockOn(false);
+  };
+
+  const [phaseEndNotice, setPhaseEndNotice] = useState(() => getPhaseEndNotice());
+  const dismissPhaseEndNotice = useCallback(() => {
+    publishPhaseEndNotice(null);
+  }, []);
+
+  useEffect(() => subscribePhaseEndNotice(setPhaseEndNotice), []);
+
+  const pomoBridgeRef = useRef({});
+  pomoBridgeRef.current = { pomoOnToday, finishOpenInterval, openPomoInterval };
+
+  useEffect(
+    () =>
+      subscribePomodoro(async (view, events) => {
+        const bridge = pomoBridgeRef.current;
+        if (!bridge.pomoOnToday?.()) return;
+        const ended = (events || []).find(
+          (event) =>
+            event.type === 'phase_complete' || event.type === 'phase_skip',
+        );
+        if (!ended) return;
+        if (ended.type === 'phase_complete') {
+          const cue = getTimerSettings().phaseEndCue || 'popup';
+          const notice = {
+            endedPhase: ended.phase,
+            nextPhase: view.phase,
+          };
+          if (cue === 'vibrate') vibratePhaseEnd();
+          else if (cue === 'sound') playPhaseEndSound(notice);
+          else if (cue !== 'none') publishPhaseEndNotice(notice);
+        }
+        // 자동 시작이 켜져 다음 단계가 바로 돌면 방에 남긴다.
+        // 꺼져 있으면 알림 뒤에 출석을 끊고 스터디룸에서 나간다.
+        const stayInRoom = view.status === 'running';
+        bridge.finishOpenInterval(ended.phase === 'focus', {
+          keepPresence: stayInRoom,
+        });
+        if (stayInRoom) {
+          bridge.openPomoInterval(
+            view.phase,
+            latestSnapshotRef.current?.activeSubjectId ?? null,
+          );
+        }
+      }),
+    [],
+  );
+
+  const toggleTimer = () => {
+    if (pomoOnToday()) {
+      pomoPrimary();
+      return;
+    }
+    return isRunning ? pauseTimer() : startTimerTop();
+  };
+
+  const pomoRoomActionsRef = useRef({ toggle: toggleTimer, skip: pomoSkip });
+  pomoRoomActionsRef.current.toggle = toggleTimer;
+  pomoRoomActionsRef.current.skip = pomoSkip;
+
+  useEffect(() => {
+    return registerPomodoroRoomActions({
+      toggle: () => pomoRoomActionsRef.current.toggle(),
+      skip: () => pomoRoomActionsRef.current.skip(),
+    });
+  }, []);
 
   const reloadTodayFromServer = useCallback(async () => {
     const dayKey = timerDayKey ?? getTimerDayKey(new Date());
@@ -723,19 +1049,25 @@ export function useTimerDay({
   );
 
   useEffect(() => {
-    if (!isFocused || !isRunning) return undefined;
-    emitTimerStatus('heartbeat');
-    const heartbeatInterval = setInterval(() => {
+    if (!isRunning && !pomoClockOn) return undefined;
+    const ping = () => {
+      api.post('/api/timer/heartbeat').catch((error) => {
+        console.warn('[Timer] heartbeat 실패', error?.message || error);
+      });
       emitTimerStatus('heartbeat');
-    }, TIMER_HEARTBEAT_MS);
+    };
+    ping();
+    const heartbeatInterval = setInterval(ping, TIMER_HEARTBEAT_MS);
     return () => {
       clearInterval(heartbeatInterval);
     };
-  }, [isRunning, isFocused, emitTimerStatus]);
+  }, [isRunning, pomoClockOn, emitTimerStatus]);
 
   useEffect(() => {
     const tag = 'youth-paper-timer';
-    if (!isFocused || !isRunning) {
+    // 뽀모도로 휴식은 isRunning 이 꺼져 있다. 시계가 돌아가는 동안은 화면을 유지한다.
+    const clockOn = isRunning || pomoClockOn;
+    if (!isFocused || !clockOn) {
       deactivateKeepAwake(tag);
       return undefined;
     }
@@ -743,7 +1075,7 @@ export function useTimerDay({
     return () => {
       deactivateKeepAwake(tag);
     };
-  }, [isRunning, isFocused]);
+  }, [isRunning, pomoClockOn, isFocused]);
 
   useEffect(() => {
     prevIsRunningRef.current = isRunning;
@@ -987,6 +1319,7 @@ export function useTimerDay({
     subjects,
     tasks,
     isRunning,
+    pomoClockOn,
     activeSubjectId,
     totalElapsedMs,
     liveElapsedResyncAt,
@@ -1021,6 +1354,11 @@ export function useTimerDay({
     startForSubject,
     pauseTimer,
     toggleTimer,
+    setPomodoroMode,
+    pomoSkip,
+    pomoResetClock,
+    phaseEndNotice,
+    dismissPhaseEndNotice,
     goPrevDay,
     goNextDay,
     toggleSubjectCollapsed,
