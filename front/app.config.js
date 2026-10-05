@@ -96,6 +96,14 @@ export default ({ config }) => ({
           sounds: ['./assets/music.mp3'],
         },
       ],
+      [
+        'expo-audio',
+        {
+          recordAudioAndroid: false,
+          enableBackgroundRecording: false,
+          enableBackgroundPlayback: false,
+        },
+      ],
       'expo-font',
       'expo-apple-authentication',
       '@react-native-community/datetimepicker',

@@ -26,6 +26,13 @@ const POMO_PHASE_LABEL = {
   long_break: '긴 휴식',
 };
 
+const PHASE_CUE_ICON = {
+  sound: { name: 'volume-high', label: '종료 알림 소리' },
+  vibrate: { name: 'vibrate', label: '종료 알림 진동' },
+  popup: { name: 'message-text-outline', label: '종료 알림 팝업' },
+  none: { name: 'bell-off-outline', label: '종료 알림 없음' },
+};
+
 /** 스타일 키가 없는 인라인 요소용 — styles/timer.js의 DEBUG_TIMER_CARD_OUTLINE으로 켜고 끈다 */
 const cdb = (color) =>
   DEBUG_TIMER_CARD_OUTLINE ? { borderWidth: 1, borderColor: color } : null;
@@ -323,6 +330,23 @@ export default function TimerCard({
                   color={colors.textLight3}
                 />
               </TouchableOpacity>
+              <View
+                style={styles.timerCardIconBtn}
+                accessibilityRole="image"
+                accessibilityLabel={
+                  (PHASE_CUE_ICON[settings.phaseEndCue] || PHASE_CUE_ICON.popup)
+                    .label
+                }
+              >
+                <MaterialCommunityIcons
+                  name={
+                    (PHASE_CUE_ICON[settings.phaseEndCue] || PHASE_CUE_ICON.popup)
+                      .name
+                  }
+                  size={normalize(16)}
+                  color={colors.primaryDark}
+                />
+              </View>
               <TouchableOpacity
                 style={styles.timerCardIconBtn}
                 onPress={onOpenSettings}

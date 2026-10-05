@@ -10,7 +10,9 @@ export function configureTimerNotificationHandler() {
       const kind = notification?.request?.content?.data?.kind;
       const isPhaseCue = kind === 'pomodoro-phase-cue';
       const inBackground = AppState.currentState !== 'active';
-      const show = isPhaseCue || inBackground;
+      // 앱을 보고 있을 때 배너를 띄우면 안드로이드가 채널 소리를 내지 않는다.
+      // 배너 없이 shouldPlaySound 만 켜면 res/raw/music.mp3 를 바로 재생한다.
+      const show = inBackground;
       return {
         shouldShowAlert: show,
         shouldPlaySound: isPhaseCue,

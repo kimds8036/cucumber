@@ -602,6 +602,26 @@ export default function TimerAniLab({ navigation }) {
     if (navigation?.canGoBack?.()) navigation.goBack();
     else shell?.navigation?.goBack?.();
   };
+  const goBackRef = useRef(goBack);
+  goBackRef.current = goBack;
+
+  // 자동 시작 없이 집중·휴식이 끝나면 빈 교실에 두지 않고, 안내 뒤 화면을 닫는다.
+  useEffect(() => {
+    return subscribePomodoro((view, events) => {
+      if (!isFocused) return;
+      const ended = (events || []).find(
+        (event) => event.type === 'phase_complete' || event.type === 'phase_skip',
+      );
+      if (!ended || view.status === 'running') return;
+      publishPhaseEndNotice(null);
+      const focusEnded = ended.phase === 'focus';
+      appAlert.alert(
+        focusEnded ? '집중이 끝났어요' : '휴식이 끝났어요',
+        '다음 사용자를 위해 자리를 비울게요.',
+        [{ text: '확인', onPress: () => goBackRef.current() }],
+      );
+    });
+  }, [isFocused]);
 
   const { refreshStudyingFriends } = useFriend();
   const { socket, connected: socketConnected } = useSocket();
@@ -639,6 +659,7 @@ export default function TimerAniLab({ navigation }) {
   const [runtime, setRuntime] = useState(() => getTimerRuntimeState());
   const [nowMs, setNowMs] = useState(Date.now());
   const [otherModes, setOtherModes] = useState({});
+  const otherModesRef = useRef(otherModes);
   const [otherStartedAt, setOtherStartedAt] = useState({});
   const [selfMode, setSelfMode] = useState(/** @type {'hidden'|'enter'|'seated'} */ ('hidden'));
   /** key -> seatIndex (신규만 빈자리 랜덤, 기존 유지) */
@@ -658,6 +679,7 @@ export default function TimerAniLab({ navigation }) {
   );
 
   roomPresenceRef.current = roomPresence;
+  otherModesRef.current = otherModes;
   profileTipKeyRef.current = profileTipKey;
   profileTipOpenRef.current = profileTipOpen;
 
@@ -955,10 +977,12 @@ export default function TimerAniLab({ navigation }) {
     (pomoView.status === 'running' || pomoView.status === 'paused') &&
     (pomoView.phase === 'short_break' || pomoView.phase === 'long_break');
 
-  // 타이머 화면은 blur 시 keep-awake 해제 → 스터디룸에서도 실행 중이면 유지
+  const pomoClockRunning = pomoView.status === 'running';
+
+  // 타이머 화면은 blur 시 keep-awake 해제 → 스터디룸에서도 집중·휴식 시계가 돌면 유지
   useEffect(() => {
     const tag = 'youth-paper-study-room';
-    if (!isFocused || !selfRunning) {
+    if (!isFocused || (!selfRunning && !pomoClockRunning)) {
       deactivateKeepAwake(tag);
       return undefined;
     }
@@ -966,7 +990,7 @@ export default function TimerAniLab({ navigation }) {
     return () => {
       deactivateKeepAwake(tag);
     };
-  }, [isFocused, selfRunning]);
+  }, [isFocused, selfRunning, pomoClockRunning]);
 
   const studyingOtherIds = useMemo(
     () =>
@@ -1144,9 +1168,8 @@ export default function TimerAniLab({ navigation }) {
           ? settings.gender
           : randomGender();
       setMe((prev) => ({ ...prev, gender }));
-      const alreadySeated =
-        selfUid != null && initialStudyingSeedRef.current?.has(selfUid);
-      setSelfMode(alreadySeated ? 'seated' : 'enter');
+      // 입장 전에 공부를 시작했어도, 이 화면에 들어오는 본인은 걸어 들어온다.
+      setSelfMode('enter');
     }
   }, [roomReady, studyingBootstrapDone, selfPresent, selfSeat?.index, selfUid]);
 
@@ -1165,7 +1188,9 @@ export default function TimerAniLab({ navigation }) {
       if (!prev[key] || prev[key] === 'hidden' || prev[key] === 'exit') {
         return prev;
       }
-      return { ...prev, [key]: 'exit' };
+      const next = { ...prev, [key]: 'exit' };
+      otherModesRef.current = next;
+      return next;
     });
   }, []);
 
@@ -1194,39 +1219,59 @@ export default function TimerAniLab({ navigation }) {
 
     const seed = initialStudyingSeedRef.current;
     const roomOtherKeys = room.members.filter((k) => k !== me.key);
+    const prevModes = otherModesRef.current;
+    const newcomers = [];
     const keysToHold = [];
+    const keysToExit = [];
 
-    setOtherModes((prev) => {
-      const next = { ...prev };
-
-      roomOtherKeys.forEach((key) => {
-        const uid = key.replace(/^u:/, '');
-        if (roomPresence?.[uid] !== true) return;
-        if (knownOthersRef.current.has(key)) return;
-        knownOthersRef.current.add(key);
-        next[key] = seed.has(uid) ? 'seated' : 'enter';
+    roomOtherKeys.forEach((key) => {
+      const uid = key.replace(/^u:/, '');
+      if (roomPresence?.[uid] !== true) return;
+      if (knownOthersRef.current.has(key)) return;
+      knownOthersRef.current.add(key);
+      newcomers.push({
+        key,
+        mode: seed.has(uid) ? 'seated' : 'enter',
       });
-
-      Object.keys(next).forEach((key) => {
-        if (key === me.key) return;
-        const uid = key.replace(/^u:/, '');
-        const still =
-          roomOtherKeys.includes(key) && roomPresence?.[uid] === true;
-        if (!still && next[key] !== 'hidden' && next[key] !== 'exit') {
-          if (
-            profileTipKeyRef.current === key ||
-            pendingExitKeysRef.current.has(key)
-          ) {
-            keysToHold.push(key);
-            return;
-          }
-          next[key] = 'exit';
-        }
-      });
-
-      return next;
     });
 
+    const seen = new Set([...Object.keys(prevModes), ...newcomers.map((n) => n.key)]);
+    seen.forEach((key) => {
+      if (key === me.key) return;
+      const uid = key.replace(/^u:/, '');
+      const mode = prevModes[key];
+      const still =
+        roomOtherKeys.includes(key) && roomPresence?.[uid] === true;
+      if (still || !mode || mode === 'hidden' || mode === 'exit') return;
+      // 머리 위 프로필 칩이 열려 있으면 접힌 뒤에 퇴장. 칩 키만 남은 경우는 바로 퇴장.
+      const tipOpenOnKey =
+        profileTipOpenRef.current && profileTipKeyRef.current === key;
+      if (tipOpenOnKey || pendingExitKeysRef.current.has(key)) {
+        keysToHold.push(key);
+        return;
+      }
+      keysToExit.push(key);
+    });
+
+    if (newcomers.length || keysToExit.length) {
+      setOtherModes((current) => {
+        const next = { ...current };
+        let changed = false;
+        newcomers.forEach(({ key, mode }) => {
+          if (next[key] && next[key] !== 'hidden') return;
+          next[key] = mode;
+          changed = true;
+        });
+        keysToExit.forEach((key) => {
+          if (!next[key] || next[key] === 'hidden' || next[key] === 'exit') return;
+          next[key] = 'exit';
+          changed = true;
+        });
+        if (!changed) return current;
+        otherModesRef.current = next;
+        return next;
+      });
+    }
     keysToHold.forEach((key) => holdExitUntilTipIn(key));
 
     setOtherStartedAt((prev) => {

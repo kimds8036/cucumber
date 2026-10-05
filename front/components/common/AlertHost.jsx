@@ -4,6 +4,25 @@ import { colors } from '../../styles/colors';
 import AppPopupModal from './AppPopupModal';
 import { appAlert } from '../../utils/appAlert';
 
+function renderEmphasisText(message, words) {
+  const source = String(message ?? '');
+  if (!words.length) return source;
+  const escaped = words.map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const parts = source.split(new RegExp(`(${escaped.join('|')})`, 'g'));
+  return parts.map((part, index) =>
+    words.includes(part) ? (
+      <Text
+        key={`${part}-${index}`}
+        style={{ fontWeight: '700', color: colors.primaryDark }}
+      >
+        {part}
+      </Text>
+    ) : (
+      part
+    ),
+  );
+}
+
 /**
  * Alert.alert / appAlert → 시간표 「저장 완료」와 동일 AppPopupModal 셸.
  * visible만 토글하고, 페이드 동안 카드 내용은 유지한다.
@@ -82,6 +101,9 @@ export default function AlertHost() {
   const noteText = currentAlert?.options?.note
     ? String(currentAlert.options.note)
     : '';
+  const emphasis = Array.isArray(currentAlert?.options?.emphasis)
+    ? currentAlert.options.emphasis.filter((word) => typeof word === 'string' && word)
+    : [];
 
   return (
     <AppPopupModal
@@ -113,7 +135,7 @@ export default function AlertHost() {
             marginBottom: noteText ? 8 : 16,
           }}
         >
-          {currentAlert.message}
+          {renderEmphasisText(currentAlert.message, emphasis)}
         </Text>
       )}
       {!!noteText && (

@@ -104,7 +104,7 @@ export const createTimerStyles = (width, normalize) => {
         minWidth: normalize(100),
         textAlign: 'center',
       },
-      /** 시간 영역 오른쪽 위 아이콘 버튼 (사진 저장·설정) */
+      /** 시간 영역 오른쪽 위 아이콘 (사진 저장·종료 알림 모드·설정) */
       timerCardIconRow: {
         flexDirection: 'row',
         alignItems: 'center',
