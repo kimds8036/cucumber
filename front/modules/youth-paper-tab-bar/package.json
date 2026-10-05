@@ -1,0 +1,10 @@
+{
+  "name": "youth-paper-tab-bar",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "peerDependencies": {
+    "expo": "*",
+    "react": "*",
+    "react-native": "*"
+  }
+}
