@@ -320,7 +320,7 @@ export const createTimerStyles = (width, normalize) => {
       pomoPhaseRow: {
         alignSelf: 'stretch',
         alignItems: 'center',
-        flexDirection: 'column',
+        flexDirection: 'row',
         justifyContent: 'center',
       },
       pomoPhaseChip: {
