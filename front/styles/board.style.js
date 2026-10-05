@@ -869,7 +869,7 @@ export const createDetailStyles = (width, normalize) => {
     detailPollBox: {
       marginBottom: normalize(10),
       padding: normalize(14),
-      backgroundColor: colors.textLight05,
+      backgroundColor: colors.primaryLight2,
       borderRadius: normalize(12),
       gap: normalize(8),
     },
@@ -903,18 +903,23 @@ export const createDetailStyles = (width, normalize) => {
       overflow: 'hidden',
     },
     detailPollOptionSelected: {
-      borderColor: colors.textLight6,
-      backgroundColor: '#D5D0C8',
+      borderColor: colors.primary,
+      backgroundColor: colors.primaryLight2,
     },
-    detailPollFill: {
+    // 떠 있는 뷰의 퍼센트 너비는 칸의 안쪽 여백을 뺀 너비 기준이라, 위치값으로 칸 전체를 덮는 틀 안에서 막대를 그린다.
+    detailPollFillTrack: {
       position: 'absolute',
       left: 0,
+      right: 0,
       top: 0,
       bottom: 0,
-      backgroundColor: '#E7E4DE',
+    },
+    detailPollFill: {
+      height: '100%',
+      backgroundColor: colors.primary,
     },
     detailPollFillMine: {
-      backgroundColor: '#D9D4CC',
+      backgroundColor: colors.primaryLight4,
     },
     detailPollRadio: {
       width: normalize(18),
@@ -925,12 +930,9 @@ export const createDetailStyles = (width, normalize) => {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    detailPollCheckbox: {
-      borderRadius: normalize(4),
-    },
     detailPollMarkOn: {
-      borderColor: colors.textLight5,
-      backgroundColor: colors.textLight5,
+      borderColor: colors.primary,
+      backgroundColor: colors.primary,
     },
     detailPollOptionTextWrap: {
       flex: 1,
@@ -962,7 +964,7 @@ export const createDetailStyles = (width, normalize) => {
       paddingHorizontal: normalize(16),
       paddingVertical: normalize(8),
       borderRadius: normalize(20),
-      backgroundColor: '#E7E4DE',
+      backgroundColor: colors.primary,
     },
     detailPollVoteButtonDisabled: {
       backgroundColor: colors.textLight05,
@@ -970,7 +972,7 @@ export const createDetailStyles = (width, normalize) => {
     detailPollVoteButtonText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
-      color: colors.text,
+      color: colors.white,
       ...metaTextAndroid,
     },
     detailPollVoteButtonTextDisabled: {

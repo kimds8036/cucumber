@@ -4,9 +4,11 @@ import {
   Easing,
   Keyboard,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../styles/colors';
@@ -36,6 +38,7 @@ export default function AppPopupModal({
   onDismissed,
 }) {
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
   const [shown, setShown] = useState(Boolean(visible));
   const opacity = useRef(new Animated.Value(visible ? 1 : 0)).current;
   const animRef = useRef(null);
@@ -120,6 +123,10 @@ export default function AppPopupModal({
         <View
           style={[
             useDefaultContainerWidth ? styles.container : null,
+            // Android Modal은 처음에 내용 영역 크기를 0×0으로 시작해서 퍼센트 너비가 내용 폭으로 줄어든다.
+            useDefaultContainerWidth && Platform.OS === 'android'
+              ? { width: Math.min(windowWidth * 0.86, 420) }
+              : null,
             containerStyle,
           ]}
         >
