@@ -152,7 +152,7 @@ export function pickBannerAsset(placement) {
  * 타이머 배너 우선순위
  * 1. 앱에 직접 요청한 기업 광고 (미도입)
  * 2. 공지 — API 광고가 있으면 게시 후 3일, 없으면 7일
- * 3. 애드몹·API 광고 (미도입)
+ * 3. 애드몹 — 피드 빈 슬롯은 단위 ID가 있을 때 배너 (타이머 하우스는 그대로)
  * 4. 타이머 기본 에셋
  *
  * @param {Array<{ id?: number, title?: string, publishedAt?: string }> | null | undefined} items

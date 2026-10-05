@@ -12,6 +12,7 @@ import {
   ScrollView,
   TextInput,
   Modal,
+  Dimensions,
   Animated,
   Easing,
   useWindowDimensions,
@@ -86,7 +87,8 @@ export const PokeModal = ({
   const isStudying = friend.isActive === true;
 
   return (
-    <Modal transparent animationType="none" onRequestClose={onClose}>
+    <Modal transparent animationType="none" statusBarTranslucent navigationBarTranslucent onRequestClose={onClose}>
+      <View style={{ width: Dimensions.get('screen').width, height: Dimensions.get('screen').height }}>
       <TouchableOpacity
         style={s.pokeOverlay}
         onPress={onClose}
@@ -196,6 +198,7 @@ export const PokeModal = ({
           </View>
         </View>
       </Animated.View>
+      </View>
     </Modal>
   );
 };
@@ -343,6 +346,20 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
   const normalize = useMemo(() => getNormalize(width), [width]);
   const s = useMemo(() => createTimerFriendModalStyles(normalize), [normalize]);
   const translateY = useSharedValue(0);
+  const fade = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!visible) return undefined;
+    fade.setValue(0);
+    const anim = Animated.timing(fade, {
+      toValue: 1,
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    });
+    anim.start();
+    return () => anim.stop();
+  }, [visible, fade]);
 
   useKeyboardHandler(
     {
@@ -378,7 +395,14 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
 
   if (!visible) return null;
   return (
-    <Modal transparent animationType="fade" onRequestClose={onClose}>
+    <Modal transparent animationType="none" statusBarTranslucent onRequestClose={onClose}>
+      <Animated.View
+        style={{
+          width: Dimensions.get('screen').width,
+          height: Dimensions.get('screen').height,
+          opacity: fade,
+        }}
+      >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={{ flex: 1 }}>
           <TouchableOpacity
@@ -436,6 +460,7 @@ export const AddFriendModal = ({ visible, onClose, onAdd }) => {
           </Reanimated.View>
         </View>
       </TouchableWithoutFeedback>
+      </Animated.View>
     </Modal>
   );
 };

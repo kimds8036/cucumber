@@ -64,7 +64,7 @@ export async function listTipsForAdmin({
             created_by_admin_id, updated_by_admin_id, created_at, updated_at
      FROM tips
      WHERE ${where}
-     ORDER BY is_pinned DESC, updated_at DESC, id DESC
+     ORDER BY updated_at DESC, id DESC
      LIMIT ${lim} OFFSET ${off}`,
     params,
   );

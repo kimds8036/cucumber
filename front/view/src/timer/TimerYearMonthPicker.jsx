@@ -5,6 +5,7 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import {
   Modal,
+  Dimensions,
   View,
   Text,
   TouchableOpacity,
@@ -176,10 +177,11 @@ export default function TimerYearMonthPicker({
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType="none"
       onRequestClose={() => dismiss()}
       statusBarTranslucent
     >
+      <View style={{ width: Dimensions.get('screen').width, height: Dimensions.get('screen').height }}>
       <View style={styles.ymOverlay}>
         <Pressable style={styles.ymOverlayTouch} onPress={() => dismiss()} />
       </View>
@@ -221,6 +223,7 @@ export default function TimerYearMonthPicker({
           />
         </View>
       </Animated.View>
+      </View>
     </Modal>
   );
 }

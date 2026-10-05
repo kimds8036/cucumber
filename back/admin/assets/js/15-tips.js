@@ -4,7 +4,6 @@ let tipFilter = 'all';
 let tipDraft = {
   body: '',
   status: 'draft',
-  isPinned: false,
 };
 
 function tipStatusPill(status) {
@@ -41,7 +40,7 @@ async function loadTipsPanel() {
     tipItems = data.items || [];
     if (tipSelectedId && !tipItems.some((item) => item.id === tipSelectedId)) {
       tipSelectedId = null;
-      tipDraft = { body: '', status: 'draft', isPinned: false };
+      tipDraft = { body: '', status: 'draft' };
     }
     if (tipSelectedId) {
       const selected = tipItems.find((item) => item.id === tipSelectedId);
@@ -49,7 +48,6 @@ async function loadTipsPanel() {
         tipDraft = {
           body: selected.body || '',
           status: selected.status || 'draft',
-          isPinned: Boolean(selected.isPinned),
         };
       }
     }
@@ -61,7 +59,7 @@ async function loadTipsPanel() {
 
 function tipNewDraft() {
   tipSelectedId = null;
-  tipDraft = { body: '', status: 'draft', isPinned: false };
+  tipDraft = { body: '', status: 'draft' };
   renderTipsPanel();
 }
 
@@ -73,7 +71,6 @@ async function tipSelect(id) {
   tipDraft = {
     body: item.body || '',
     status: item.status || 'draft',
-    isPinned: Boolean(item.isPinned),
   };
   renderTipsPanel();
 }
@@ -102,15 +99,11 @@ function renderTipsPanel() {
     .map((item) => {
       const active =
         tipSelectedId === item.id ? 'whack-list-item active' : 'whack-list-item';
-      const pin = item.isPinned
-        ? '<span class="pill pill-ok" style="font-size:10px">고정</span>'
-        : '';
       return `
       <button type="button" class="${active}" onclick="tipSelect(${item.id})">
         <div class="whack-list-top">
           <strong>#${item.id}</strong>
           <span class="${tipStatusPill(item.status)}" style="font-size:10px">${tipStatusLabel(item.status)}</span>
-          ${pin}
         </div>
         <div class="whack-list-content">${esc(item.body)}</div>
         <div class="whack-list-meta">${esc(formatTipDate(item.updatedAt || item.createdAt))}</div>
@@ -119,8 +112,6 @@ function renderTipsPanel() {
     .join('');
 
   const editingLabel = tipSelectedId ? `수정 #${tipSelectedId}` : '새 팁 작성';
-  const pinChecked = tipDraft.isPinned ? 'checked' : '';
-  const pinDisabled = tipDraft.status !== 'active' ? 'disabled' : '';
 
   host.innerHTML = `
     <div class="filter-row" style="margin-bottom:12px; gap:8px; display:flex; flex-wrap:wrap; align-items:center">
@@ -143,15 +134,10 @@ function renderTipsPanel() {
           <label>
             <div class="txt-muted" style="margin-bottom:4px">상태</div>
             <select id="tip-status" class="input" style="width:160px"
-              onchange="tipDraft.status=this.value; tipDraft.isPinned = this.value === 'active' ? tipDraft.isPinned : false; renderTipsPanel()">
+              onchange="tipDraft.status=this.value">
               <option value="draft" ${tipDraft.status === 'draft' ? 'selected' : ''}>초안</option>
               <option value="active" ${tipDraft.status === 'active' ? 'selected' : ''}>활성</option>
             </select>
-          </label>
-          <label style="display:flex; align-items:center; gap:8px">
-            <input type="checkbox" id="tip-pinned" ${pinChecked} ${pinDisabled}
-              onchange="tipDraft.isPinned=this.checked" />
-            <span>게시판 상단 고정 (활성 팁 중 1개만)</span>
           </label>
           <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:4px">
             <button type="button" class="btn" onclick="tipSave()">저장</button>
@@ -162,7 +148,7 @@ function renderTipsPanel() {
             }
           </div>
           <p class="txt-muted" style="margin:0; font-size:12px">
-            고정 ON이면 다른 고정은 자동 해제됩니다. 광고가 없을 때 메인 게시판 상단 팁에 노출됩니다.
+            활성 팁은 광고가 없는 목록 사이에 랜덤으로 노출됩니다.
           </p>
         </div>
       </div>
@@ -173,13 +159,12 @@ function renderTipsPanel() {
 async function tipSave() {
   const body = String(tipDraft.body || '').trim();
   const status = tipDraft.status === 'active' ? 'active' : 'draft';
-  const isPinned = status === 'active' && Boolean(tipDraft.isPinned);
   if (!body) {
     alert('팁 문구를 입력해 주세요.');
     return;
   }
   try {
-    const payload = { body, status, isPinned };
+    const payload = { body, status };
     if (tipSelectedId) {
       const { data } = await api(`/tips/${tipSelectedId}`, {
         method: 'PATCH',
@@ -205,7 +190,7 @@ async function tipDelete() {
   try {
     await api(`/tips/${tipSelectedId}`, { method: 'DELETE' });
     tipSelectedId = null;
-    tipDraft = { body: '', status: 'draft', isPinned: false };
+    tipDraft = { body: '', status: 'draft' };
     await loadTipsPanel();
   } catch (error) {
     alert(error.message || '삭제에 실패했습니다.');

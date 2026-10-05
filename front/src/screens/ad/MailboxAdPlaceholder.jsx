@@ -1,11 +1,16 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import TipPlaceholder from '../../../components/ads/TipPlaceholder';
+import { AdMobOrTip } from '../../../components/ads/AdMobBanner';
 import { AdPill } from '../../../components/ads/PillBadge';
 
 const MailboxAdPlaceholder = ({ styles, adData }) => {
   if (adData == null) {
-    return <TipPlaceholder variant="mailbox" styles={styles} />;
+    return (
+      <AdMobOrTip>
+        <TipPlaceholder variant="mailbox" styles={styles} />
+      </AdMobOrTip>
+    );
   }
 
   const sponsorLabel =

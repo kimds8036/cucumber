@@ -46,7 +46,6 @@ import {
 } from './timerHelpers';
 import {
   getTimerSettings,
-  loadTimerSettings,
   timerSettingsToPomodoroConfig,
   updateTimerSettings,
 } from './timerSettingsStorage';
@@ -866,8 +865,7 @@ export function useTimerDay({
         );
         if (!ended) return;
         if (ended.type === 'phase_complete') {
-          const settings = await loadTimerSettings();
-          const cue = settings.phaseEndCue || 'popup';
+          const cue = getTimerSettings().phaseEndCue || 'popup';
           const notice = {
             endedPhase: ended.phase,
             nextPhase: view.phase,

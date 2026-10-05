@@ -5,6 +5,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Modal,
+  Dimensions,
   View,
   Text,
   TouchableOpacity,
@@ -15,7 +16,7 @@ import {
 } from 'react-native';
 import Feather from '@expo/vector-icons/Feather';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { initialWindowMetrics } from 'react-native-safe-area-context';
 import { colors } from '../../../styles/colors';
 import Skeleton from '../../../components/common/Skeleton';
 import { getSessionDurationMs } from './timerHelpers';
@@ -57,7 +58,7 @@ export default function TimerDayRecordSheet({
   toggleSubjectCollapsed,
 }) {
   const { height } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(initialWindowMetrics?.insets.bottom ?? 0, 12);
   const sheetHeight = height * 0.75;
   const visible = dayKey != null;
   const [tab, setTab] = useState('todo');
@@ -163,10 +164,11 @@ export default function TimerDayRecordSheet({
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType="none"
       onRequestClose={close}
       statusBarTranslucent
     >
+      <View style={{ width: Dimensions.get('screen').width, height: Dimensions.get('screen').height }}>
       <View style={styles.dayRecordBackdrop}>
         <TouchableOpacity
           style={styles.dayRecordBackdropTouch}
@@ -179,7 +181,7 @@ export default function TimerDayRecordSheet({
           styles.dayRecordSheet,
           {
             height: sheetHeight,
-            paddingBottom: Math.max(insets.bottom, normalize(12)),
+            paddingBottom: Math.max(bottomInset, normalize(12)),
             transform: [
               {
                 translateY: progress.interpolate({
@@ -230,6 +232,7 @@ export default function TimerDayRecordSheet({
           {renderBody()}
         </ScrollView>
       </Animated.View>
+      </View>
     </Modal>
   );
 }

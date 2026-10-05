@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  Dimensions,
   Easing,
   Keyboard,
   Modal,
@@ -8,8 +9,22 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { initialWindowMetrics } from 'react-native-safe-area-context';
 import { colors } from '../../styles/colors';
+
+/**
+ * 모달 창이 뜨는 첫 프레임에 useSafeAreaInsets()가 0이었다가
+ * 바로 상태바·내비게이션 값으로 바뀌면, 회색 배경 여백과 카드가 한 번 튀고 제자리로 돌아온다.
+ * 앱이 켜질 때 잡힌 값으로 고정한다.
+ */
+const frameInsets = initialWindowMetrics?.insets ?? {
+  top: 0,
+  bottom: 0,
+  left: 0,
+  right: 0,
+};
+const FRAME_PAD_TOP = Math.max(frameInsets.top, 16);
+const FRAME_PAD_BOTTOM = Math.max(frameInsets.bottom, 16);
 
 /** 등장·퇴장 페이드 (시간표·타이머 「저장 완료」와 동일 톤) */
 const FADE_MS = 220;
@@ -35,7 +50,6 @@ export default function AppPopupModal({
   useDefaultContainerWidth = true,
   onDismissed,
 }) {
-  const insets = useSafeAreaInsets();
   const [shown, setShown] = useState(Boolean(visible));
   const opacity = useRef(new Animated.Value(visible ? 1 : 0)).current;
   const animRef = useRef(null);
@@ -91,6 +105,8 @@ export default function AppPopupModal({
     };
   }, [visible, opacity]);
 
+  const screen = Dimensions.get('screen');
+
   return (
     <Modal
       visible={shown}
@@ -101,47 +117,60 @@ export default function AppPopupModal({
       navigationBarTranslucent
       onRequestClose={dismissOnBackPress ? onClose : () => {}}
     >
-      <Animated.View
+      <View
         pointerEvents={visible ? 'auto' : 'none'}
-        style={[
-          styles.overlay,
-          {
-            backgroundColor: overlayColor,
-            opacity,
-            paddingTop: Math.max(insets.top, 16),
-            paddingBottom: Math.max(insets.bottom, 16),
-          },
-        ]}
+        style={[styles.frame, { width: screen.width, height: screen.height }]}
       >
-        <Pressable
-          style={StyleSheet.absoluteFill}
-          onPress={dismissOnBackdrop ? onClose : undefined}
-        />
-        <View
+        <Animated.View
+          pointerEvents="none"
           style={[
-            useDefaultContainerWidth ? styles.container : null,
-            containerStyle,
+            StyleSheet.absoluteFill,
+            { backgroundColor: overlayColor, opacity },
+          ]}
+        />
+        <Animated.View
+          style={[
+            styles.overlay,
+            {
+              opacity,
+              paddingTop: FRAME_PAD_TOP,
+              paddingBottom: FRAME_PAD_BOTTOM,
+            },
           ]}
         >
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={dismissOnBackdrop ? onClose : undefined}
+          />
           <View
             style={[
-              styles.card,
-              useDefaultContainerWidth ? styles.cardStretch : styles.cardCenter,
-              cardStyle,
+              useDefaultContainerWidth ? styles.container : null,
+              containerStyle,
             ]}
           >
-            {children}
+            <View
+              style={[
+                styles.card,
+                useDefaultContainerWidth ? styles.cardStretch : styles.cardCenter,
+                cardStyle,
+              ]}
+            >
+              {children}
+            </View>
           </View>
-        </View>
-      </Animated.View>
+        </Animated.View>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  frame: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   overlay: {
-    flex: 1,
-    width: '100%',
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
   },

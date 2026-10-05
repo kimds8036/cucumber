@@ -593,6 +593,7 @@ export default function TimerAniLab({ navigation }) {
     [width, normalize],
   );
   const [phaseEndNotice, setPhaseEndNotice] = useState(() => getPhaseEndNotice());
+  const [suppressPhasePopup, setSuppressPhasePopup] = useState(false);
   const [pomoView, setPomoView] = useState(() => getPomodoroView());
 
   useEffect(() => subscribePhaseEndNotice(setPhaseEndNotice), []);
@@ -613,6 +614,7 @@ export default function TimerAniLab({ navigation }) {
         (event) => event.type === 'phase_complete' || event.type === 'phase_skip',
       );
       if (!ended || view.status === 'running') return;
+      setSuppressPhasePopup(true);
       publishPhaseEndNotice(null);
       const focusEnded = ended.phase === 'focus';
       appAlert.alert(
@@ -1626,7 +1628,7 @@ export default function TimerAniLab({ navigation }) {
         </Text>
       </View>
       <TimerPhaseEndPopup
-        notice={isFocused ? phaseEndNotice : null}
+        notice={isFocused && !suppressPhasePopup ? phaseEndNotice : null}
         onClose={() => publishPhaseEndNotice(null)}
         styles={timerStyles}
         normalize={normalize}
