@@ -99,29 +99,43 @@ export default function BoardPollCard({ poll, postId, onChange, styles, normaliz
       {options.map((opt) => {
         const percent =
           totalVotes > 0 ? Math.round((opt.votes / totalVotes) * 100) : 0;
+        const isSelected = !voted && selected.includes(opt.id);
         return (
           <TouchableOpacity
             key={opt.id}
             activeOpacity={voted ? 1 : 0.7}
             disabled={voted}
             onPress={() => toggleOption(opt.id)}
-            style={styles.detailPollOption}
+            style={[
+              styles.detailPollOption,
+              isSelected && styles.detailPollOptionSelected,
+            ]}
           >
             {voted ? (
-              <View
-                style={[
-                  styles.detailPollFill,
-                  opt.isMine && styles.detailPollFillMine,
-                  { width: `${percent}%` },
-                ]}
-              />
+              <View style={styles.detailPollFillTrack} pointerEvents="none">
+                <View
+                  style={[
+                    styles.detailPollFill,
+                    opt.isMine && styles.detailPollFillMine,
+                    { width: `${percent}%` },
+                  ]}
+                />
+              </View>
             ) : (
               <View
                 style={[
                   styles.detailPollRadio,
-                  multi && styles.detailPollCheckbox,
+                  isSelected && styles.detailPollMarkOn,
                 ]}
-              />
+              >
+                {isSelected ? (
+                  <Ionicons
+                    name="checkmark"
+                    size={normalize(12)}
+                    color={colors.white}
+                  />
+                ) : null}
+              </View>
             )}
             <View style={styles.detailPollOptionTextWrap}>
               <Text
@@ -140,7 +154,7 @@ export default function BoardPollCard({ poll, postId, onChange, styles, normaliz
                   <Ionicons
                     name="checkmark-circle"
                     size={normalize(16)}
-                    color={colors.textLight5}
+                    color={colors.primary}
                   />
                 ) : null}
                 <Text style={styles.detailPollPercent}>{percent}%</Text>

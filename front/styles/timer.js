@@ -320,15 +320,13 @@ export const createTimerStyles = (width, normalize) => {
       pomoPhaseRow: {
         alignSelf: 'stretch',
         alignItems: 'center',
-        flexDirection: 'column',
+        flexDirection: 'row',
         justifyContent: 'center',
-        marginBottom: normalize(4),
       },
       pomoPhaseChip: {
         paddingHorizontal: normalize(10),
         paddingVertical: normalize(2),
         borderRadius: normalize(999),
-        backgroundColor: colors.primaryLight3,
       },
       pomoPhaseChipText: {
         fontSize: normalize(fontSizes.lg),
@@ -336,38 +334,45 @@ export const createTimerStyles = (width, normalize) => {
         color: colors.primaryDark,
       },
       pomoPhaseChipBreak: {
-        backgroundColor: '#FFF1EA',
       },
       pomoPhaseChipTextBreak: {
-        color: '#C46A58',
+        color: colors.alertDark,
+      },
+      timerTimePomo: {
+        marginBottom: 0,
       },
       timerTimeBreak: {
-        color: '#E39A8C',
+        color: colors.alert,
       },
       timerBtnBreak: {
-        backgroundColor: '#E39A8C',
+        backgroundColor: colors.alert,
       },
       pomoProgressFillBreak: {
-        backgroundColor: '#F0B5A6',
+        backgroundColor: colors.alert,
       },
       pomoCycleDotActiveBreak: {
-        backgroundColor: '#E39A8C',
+        backgroundColor: colors.alertDark,
       },
       pomoCycleDots: {
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
         gap: normalize(4),
-        marginTop: normalize(6),
       },
       pomoCycleDot: {
-        width: normalize(6),
-        height: normalize(6),
-        borderRadius: normalize(3),
-        backgroundColor: colors.textLight1,
+        width: normalize(8),
+        height: normalize(8),
+        borderRadius: normalize(4),
+        backgroundColor: colors.primaryLight5,
+      },
+      pomoCycleDotBreak: {
+        backgroundColor: colors.alertLight,
       },
       pomoCycleDotActive: {
-        backgroundColor: colors.primary,
+        backgroundColor: colors.primaryDark,
+      },
+      pomoCycleDotCurrent: {
+        width: normalize(22),
       },
       pomoProgressTrack: {
         alignSelf: 'stretch',
@@ -375,7 +380,7 @@ export const createTimerStyles = (width, normalize) => {
         borderRadius: normalize(2),
         backgroundColor: colors.textLight1,
         overflow: 'hidden',
-        marginBottom: normalize(10),
+        marginBottom: normalize(6),
       },
       pomoProgressFill: {
         height: '100%',
@@ -384,7 +389,7 @@ export const createTimerStyles = (width, normalize) => {
       },
       phaseEndBackdrop: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.55)',
+        backgroundColor: 'rgba(0,0,0,0.5)',
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: width * 0.08,
@@ -410,7 +415,7 @@ export const createTimerStyles = (width, normalize) => {
         backgroundColor: colors.primary,
       },
       phaseEndBadgeBreak: {
-        backgroundColor: '#E39A8C',
+        backgroundColor: colors.alert,
       },
       phaseEndTitle: {
         fontSize: normalize(fontSizes.heading + 6),
@@ -434,7 +439,7 @@ export const createTimerStyles = (width, normalize) => {
         backgroundColor: colors.primaryDark,
       },
       phaseEndBtnBreak: {
-        backgroundColor: '#C46A58',
+        backgroundColor: colors.alert,
       },
       phaseEndBtnText: {
         fontSize: normalize(fontSizes.title),
@@ -1067,8 +1072,8 @@ export const createTimerStyles = (width, normalize) => {
         marginBottom: normalize(8),
         paddingHorizontal: normalize(8),
         paddingVertical: normalize(6),
-        borderRadius: normalize(10),
-        backgroundColor: '#F6F4F0',
+        borderRadius: normalize(50),
+        backgroundColor: colors.textLight05,
       },
       timetableSchoolHintText: {
         flex: 1,

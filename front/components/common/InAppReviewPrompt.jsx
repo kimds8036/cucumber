@@ -207,7 +207,7 @@ export default function InAppReviewPrompt() {
                 flex: 1,
                 height: 44,
                 borderRadius: 10,
-                backgroundColor: colors.textLight5,
+                backgroundColor: colors.textLight05,
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
