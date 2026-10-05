@@ -904,7 +904,7 @@ export const createDetailStyles = (width, normalize) => {
     },
     detailPollOptionSelected: {
       borderColor: colors.primary,
-      backgroundColor: colors.primaryLight2,
+      backgroundColor: colors.white,
     },
     // 떠 있는 뷰의 퍼센트 너비는 칸의 안쪽 여백을 뺀 너비 기준이라, 위치값으로 칸 전체를 덮는 틀 안에서 막대를 그린다.
     detailPollFillTrack: {
