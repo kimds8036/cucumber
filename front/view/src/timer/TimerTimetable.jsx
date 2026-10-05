@@ -215,8 +215,10 @@ export default function TimerTimetable({
   dayKey = null,
   guideTarget = true,
   showHint = true,
+  variant = 'default',
 }) {
   const Wrap = guideTarget ? GuideFocusTarget : View;
+  const isCapture = variant === 'capture';
   const { width } = useWindowDimensions();
   const normalize = getNormalize(width);
   const [schoolPeriods, setSchoolPeriods] = useState([]);
@@ -347,7 +349,13 @@ export default function TimerTimetable({
           </Text>
         </View>
       ) : null}
-      <View style={[styles.timetableContainer, tdb('#CD853F')]}>
+      <View
+        style={[
+          styles.timetableContainer,
+          isCapture && styles.timetableContainerCapture,
+          tdb('#CD853F'),
+        ]}
+      >
         {schoolRects.map((rect) => (
           <View
             key={rect.key}

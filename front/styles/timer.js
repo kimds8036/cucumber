@@ -1085,6 +1085,11 @@ export const createTimerStyles = (width, normalize) => {
         backgroundColor: colors.white,
         paddingVertical: normalize(4),
       },
+      timetableContainerCapture: {
+        borderWidth: 0,
+        borderRadius: 0,
+        paddingVertical: 0,
+      },
       timetableScroll: {
         // 높이 제한을 없애 전체 페이지 스크롤에서 00~05까지 노출
       },
@@ -1420,8 +1425,6 @@ export const createTimerStyles = (width, normalize) => {
       },
       plannerRightColumn: {
         flex: 1,
-        paddingHorizontal: normalize(10),
-        paddingVertical: normalize(8),
       },
       plannerLabel: {
         fontSize: normalize(fontSizes.lg),

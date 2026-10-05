@@ -317,6 +317,7 @@ export function TimerLivePlannerCapture({
                   dayKey={selectedDayKey}
                   guideTarget={false}
                   showHint={false}
+                  variant="capture"
                 />
               </View>
             </View>
