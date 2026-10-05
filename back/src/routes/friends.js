@@ -8,6 +8,7 @@ import { checkNotificationAllowed } from '../utils/notificationUtils.js';
 import { getStudyingFriends } from '../socket/socketService.js';
 import { submitContentReport } from '../services/reportSubmission.service.js';
 import { listTimerFriendSuggestions } from '../services/timerFriendSuggest.service.js';
+import { evaluateAndUnlockBadges } from '../services/badge.service.js';
 
 const router = express.Router();
 
@@ -41,6 +42,7 @@ router.get('/list', authenticate, async (req, res) => {
          u.name_enc,
          u.username,
          u.color_id,
+         u.avatar_url,
          c.hex_code AS profile_color_hex,
          u.school_id,
          s.name AS school_name,
@@ -69,6 +71,7 @@ router.get('/list', authenticate, async (req, res) => {
         name: r.name,
         username: r.username ? `@${r.username}` : '',
         colorId: r.color_id,
+        avatarUrl: r.avatar_url || null,
         profileColor: {
           id: r.color_id,
           hexCode: r.profile_color_hex,
@@ -141,6 +144,7 @@ router.get('/requests/received', authenticate, async (req, res) => {
          u.name_enc,
          u.username,
          u.color_id,
+         u.avatar_url,
          c.hex_code AS profile_color_hex,
          u.school_id,
          s.name AS school_name,
@@ -165,6 +169,7 @@ router.get('/requests/received', authenticate, async (req, res) => {
         name: r.name,
         username: r.username ? `@${r.username}` : '',
         colorId: r.color_id,
+        avatarUrl: r.avatar_url || null,
         profileColor: {
           id: r.color_id,
           hexCode: r.profile_color_hex,
@@ -254,6 +259,13 @@ router.post('/requests/:id/accept', authenticate, validate(friendshipIdParamVali
     } catch (notifyError) {
       console.error('[Friends][Accept] 알림 enqueue 오류:', notifyError);
     }
+
+    evaluateAndUnlockBadges(userId).catch((e) => {
+      console.error('[Friends][Accept] 배지 평가 오류(수락자):', e);
+    });
+    evaluateAndUnlockBadges(reqRow.requester_id).catch((e) => {
+      console.error('[Friends][Accept] 배지 평가 오류(요청자):', e);
+    });
 
     res.json({
       success: true,

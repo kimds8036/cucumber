@@ -51,9 +51,6 @@ export function useSocketEvents({
   const emitTimerStatus = useCallback(
     (status, payload = {}) => {
       if (!socket || !socket.connected) {
-        console.warn(
-          '[useSocketEvents] 소켓 미연결 상태에서 emitTimerStatus 시도',
-        );
         setTimeout(() => {
           if (socket?.connected) {
             emitTimerStatus(status, payload);

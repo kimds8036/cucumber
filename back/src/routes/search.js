@@ -4,6 +4,7 @@ import pool from '../config/database.js';
 import { optionalAuthenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { getBatchRedis } from '../services/batchRedis.service.js';
+import { appendUserBlockFilter } from '../utils/userBlockFilter.js';
 import {
   buildSafeSchoolSearchTerm,
   buildSchoolSearchSql,
@@ -11,6 +12,21 @@ import {
 } from '../utils/schoolSearch.js';
 
 const router = express.Router();
+
+function normalizeTagsFromRow(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (raw != null && typeof raw === 'object') return [raw];
+  if (typeof raw === 'string' && raw.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+      if (parsed != null && typeof parsed === 'object') return [parsed];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
 
 const trendingValidators = [
   query('limit').optional({ values: 'falsy' }).toInt().isInt({ min: 1, max: 20 })
@@ -141,10 +157,10 @@ router.get('/posts', optionalAuthenticate, validate(postsSearchValidators), asyn
       }
     }
 
-    // 게시글 검색 (삭제되지 않은 것만)
-    // - 전체게시판(national): 모든 학교
-    // - 학교게시판(school): 로그인한 경우에만 본인 학교의 글
-    const postWhereParts = ['p.is_deleted = FALSE'];
+    // 게시글 검색 (삭제·숨김 제외)
+    // - 전체게시판(national): 모두
+    // - 학생게시판(student)·학교게시판(school, 본인 학교): 학생 인증 사용자만
+    const postWhereParts = ['p.is_deleted = FALSE', 'p.is_hidden = FALSE'];
     const postParams = [];
     let hashtagExact = '';
     if (isHashtagSearch) {
@@ -199,12 +215,13 @@ router.get('/posts', optionalAuthenticate, validate(postsSearchValidators), asyn
     }
     if (userSchoolId) {
       postWhereParts.push(
-        `(p.board_type = 'national' OR (p.board_type = 'school' AND p.school_id = ?))`,
+        `(p.board_type IN ('national', 'student') OR (p.board_type = 'school' AND p.school_id = ?))`,
       );
       postParams.push(userSchoolId);
     } else {
       postWhereParts.push(`p.board_type = 'national'`);
     }
+    appendUserBlockFilter(postWhereParts, postParams, userId, 'p.user_id');
     const postWhere = `WHERE ${postWhereParts.join(' AND ')}`;
 
     const [rows] = await pool.execute(
@@ -216,7 +233,18 @@ router.get('/posts', optionalAuthenticate, validate(postsSearchValidators), asyn
          p.like_count,
          p.comment_count,
          p.created_at,
-         s.name AS school_name
+         s.name AS school_name,
+         (SELECT pi1.cloudinary_url
+            FROM post_images pi1
+           WHERE pi1.post_id = p.id AND pi1.deleted_at IS NULL
+           ORDER BY pi1.display_order ASC
+           LIMIT 1) AS thumbnail,
+         (SELECT COUNT(*) FROM post_scraps ps_cnt
+           WHERE ps_cnt.post_id = p.id) AS scrap_count,
+         (SELECT JSON_ARRAYAGG(JSON_OBJECT('id', t.id, 'name', t.name))
+            FROM post_tags pt
+            INNER JOIN tags t ON pt.tag_id = t.id
+           WHERE pt.post_id = p.id) AS tags
        FROM posts p
        LEFT JOIN schools s ON p.school_id = s.school_id
        ${postWhere}
@@ -242,6 +270,9 @@ router.get('/posts', optionalAuthenticate, validate(postsSearchValidators), asyn
       likeCount: p.like_count,
       commentCount: p.comment_count,
       createdAt: p.created_at,
+      thumbnail: p.thumbnail || null,
+      scrapCount: Number(p.scrap_count) || 0,
+      tags: normalizeTagsFromRow(p.tags),
     }));
 
     // 학교 매칭: 이름에 query 를 포함하는 학교 최대 5개 (소속학교와 무관하게 전역 검색)
@@ -264,19 +295,39 @@ router.get('/posts', optionalAuthenticate, validate(postsSearchValidators), asyn
     let schoolMails = [];
     if (userSchoolId && !isHashtagSearch) {
       const [mailRows] = await pool.execute(
-        `SELECT id, content, created_at
-         FROM school_mails
-         WHERE is_deleted = FALSE
-           AND school_id = ?
-           AND content LIKE ?
-         ORDER BY created_at DESC
+        `SELECT
+           sm.id,
+           sm.school_id,
+           sm.content,
+           sm.like_count,
+           sm.comment_count,
+           sm.created_at,
+           COALESCE(sm.author_school_id, u.school_id) AS author_school_id,
+           u.school_id AS author_current_school_id,
+           (SELECT s2.name FROM schools s2
+             WHERE s2.school_id = COALESCE(sm.author_school_id, u.school_id)) AS author_school_name,
+           s.name AS school_name
+         FROM school_mails sm
+         LEFT JOIN users u ON sm.user_id = u.id
+         LEFT JOIN schools s ON sm.school_id = s.school_id
+         WHERE sm.is_deleted = FALSE
+           AND sm.school_id = ?
+           AND sm.content LIKE ?
+         ORDER BY sm.created_at DESC
          LIMIT 20`,
         [userSchoolId, like],
       );
       schoolMails = mailRows.map((m) => ({
         id: m.id,
+        schoolId: m.school_id,
+        schoolName: m.school_name,
         content: m.content,
+        likeCount: m.like_count,
+        commentCount: m.comment_count,
         createdAt: m.created_at,
+        author_school_id: m.author_school_id,
+        author_current_school_id: m.author_current_school_id,
+        author_school_name: m.author_school_name,
       }));
     }
 

@@ -25,6 +25,7 @@ import { validate } from '../middleware/validate.js';
 //   verifyStudentIdOcrForSignup,
 // } from '../services/studentIdOcr.service.js';
 import { uploadSignupStudentIdPhoto, packStudentIdCloudinaryPayload } from '../services/signupStudentIdPhoto.service.js';
+import { uploadUserAvatarImage, destroyUserAvatar } from '../services/userAvatar.service.js';
 import {
   inferExpectedSchoolLevel,
   inferGradeFromBirthDate,
@@ -453,6 +454,7 @@ router.get('/me', authenticate, async (req, res) => {
          u.username,
          u.name_enc,
          u.color_id,
+         u.avatar_url,
          u.equipped_badge_key,
          u.school_id,
          u.grade,
@@ -500,6 +502,7 @@ router.get('/me', authenticate, async (req, res) => {
         username: user.username,
         name: user.name,
         colorId: user.color_id,
+        avatarUrl: user.avatar_url || null,
         createdAt: user.created_at
           ? new Date(user.created_at).toISOString()
           : null,
@@ -578,6 +581,88 @@ router.post('/check-username-available', authenticate, async (req, res) => {
     return res.status(500).json({
       success: false,
       message: '아이디 확인 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+const avatarValidators = [
+  body('imageBase64').exists({ checkFalsy: true }).withMessage('사진이 필요합니다.')
+    .bail().isString().withMessage('사진이 필요합니다.'),
+  body('cropRegion').optional({ nullable: true }).isObject().withMessage('자르기 영역이 올바르지 않습니다.'),
+];
+
+router.patch('/me/avatar', authenticate, validate(avatarValidators), async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const imageBase64 = String(req.body?.imageBase64 || '');
+    const cropRegion = req.body?.cropRegion ?? null;
+
+    const uploaded = await uploadUserAvatarImage({ imageBase64, cropRegion });
+
+    const [prevRows] = await pool.execute(
+      `SELECT avatar_public_id FROM users WHERE id = ? LIMIT 1`,
+      [userId],
+    );
+    const prevPublicId = prevRows[0]?.avatar_public_id || null;
+
+    await pool.execute(
+      `UPDATE users SET avatar_url = ?, avatar_public_id = ? WHERE id = ?`,
+      [uploaded.avatarUrl, uploaded.avatarPublicId, userId],
+    );
+
+    if (prevPublicId && prevPublicId !== uploaded.avatarPublicId) {
+      await destroyUserAvatar(prevPublicId);
+    }
+
+    return res.json({
+      success: true,
+      message: '프로필 사진을 저장했어요.',
+      data: { avatarUrl: uploaded.avatarUrl },
+    });
+  } catch (error) {
+    const code = error?.code;
+    if (code === 'IMAGE_REQUIRED') {
+      return res.status(400).json({ success: false, message: '사진을 선택해 주세요.' });
+    }
+    if (code === 'IMAGE_TOO_LARGE') {
+      return res.status(400).json({ success: false, message: '사진 용량이 너무 커요. 다른 사진을 골라 주세요.' });
+    }
+    console.error('프로필 사진 저장 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '프로필 사진 저장 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+router.delete('/me/avatar', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const [prevRows] = await pool.execute(
+      `SELECT avatar_public_id FROM users WHERE id = ? LIMIT 1`,
+      [userId],
+    );
+    const prevPublicId = prevRows[0]?.avatar_public_id || null;
+
+    await pool.execute(
+      `UPDATE users SET avatar_url = NULL, avatar_public_id = NULL WHERE id = ?`,
+      [userId],
+    );
+
+    if (prevPublicId) {
+      await destroyUserAvatar(prevPublicId);
+    }
+
+    return res.json({
+      success: true,
+      message: '기본 프로필로 바꿨어요.',
+      data: { avatarUrl: null },
+    });
+  } catch (error) {
+    console.error('프로필 사진 삭제 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '기본 프로필로 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.',
     });
   }
 });

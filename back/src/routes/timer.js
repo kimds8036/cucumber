@@ -1,10 +1,14 @@
 import express from 'express';
-import { body, param } from 'express-validator';
+import { body, param, query } from 'express-validator';
 import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { closeIncompleteStudySessions } from '../socket/socketService.js';
 import { getStudyRoomSnapshotForUser } from '../services/studyRoom.service.js';
+import {
+  KST_NOW_SQL,
+  touchStudyPresence,
+} from '../services/studyPresence.service.js';
 import {
   expandLegacyInvertedIntervalSessions,
   flattenSessionsForTimerIntervals,
@@ -14,8 +18,10 @@ import {
   timerDayAnchorUtcMs,
   utcMsToKstMysqlDatetime3,
 } from '../utils/timerSessionTimes.js';
+import { getTimerDayKey } from '../utils/timerDayKey.js';
 import { upsertStudyDayTotalForUserKey } from '../utils/studyDayTotal.js';
 import { evaluateAndUnlockBadges } from '../services/badge.service.js';
+import { loadSchoolPeriodsForDay } from '../services/attendance.service.js';
 
 const router = express.Router();
 
@@ -126,6 +132,7 @@ const sanitizeSession = (session, postDayKey) => {
     startedAtMs,
     endedAtMs:
       endedAtMs != null && !Number.isFinite(endedAtMs) ? null : endedAtMs,
+    kind: session?.kind === 'break' ? 'break' : 'study',
   };
 };
 
@@ -221,6 +228,7 @@ async function persistStudySessionsForDayKey(
         : null;
     const snapshotName = session.subjectName || subjectMeta?.name || null;
     const snapshotColor = session.subjectColor || subjectMeta?.color || null;
+    const sessionKind = session.kind === 'break' ? 'break' : 'study';
 
     const startedSql = utcMsToKstMysqlDatetime3(session.startedAtMs);
     const endedSql =
@@ -231,13 +239,15 @@ async function persistStudySessionsForDayKey(
     if (session.id != null) {
       const [updateResult] = await connection.execute(
         `UPDATE study_sessions
-         SET subject_id = ?, subject_name = ?, subject_color = ?, started_at = ?, ended_at = ?
+         SET subject_id = ?, subject_name = ?, subject_color = ?, started_at = ?, ended_at = ?,
+             last_seen_at = IF(? IS NULL, ${KST_NOW_SQL}, last_seen_at)
          WHERE id = ? AND user_id = ? AND day_key = ?`,
         [
           resolvedSubjectId != null ? Number(resolvedSubjectId) : null,
           snapshotName,
           snapshotColor,
           startedSql,
+          endedSql,
           endedSql,
           Number(session.id),
           userId,
@@ -267,13 +277,17 @@ async function persistStudySessionsForDayKey(
          SET ended_at = COALESCE(?, ended_at),
              subject_name = COALESCE(?, subject_name),
              subject_color = COALESCE(?, subject_color),
-             subject_id = COALESCE(?, subject_id)
+             subject_id = COALESCE(?, subject_id),
+             session_kind = ?,
+             last_seen_at = IF(? IS NULL, ${KST_NOW_SQL}, last_seen_at)
          WHERE id = ?`,
         [
           endedSql,
           snapshotName,
           snapshotColor,
           resolvedSubjectId != null ? Number(resolvedSubjectId) : null,
+          sessionKind,
+          endedSql,
           Number(openRows[0].id),
         ],
       );
@@ -300,15 +314,17 @@ async function persistStudySessionsForDayKey(
 
     await connection.execute(
       `INSERT INTO study_sessions
-         (user_id, day_key, subject_name, subject_color, subject_id, started_at, ended_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+         (user_id, day_key, subject_name, subject_color, subject_id, session_kind, started_at, ended_at, last_seen_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, IF(? IS NULL, ${KST_NOW_SQL}, NULL))`,
       [
         userId,
         dayKey,
         snapshotName,
         snapshotColor,
         resolvedSubjectId != null ? Number(resolvedSubjectId) : null,
+        sessionKind,
         startedSql,
+        endedSql,
         endedSql,
       ],
     );
@@ -670,7 +686,7 @@ router.get('/day', authenticate, async (req, res) => {
     );
 
     const [sessionsRows] = await pool.execute(
-      `SELECT subject_id, subject_name, subject_color,
+      `SELECT subject_id, subject_name, subject_color, session_kind,
          CAST(started_at AS CHAR(30)) AS started_at_s,
          CAST(ended_at AS CHAR(30)) AS ended_at_s
        FROM study_sessions 
@@ -711,6 +727,7 @@ router.get('/day', authenticate, async (req, res) => {
         subjectId: s.subject_id != null ? Number(s.subject_id) : null,
         subjectName: s.subject_name || null,
         subjectColor: s.subject_color || null,
+        kind: s.session_kind === 'break' ? 'break' : 'study',
         startedAt,
         endedAt,
         startedAtMs: Number.isFinite(startedAtMs) ? startedAtMs : undefined,
@@ -728,12 +745,14 @@ router.get('/day', authenticate, async (req, res) => {
       subjectsData.length > 0 ? subjectsData : fallbackSubjectsFromSessions;
 
     const tasksData = normalized.tasks;
+    const schoolPeriods = await loadSchoolPeriodsForDay(userId, dayKey);
 
     const responseData = {
       sessions: sessionsData,
       totalElapsedMs: day ? Number(day.total_elapsed_ms) : 0,
       subjects: effectiveSubjectsData,
       tasks: tasksData,
+      schoolPeriods,
     };
 
     if (process.env.NODE_ENV !== 'production') {
@@ -865,6 +884,221 @@ router.patch('/tasks/:taskId', authenticate, validate(updateTaskStatusValidators
     return res.status(500).json({
       success: false,
       message: '타이머 할일 상태 수정 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+const WEEKLY_ITEM_MAX = 15;
+const WEEKLY_MIN_DAY = '2026-06-28';
+
+const weeklyDayKey = (value) => {
+  const key = sanitizeDayKey(typeof value === 'string' ? value.trim() : '');
+  if (!key || !/^\d{4}-\d{2}-\d{2}$/.test(key) || key < WEEKLY_MIN_DAY) return null;
+  return key;
+};
+
+const mapWeeklyItem = (row) => ({
+  id: Number(row.id),
+  dayKey: String(row.day_key || '').slice(0, 10),
+  content: row.content,
+  done: Boolean(row.done),
+});
+
+/** 위클리: 한 주(일요일 weekStart ~ 6일) 체크리스트 */
+router.get('/weekly', authenticate, async (req, res) => {
+  try {
+    const weekStart = weeklyDayKey(req.query?.weekStart);
+    if (!weekStart) {
+      return res.status(400).json({
+        success: false,
+        message: 'weekStart가 필요합니다.',
+      });
+    }
+    const [rows] = await pool.execute(
+      `SELECT id, DATE_FORMAT(day_key, '%Y-%m-%d') AS day_key, content, done
+       FROM timer_weekly_items
+       WHERE user_id = ? AND day_key >= ? AND day_key < DATE_ADD(?, INTERVAL 7 DAY)
+       ORDER BY day_key ASC, id ASC`,
+      [req.user.userId, weekStart, weekStart],
+    );
+    return res.json({
+      success: true,
+      data: { items: rows.map(mapWeeklyItem) },
+    });
+  } catch (error) {
+    console.error('위클리 조회 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '위클리 조회 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+router.post('/weekly/items', authenticate, async (req, res) => {
+  try {
+    const dayKey = weeklyDayKey(req.body?.dayKey);
+    const content = String(req.body?.content || '').trim().slice(0, WEEKLY_ITEM_MAX);
+    const done = req.body?.done === true;
+    if (!dayKey || !content) {
+      return res.status(400).json({
+        success: false,
+        message: 'dayKey와 content가 필요합니다.',
+      });
+    }
+    const [result] = await pool.execute(
+      `INSERT INTO timer_weekly_items (user_id, day_key, content, done)
+       VALUES (?, ?, ?, ?)`,
+      [req.user.userId, dayKey, content, done ? 1 : 0],
+    );
+    return res.status(201).json({
+      success: true,
+      data: {
+        id: Number(result.insertId),
+        dayKey,
+        content,
+        done,
+      },
+    });
+  } catch (error) {
+    console.error('위클리 항목 생성 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '위클리 항목 생성 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+router.patch('/weekly/items/:itemId', authenticate, async (req, res) => {
+  try {
+    const itemId = Number(req.params.itemId);
+    const done = req.body?.done === true;
+    if (!Number.isFinite(itemId) || itemId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: '유효한 itemId가 필요합니다.',
+      });
+    }
+    const [result] = await pool.execute(
+      `UPDATE timer_weekly_items
+       SET done = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ? AND user_id = ?`,
+      [done ? 1 : 0, itemId, req.user.userId],
+    );
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: '수정할 위클리 항목을 찾지 못했습니다.',
+      });
+    }
+    return res.json({
+      success: true,
+      data: { id: itemId, done },
+    });
+  } catch (error) {
+    console.error('위클리 항목 수정 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '위클리 항목 수정 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+router.delete('/weekly/items/:itemId', authenticate, async (req, res) => {
+  try {
+    const itemId = Number(req.params.itemId);
+    if (!Number.isFinite(itemId) || itemId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: '유효한 itemId가 필요합니다.',
+      });
+    }
+    const [result] = await pool.execute(
+      `DELETE FROM timer_weekly_items WHERE id = ? AND user_id = ?`,
+      [itemId, req.user.userId],
+    );
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: '삭제할 위클리 항목을 찾지 못했습니다.',
+      });
+    }
+    return res.json({
+      success: true,
+      data: { id: itemId },
+    });
+  } catch (error) {
+    console.error('위클리 항목 삭제 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '위클리 항목 삭제 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+/** 공부 잔디: 한 달 공부 초 + 가입일 */
+router.get(
+  '/study-grass',
+  authenticate,
+  validate([
+    query('year').isInt({ min: 2000, max: 2100 }),
+    query('month').isInt({ min: 1, max: 12 }),
+  ]),
+  async (req, res) => {
+    try {
+      const userId = req.user.userId;
+      const year = Number(req.query.year);
+      const month = Number(req.query.month);
+      const start = `${year}-${String(month).padStart(2, '0')}-01`;
+
+      const [rows] = await pool.execute(
+        `SELECT DATE_FORMAT(day_key, '%Y-%m-%d') AS day_key, total_elapsed_ms
+         FROM study_days
+         WHERE user_id = ? AND day_key >= ? AND day_key < DATE_ADD(?, INTERVAL 1 MONTH)`,
+        [userId, start, start],
+      );
+      const secondsByDay = {};
+      for (const row of rows) {
+        const key = String(row.day_key || '').slice(0, 10);
+        const seconds = Math.floor(Number(row.total_elapsed_ms) / 1000);
+        if (key && seconds > 0) secondsByDay[key] = seconds;
+      }
+
+      const [userRows] = await pool.execute(
+        'SELECT created_at FROM users WHERE id = ? LIMIT 1',
+        [userId],
+      );
+      const createdAt = userRows[0]?.created_at
+        ? new Date(userRows[0].created_at)
+        : null;
+      const memberSince =
+        createdAt && !Number.isNaN(createdAt.getTime())
+          ? getTimerDayKey(createdAt)
+          : null;
+
+      return res.json({
+        success: true,
+        data: { secondsByDay, memberSince },
+      });
+    } catch (error) {
+      console.error('공부 잔디 조회 오류:', error);
+      return res.status(500).json({
+        success: false,
+        message: '공부 잔디 조회 중 오류가 발생했습니다.',
+      });
+    }
+  },
+);
+
+/** 타이머가 켜져 있는 동안 마지막 확인 시각을 갱신한다. */
+router.post('/heartbeat', authenticate, async (req, res) => {
+  try {
+    await touchStudyPresence(req.user.userId);
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('[Timer] heartbeat 실패', error?.message || error);
+    return res.status(500).json({
+      success: false,
+      message: '타이머 확인에 실패했습니다.',
     });
   }
 });

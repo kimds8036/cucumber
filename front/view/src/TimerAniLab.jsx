@@ -12,6 +12,9 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  Pressable,
+  AppState,
+  useWindowDimensions,
 } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -51,19 +54,37 @@ import {
   setTimerRuntimeState,
   subscribeTimerRuntime,
 } from '../../utils/timerRuntimeStore';
+import {
+  getPomodoroView,
+  subscribePomodoro,
+} from '../../utils/pomodoroRuntimeStore';
 import { formatHMS } from './timer/timerHelpers';
-import { api } from '../../utils/api';
+import { getTimerSettings, loadTimerSettings } from './timer/timerSettingsStorage';
+import { createTimerStyles, getNormalize } from '../../styles/timer';
+import TimerPhaseEndPopup from './timer/TimerPhaseEndPopup';
+import {
+  getPhaseEndNotice,
+  publishPhaseEndNotice,
+  subscribePhaseEndNotice,
+} from './timer/phaseEndNoticeStore';
+import { api, getApiUserFacingMessage } from '../../utils/api';
 import { getTimerDayKey, loadDayFromDb } from '../../utils/timerStorage';
 import { preloadStudyRoomAssets } from '../../utils/preloadStudyRoomAssets';
 import { useFriend } from '../../context/FriendContext';
 import { useSocket } from '../../context/SocketContext';
 import { useMainShellOptional } from '../../context/MainShellContext';
+import { useToast } from '../../context/ToastContext';
+import { appAlert } from '../../utils/appAlert';
+import StudyRoomProfileTip from '../../components/timerAni/StudyRoomProfileTip';
+import StudyRoomPomoTip from '../../components/timerAni/StudyRoomPomoTip';
 
 const CHAIR_DESK = require('../../assets/timer_ani/chair_desk.png');
 /** 경로 속도 (px / ms) — 클수록 빠름 */
 const WALK_PX_PER_MS = 0.3;
 /** 타이머 OFF 후 스터디룸에서 자리·방 유지 유예 */
 const LEAVE_GRACE_MS = 5000;
+/** 퇴장 걷기 전 프로필 팁이 들어갈 때까지 대기 */
+const PROFILE_TIP_CLOSE_WAIT_MS = 200;
 
 function pickGenderSafe() {
   try {
@@ -79,6 +100,7 @@ function SeatLabels({
   displayId,
   elapsedMs,
   showTimer,
+  onBreak = false,
   z,
   isSelf = false,
 }) {
@@ -100,7 +122,7 @@ function SeatLabels({
           }}
         >
           <Text style={labelStyles.timerText} numberOfLines={1}>
-            {formatHMS(elapsedMs)}
+            {onBreak ? '휴식 중' : formatHMS(elapsedMs)}
           </Text>
         </View>
       ) : null}
@@ -131,7 +153,7 @@ const labelStyles = StyleSheet.create({
     fontFamily: fonts.bold,
     fontSize: 10,
     lineHeight: 12,
-    color: '#FFFFFF',
+    color: colors.white,
     letterSpacing: 0.2,
     textAlign: 'center',
     textShadowColor: 'rgba(0,0,0,0.75)',
@@ -142,7 +164,7 @@ const labelStyles = StyleSheet.create({
     fontFamily: fonts.bold,
     fontSize: 10,
     lineHeight: 12,
-    color: '#FFFFFF',
+    color: colors.white,
     textAlign: 'center',
     textShadowColor: 'rgba(0,0,0,0.75)',
     textShadowOffset: { width: 0, height: 1 },
@@ -253,8 +275,10 @@ function OtherStudyActor({
   onEnterDone,
   onExitDone,
   elapsedMs,
+  onBreak = false,
   isSelf = false,
   onSeatedVisualChange,
+  onPressCharacter,
 }) {
   // 등장~퇴장 동안 성별 고정 (idle 시 meta 비움/재랜덤으로 스프라이트 바뀌는 것 방지)
   const lockedGenderRef = useRef(null);
@@ -528,12 +552,26 @@ function OtherStudyActor({
           }}
         />
       </Animated.View>
+      {!showWalk && typeof onPressCharacter === 'function' ? (
+        <Pressable
+          onPress={onPressCharacter}
+          style={{
+            position: 'absolute',
+            left: seat.seatX,
+            top: seat.seatY,
+            width: boxW,
+            height: boxH,
+            zIndex: (seat?.z || 1) + 10,
+          }}
+        />
+      ) : null}
       {!showWalk ? (
         <SeatLabels
           seat={seat}
           displayId={displayId}
           elapsedMs={elapsedMs}
           showTimer
+          onBreak={onBreak}
           z={seat.z}
           isSelf={isSelf}
         />
@@ -548,14 +586,57 @@ function OtherStudyActor({
 export default function TimerAniLab({ navigation }) {
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
+  const { width } = useWindowDimensions();
+  const normalize = useMemo(() => getNormalize(width), [width]);
+  const timerStyles = useMemo(
+    () => createTimerStyles(width, normalize),
+    [width, normalize],
+  );
+  const [phaseEndNotice, setPhaseEndNotice] = useState(() => getPhaseEndNotice());
+  const [suppressPhasePopup, setSuppressPhasePopup] = useState(false);
+  const [pomoView, setPomoView] = useState(() => getPomodoroView());
+
+  useEffect(() => subscribePhaseEndNotice(setPhaseEndNotice), []);
+  useEffect(() => subscribePomodoro((next) => setPomoView(next)), []);
   const shell = useMainShellOptional();
   const goBack = () => {
     if (navigation?.canGoBack?.()) navigation.goBack();
     else shell?.navigation?.goBack?.();
   };
+  const goBackRef = useRef(goBack);
+  goBackRef.current = goBack;
+
+  // 자동 시작 없이 집중·휴식이 끝나면 빈 교실에 두지 않고, 안내 뒤 화면을 닫는다.
+  useEffect(() => {
+    return subscribePomodoro((view, events) => {
+      if (!isFocused) return;
+      const ended = (events || []).find(
+        (event) => event.type === 'phase_complete' || event.type === 'phase_skip',
+      );
+      if (!ended || view.status === 'running') return;
+      setSuppressPhasePopup(true);
+      publishPhaseEndNotice(null);
+      const focusEnded = ended.phase === 'focus';
+      appAlert.alert(
+        focusEnded ? '집중이 끝났어요' : '휴식이 끝났어요',
+        '다음 사용자를 위해 자리를 비울게요.',
+        [{ text: '확인', onPress: () => goBackRef.current() }],
+      );
+    });
+  }, [isFocused]);
 
   const { refreshStudyingFriends } = useFriend();
-  const { socket } = useSocket();
+  const { socket, connected: socketConnected } = useSocket();
+  const { showToast } = useToast();
+  const [profileTipKey, setProfileTipKey] = useState(null);
+  const [selfPomoOpen, setSelfPomoOpen] = useState(false);
+  const [profileTipOpen, setProfileTipOpen] = useState(false);
+  const [requestedFriendIds, setRequestedFriendIds] = useState(() => new Set());
+  const pendingTipKeyRef = useRef(null);
+  const profileTipKeyRef = useRef(null);
+  const profileTipOpenRef = useRef(false);
+  const pendingExitKeysRef = useRef(new Set());
+  const pendingExitTimersRef = useRef(/** @type {Record<string, ReturnType<typeof setTimeout>>} */ ({}));
   const [stage, setStage] = useState({ w: 0, h: 0 });
   const [bgSource, setBgSource] = useState(() => getClassroomBgForDate());
   /** 서버 배정 방 ID */
@@ -580,6 +661,7 @@ export default function TimerAniLab({ navigation }) {
   const [runtime, setRuntime] = useState(() => getTimerRuntimeState());
   const [nowMs, setNowMs] = useState(Date.now());
   const [otherModes, setOtherModes] = useState({});
+  const otherModesRef = useRef(otherModes);
   const [otherStartedAt, setOtherStartedAt] = useState({});
   const [selfMode, setSelfMode] = useState(/** @type {'hidden'|'enter'|'seated'} */ ('hidden'));
   /** key -> seatIndex (신규만 빈자리 랜덤, 기존 유지) */
@@ -599,6 +681,9 @@ export default function TimerAniLab({ navigation }) {
   );
 
   roomPresenceRef.current = roomPresence;
+  otherModesRef.current = otherModes;
+  profileTipKeyRef.current = profileTipKey;
+  profileTipOpenRef.current = profileTipOpen;
 
   const stageReady = stage.w > 80 && stage.h > 80;
   const roomReady = stageReady && meReady;
@@ -640,11 +725,16 @@ export default function TimerAniLab({ navigation }) {
         if (!alive) return;
         const uid = data.id ?? data.userId;
         const username = data.username || data.name || '나';
+        const settings = await loadTimerSettings();
+        const gender =
+          settings.gender === 'boy' || settings.gender === 'girl'
+            ? settings.gender
+            : randomGender();
         setMe({
           key: uid != null ? `u:${uid}` : 'me',
           userId: uid,
           username,
-          gender: randomGender(),
+          gender,
         });
       } catch {
         // keep defaults
@@ -657,9 +747,22 @@ export default function TimerAniLab({ navigation }) {
     };
   }, []);
 
-  // 친구 목록(구분 표시) + 앱 전체 공부 중 목록
+  const loadSeqRef = useRef(0);
+  const loadStudyingRef = useRef(null);
+  const reloadTimerRef = useRef(null);
+  const scheduleRoomReload = useCallback(() => {
+    if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
+    reloadTimerRef.current = setTimeout(() => {
+      reloadTimerRef.current = null;
+      loadStudyingRef.current?.();
+    }, 400);
+  }, []);
+
+  // 친구 목록(구분 표시) + 공부 중 명단. 화면 밖·백그라운드에서는 8초 조회를 멈춘다.
   useEffect(() => {
+    if (!isFocused) return undefined;
     let alive = true;
+    let pollId = null;
     refreshStudyingFriends?.();
 
     const loadFriends = async () => {
@@ -676,6 +779,13 @@ export default function TimerAniLab({ navigation }) {
           metaPatch[uid] = {
             username: String(f.username || f.name || '친구').replace(/^@/, ''),
             startedAtMs: null,
+            profileColorId:
+              f.profileColorId ??
+              f.profile_color_id ??
+              f.profileColor?.id ??
+              f.profileColor?.colorNumber ??
+              null,
+            avatarUrl: f.avatarUrl || f.avatar_url || null,
           };
         });
         setFriendIds(ids);
@@ -702,6 +812,9 @@ export default function TimerAniLab({ navigation }) {
           gender: undefined,
           startedAtMs: Number.isFinite(startedMs) ? startedMs : null,
           closedTotalMs: Number(item.closedTotalMs) || 0,
+          avatarUrl: item.avatarUrl || item.avatar_url || null,
+          profileColorId: item.profileColorId ?? null,
+          presence: item.presence === 'break' ? 'break' : 'study',
         };
       }
       if (roomId != null) setServerRoomId(String(roomId));
@@ -739,11 +852,12 @@ export default function TimerAniLab({ navigation }) {
     };
 
     const loadStudying = async () => {
+      const seq = loadSeqRef.current + 1;
+      loadSeqRef.current = seq;
       try {
         const res = await api.get('/api/timer/study-room/studying');
+        if (!alive || seq !== loadSeqRef.current) return;
         const data = res?.data?.data;
-        if (!alive) return;
-        // 신규: { roomId, members } / 구형 배열 호환
         if (Array.isArray(data)) {
           applyRoomMembers(data, null);
         } else if (data && typeof data === 'object') {
@@ -755,131 +869,77 @@ export default function TimerAniLab({ navigation }) {
           applyRoomMembers([], null);
         }
       } catch (error) {
-        console.error(
-          '[StudyRoom] 공부 중 목록 조회 실패:',
-          error?.message || error,
-        );
-        if (!initialStudyingSeedRef.current) {
-          initialStudyingSeedRef.current = new Set();
-        }
+        if (!alive || seq !== loadSeqRef.current) return;
+        console.error('[StudyRoom] 공부 중 목록 조회 실패', {
+          message: error?.message || String(error),
+        });
       } finally {
-        if (alive) setStudyingBootstrapDone(true);
+        if (alive && seq === loadSeqRef.current) setStudyingBootstrapDone(true);
       }
+    };
+
+    loadStudyingRef.current = loadStudying;
+
+    const startPoll = () => {
+      if (pollId) clearInterval(pollId);
+      pollId = setInterval(() => {
+        loadStudying();
+      }, 8000);
+    };
+    const stopPoll = () => {
+      if (pollId) clearInterval(pollId);
+      pollId = null;
     };
 
     loadFriends();
-    loadStudying();
+    if (AppState.currentState === 'active') {
+      loadStudying();
+      startPoll();
+    }
+    const appSub = AppState.addEventListener('change', (state) => {
+      if (!alive) return;
+      if (state === 'active') {
+        loadStudying();
+        startPoll();
+      } else {
+        stopPoll();
+      }
+    });
     return () => {
       alive = false;
+      stopPoll();
+      appSub.remove();
+      if (loadStudyingRef.current === loadStudying) {
+        loadStudyingRef.current = null;
+      }
     };
-  }, [refreshStudyingFriends]);
+  }, [isFocused, refreshStudyingFriends]);
 
-  // 스터디룸 소켓 — 서버가 배정한 방만 수신
+  // 소켓은 명단을 직접 고치지 않고, 디바운스된 재조회만 시킨다.
   useEffect(() => {
     if (!socket) return undefined;
-    socket.emit('study_room:join');
-    const roomIdRef = { current: serverRoomId };
-
-    const onJoined = (payload) => {
-      if (!payload || payload.error) return;
-      if (payload.roomId != null) {
-        roomIdRef.current = String(payload.roomId);
-        setServerRoomId(String(payload.roomId));
-      }
-      const list = payload.members;
-      if (!Array.isArray(list)) return;
-      setStudyingUsers((prev) => {
-        const next = { ...prev };
-        list.forEach((item) => {
-          if (item?.userId != null) next[String(item.userId)] = true;
-        });
-        return next;
-      });
-      list.forEach((item) => {
-        if (item?.userId == null) return;
-        const uid = String(item.userId);
-        const startedMs = item.startedAt ? Date.parse(item.startedAt) : NaN;
-        setOthersMeta((prev) => ({
-          ...prev,
-          [uid]: {
-            username: String(
-              item.username || prev[uid]?.username || '학생',
-            ).replace(/^@/, ''),
-            gender: prev[uid]?.gender || pickGenderSafe(),
-            startedAtMs: Number.isFinite(startedMs)
-              ? startedMs
-              : prev[uid]?.startedAtMs ?? null,
-            closedTotalMs:
-              item.closedTotalMs != null
-                ? Number(item.closedTotalMs) || 0
-                : prev[uid]?.closedTotalMs || 0,
-          },
-        }));
-      });
+    const join = () => {
+      socket.emit('study_room:join');
+      scheduleRoomReload();
     };
-
-    const onStatus = (payload) => {
-      const uid = payload?.userId != null ? String(payload.userId) : null;
-      if (!uid) return;
-      if (
-        payload.roomId != null &&
-        roomIdRef.current != null &&
-        String(payload.roomId) !== String(roomIdRef.current)
-      ) {
-        return;
-      }
-      if (payload.roomId != null && roomIdRef.current == null) {
-        roomIdRef.current = String(payload.roomId);
-        setServerRoomId(String(payload.roomId));
-      }
-      const status = payload.status;
-      if (status === 'studying') {
-        setStudyingUsers((prev) => ({ ...prev, [uid]: true }));
-        const startedMs = payload.startedAt
-          ? Date.parse(payload.startedAt)
-          : Date.now();
-        setOthersMeta((prev) => ({
-          ...prev,
-          [uid]: {
-            username: String(
-              payload.username || prev[uid]?.username || '학생',
-            ).replace(/^@/, ''),
-            gender: prev[uid]?.gender || pickGenderSafe(),
-            startedAtMs: Number.isFinite(startedMs) ? startedMs : Date.now(),
-            closedTotalMs:
-              payload.closedTotalMs != null
-                ? Number(payload.closedTotalMs) || 0
-                : prev[uid]?.closedTotalMs || 0,
-          },
-        }));
-        setOtherStartedAt((prev) => {
-          const key = `u:${uid}`;
-          if (prev[key]) return prev;
-          return {
-            ...prev,
-            [key]: Number.isFinite(startedMs) ? startedMs : Date.now(),
-          };
-        });
-      } else if (status === 'idle') {
-        setStudyingUsers((prev) => {
-          if (!prev[uid]) return prev;
-          const next = { ...prev };
-          delete next[uid];
-          return next;
-        });
-      }
+    const onConnect = () => {
+      console.log('[StudyRoom] 소켓 재연결, 명단 다시 읽기');
+      join();
     };
-
-    socket.on('study_room:joined', onJoined);
-    socket.on('study_room_timer_status', onStatus);
+    const onSignal = () => {
+      scheduleRoomReload();
+    };
+    if (socket.connected) join();
+    socket.on('connect', onConnect);
+    socket.on('study_room:joined', onSignal);
+    socket.on('study_room_timer_status', onSignal);
     return () => {
       socket.emit('study_room:leave');
-      socket.off('study_room:joined', onJoined);
-      socket.off('study_room_timer_status', onStatus);
+      socket.off('connect', onConnect);
+      socket.off('study_room:joined', onSignal);
+      socket.off('study_room_timer_status', onSignal);
     };
-    // serverRoomId 초기값만 사용 — 변경 시 재구독하지 않음
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [socket]);
+  }, [socket, scheduleRoomReload]);
 
   // 타이머 런타임 + 오늘 누적(타이머 화면과 동일 기준)
   useEffect(() => subscribeTimerRuntime((s) => setRuntime({ ...s })), []);
@@ -915,11 +975,16 @@ export default function TimerAniLab({ navigation }) {
     : 0;
   // 타이머 화면과 동일: 종료 세션 누적 + (실행 중이면 현재 세션)
   const selfElapsedMs = Math.max(0, (Number(runtime.totalElapsedMs) || 0) + selfLiveMs);
+  const selfOnBreak =
+    (pomoView.status === 'running' || pomoView.status === 'paused') &&
+    (pomoView.phase === 'short_break' || pomoView.phase === 'long_break');
 
-  // 타이머 화면은 blur 시 keep-awake 해제 → 스터디룸에서도 실행 중이면 유지
+  const pomoClockRunning = pomoView.status === 'running';
+
+  // 타이머 화면은 blur 시 keep-awake 해제 → 스터디룸에서도 집중·휴식 시계가 돌면 유지
   useEffect(() => {
     const tag = 'youth-paper-study-room';
-    if (!isFocused || !selfRunning) {
+    if (!isFocused || (!selfRunning && !pomoClockRunning)) {
       deactivateKeepAwake(tag);
       return undefined;
     }
@@ -927,7 +992,7 @@ export default function TimerAniLab({ navigation }) {
     return () => {
       deactivateKeepAwake(tag);
     };
-  }, [isFocused, selfRunning]);
+  }, [isFocused, selfRunning, pomoClockRunning]);
 
   const studyingOtherIds = useMemo(
     () =>
@@ -959,13 +1024,11 @@ export default function TimerAniLab({ navigation }) {
 
   // 공부 ON → 즉시 출석 / OFF → 5초 뒤 퇴실
   useEffect(() => {
-    const selfUid = me.userId != null ? String(me.userId) : null;
     const rawOn = new Set(
       Object.entries(studyingUsers || {})
         .filter(([, v]) => v === true)
         .map(([id]) => String(id)),
     );
-    if (selfRunning && selfUid) rawOn.add(selfUid);
 
     rawOn.forEach((uid) => clearLeaveGrace(uid));
 
@@ -984,13 +1047,7 @@ export default function TimerAniLab({ navigation }) {
     Object.keys(roomPresenceRef.current).forEach((uid) => {
       if (!rawOn.has(uid)) scheduleLeaveGrace(uid);
     });
-  }, [
-    studyingUsers,
-    selfRunning,
-    me.userId,
-    clearLeaveGrace,
-    scheduleLeaveGrace,
-  ]);
+  }, [studyingUsers, clearLeaveGrace, scheduleLeaveGrace]);
 
   useEffect(
     () => () => {
@@ -998,6 +1055,10 @@ export default function TimerAniLab({ navigation }) {
         clearTimeout(leaveGraceTimersRef.current[uid]);
       });
       leaveGraceTimersRef.current = {};
+      Object.keys(pendingExitTimersRef.current).forEach((key) => {
+        clearTimeout(pendingExitTimersRef.current[key]);
+      });
+      pendingExitTimersRef.current = {};
     },
     [],
   );
@@ -1103,13 +1164,55 @@ export default function TimerAniLab({ navigation }) {
     }
     if (!selfEnterStartedRef.current) {
       selfEnterStartedRef.current = true;
-      setMe((prev) => ({ ...prev, gender: randomGender() }));
-      if (selfUid && initialStudyingSeedRef.current) {
-        initialStudyingSeedRef.current.add(selfUid);
-      }
+      const settings = getTimerSettings();
+      const gender =
+        settings.gender === 'boy' || settings.gender === 'girl'
+          ? settings.gender
+          : randomGender();
+      setMe((prev) => ({ ...prev, gender }));
+      // 입장 전에 공부를 시작했어도, 이 화면에 들어오는 본인은 걸어 들어온다.
       setSelfMode('enter');
     }
   }, [roomReady, studyingBootstrapDone, selfPresent, selfSeat?.index, selfUid]);
+
+  useEffect(() => {
+    if (selfMode !== 'seated') setSelfPomoOpen(false);
+  }, [selfMode]);
+
+  const beginPendingExit = useCallback((key) => {
+    pendingExitKeysRef.current.delete(key);
+    const t = pendingExitTimersRef.current[key];
+    if (t) {
+      clearTimeout(t);
+      delete pendingExitTimersRef.current[key];
+    }
+    setOtherModes((prev) => {
+      if (!prev[key] || prev[key] === 'hidden' || prev[key] === 'exit') {
+        return prev;
+      }
+      const next = { ...prev, [key]: 'exit' };
+      otherModesRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const holdExitUntilTipIn = useCallback((key) => {
+    pendingExitKeysRef.current.add(key);
+    if (profileTipOpenRef.current && profileTipKeyRef.current === key) {
+      pendingTipKeyRef.current = null;
+      setProfileTipOpen(false);
+    }
+    if (pendingExitTimersRef.current[key]) return;
+    pendingExitTimersRef.current[key] = setTimeout(() => {
+      delete pendingExitTimersRef.current[key];
+      if (!pendingExitKeysRef.current.has(key)) return;
+      if (profileTipKeyRef.current === key) {
+        setProfileTipOpen(false);
+        setProfileTipKey(null);
+      }
+      beginPendingExit(key);
+    }, PROFILE_TIP_CLOSE_WAIT_MS);
+  }, [beginPendingExit]);
 
   // 타인 모드 동기 — 진입 시 이미 공부 중이면 착석, 이후에 켠 사람만 입장 걷기
   useEffect(() => {
@@ -1118,30 +1221,60 @@ export default function TimerAniLab({ navigation }) {
 
     const seed = initialStudyingSeedRef.current;
     const roomOtherKeys = room.members.filter((k) => k !== me.key);
+    const prevModes = otherModesRef.current;
+    const newcomers = [];
+    const keysToHold = [];
+    const keysToExit = [];
 
-    setOtherModes((prev) => {
-      const next = { ...prev };
-
-      roomOtherKeys.forEach((key) => {
-        const uid = key.replace(/^u:/, '');
-        if (roomPresence?.[uid] !== true) return;
-        if (knownOthersRef.current.has(key)) return;
-        knownOthersRef.current.add(key);
-        next[key] = seed.has(uid) ? 'seated' : 'enter';
+    roomOtherKeys.forEach((key) => {
+      const uid = key.replace(/^u:/, '');
+      if (roomPresence?.[uid] !== true) return;
+      if (knownOthersRef.current.has(key)) return;
+      knownOthersRef.current.add(key);
+      newcomers.push({
+        key,
+        mode: seed.has(uid) ? 'seated' : 'enter',
       });
-
-      Object.keys(next).forEach((key) => {
-        if (key === me.key) return;
-        const uid = key.replace(/^u:/, '');
-        const still =
-          roomOtherKeys.includes(key) && roomPresence?.[uid] === true;
-        if (!still && next[key] !== 'hidden' && next[key] !== 'exit') {
-          next[key] = 'exit';
-        }
-      });
-
-      return next;
     });
+
+    const seen = new Set([...Object.keys(prevModes), ...newcomers.map((n) => n.key)]);
+    seen.forEach((key) => {
+      if (key === me.key) return;
+      const uid = key.replace(/^u:/, '');
+      const mode = prevModes[key];
+      const still =
+        roomOtherKeys.includes(key) && roomPresence?.[uid] === true;
+      if (still || !mode || mode === 'hidden' || mode === 'exit') return;
+      // 머리 위 프로필 칩이 열려 있으면 접힌 뒤에 퇴장. 칩 키만 남은 경우는 바로 퇴장.
+      const tipOpenOnKey =
+        profileTipOpenRef.current && profileTipKeyRef.current === key;
+      if (tipOpenOnKey || pendingExitKeysRef.current.has(key)) {
+        keysToHold.push(key);
+        return;
+      }
+      keysToExit.push(key);
+    });
+
+    if (newcomers.length || keysToExit.length) {
+      setOtherModes((current) => {
+        const next = { ...current };
+        let changed = false;
+        newcomers.forEach(({ key, mode }) => {
+          if (next[key] && next[key] !== 'hidden') return;
+          next[key] = mode;
+          changed = true;
+        });
+        keysToExit.forEach((key) => {
+          if (!next[key] || next[key] === 'hidden' || next[key] === 'exit') return;
+          next[key] = 'exit';
+          changed = true;
+        });
+        if (!changed) return current;
+        otherModesRef.current = next;
+        return next;
+      });
+    }
+    keysToHold.forEach((key) => holdExitUntilTipIn(key));
 
     setOtherStartedAt((prev) => {
       const next = { ...prev };
@@ -1161,6 +1294,7 @@ export default function TimerAniLab({ navigation }) {
     roomPresence,
     me.key,
     othersMeta,
+    holdExitUntilTipIn,
   ]);
 
   const onSelfEnterDone = useCallback(() => setSelfMode('seated'), []);
@@ -1203,18 +1337,86 @@ export default function TimerAniLab({ navigation }) {
     },
     [assignments, seatByIndex],
   );
+
+  const closeProfileTip = useCallback(() => {
+    pendingTipKeyRef.current = null;
+    setProfileTipOpen(false);
+  }, []);
+
+  const handleProfileTipDismissed = useCallback(() => {
+    const closedKey = profileTipKeyRef.current;
+    const next = pendingTipKeyRef.current;
+    pendingTipKeyRef.current = null;
+    if (closedKey && pendingExitKeysRef.current.has(closedKey)) {
+      beginPendingExit(closedKey);
+    }
+    if (next && next !== closedKey && !pendingExitKeysRef.current.has(next)) {
+      setProfileTipKey(next);
+      setProfileTipOpen(true);
+      return;
+    }
+    setProfileTipKey(null);
+  }, [beginPendingExit]);
+
+  const handlePressOtherCharacter = useCallback((key, mode) => {
+    if (mode !== 'seated') return;
+    if (pendingExitKeysRef.current.has(key)) return;
+    if (profileTipOpen && profileTipKey === key) {
+      pendingTipKeyRef.current = null;
+      setProfileTipOpen(false);
+      return;
+    }
+    if (profileTipOpen && profileTipKey && profileTipKey !== key) {
+      pendingTipKeyRef.current = key;
+      setProfileTipOpen(false);
+      return;
+    }
+    setProfileTipKey(key);
+    setProfileTipOpen(true);
+  }, [profileTipOpen, profileTipKey]);
+
+  useEffect(() => {
+    if (!profileTipKey) return;
+    if (otherModes[profileTipKey] !== 'seated') {
+      closeProfileTip();
+    }
+  }, [otherModes, profileTipKey, closeProfileTip]);
+
+  const tipUid = profileTipKey ? profileTipKey.replace(/^u:/, '') : null;
+  const tipMeta = tipUid ? othersMeta[tipUid] : null;
+  const tipSeat = profileTipKey ? resolveOtherSeat(profileTipKey) : null;
+
+  const handleAddFriendFromTip = useCallback(async () => {
+    const username = String(tipMeta?.username || '')
+      .trim()
+      .replace(/^@/, '');
+    if (!username || !tipUid) return;
+    try {
+      await api.post('/api/friends/requests', { username });
+      setRequestedFriendIds((prev) => new Set(prev).add(tipUid));
+      showToast?.({ message: '친구 요청을 보냈어요' });
+    } catch (error) {
+      appAlert.alert(
+        '친구 요청 실패',
+        getApiUserFacingMessage(
+          error,
+          '친구 요청 중 문제가 발생했어요. 잠시 후 다시 시도해 주세요.',
+        ),
+      );
+    }
+  }, [tipMeta?.username, tipUid, showToast]);
   const styles = useMemo(
     () =>
       StyleSheet.create({
         root: {
           flex: 1,
-          backgroundColor: '#000',
+          backgroundColor: colors.text,
         },
         stage: {
-          ...StyleSheet.absoluteFillObject,
+          ...StyleSheet.absoluteFill,
         },
         bg: {
-          ...StyleSheet.absoluteFillObject,
+          ...StyleSheet.absoluteFill,
           width: '100%',
           height: '100%',
         },
@@ -1229,6 +1431,20 @@ export default function TimerAniLab({ navigation }) {
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 300,
+        },
+        linkChip: {
+          position: 'absolute',
+          left: 60,
+          top: Math.max(insets.top, 8) + 10,
+          zIndex: 300,
+          paddingHorizontal: 8,
+          paddingVertical: 4,
+          borderRadius: 10,
+          backgroundColor: 'rgba(39,42,38,0.45)',
+        },
+        linkChipText: {
+          color: colors.white,
+          fontSize: 12,
         },
       }),
     [insets.top],
@@ -1288,7 +1504,14 @@ export default function TimerAniLab({ navigation }) {
             displayId={me.username}
             mode={selfMode}
             elapsedMs={selfElapsedMs}
+            onBreak={selfOnBreak}
             isSelf
+            onPressCharacter={() => {
+              if (selfMode !== 'seated') return;
+              if (getTimerSettings().pomodoroOn !== true) return;
+              setProfileTipOpen(false);
+              setSelfPomoOpen((open) => !open);
+            }}
             onEnterDone={onSelfEnterDone}
             onSeatedVisualChange={(ready) =>
               setDeskCoverReady((prev) =>
@@ -1320,6 +1543,7 @@ export default function TimerAniLab({ navigation }) {
                   displayId={meta.username}
                   mode={mode}
                   elapsedMs={closedTotal + liveSessionMs}
+                  onBreak={meta.presence === 'break'}
                   isSelf={false}
                   onSeatedVisualChange={(ready) =>
                     setDeskCoverReady((prev) =>
@@ -1328,6 +1552,9 @@ export default function TimerAniLab({ navigation }) {
                   }
                   onEnterDone={() =>
                     setOtherModes((prev) => ({ ...prev, [key]: 'seated' }))
+                  }
+                  onPressCharacter={() =>
+                    handlePressOtherCharacter(key, mode)
                   }
                   onExitDone={() => {
                     knownOthersRef.current.delete(key);
@@ -1358,6 +1585,33 @@ export default function TimerAniLab({ navigation }) {
               );
             })
           : null}
+
+        {selfPomoOpen && selfSeat && selfMode === 'seated' ? (
+          <Pressable
+            style={[StyleSheet.absoluteFill, { zIndex: 230 }]}
+            onPress={() => setSelfPomoOpen(false)}
+          />
+        ) : null}
+
+        {selfPomoOpen && selfSeat && selfMode === 'seated' && getTimerSettings().pomodoroOn === true ? (
+          <StudyRoomPomoTip visible seat={selfSeat} stageW={stage.w} />
+        ) : null}
+
+        {tipSeat && profileTipKey ? (
+          <StudyRoomProfileTip
+            visible={profileTipOpen}
+            seat={tipSeat}
+            stageW={stage.w}
+            username={String(tipMeta?.username || '학생').replace(/^@/, '')}
+            userId={tipUid}
+            profileColorId={tipMeta?.profileColorId}
+            avatarUrl={tipMeta?.avatarUrl}
+            isFriend={tipUid ? friendIds.has(tipUid) : false}
+            requestSent={tipUid ? requestedFriendIds.has(tipUid) : false}
+            onAddFriend={handleAddFriendFromTip}
+            onDismissed={handleProfileTipDismissed}
+          />
+        ) : null}
       </View>
 
       <TouchableOpacity
@@ -1366,8 +1620,19 @@ export default function TimerAniLab({ navigation }) {
         activeOpacity={0.85}
         accessibilityLabel="뒤로가기"
       >
-        <Ionicons name="chevron-back" size={24} color={colors.textWhite} />
+        <Ionicons name="chevron-back" size={24} color={colors.white} />
       </TouchableOpacity>
+      <View style={styles.linkChip} pointerEvents="none">
+        <Text style={styles.linkChipText}>
+          {socketConnected ? '연결됨' : '연결 중'}
+        </Text>
+      </View>
+      <TimerPhaseEndPopup
+        notice={isFocused && !suppressPhasePopup ? phaseEndNotice : null}
+        onClose={() => publishPhaseEndNotice(null)}
+        styles={timerStyles}
+        normalize={normalize}
+      />
     </View>
   );
 }

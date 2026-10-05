@@ -2,6 +2,10 @@ import { getBatchRedis, isRedisConfigured } from './batchRedis.service.js';
 import pool from '../config/database.js';
 import { getTimerDayKey } from '../utils/timerDayKey.js';
 import { isoFromMysqlKstNaiveString } from '../utils/timerSessionTimes.js';
+import {
+  freshSeenSql,
+  sweepStaleStudySessions,
+} from './studyPresence.service.js';
 
 export const STUDY_ROOM_CAPACITY = 16;
 
@@ -328,15 +332,35 @@ export function studyRoomSocketName(roomId) {
   return `study_room:${roomId}`;
 }
 
+/** 스터디룸 화면이 방 배정 전에도 시작/종료를 받기 위한 공용 채널 */
+export const STUDY_ROOM_LOBBY = 'study_room_lobby';
+
+/** 지금 사람이 있는 방 중 가장 가득 찬 방. 없으면 null */
+export async function getBusiestOpenRoomId() {
+  if ((await backend()) === 'redis') {
+    try {
+      const redis = await getBatchRedis();
+      const rooms = await listOpenRoomsByFillDescRedis(redis);
+      return rooms[0]?.roomId || null;
+    } catch {
+      // memory 폴백
+    }
+  }
+  const rooms = listOpenRoomsByFillDescMem();
+  return rooms[0]?.roomId || null;
+}
+
 /**
  * 스터디룸: 내 방 멤버만 (정원 STUDY_ROOM_CAPACITY)
  */
 export async function getStudyRoomSnapshotForUser(userId) {
+  await sweepStaleStudySessions();
   const todayTimerDayKey = getTimerDayKey();
   const [openRows] = await pool.execute(
-    `SELECT id
+    `SELECT id, session_kind
      FROM study_sessions
      WHERE user_id = ? AND ended_at IS NULL AND day_key = ?
+       AND ${freshSeenSql('')}
      ORDER BY id DESC
      LIMIT 1`,
     [userId, todayTimerDayKey],
@@ -353,6 +377,11 @@ export async function getStudyRoomSnapshotForUser(userId) {
     relocated = !!assigned.relocated;
   } else {
     roomId = await getUserStudyRoomId(userId);
+    // 구경만 하는 화면은 방에 안 들어가 있어도, 이미 공부 중인 방을 보여 준다.
+    if (!roomId) {
+      roomId = await getBusiestOpenRoomId();
+      placement = roomId ? 'watch' : null;
+    }
   }
 
   if (!roomId) {
@@ -381,15 +410,28 @@ export async function getStudyRoomSnapshotForUser(userId) {
     `SELECT
        u.id AS userId,
        u.username AS username,
+       u.avatar_url AS avatarUrl,
+       u.color_id AS profileColorId,
        (
          SELECT DATE_FORMAT(ss.started_at, '%Y-%m-%d %H:%i:%s.%f')
          FROM study_sessions ss
          WHERE ss.user_id = u.id
            AND ss.ended_at IS NULL
            AND ss.day_key = ?
+           AND ${freshSeenSql('ss')}
          ORDER BY ss.id DESC
          LIMIT 1
        ) AS started_at_fmt,
+       (
+         SELECT ss.session_kind
+         FROM study_sessions ss
+         WHERE ss.user_id = u.id
+           AND ss.ended_at IS NULL
+           AND ss.day_key = ?
+           AND ${freshSeenSql('ss')}
+         ORDER BY ss.id DESC
+         LIMIT 1
+       ) AS session_kind,
        COALESCE(sd.total_elapsed_ms, 0) AS closed_total_ms
      FROM users u
      LEFT JOIN study_days sd
@@ -397,6 +439,7 @@ export async function getStudyRoomSnapshotForUser(userId) {
      WHERE u.id IN (${placeholders})
        AND u.is_deleted = FALSE`,
     [
+      todayTimerDayKey,
       todayTimerDayKey,
       todayTimerDayKey,
       ...memberIds.map((id) => Number(id) || id),
@@ -408,9 +451,12 @@ export async function getStudyRoomSnapshotForUser(userId) {
     .map((r) => ({
       userId: r.userId,
       username: r.username || '',
+      avatarUrl: r.avatarUrl || r.avatar_url || null,
+      profileColorId: r.profileColorId ?? r.profile_color_id ?? null,
       startedAt: isoFromMysqlKstNaiveString(r.started_at_fmt),
       closedTotalMs: Number(r.closed_total_ms) || 0,
       isStudying: true,
+      presence: r.session_kind === 'break' ? 'break' : 'study',
     }));
 
   // Redis/메모리에만 남은 유령 멤버 정리 (세션 없이 남아 정원 잠식 방지)

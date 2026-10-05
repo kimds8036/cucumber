@@ -11,12 +11,15 @@ import { submitContentReport } from '../services/reportSubmission.service.js';
 import { softDeletePostComment } from '../services/commentCount.service.js';
 import { blockWhenFlag } from '../middleware/systemFlags.js';
 import { API_ERROR_CODES } from '../constants/apiErrorCodes.js';
+import { resolveAnonNo } from '../utils/resolveAnonNo.js';
+import { attachDryRun } from '../utils/dryRun.js';
 
 const router = express.Router();
 
 // 검증 체이너 — content 가 비어있어도 첨부가 있으면 허용하는 비즈니스 룰은
 // 핸들러 안에서 그대로 본다. 여기서는 타입/길이/숫자 검증만 깐다.
 const COMMENT_CONTENT_MAX = 2000;
+
 const commentCreateValidators = [
   param('postId').toInt().isInt({ min: 1 }).withMessage('게시글 ID 가 올바르지 않습니다.'),
   body('content').optional({ values: 'falsy' }).isString().trim()
@@ -78,7 +81,8 @@ router.delete('/comments/:commentId', authenticate, async (req, res) => {
 });
 
 // 댓글 작성 (대댓글 포함)
-router.post('/:postId/comments', authenticate, blockWhenFlag('comment_write_disabled'), uploadComment.array('images', 5), validate(commentCreateValidators), async (req, res) => {
+router.post('/:postId/comments', authenticate, attachDryRun, blockWhenFlag('comment_write_disabled'), uploadComment.array('images', 5), validate(commentCreateValidators), async (req, res) => {
+  const connection = await pool.getConnection();
   try {
     const userId = req.user.userId;
     const { postId } = req.params;
@@ -91,12 +95,15 @@ router.post('/:postId/comments', authenticate, blockWhenFlag('comment_write_disa
       });
     }
 
-    // 게시글 존재 확인
-    const [posts] = await pool.execute(
+    await connection.beginTransaction();
+
+    // 게시글 존재 확인 (+ anon 발급용 FOR UPDATE는 resolveAnonNo 안에서)
+    const [posts] = await connection.execute(
       'SELECT id, user_id, content, board_type FROM posts WHERE id = ?',
       [postId],
     );
     if (posts.length === 0) {
+      await connection.rollback();
       return res.status(404).json({
         success: false,
         message: '게시글을 찾을 수 없습니다.',
@@ -105,11 +112,12 @@ router.post('/:postId/comments', authenticate, blockWhenFlag('comment_write_disa
 
     const postBoardType = posts[0].board_type;
     if (postBoardType === 'school' || postBoardType === 'student') {
-      const [svRows] = await pool.execute(
+      const [svRows] = await connection.execute(
         'SELECT student_verified FROM users WHERE id = ? LIMIT 1',
         [userId],
       );
       if (!svRows[0]?.student_verified) {
+        await connection.rollback();
         return res.status(403).json({
           success: false,
           message: '학생 인증이 필요한 기능입니다. 학생증으로 인증해 주세요.',
@@ -121,11 +129,12 @@ router.post('/:postId/comments', authenticate, blockWhenFlag('comment_write_disa
     // 대댓글인 경우 부모 댓글 확인
     let parentComment = null;
     if (parentCommentId) {
-      const [parentComments] = await pool.execute(
+      const [parentComments] = await connection.execute(
         'SELECT id, user_id, content FROM comments WHERE id = ? AND post_id = ?',
         [parentCommentId, postId],
       );
       if (parentComments.length === 0) {
+        await connection.rollback();
         return res.status(404).json({
           success: false,
           message: '부모 댓글을 찾을 수 없습니다.',
@@ -134,28 +143,12 @@ router.post('/:postId/comments', authenticate, blockWhenFlag('comment_write_disa
       parentComment = parentComments[0];
     }
 
-    // 익명 번호: 게시글 내 동일 유저는 같은 번호 유지, 신규 유저는 고유 작성자 수 기준 순번
-    const [existingIndex] = await pool.execute(
-      `SELECT anonymous_index FROM comments
-       WHERE post_id = ? AND user_id = ? AND is_deleted = FALSE
-       LIMIT 1`,
-      [postId, userId],
-    );
-
-    let anonymousIndex;
-    if (existingIndex.length > 0) {
-      anonymousIndex = existingIndex[0].anonymous_index;
-    } else {
-      const [uniqueAuthors] = await pool.execute(
-        `SELECT COUNT(DISTINCT user_id) as count FROM comments
-         WHERE post_id = ? AND is_deleted = FALSE`,
-        [postId],
-      );
-      anonymousIndex = uniqueAuthors[0].count + 1;
-    }
+    // 익명 번호: 서버에서 한 번 발급·DB 고정 (작성자는 null → anonymous_index 0)
+    const anonNo = await resolveAnonNo(connection, postId, userId);
+    const anonymousIndex = anonNo == null ? 0 : anonNo;
 
     // 댓글 생성
-    const [result] = await pool.execute(
+    const [result] = await connection.execute(
       `INSERT INTO comments (post_id, user_id, parent_comment_id, content, anonymous_index, created_at)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [
@@ -175,20 +168,20 @@ router.post('/:postId/comments', authenticate, blockWhenFlag('comment_write_disa
         file.filename,
         index,
       ]);
-      await pool.query(
+      await connection.query(
         'INSERT INTO comment_images (comment_id, cloudinary_url, cloudinary_public_id, display_order) VALUES ?',
         [imageValues]
       );
     }
 
     // 게시글의 댓글 수 증가
-    await pool.execute(
+    await connection.execute(
       'UPDATE posts SET comment_count = comment_count + 1 WHERE id = ?',
       [postId],
     );
 
     // 생성된 댓글 정보 조회
-    const [comments] = await pool.execute(
+    const [comments] = await connection.execute(
       `SELECT 
         c.id,
         c.post_id,
@@ -208,6 +201,31 @@ router.post('/:postId/comments', authenticate, blockWhenFlag('comment_write_disa
     );
 
     const post = posts[0];
+
+    if (req.dryRun) {
+      const bypassedExternalCalls = [];
+      if (post.user_id && post.user_id !== userId) {
+        bypassedExternalCalls.push('enqueueNotification:postAuthor');
+      }
+      if (
+        parentComment &&
+        parentComment.user_id &&
+        parentComment.user_id !== userId &&
+        parentComment.user_id !== post.user_id
+      ) {
+        bypassedExternalCalls.push('enqueueNotification:parentComment');
+      }
+      await connection.rollback();
+      return res.status(201).json({
+        success: true,
+        message: 'Dry-run: 댓글은 저장되지 않았습니다.',
+        dryRun: true,
+        bypassedExternalCalls,
+        data: comments[0],
+      });
+    }
+
+    await connection.commit();
 
     // 게시글 작성자에게 댓글/대댓글 알림 (비동기 큐로 위임)
     if (post.user_id && post.user_id !== userId) {
@@ -249,11 +267,14 @@ router.post('/:postId/comments', authenticate, blockWhenFlag('comment_write_disa
       data: comments[0],
     });
   } catch (error) {
+    await connection.rollback().catch(() => {});
     console.error('댓글 작성 오류:', error);
     res.status(500).json({
       success: false,
       message: '댓글 작성 중 오류가 발생했습니다.',
     });
+  } finally {
+    connection.release();
   }
 });
 
@@ -340,7 +361,7 @@ router.get('/:postId/comments', optionalAuthenticate, async (req, res) => {
     const userId = req.user?.userId ?? null;
 
     // 게시글 존재 확인
-    const [posts] = await pool.execute('SELECT id FROM posts WHERE id = ?', [
+    const [posts] = await pool.execute('SELECT id, user_id FROM posts WHERE id = ?', [
       postId,
     ]);
     if (posts.length === 0) {
@@ -361,7 +382,7 @@ router.get('/:postId/comments', optionalAuthenticate, async (req, res) => {
         c.user_id,
         c.parent_comment_id,
         c.content,
-        c.anonymous_index,
+        COALESCE(a.anon_no, c.anonymous_index) AS anonymous_index,
         c.like_count,
         c.is_pinned,
         c.pinned_at,
@@ -375,6 +396,8 @@ router.get('/:postId/comments', optionalAuthenticate, async (req, res) => {
           ORDER BY display_order ASC) AS images
       FROM comments c
       LEFT JOIN users u ON c.user_id = u.id
+      LEFT JOIN post_anon_aliases a
+        ON a.post_id = c.post_id AND a.user_id = c.user_id
       WHERE ${commentConditions.join(' AND ')}
       ORDER BY c.is_pinned DESC, c.created_at ASC, c.id ASC`,
       commentParams,
@@ -392,7 +415,7 @@ router.get('/:postId/comments', optionalAuthenticate, async (req, res) => {
       likedCommentIds = likes.map((l) => l.comment_id);
     }
 
-    // 댓글에 isLiked 속성 추가
+    // 댓글에 isLiked 속성 추가 — 번호는 DB 고정값 그대로(프론트에서 재계산하지 않음)
     const likedSet = new Set(likedCommentIds);
     const result = comments.map(comment => ({
       ...comment,

@@ -8,13 +8,19 @@ const isProduction = appEnv === 'production';
 const kakaoNativeAppKey = String(
   process.env.EXPO_PUBLIC_KAKAO_NATIVE_APP_KEY || '',
 ).trim();
+const admobAndroidAppId =
+  String(process.env.EXPO_PUBLIC_ADMOB_ANDROID_APP_ID || '').trim() ||
+  'ca-app-pub-3940256099942544~3347511713';
+const admobIosAppId =
+  String(process.env.EXPO_PUBLIC_ADMOB_IOS_APP_ID || '').trim() ||
+  'ca-app-pub-3940256099942544~1458002511';
 
 export default ({ config }) => ({
   expo: {
     name: 'Youth Paper',
     slug: 'youth-paper',
     scheme: 'youthpaper',
-    version: '1.9.1',
+    version: '2.0.0',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
@@ -28,7 +34,7 @@ export default ({ config }) => ({
 
     ios: {
       supportsTablet: true,
-      buildNumber: '35',
+      buildNumber: '37',
       usesAppleSignIn: true,
       // iOS 전용 아이콘 (안드로이드·공통 icon.png 와 분리)
       icon: './assets/icon-ios.png',
@@ -55,7 +61,7 @@ export default ({ config }) => ({
     },
 
     android: {
-      versionCode: 35,
+      versionCode: 37,
       usesCleartextTraffic: !isProduction,
       // (선택) 안드로이드도 같은 방식으로 secret 적용 가능
       googleServicesFile:
@@ -90,6 +96,20 @@ export default ({ config }) => ({
     },
 
     plugins: [
+      [
+        'expo-notifications',
+        {
+          sounds: ['./assets/music.mp3'],
+        },
+      ],
+      [
+        'expo-audio',
+        {
+          recordAudioAndroid: false,
+          enableBackgroundRecording: false,
+          enableBackgroundPlayback: false,
+        },
+      ],
       'expo-font',
       'expo-apple-authentication',
       '@react-native-community/datetimepicker',
@@ -144,6 +164,15 @@ export default ({ config }) => ({
       '@react-native-firebase/app',
       '@react-native-firebase/auth',
       '@react-native-firebase/messaging',
+      [
+        'react-native-google-mobile-ads',
+        {
+          androidAppId: admobAndroidAppId,
+          iosAppId: admobIosAppId,
+          userTrackingUsageDescription:
+            '맞춤 광고 제공을 위해 기기 식별자를 사용할 수 있습니다.',
+        },
+      ],
       [
         'expo-build-properties',
         {

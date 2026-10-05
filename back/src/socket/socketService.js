@@ -5,11 +5,13 @@ import { getTimerDayKey } from '../utils/timerDayKey.js';
 import { isoFromMysqlKstNaiveString } from '../utils/timerSessionTimes.js';
 import { upsertStudyDayTotalForUserKey } from '../utils/studyDayTotal.js';
 import {
+  STUDY_ROOM_LOBBY,
   assignUserToStudyRoom,
   getStudyRoomSnapshotForUser,
   leaveStudyRoom,
   studyRoomSocketName,
 } from '../services/studyRoom.service.js';
+import { freshSeenSql } from '../services/studyPresence.service.js';
 
 export { getStudyRoomSnapshotForUser };
 
@@ -63,8 +65,8 @@ export async function upsertStudySessionStart({ userId, dayKey, subjectId, subje
       }
     }
     await connection.execute(
-      `INSERT INTO study_sessions (user_id, day_key, subject_id, subject_name, started_at, ended_at)
-       VALUES (?, ?, ?, ?, ${KST_NOW_DATETIME_SQL}, NULL)`,
+      `INSERT INTO study_sessions (user_id, day_key, subject_id, subject_name, started_at, ended_at, last_seen_at)
+       VALUES (?, ?, ?, ?, ${KST_NOW_DATETIME_SQL}, NULL, ${KST_NOW_DATETIME_SQL})`,
       [
         userId,
         dayKey,
@@ -136,20 +138,20 @@ export async function sendFriendPoke({ fromUserId, targetUserId }) {
   lastPokeAtMap.set(key, now);
 
   const io = getIO();
-  let senderName = '친구';
+  let senderName = '';
   try {
     const [senderRows] = await pool.execute(
-      'SELECT name FROM users WHERE id = ? LIMIT 1',
+      'SELECT name_enc FROM users WHERE id = ? LIMIT 1',
       [fromUserId],
     );
-    const resolved = String(senderRows?.[0]?.name ?? '').trim();
-    if (resolved) senderName = resolved;
+    senderName = String(senderRows?.[0]?.name ?? '').trim();
   } catch (error) {
     console.warn('[FriendSocket] friend_poke sender 조회 실패:', {
       fromUserId,
       message: error?.message,
     });
   }
+  if (!senderName) senderName = '친구';
 
   const payload = {
     type: 'friend_poke',
@@ -205,14 +207,16 @@ export async function broadcastTimerStatus({ userId, status }) {
 
   const updatedAt = new Date().toISOString();
   let username = null;
+  let avatarUrl = null;
   let startedAt = null;
   let closedTotalMs = 0;
   try {
     const [userRows] = await pool.execute(
-      'SELECT username FROM users WHERE id = ? AND is_deleted = FALSE LIMIT 1',
+      'SELECT username, avatar_url FROM users WHERE id = ? AND is_deleted = FALSE LIMIT 1',
       [userId],
     );
     username = userRows[0]?.username || null;
+    avatarUrl = userRows[0]?.avatar_url || null;
     if (status === 'studying') {
       const todayTimerDayKey = getTimerDayKey();
       const [sessionRows] = await pool.execute(
@@ -251,17 +255,24 @@ export async function broadcastTimerStatus({ userId, status }) {
     console.warn('[FriendSocket] study_room 배정 실패', err?.message);
   }
 
+  const roomPayload = {
+    type: 'study_room_timer_status',
+    userId,
+    username,
+    avatarUrl,
+    status,
+    startedAt,
+    closedTotalMs,
+    roomId: studyRoomId,
+    updatedAt,
+  };
+  // 방에 아직 안 들어간 구경 화면도 시작/종료를 받도록 로비에 항상 보낸다.
+  io.to(STUDY_ROOM_LOBBY).emit('study_room_timer_status', roomPayload);
   if (studyRoomId) {
-    io.to(studyRoomSocketName(studyRoomId)).emit('study_room_timer_status', {
-      type: 'study_room_timer_status',
-      userId,
-      username,
-      status,
-      startedAt,
-      closedTotalMs,
-      roomId: studyRoomId,
-      updatedAt,
-    });
+    io.to(studyRoomSocketName(studyRoomId)).emit(
+      'study_room_timer_status',
+      roomPayload,
+    );
   }
 
   // 나와 친구 관계인 모든 유저 ID 조회
@@ -412,7 +423,9 @@ export async function getStudyingFriends({ userId }) {
      FROM study_sessions
        WHERE user_id IN (${placeholders})
        AND ended_at IS NULL
-       AND day_key = ?`,
+       AND day_key = ?
+       AND session_kind <> 'break'
+       AND ${freshSeenSql('')}`,
     [...friendIds, todayTimerDayKey],
   );
 

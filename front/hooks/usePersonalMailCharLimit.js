@@ -1,21 +1,38 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 import {
   PERSONAL_MAIL_CHAR_LIMIT_BASE,
   PERSONAL_MAIL_CHAR_LIMIT_MAX,
 } from '../utils/personalMail';
+import {
+  getRewardedUnitId,
+  initAdMob,
+  isAdMobReady,
+  showRewardedAd,
+} from '../utils/admob';
 
 /**
  * 개인우편 글자수 제한 + mail_char_reward 리워드.
- * 슬롯에 광고가 없으면 시청 버튼도 노출하지 않는다.
- *
- * TODO: /api/ads 연동 후 mail_char_reward 슬롯으로 hasRewardAd 판별
+ * 애드몹 리워드 단위가 있고 SDK가 준비된 뒤에만 시청 버튼을 연다.
  */
 export function usePersonalMailCharLimit() {
-  // API 연동 전: 리워드 광고 없음 → 시청 버튼 숨김
-  const hasRewardAd = false;
+  const [rewardReady, setRewardReady] = useState(
+    () => isAdMobReady() && Boolean(getRewardedUnitId()),
+  );
   const [charLimit, setCharLimit] = useState(PERSONAL_MAIL_CHAR_LIMIT_BASE);
   const [adRewardUsed, setAdRewardUsed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    initAdMob().then((ok) => {
+      if (!cancelled) setRewardReady(ok && Boolean(getRewardedUnitId()));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const hasRewardAd = rewardReady;
 
   const guardTextLength = useCallback(
     (text) => {
@@ -33,9 +50,10 @@ export function usePersonalMailCharLimit() {
     [charLimit, adRewardUsed, hasRewardAd],
   );
 
-  const handleAdReward = useCallback(() => {
+  const handleAdReward = useCallback(async () => {
     if (!hasRewardAd || adRewardUsed) return;
-    // TODO: 리워드 영상 재생 후 성공 시 한도 확장
+    const earned = await showRewardedAd();
+    if (!earned) return;
     setCharLimit(PERSONAL_MAIL_CHAR_LIMIT_MAX);
     setAdRewardUsed(true);
   }, [adRewardUsed, hasRewardAd]);

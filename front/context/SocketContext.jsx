@@ -51,15 +51,6 @@ export function SocketProvider({ children }) {
     isLoggedInRef.current = isLoggedIn;
   }, [isLoggedIn]);
 
-  const logSocket = useCallback((event, payload = {}) => {
-    if (!__DEV__) return;
-    console.log(`[SocketContext][${event}]`, {
-      at: new Date().toISOString(),
-      appState: appStateRef.current,
-      ...payload,
-    });
-  }, []);
-
   const clearReconnectTimer = useCallback(() => {
     if (reconnectTimerRef.current) {
       clearTimeout(reconnectTimerRef.current);
@@ -174,16 +165,14 @@ export function SocketProvider({ children }) {
         Math.floor(reconnectBackoffMsRef.current * 1.8),
         15000,
       );
-      logSocket('reconnect_scheduled', { reason, delayMs: delay });
       reconnectTimerRef.current = setTimeout(() => {
         const latest = socketManager.getSocket?.();
         if (latest && !latest.connected) {
-          logSocket('reconnect_attempt', { reason });
           latest.connect();
         }
       }, delay);
     },
-    [clearReconnectTimer, logSocket],
+    [clearReconnectTimer],
   );
 
   /**
@@ -208,25 +197,14 @@ export function SocketProvider({ children }) {
           setConnected(true);
           setSocket(s);
         }
-        logSocket('connected', {
-          socketId: s.id,
-          transport: s.io?.engine?.transport?.name,
-        });
       });
 
       s.on('disconnect', (reason) => {
         setConnected(false);
-        logSocket('disconnected', { reason });
         scheduleReconnect(`disconnect:${reason}`);
       });
 
       s.on('connect_error', (err) => {
-        logSocket('connect_error', {
-          message: err?.message,
-          code: err?.data?.code,
-          description: err?.description,
-        });
-
         const terminateCodes = [...SESSION_FORCE_LOGOUT_CODES];
         if (terminateCodes.includes(err?.data?.code)) {
           clearReconnectTimer();
@@ -258,10 +236,6 @@ export function SocketProvider({ children }) {
       });
 
       s.on('session_revoked', (payload = {}) => {
-        logSocket('session_revoked', {
-          code: payload?.code,
-          message: payload?.message,
-        });
         notifySessionTerminated(payload);
       });
 
@@ -272,7 +246,6 @@ export function SocketProvider({ children }) {
       cleanupContextListeners,
       clearReconnectTimer,
       isAuthConnectError,
-      logSocket,
       recoverSocketAuth,
       scheduleReconnect,
     ],
@@ -320,7 +293,6 @@ export function SocketProvider({ children }) {
         if (activeSocket && !activeSocket.connected) {
           if (isReconnectingRef.current) return;
           isReconnectingRef.current = true;
-          logSocket('appstate_reconnect', { prev, nextState });
           activeSocket.connect();
         }
       }
@@ -349,7 +321,6 @@ export function SocketProvider({ children }) {
     clearReconnectTimer,
     connect,
     cleanupContextListeners,
-    logSocket,
     recoverSocketAuth,
     scheduleReconnect,
   ]);

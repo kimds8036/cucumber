@@ -1,11 +1,8 @@
 import {
-  assignUserToStudyRoom,
+  STUDY_ROOM_LOBBY,
   getStudyRoomSnapshotForUser,
-  getUserStudyRoomId,
   studyRoomSocketName,
 } from '../services/studyRoom.service.js';
-import pool from '../config/database.js';
-import { getTimerDayKey } from '../utils/timerDayKey.js';
 
 /**
  * 스터디룸 구독 — 본인 방(study_room:{roomId}) 만 join
@@ -15,6 +12,7 @@ export function registerStudyRoomEvents(socket) {
   const userId = socket.userId;
 
   const leaveAllStudyRooms = () => {
+    socket.leave(STUDY_ROOM_LOBBY);
     for (const room of socket.rooms) {
       if (typeof room === 'string' && room.startsWith('study_room:')) {
         socket.leave(room);
@@ -25,33 +23,12 @@ export function registerStudyRoomEvents(socket) {
   socket.on('study_room:join', async () => {
     try {
       leaveAllStudyRooms();
+      socket.join(STUDY_ROOM_LOBBY);
 
-      const todayTimerDayKey = getTimerDayKey();
-      const [openRows] = await pool.execute(
-        `SELECT id FROM study_sessions
-         WHERE user_id = ? AND ended_at IS NULL AND day_key = ?
-         LIMIT 1`,
-        [userId, todayTimerDayKey],
-      );
-
-      let roomId = null;
-      if (openRows.length > 0) {
-        const assigned = await assignUserToStudyRoom(userId);
-        roomId = assigned.roomId;
-      } else {
-        roomId = await getUserStudyRoomId(userId);
-      }
-
-      if (!roomId) {
-        socket.emit('study_room:joined', {
-          roomId: null,
-          members: [],
-        });
-        return;
-      }
-
-      socket.join(studyRoomSocketName(roomId));
       const snap = await getStudyRoomSnapshotForUser(userId);
+      if (snap.roomId) {
+        socket.join(studyRoomSocketName(snap.roomId));
+      }
       socket.emit('study_room:joined', {
         roomId: snap.roomId,
         members: snap.members,

@@ -3,15 +3,18 @@ import {
   ATTEND_BADGE_THRESHOLD,
   BADGE_BY_KEY,
   BADGE_CATALOG,
-  INVITE_BADGE_THRESHOLD,
+  FRIENDS_BADGE_THRESHOLD,
   TIMER_DAYS_BADGE_TARGET,
   serializeBadge,
 } from '../constants/badges.js';
 
-async function countSuccessfulInvites(userId) {
+async function countAcceptedFriends(userId) {
   const [[row]] = await pool.execute(
-    `SELECT COUNT(*) AS c FROM user_invites WHERE inviter_id = ?`,
-    [userId],
+    `SELECT COUNT(*) AS c
+     FROM user_friendships
+     WHERE status = 'accepted'
+       AND (requester_id = ? OR addressee_id = ?)`,
+    [userId, userId],
   );
   return Number(row?.c || 0);
 }
@@ -45,15 +48,15 @@ async function timerActiveDays(userId) {
 }
 
 export async function getProgress(userId) {
-  const [posts, invites, timerDays, attend] = await Promise.all([
+  const [posts, friends, timerDays, attend] = await Promise.all([
     countUserPosts(userId),
-    countSuccessfulInvites(userId),
+    countAcceptedFriends(userId),
     timerActiveDays(userId),
     countAttendanceDays(userId),
   ]);
   return {
     first_post: { current: posts, target: 1 },
-    friends_invite_5: { current: invites, target: INVITE_BADGE_THRESHOLD },
+    friends_invite_5: { current: friends, target: FRIENDS_BADGE_THRESHOLD },
     timer_streak_7: { current: timerDays, target: TIMER_DAYS_BADGE_TARGET },
     attend_100: { current: attend, target: ATTEND_BADGE_THRESHOLD },
   };

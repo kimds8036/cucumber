@@ -4,10 +4,12 @@ import { api } from './api';
 import { ensureFirebaseApp } from './firebaseApp';
 import { getDeviceId } from './deviceId';
 
-function getMessagingInstance() {
+function loadMessaging() {
   try {
-    const mod = require('@react-native-firebase/messaging');
-    return mod?.default?.();
+    const messagingMod = require('@react-native-firebase/messaging');
+    const { getApp } = require('@react-native-firebase/app');
+    const messaging = messagingMod.getMessaging(getApp());
+    return { messaging, messagingMod };
   } catch (error) {
     console.warn(
       '[FCM] messaging 모듈을 불러오지 못했습니다:',
@@ -29,7 +31,6 @@ async function uploadFCMToken(token) {
       deviceType: Platform.OS,
       appVersion,
     });
-    console.log('[FCM] 서버에 토큰 저장 완료', { deviceId });
   } catch (error) {
     console.error(
       '[FCM] 서버 토큰 저장 실패:',
@@ -41,14 +42,11 @@ async function uploadFCMToken(token) {
 export const getFCMToken = async () => {
   try {
     ensureFirebaseApp();
-    const messaging = getMessagingInstance();
-    if (!messaging) return null;
+    const loaded = loadMessaging();
+    if (!loaded) return null;
 
-    await messaging.registerDeviceForRemoteMessages();
-    const token = await messaging.getToken();
-    if (token) {
-      console.log('[FCM] 토큰 발급 성공');
-    }
+    await loaded.messagingMod.registerDeviceForRemoteMessages(loaded.messaging);
+    const token = await loaded.messagingMod.getToken(loaded.messaging);
     return token || null;
   } catch (e) {
     console.error('[FCM] getFCMToken 실패:', e);
@@ -59,9 +57,6 @@ export const getFCMToken = async () => {
 export const initFCM = async () => {
   try {
     ensureFirebaseApp();
-    const messaging = getMessagingInstance();
-    if (!messaging) return null;
-
     const token = await getFCMToken();
     if (token) {
       await uploadFCMToken(token);
@@ -74,8 +69,9 @@ export const initFCM = async () => {
 };
 
 export const setupFCMHandlers = (options = {}) => {
-  const messaging = getMessagingInstance();
-  if (!messaging) return () => {};
+  const loaded = loadMessaging();
+  if (!loaded) return () => {};
+  const { messaging, messagingMod } = loaded;
 
   const onForegroundMessage =
     typeof options.onForegroundMessage === 'function'
@@ -86,12 +82,16 @@ export const setupFCMHandlers = (options = {}) => {
       ? options.onNotificationOpened
       : null;
 
-  const unsubscribeOnMessage = messaging.onMessage(async (remoteMessage) => {
-    console.log('[FCM] 포그라운드 메시지 수신:', remoteMessage);
-    onForegroundMessage?.(remoteMessage);
-  });
+  const unsubscribeOnMessage = messagingMod.onMessage(
+    messaging,
+    async (remoteMessage) => {
+      console.log('[FCM] 포그라운드 메시지 수신:', remoteMessage);
+      onForegroundMessage?.(remoteMessage);
+    },
+  );
 
-  const unsubscribeOnOpened = messaging.onNotificationOpenedApp(
+  const unsubscribeOnOpened = messagingMod.onNotificationOpenedApp(
+    messaging,
     (remoteMessage) => {
       console.log(
         '[FCM] 알림 탭으로 앱 오픈(onNotificationOpenedApp):',
@@ -101,10 +101,13 @@ export const setupFCMHandlers = (options = {}) => {
     },
   );
 
-  const unsubscribeTokenRefresh = messaging.onTokenRefresh(async (token) => {
-    console.log('[FCM] 토큰 갱신 이벤트');
-    await uploadFCMToken(token);
-  });
+  const unsubscribeTokenRefresh = messagingMod.onTokenRefresh(
+    messaging,
+    async (token) => {
+      console.log('[FCM] 토큰 갱신 이벤트');
+      await uploadFCMToken(token);
+    },
+  );
 
   return () => {
     try {
@@ -119,9 +122,9 @@ export const setupFCMHandlers = (options = {}) => {
 
 export const getInitialFCMNotification = async () => {
   try {
-    const messaging = getMessagingInstance();
-    if (!messaging) return null;
-    return await messaging.getInitialNotification();
+    const loaded = loadMessaging();
+    if (!loaded) return null;
+    return await loaded.messagingMod.getInitialNotification(loaded.messaging);
   } catch (error) {
     console.error('[FCM] getInitialNotification 실패:', error);
     return null;

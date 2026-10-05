@@ -1,8 +1,12 @@
 {
+  "react-native-google-mobile-ads": {
+    "android_app_id": "ca-app-pub-3940256099942544~3347511713",
+    "ios_app_id": "ca-app-pub-3940256099942544~1458002511"
+  },
   "expo": {
     "name": "Youth Paper",
     "slug": "youth-paper",
-    "version": "1.9.1",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -14,7 +18,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "buildNumber": "35",
+      "buildNumber": "37",
       "icon": "./assets/icon-ios.png",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
@@ -62,7 +66,7 @@
         "android.permission.READ_MEDIA_IMAGES"
       ],
       "package": "com.ucost.YouthPaper",
-      "versionCode": 35,
+      "versionCode": 37,
       "softwareKeyboardLayoutMode": "pan"
     },
     "web": {

@@ -18,7 +18,9 @@ import { isBlockedBy } from '../utils/userBlock.js';
 import { submitContentReport } from '../services/reportSubmission.service.js';
 import { notifyAppealCreated } from '../services/discordWebhook.service.js';
 import { evaluateAndUnlockBadges } from '../services/badge.service.js';
+import { attachDryRun } from '../utils/dryRun.js';
 import { API_ERROR_CODES } from '../constants/apiErrorCodes.js';
+import { loadPostPoll, parsePollInput, replacePostPollVotes } from '../utils/postPoll.js';
 const router = express.Router();
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -72,6 +74,14 @@ function normalizePostImagesFromRow(raw) {
   }
   return [];
 }
+
+const SQL_POST_IMAGES_JSON = `(SELECT JSON_ARRAYAGG(cloudinary_url)
+ FROM (
+   SELECT cloudinary_url
+   FROM post_images
+   WHERE post_id = p.id AND deleted_at IS NULL
+   ORDER BY display_order ASC
+ ) pi) AS images`;
 
 /** 좋아요/댓글/스크랩 **발생 시각**이 [start, end] 안에 드는 행을 게시물별로 집계 */
 function sqlEngagedEventsByBoardType(boardType) {
@@ -174,6 +184,7 @@ async function loadPostsRowsByIdOrder(
         WHERE pi1.post_id = p.id AND pi1.deleted_at IS NULL
         ORDER BY pi1.display_order ASC
         LIMIT 1) AS thumbnail,
+      ${SQL_POST_IMAGES_JSON},
       (SELECT COUNT(*) FROM post_likes pl
         WHERE pl.post_id = p.id AND pl.user_id = ?) AS is_liked,
       (SELECT COUNT(*) FROM post_scraps ps
@@ -226,6 +237,28 @@ router.get('/tags/search', async (req, res) => {
     res.status(500).json({
       success: false,
       message: '태그 검색 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+// 글 작성 화면 추천 해시태그
+// GET /api/posts/tags/recommended
+router.get('/tags/recommended', async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      `SELECT id, name
+       FROM recommended_hashtags
+       ORDER BY display_order ASC, id ASC`,
+    );
+    res.json({
+      success: true,
+      data: { tags: rows },
+    });
+  } catch (error) {
+    console.error('추천 해시태그 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '추천 해시태그 조회 중 오류가 발생했습니다.',
     });
   }
 });
@@ -482,6 +515,7 @@ router.get('/', optionalAuthenticate, async (req, res) => {
           WHERE pi1.post_id = p.id AND pi1.deleted_at IS NULL
           ORDER BY pi1.display_order ASC
           LIMIT 1) AS thumbnail,
+        ${SQL_POST_IMAGES_JSON},
         (SELECT COUNT(*) FROM post_likes pl
           WHERE pl.post_id = p.id AND pl.user_id = ?) AS is_liked,
         (SELECT COUNT(*) FROM post_scraps ps
@@ -519,6 +553,7 @@ router.get('/', optionalAuthenticate, async (req, res) => {
         tags: rawTags,
         latitude: postLat,
         longitude: postLng,
+        images: rawImages,
         ...rest
       } = p;
       let tags = [];
@@ -552,6 +587,7 @@ router.get('/', optionalAuthenticate, async (req, res) => {
       return {
         ...rest,
         tags,
+        images: normalizePostImagesFromRow(rawImages),
         distanceKm,
         is_author: !!userId && user_id === userId,
         author_user_id: user_id,
@@ -662,7 +698,8 @@ router.get('/my', authenticate, async (req, res) => {
             FROM post_images pi1
            WHERE pi1.post_id = p.id AND pi1.deleted_at IS NULL
            ORDER BY pi1.display_order ASC
-           LIMIT 1) AS thumbnail
+           LIMIT 1) AS thumbnail,
+         ${SQL_POST_IMAGES_JSON}
        FROM posts p
        LEFT JOIN users u ON p.user_id = u.id
        LEFT JOIN schools s ON p.school_id = s.school_id
@@ -681,9 +718,10 @@ router.get('/my', authenticate, async (req, res) => {
     const total = Number(countResult[0]?.total ?? 0);
 
     const postsForClient = posts.map((p) => {
-      const { user_id, is_liked, is_scrapped, scrap_count, ...rest } = p;
+      const { user_id, is_liked, is_scrapped, scrap_count, images: rawImages, ...rest } = p;
       return {
         ...rest,
+        images: normalizePostImagesFromRow(rawImages),
         author_user_id: user_id,
         isLiked: Boolean(Number(is_liked) > 0),
         isScrapped: Boolean(Number(is_scrapped) > 0),
@@ -845,7 +883,8 @@ router.get('/liked', authenticate, async (req, res) => {
             FROM post_images pi1
            WHERE pi1.post_id = p.id AND pi1.deleted_at IS NULL
            ORDER BY pi1.display_order ASC
-           LIMIT 1) AS thumbnail
+           LIMIT 1) AS thumbnail,
+         ${SQL_POST_IMAGES_JSON}
        FROM post_likes pl
        INNER JOIN posts p ON pl.post_id = p.id
        LEFT JOIN users u ON p.user_id = u.id
@@ -868,7 +907,10 @@ router.get('/liked', authenticate, async (req, res) => {
     res.json({
       success: true,
       data: {
-        posts,
+        posts: posts.map((p) => ({
+          ...p,
+          images: normalizePostImagesFromRow(p.images),
+        })),
         pagination: {
           page: parseInt(page, 10),
           limit: limitNum,
@@ -964,7 +1006,8 @@ router.get('/scrapped', authenticate, async (req, res) => {
             FROM post_images pi1
            WHERE pi1.post_id = p.id AND pi1.deleted_at IS NULL
            ORDER BY pi1.display_order ASC
-           LIMIT 1) AS thumbnail
+           LIMIT 1) AS thumbnail,
+         ${SQL_POST_IMAGES_JSON}
        FROM post_scraps ps
        INNER JOIN posts p ON ps.post_id = p.id
        LEFT JOIN users u ON p.user_id = u.id
@@ -985,9 +1028,10 @@ router.get('/scrapped', authenticate, async (req, res) => {
     const total = Number(countResult[0]?.total ?? 0);
 
     const postsForClient = posts.map((p) => {
-      const { user_id, is_liked, is_scrapped, scrap_count, ...rest } = p;
+      const { user_id, is_liked, is_scrapped, scrap_count, images: rawImages, ...rest } = p;
       return {
         ...rest,
+        images: normalizePostImagesFromRow(rawImages),
         author_user_id: user_id,
         isLiked: Boolean(Number(is_liked) > 0),
         isScrapped: Boolean(Number(is_scrapped) > 0),
@@ -1261,6 +1305,7 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
         current_user_id: userId ?? null,
         images,
         tags: postTags,
+        poll: await loadPostPoll(pool, id, userId),
       },
     });
   } catch (error) {
@@ -1273,7 +1318,7 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
 });
 
 // 게시글 작성
-router.post('/', authenticate, blockWhenFlag('post_write_disabled'), uploadPost.array('images', 5), validate(postCreateValidators), async (req, res) => {
+router.post('/', authenticate, attachDryRun, blockWhenFlag('post_write_disabled'), uploadPost.array('images', 5), validate(postCreateValidators), async (req, res) => {
   try {
     const userId = req.user.userId;
     const { boardType, schoolId, content, tags } = req.body;
@@ -1327,6 +1372,14 @@ router.post('/', authenticate, blockWhenFlag('post_write_disabled'), uploadPost.
       });
     }
 
+    const pollInput = parsePollInput(req.body.poll);
+    if (pollInput?.error) {
+      return res.status(400).json({
+        success: false,
+        message: pollInput.error,
+      });
+    }
+
     const connection = await pool.getConnection();
     let postId;
     try {
@@ -1370,6 +1423,19 @@ router.post('/', authenticate, blockWhenFlag('post_write_disabled'), uploadPost.
       );
 
       postId = result.insertId;
+
+      if (pollInput) {
+        await connection.execute(
+          'INSERT INTO post_polls (post_id, allow_multiple) VALUES (?, ?)',
+          [postId, pollInput.multi ? 1 : 0],
+        );
+        for (let i = 0; i < pollInput.options.length; i += 1) {
+          await connection.execute(
+            'INSERT INTO post_poll_options (post_id, label, display_order) VALUES (?, ?, ?)',
+            [postId, pollInput.options[i], i],
+          );
+        }
+      }
 
       if (req.files && req.files.length > 0) {
         const imageValues = req.files.map((file, index) => [
@@ -1420,6 +1486,21 @@ router.post('/', authenticate, blockWhenFlag('post_write_disabled'), uploadPost.
             [postId, tagId, now],
           );
         }
+      }
+
+      if (req.dryRun) {
+        const bypassedExternalCalls = ['evaluateAndUnlockBadges'];
+        if (boardType === 'school' && schoolId) {
+          bypassedExternalCalls.push('scheduleSchoolStats');
+        }
+        await connection.rollback();
+        return res.status(201).json({
+          success: true,
+          message: 'Dry-run: 게시글은 저장되지 않았습니다.',
+          dryRun: true,
+          bypassedExternalCalls,
+          data: { postId },
+        });
       }
 
       await connection.commit();
@@ -1508,6 +1589,60 @@ router.delete('/:id', authenticate, async (req, res) => {
     res.status(500).json({
       success: false,
       message: '게시글 삭제 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+router.post('/:id/poll/vote', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const postId = Number(req.params.id);
+    if (!Number.isFinite(postId) || postId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: '게시글 ID가 올바르지 않습니다.',
+      });
+    }
+    const [posts] = await pool.execute(
+      'SELECT id, board_type FROM posts WHERE id = ? AND is_deleted = FALSE',
+      [postId],
+    );
+    if (posts.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: '게시글을 찾을 수 없습니다.',
+      });
+    }
+    if (posts[0].board_type === 'school' || posts[0].board_type === 'student') {
+      const [svRows] = await pool.execute(
+        'SELECT student_verified FROM users WHERE id = ? LIMIT 1',
+        [userId],
+      );
+      if (!svRows[0]?.student_verified) {
+        return res.status(403).json({
+          success: false,
+          message: '학생 인증이 필요한 기능입니다. 학생증으로 인증해 주세요.',
+          code: API_ERROR_CODES.STUDENT_VERIFICATION_REQUIRED,
+        });
+      }
+    }
+    const optionIds = Array.isArray(req.body?.optionIds) ? req.body.optionIds : [];
+    const result = await replacePostPollVotes(pool, postId, userId, optionIds);
+    if (result.error) {
+      return res.status(result.status || 400).json({
+        success: false,
+        message: result.error,
+      });
+    }
+    return res.json({
+      success: true,
+      data: { poll: result.poll },
+    });
+  } catch (error) {
+    console.error('게시글 투표 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '투표 중 오류가 발생했습니다.',
     });
   }
 });

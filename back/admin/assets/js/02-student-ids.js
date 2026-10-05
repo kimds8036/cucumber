@@ -144,6 +144,80 @@ async function loadStudentIds() {
   }
 
   let pendingStudentIdRejectListKind = 'signup';
+  let pendingStudentIdRejectRegisteredName = '';
+  let pendingStudentIdRejectSchoolName = '';
+
+  function findStudentIdSubmission(id, listKind) {
+    const list =
+      listKind === 'reverification'
+        ? state.reverificationIdSubmissions
+        : state.studentIdSubmissions;
+    return (list || []).find((s) => Number(s.id) === Number(id)) || null;
+  }
+
+  function buildNameMismatchRejectNote(registeredName, studentIdName) {
+    const registered = String(registeredName || '').trim() || '-';
+    const idName = String(studentIdName || '').trim() || '(미입력)';
+    return [
+      '안녕하세요. 계정 정보와 학생증 사진의 이름이 다르게 등록되어 안내해 드립니다.',
+      `등록된 이름: ${registered}`,
+      `학생증 이름: ${idName}`,
+      '내용 확인 후 정확한 정보로 재인증 부탁드립니다. 감사합니다.',
+    ].join('\n');
+  }
+
+  function buildStudentIdRejectNote(kind) {
+    if (kind === 'blurry') {
+      return [
+        '안녕하세요. 제출해 주신 학생증 사진을 확인했으나, 글자나 사진이 흐리거나 일부가 잘려 정보를 정확히 확인하기 어려워 안내드립니다.',
+        '이름·학교·사진이 선명하게 보이도록 전체를 다시 촬영해 재인증 부탁드립니다. 감사합니다.',
+      ].join('\n');
+    }
+    if (kind === 'school_mismatch') {
+      const school = String(pendingStudentIdRejectSchoolName || '').trim() || '-';
+      return [
+        '안녕하세요. 계정에 등록된 학교 정보와 학생증 사진의 학교 정보가 다르게 확인되어 안내드립니다.',
+        `등록된 학교: ${school}`,
+        '내용 확인 후 정확한 학교 정보로 재인증 부탁드립니다. 감사합니다.',
+      ].join('\n');
+    }
+    if (kind === 'not_student_id') {
+      return [
+        '안녕하세요. 제출해 주신 사진을 확인했으나 학생증으로 보기 어려워 안내드립니다.',
+        '본인 명의의 학생증이 잘 보이도록 다시 촬영해 재인증 부탁드립니다. 감사합니다.',
+      ].join('\n');
+    }
+    if (kind === 'name_mismatch') {
+      const input = document.getElementById('student-id-reject-id-name');
+      return buildNameMismatchRejectNote(
+        pendingStudentIdRejectRegisteredName,
+        input?.value || '',
+      );
+    }
+    return '';
+  }
+
+  function updateStudentIdRejectPreview() {
+    const preview = document.getElementById('student-id-reject-preview');
+    const sel = document.getElementById('student-id-reject-reason')?.value;
+    if (!preview) return;
+    if (!sel || sel === 'custom') {
+      preview.style.display = 'none';
+      preview.textContent = '';
+      return;
+    }
+    preview.style.display = 'block';
+    preview.textContent = buildStudentIdRejectNote(sel);
+  }
+
+  function syncStudentIdRejectFields() {
+    const sel = document.getElementById('student-id-reject-reason')?.value;
+    const custom = document.getElementById('student-id-reject-custom');
+    const nameWrap = document.getElementById('student-id-reject-name-wrap');
+    if (custom) custom.style.display = sel === 'custom' ? 'block' : 'none';
+    if (nameWrap) nameWrap.style.display = sel === 'name_mismatch' ? 'block' : 'none';
+    updateStudentIdRejectPreview();
+  }
 
   async function approveStudentId(id, listKind = 'signup') {
     if (!confirm('이 학생증을 승인하시겠습니까?')) return;
@@ -187,9 +261,18 @@ async function loadStudentIds() {
   function openStudentIdRejectDialog(id, listKind = 'signup') {
     pendingStudentIdRejectId = id;
     pendingStudentIdRejectListKind = listKind;
+    const submission = findStudentIdSubmission(id, listKind);
+    pendingStudentIdRejectRegisteredName = String(submission?.name || '').trim();
+    pendingStudentIdRejectSchoolName = String(submission?.school_name || '').trim();
     document.getElementById('student-id-reject-reason').value = STUDENT_ID_REJECT_PRESET[0];
     document.getElementById('student-id-reject-custom').value = '';
-    document.getElementById('student-id-reject-custom').style.display = 'none';
+    const idNameInput = document.getElementById('student-id-reject-id-name');
+    if (idNameInput) idNameInput.value = '';
+    const registeredEl = document.getElementById('student-id-reject-registered-name');
+    if (registeredEl) {
+      registeredEl.textContent = pendingStudentIdRejectRegisteredName || '-';
+    }
+    syncStudentIdRejectFields();
     document.getElementById('student-id-reject-dialog').classList.add('show');
   }
 
@@ -202,19 +285,30 @@ async function loadStudentIds() {
     if (e.target.id === 'student-id-reject-dialog') closeStudentIdRejectDialog();
   }
 
-  document.getElementById('student-id-reject-reason')?.addEventListener('change', (e) => {
-    const custom = document.getElementById('student-id-reject-custom');
-    custom.style.display = e.target.value === 'custom' ? 'block' : 'none';
-  });
+  document.getElementById('student-id-reject-reason')?.addEventListener('change', syncStudentIdRejectFields);
+  document.getElementById('student-id-reject-id-name')?.addEventListener('input', updateStudentIdRejectPreview);
 
   async function submitStudentIdReject() {
     if (!pendingStudentIdRejectId) return;
     const sel = document.getElementById('student-id-reject-reason').value;
-    let note = sel;
+    let note = '';
     if (sel === 'custom') {
       note = document.getElementById('student-id-reject-custom').value.trim();
       if (!note) {
         alert('거절 사유를 입력해 주세요.');
+        return;
+      }
+    } else if (sel === 'name_mismatch') {
+      const idName = document.getElementById('student-id-reject-id-name')?.value.trim() || '';
+      if (!idName) {
+        alert('학생증에 적힌 이름을 입력해 주세요.');
+        return;
+      }
+      note = buildNameMismatchRejectNote(pendingStudentIdRejectRegisteredName, idName);
+    } else {
+      note = buildStudentIdRejectNote(sel);
+      if (!note) {
+        alert('거절 사유를 선택해 주세요.');
         return;
       }
     }

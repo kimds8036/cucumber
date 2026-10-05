@@ -1,4 +1,8 @@
-import auth from '@react-native-firebase/auth';
+import {
+  getAuth,
+  getIdToken,
+  signInWithPhoneNumber,
+} from '@react-native-firebase/auth';
 import { ensureFirebaseApp } from './firebaseApp';
 import { formatPhoneToE164, normalizeLocalKrPhone } from './phoneFormat';
 
@@ -10,13 +14,13 @@ export async function requestPhoneVerification(localPhone) {
   if (!formatted || formatted.length < 12) {
     throw new Error('올바른 전화번호를 입력해 주세요.');
   }
-  return auth().signInWithPhoneNumber(formatted);
+  return signInWithPhoneNumber(getAuth(), formatted);
 }
 
 /** 6자리 코드 확인 → idToken 반환 */
 export async function confirmPhoneVerification(confirmation, code) {
   const credential = await confirmation.confirm(String(code).trim());
-  const idToken = await credential.user.getIdToken();
+  const idToken = await getIdToken(credential.user);
   return {
     idToken,
     phoneE164: credential.user.phoneNumber,

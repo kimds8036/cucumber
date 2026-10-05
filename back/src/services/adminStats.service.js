@@ -61,7 +61,10 @@ export async function reconcileAdminStats() {
     delayed_reports_3d: `SELECT COUNT(*) AS c FROM reports WHERE status = 'pending' AND created_at < DATE_SUB(NOW(), INTERVAL 3 DAY)`,
     today_new_signups: `SELECT COUNT(*) AS c FROM users WHERE is_deleted = FALSE AND DATE(CONVERT_TZ(created_at, '+00:00', '+09:00')) = ?`,
     unverified_users: `SELECT COUNT(*) AS c FROM users WHERE is_deleted = FALSE AND student_verified = FALSE`,
-    pending_student_id_reviews: `SELECT COUNT(*) AS c FROM signup_student_id_submissions WHERE status = 'pending' AND submission_purpose IN ('signup', 'resubmit')`,
+    pending_student_id_reviews: `SELECT COUNT(*) AS c
+      FROM signup_student_id_submissions s
+      JOIN users u ON u.id = s.user_id AND u.is_deleted = FALSE
+      WHERE s.status = 'pending' AND s.submission_purpose IN ('signup', 'resubmit')`,
   };
 
   const results = {};

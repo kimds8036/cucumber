@@ -6,7 +6,7 @@
  * - CalendarModal
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,9 +14,12 @@ import {
   ScrollView,
   TextInput,
   Modal,
+  Dimensions,
   Keyboard,
   TouchableWithoutFeedback,
   useWindowDimensions,
+  Animated as RNAnimated,
+  Easing,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, {
@@ -50,6 +53,39 @@ const SUBJECT_PRESETS_KEY = '@timer_subject_presets_v1';
 const SUBJECT_PRESETS_MAX = 12;
 
 const dateFromDayKey = (dayKey) => new Date(dayKey + 'T06:00:00');
+
+/** RN Modal fade는 안드로이드에서 창이 튀므로, 셸은 none이고 내용만 페이드한다. */
+function TimerFadeModal({ onRequestClose, children }) {
+  const opacity = useRef(new RNAnimated.Value(0)).current;
+  useEffect(() => {
+    const anim = RNAnimated.timing(opacity, {
+      toValue: 1,
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    });
+    anim.start();
+    return () => anim.stop();
+  }, [opacity]);
+  return (
+    <Modal
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={onRequestClose}
+    >
+      <RNAnimated.View
+        style={{
+          width: Dimensions.get('screen').width,
+          height: Dimensions.get('screen').height,
+          opacity,
+        }}
+      >
+        {children}
+      </RNAnimated.View>
+    </Modal>
+  );
+}
 
 function useTimerModalStyles() {
   const { width } = useWindowDimensions();
@@ -159,7 +195,7 @@ export const AddSubjectModal = ({ visible, onClose, onAdd }) => {
   if (!visible) return null;
   if (!ready) {
     return (
-      <Modal transparent animationType="fade" onRequestClose={onClose}>
+      <TimerFadeModal onRequestClose={onClose}>
         <View style={m.wrapper}>
           <View style={m.bottomSheetContainer}>
             <View style={m.bottomSheetCard}>
@@ -179,11 +215,11 @@ export const AddSubjectModal = ({ visible, onClose, onAdd }) => {
             </View>
           </View>
         </View>
-      </Modal>
+      </TimerFadeModal>
     );
   }
   return (
-    <Modal transparent animationType="fade" onRequestClose={onClose}>
+    <TimerFadeModal onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={m.wrapper}>
           <TouchableOpacity
@@ -286,7 +322,7 @@ export const AddSubjectModal = ({ visible, onClose, onAdd }) => {
           </Animated.View>
         </View>
       </TouchableWithoutFeedback>
-    </Modal>
+    </TimerFadeModal>
   );
 };
 
@@ -350,7 +386,7 @@ export const AddTaskModal = ({
   if (!visible) return null;
   if (!ready) {
     return (
-      <Modal transparent animationType="fade" onRequestClose={handleClose}>
+      <TimerFadeModal onRequestClose={handleClose}>
         <View style={m.wrapper}>
           <View style={m.bottomSheetContainer}>
             <View style={m.bottomSheetCard}>
@@ -370,12 +406,12 @@ export const AddTaskModal = ({
             </View>
           </View>
         </View>
-      </Modal>
+      </TimerFadeModal>
     );
   }
   if (subjects.length === 0) {
     return (
-      <Modal transparent animationType="fade" onRequestClose={handleClose}>
+      <TimerFadeModal onRequestClose={handleClose}>
         <View style={m.wrapper}>
           <TouchableOpacity
             style={m.overlay}
@@ -392,11 +428,11 @@ export const AddTaskModal = ({
             </View>
           </View>
         </View>
-      </Modal>
+      </TimerFadeModal>
     );
   }
   return (
-    <Modal transparent animationType="fade" onRequestClose={handleClose}>
+    <TimerFadeModal onRequestClose={handleClose}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={m.wrapper}>
           <TouchableOpacity
@@ -433,7 +469,7 @@ export const AddTaskModal = ({
           </Animated.View>
         </View>
       </TouchableWithoutFeedback>
-    </Modal>
+    </TimerFadeModal>
   );
 };
 
@@ -505,7 +541,7 @@ export const CalendarModal = ({
   if (!visible) return null;
   if (!ready) {
     return (
-      <Modal transparent animationType="fade" onRequestClose={onClose}>
+      <TimerFadeModal onRequestClose={onClose}>
         <View style={m.wrapper}>
           <View style={[m.centered, m.centeredJustify]}>
             <View style={[m.card, m.cardMaxWidth]}>
@@ -527,11 +563,11 @@ export const CalendarModal = ({
             </View>
           </View>
         </View>
-      </Modal>
+      </TimerFadeModal>
     );
   }
   return (
-    <Modal transparent animationType="fade" onRequestClose={onClose}>
+    <TimerFadeModal onRequestClose={onClose}>
       <View style={m.wrapper}>
         <TouchableOpacity
           style={m.overlay}
@@ -615,6 +651,6 @@ export const CalendarModal = ({
           </View>
         </View>
       </View>
-    </Modal>
+    </TimerFadeModal>
   );
 };

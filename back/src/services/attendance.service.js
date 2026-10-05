@@ -38,6 +38,65 @@ export function isWithinAttendanceWindow(ref = new Date()) {
 /** 등교 인정 반경(m) — 고정 */
 export const ATTENDANCE_GEOFENCE_METERS = 300;
 
+const HHMM_RE = /^\d{1,2}:\d{2}$/;
+
+export function normalizeSchoolPeriods(raw) {
+  let parsed = raw;
+  if (parsed == null || parsed === '') return [];
+  if (typeof parsed === 'string') {
+    try {
+      parsed = JSON.parse(parsed);
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(parsed)) return [];
+  return parsed
+    .map((item) => ({
+      periodNumber: Number(item?.periodNumber) || 0,
+      startTime: String(item?.startTime || '').trim(),
+      endTime: String(item?.endTime || '').trim(),
+    }))
+    .filter(
+      (item) => HHMM_RE.test(item.startTime) && HHMM_RE.test(item.endTime),
+    );
+}
+
+async function readSavedPeriodSnapshot(userId) {
+  const [rows] = await pool.execute(
+    'SELECT periods_json FROM user_period_time_settings WHERE user_id = ? LIMIT 1',
+    [userId],
+  );
+  if (!rows.length) return null;
+  const periods = normalizeSchoolPeriods(rows[0].periods_json);
+  return periods.length ? JSON.stringify(periods) : null;
+}
+
+export async function loadSchoolPeriodsForDay(userId, dayKey) {
+  const [rows] = await pool.execute(
+    `SELECT school_periods_json
+     FROM attendances
+     WHERE user_id = ? AND attendance_date = ? AND status = 'present'
+     LIMIT 1`,
+    [userId, dayKey],
+  );
+  if (!rows.length) return [];
+  return normalizeSchoolPeriods(rows[0].school_periods_json);
+}
+
+/** 그날 스냅샷이 아직 없을 때만, 지금 저장된 교시를 한 번 고정한다. */
+export async function freezeSchoolPeriodsIfEmpty(userId, dayKey, periods) {
+  const snapshot = normalizeSchoolPeriods(periods);
+  if (!snapshot.length || !dayKey) return;
+  await pool.execute(
+    `UPDATE attendances
+     SET school_periods_json = ?
+     WHERE user_id = ? AND attendance_date = ? AND status = 'present'
+       AND school_periods_json IS NULL`,
+    [JSON.stringify(snapshot), userId, dayKey],
+  );
+}
+
 export function getGeofenceMeters() {
   return ATTENDANCE_GEOFENCE_METERS;
 }
@@ -126,12 +185,14 @@ export async function checkInAttendance({ userId, latitude, longitude }) {
 
   const attendanceDate = formatKstDateYmd();
   const checkedAt = getNowForDB();
+  const schoolPeriodsJson = await readSavedPeriodSnapshot(userId);
 
   try {
     await pool.execute(
-      `INSERT INTO attendances (user_id, school_id, attendance_date, checked_at, status)
-       VALUES (?, ?, ?, ?, 'present')`,
-      [userId, user.school_id, attendanceDate, checkedAt],
+      `INSERT INTO attendances
+         (user_id, school_id, attendance_date, checked_at, status, school_periods_json)
+       VALUES (?, ?, ?, ?, 'present', ?)`,
+      [userId, user.school_id, attendanceDate, checkedAt, schoolPeriodsJson],
     );
   } catch (err) {
     if (err.errno === 1062) {

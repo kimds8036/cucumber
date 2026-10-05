@@ -177,10 +177,10 @@ function adminUrl(subpath) {
   }
 
   const STUDENT_ID_REJECT_PRESET = [
-    '학생증 사진이 흐리거나 잘린 경우',
-    '이름이 일치하지 않음',
-    '학교 정보가 일치하지 않음',
-    '학생증이 아닌 사진',
+    'blurry',
+    'name_mismatch',
+    'school_mismatch',
+    'not_student_id',
   ];
   let pendingStudentIdRejectId = null;
 
@@ -192,7 +192,9 @@ function adminUrl(subpath) {
     appeals: { title: '이의신청 관리', sub: '소명 검토 및 상태 변경' },
     inquiries: { title: '문의 관리', sub: '미처리 문의 — 답변 작성 / 종결' },
     announcements: { title: '공지사항', sub: '앱 고객지원 공지 작성 · 게시' },
-    tips: { title: '인앱 팁', sub: '게시판 상단 팁 · 고정 안내' },
+    tips: { title: '인앱 팁', sub: '목록 사이 안내 문구' },
+    recommendedHashtags: { title: '추천 해시태그', sub: '글 작성 화면 추천 칩 추가 · 삭제' },
+    featureTests: { title: '기능 테스트', sub: 'Dry-Run · 토스트 발송' },
     processedInquiries: { title: '문의 처리 이력', sub: '답변 완료 / 종결 문의 — 재오픈 가능' },
     users: { title: '사용자 제재 현황', sub: '경고 / 임시정지 / 화이트리스트' },
     attendance: { title: '등교 현황', sub: '출석 통계 · 미등교 의심 사용자' },
@@ -414,6 +416,8 @@ function adminUrl(subpath) {
       inquiries: ['moderator', 'support'],
       announcements: ['moderator', 'support'],
       tips: ['moderator', 'support'],
+      recommendedHashtags: ['moderator', 'support'],
+      featureTests: ['moderator'],
       processedInquiries: ['moderator', 'support'],
       studentIds: ['moderator', 'verifier'],
       manualSignup: ['moderator'],
