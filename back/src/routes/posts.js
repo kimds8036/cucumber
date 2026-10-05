@@ -20,6 +20,7 @@ import { notifyAppealCreated } from '../services/discordWebhook.service.js';
 import { evaluateAndUnlockBadges } from '../services/badge.service.js';
 import { attachDryRun } from '../utils/dryRun.js';
 import { API_ERROR_CODES } from '../constants/apiErrorCodes.js';
+import { loadPostPoll, parsePollInput, replacePostPollVotes } from '../utils/postPoll.js';
 const router = express.Router();
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -236,6 +237,28 @@ router.get('/tags/search', async (req, res) => {
     res.status(500).json({
       success: false,
       message: '태그 검색 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+// 글 작성 화면 추천 해시태그
+// GET /api/posts/tags/recommended
+router.get('/tags/recommended', async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      `SELECT id, name
+       FROM recommended_hashtags
+       ORDER BY display_order ASC, id ASC`,
+    );
+    res.json({
+      success: true,
+      data: { tags: rows },
+    });
+  } catch (error) {
+    console.error('추천 해시태그 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '추천 해시태그 조회 중 오류가 발생했습니다.',
     });
   }
 });
@@ -1282,6 +1305,7 @@ router.get('/:id', optionalAuthenticate, async (req, res) => {
         current_user_id: userId ?? null,
         images,
         tags: postTags,
+        poll: await loadPostPoll(pool, id, userId),
       },
     });
   } catch (error) {
@@ -1348,6 +1372,14 @@ router.post('/', authenticate, attachDryRun, blockWhenFlag('post_write_disabled'
       });
     }
 
+    const pollInput = parsePollInput(req.body.poll);
+    if (pollInput?.error) {
+      return res.status(400).json({
+        success: false,
+        message: pollInput.error,
+      });
+    }
+
     const connection = await pool.getConnection();
     let postId;
     try {
@@ -1391,6 +1423,19 @@ router.post('/', authenticate, attachDryRun, blockWhenFlag('post_write_disabled'
       );
 
       postId = result.insertId;
+
+      if (pollInput) {
+        await connection.execute(
+          'INSERT INTO post_polls (post_id, allow_multiple) VALUES (?, ?)',
+          [postId, pollInput.multi ? 1 : 0],
+        );
+        for (let i = 0; i < pollInput.options.length; i += 1) {
+          await connection.execute(
+            'INSERT INTO post_poll_options (post_id, label, display_order) VALUES (?, ?, ?)',
+            [postId, pollInput.options[i], i],
+          );
+        }
+      }
 
       if (req.files && req.files.length > 0) {
         const imageValues = req.files.map((file, index) => [
@@ -1544,6 +1589,60 @@ router.delete('/:id', authenticate, async (req, res) => {
     res.status(500).json({
       success: false,
       message: '게시글 삭제 중 오류가 발생했습니다.',
+    });
+  }
+});
+
+router.post('/:id/poll/vote', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const postId = Number(req.params.id);
+    if (!Number.isFinite(postId) || postId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: '게시글 ID가 올바르지 않습니다.',
+      });
+    }
+    const [posts] = await pool.execute(
+      'SELECT id, board_type FROM posts WHERE id = ? AND is_deleted = FALSE',
+      [postId],
+    );
+    if (posts.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: '게시글을 찾을 수 없습니다.',
+      });
+    }
+    if (posts[0].board_type === 'school' || posts[0].board_type === 'student') {
+      const [svRows] = await pool.execute(
+        'SELECT student_verified FROM users WHERE id = ? LIMIT 1',
+        [userId],
+      );
+      if (!svRows[0]?.student_verified) {
+        return res.status(403).json({
+          success: false,
+          message: '학생 인증이 필요한 기능입니다. 학생증으로 인증해 주세요.',
+          code: API_ERROR_CODES.STUDENT_VERIFICATION_REQUIRED,
+        });
+      }
+    }
+    const optionIds = Array.isArray(req.body?.optionIds) ? req.body.optionIds : [];
+    const result = await replacePostPollVotes(pool, postId, userId, optionIds);
+    if (result.error) {
+      return res.status(result.status || 400).json({
+        success: false,
+        message: result.error,
+      });
+    }
+    return res.json({
+      success: true,
+      data: { poll: result.poll },
+    });
+  } catch (error) {
+    console.error('게시글 투표 오류:', error);
+    return res.status(500).json({
+      success: false,
+      message: '투표 중 오류가 발생했습니다.',
     });
   }
 });

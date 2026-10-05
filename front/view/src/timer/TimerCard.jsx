@@ -222,6 +222,7 @@ export default function TimerCard({
   handleSaveAsImage,
   onOpenStudyRoom,
   toggleTimer,
+  onPomodoroMode,
   onPomodoroSkip,
   onPomodoroReset,
   weeklyRate = 0,
@@ -265,7 +266,11 @@ export default function TimerCard({
           <PomodoroModeToggle
             on={settings.pomodoroOn === true}
             disabled={!ready}
-            onPress={() => update({ pomodoroOn: !settings.pomodoroOn })}
+            onPress={() => {
+              const nextOn = settings.pomodoroOn !== true;
+              if (onPomodoroMode) onPomodoroMode(nextOn);
+              else update({ pomodoroOn: nextOn });
+            }}
             normalize={normalize}
           />
           {SHOW_DATE_NAV ? (

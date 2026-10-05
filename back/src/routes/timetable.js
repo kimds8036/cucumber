@@ -4,6 +4,8 @@ import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { detectTimetableAnomalies } from '../utils/timetableAnomaly.js';
+import { freezeSchoolPeriodsIfEmpty } from '../services/attendance.service.js';
+import { formatKstDateYmd } from '../services/reverification.service.js';
 
 const router = express.Router();
 
@@ -493,6 +495,7 @@ router.put('/period-times', authenticate, validate(updatePeriodTimesValidators),
       }))
       .sort((a, b) => a.periodNumber - b.periodNumber);
     await saveUserPeriodTimes(userId, normalized);
+    await freezeSchoolPeriodsIfEmpty(userId, formatKstDateYmd(), normalized);
     const saved = await loadUserPeriodTimes(userId);
     return res.json({
       success: true,

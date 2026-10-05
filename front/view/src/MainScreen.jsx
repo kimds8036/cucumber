@@ -17,7 +17,6 @@ import {
 } from '../../context/MainShellContext';
 import { colors } from '../../styles/colors';
 import { getNormalize } from '../../styles/frame.style';
-import Skeleton from '../../components/common/Skeleton';
 import { trackScreenView } from '../../utils/analytics';
 import { MAIN_TAB_TO_ANALYTICS_SCREEN } from '../../constants/analyticsScreens';
 import { MainTabNavigatorContainer } from './MainTabNavigator';
@@ -124,19 +123,7 @@ const MainScreen = ({ navigation, route }) => {
   const [activeTab, setActiveTab] = useState(
     deepLinkReady ? route.params.screen || route.params.initialTab : 'timer',
   );
-  // 위젯 딥링크가 있으면 탭을 즉시 마운트해 linking state가 board로 덮이지 않게 함
-  const [screenReady, setScreenReady] = useState(deepLinkReady);
   const [lastBackPressedAt, setLastBackPressedAt] = useState(0);
-
-  useEffect(() => {
-    if (hasDeepLinkTab(route)) {
-      setScreenReady(true);
-      return undefined;
-    }
-    if (screenReady) return undefined;
-    const timer = setTimeout(() => setScreenReady(true), 180);
-    return () => clearTimeout(timer);
-  }, [route?.params?.screen, route?.params?.initialTab, screenReady, route]);
 
   useEffect(() => {
     const screen = MAIN_TAB_TO_ANALYTICS_SCREEN[activeTab];
@@ -178,43 +165,11 @@ const MainScreen = ({ navigation, route }) => {
             <MainHeader />
           )}
           <View style={{ flex: 1, backgroundColor: colors.white }}>
-            {screenReady ? (
-              <MainTabNavigatorContainer
-                stackNavigation={navigation}
-                route={route}
-                onActiveTabChange={setActiveTab}
-              />
-            ) : (
-              <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }}>
-                {[0, 1, 2].map((idx) => (
-                  <View
-                    key={`main-skeleton-${idx}`}
-                    style={{
-                      backgroundColor: colors.white,
-                      borderRadius: 12,
-                      padding: 14,
-                      borderWidth: 1,
-                      borderColor: colors.textLight1,
-                      marginBottom: 12,
-                    }}
-                  >
-                    <Skeleton
-                      width="55%"
-                      height={14}
-                      borderRadius={7}
-                      style={{ marginBottom: 10 }}
-                    />
-                    <Skeleton
-                      width="100%"
-                      height={12}
-                      borderRadius={6}
-                      style={{ marginBottom: 8 }}
-                    />
-                    <Skeleton width="85%" height={12} borderRadius={6} />
-                  </View>
-                ))}
-              </View>
-            )}
+            <MainTabNavigatorContainer
+              stackNavigation={navigation}
+              route={route}
+              onActiveTabChange={setActiveTab}
+            />
           </View>
         </SafeAreaView>
       </StudentVerifyRequestBridge>

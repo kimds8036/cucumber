@@ -6,10 +6,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const STORAGE_KEY = 'timerSettings:v1';
 
+export const PHASE_END_CUES = ['sound', 'vibrate', 'popup', 'none'];
+
 export const DEFAULT_TIMER_SETTINGS = {
   pomodoroOn: false,
   autoStart: false,
-  phaseEndAlert: true,
+  phaseEndCue: 'popup',
   focusMin: 25,
   shortBreakMin: 5,
   longBreakMin: 15,
@@ -36,13 +38,19 @@ function clampSetting(key, value) {
   return Math.min(limit.max, Math.max(limit.min, stepped));
 }
 
+function normalizePhaseEndCue(src) {
+  if (PHASE_END_CUES.includes(src.phaseEndCue)) return src.phaseEndCue;
+  if (src.phaseEndAlert === false) return 'none';
+  return 'popup';
+}
+
 export function normalizeTimerSettings(raw) {
   const src = raw && typeof raw === 'object' ? raw : {};
   const gender = src.gender === 'girl' || src.gender === 'boy' ? src.gender : 'random';
   return {
     pomodoroOn: src.pomodoroOn === true,
     autoStart: src.autoStart === true,
-    phaseEndAlert: src.phaseEndAlert !== false,
+    phaseEndCue: normalizePhaseEndCue(src),
     focusMin: clampSetting('focusMin', src.focusMin),
     shortBreakMin: clampSetting('shortBreakMin', src.shortBreakMin),
     longBreakMin: clampSetting('longBreakMin', src.longBreakMin),

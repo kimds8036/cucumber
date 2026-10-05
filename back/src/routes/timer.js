@@ -17,6 +17,7 @@ import {
 import { getTimerDayKey } from '../utils/timerDayKey.js';
 import { upsertStudyDayTotalForUserKey } from '../utils/studyDayTotal.js';
 import { evaluateAndUnlockBadges } from '../services/badge.service.js';
+import { loadSchoolPeriodsForDay } from '../services/attendance.service.js';
 
 const router = express.Router();
 
@@ -735,12 +736,14 @@ router.get('/day', authenticate, async (req, res) => {
       subjectsData.length > 0 ? subjectsData : fallbackSubjectsFromSessions;
 
     const tasksData = normalized.tasks;
+    const schoolPeriods = await loadSchoolPeriodsForDay(userId, dayKey);
 
     const responseData = {
       sessions: sessionsData,
       totalElapsedMs: day ? Number(day.total_elapsed_ms) : 0,
       subjects: effectiveSubjectsData,
       tasks: tasksData,
+      schoolPeriods,
     };
 
     if (process.env.NODE_ENV !== 'production') {

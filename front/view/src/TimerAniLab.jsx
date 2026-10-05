@@ -13,6 +13,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Pressable,
+  useWindowDimensions,
 } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -54,6 +55,13 @@ import {
 } from '../../utils/timerRuntimeStore';
 import { formatHMS } from './timer/timerHelpers';
 import { getTimerSettings, loadTimerSettings } from './timer/timerSettingsStorage';
+import { createTimerStyles, getNormalize } from '../../styles/timer';
+import TimerPhaseEndPopup from './timer/TimerPhaseEndPopup';
+import {
+  getPhaseEndNotice,
+  publishPhaseEndNotice,
+  subscribePhaseEndNotice,
+} from './timer/phaseEndNoticeStore';
 import { api, getApiUserFacingMessage } from '../../utils/api';
 import { getTimerDayKey, loadDayFromDb } from '../../utils/timerStorage';
 import { preloadStudyRoomAssets } from '../../utils/preloadStudyRoomAssets';
@@ -63,6 +71,7 @@ import { useMainShellOptional } from '../../context/MainShellContext';
 import { useToast } from '../../context/ToastContext';
 import { appAlert } from '../../utils/appAlert';
 import StudyRoomProfileTip from '../../components/timerAni/StudyRoomProfileTip';
+import StudyRoomPomoTip from '../../components/timerAni/StudyRoomPomoTip';
 
 const CHAIR_DESK = require('../../assets/timer_ani/chair_desk.png');
 /** 경로 속도 (px / ms) — 클수록 빠름 */
@@ -536,7 +545,7 @@ function OtherStudyActor({
           }}
         />
       </Animated.View>
-      {!showWalk && !isSelf && typeof onPressCharacter === 'function' ? (
+      {!showWalk && typeof onPressCharacter === 'function' ? (
         <Pressable
           onPress={onPressCharacter}
           style={{
@@ -569,6 +578,15 @@ function OtherStudyActor({
 export default function TimerAniLab({ navigation }) {
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
+  const { width } = useWindowDimensions();
+  const normalize = useMemo(() => getNormalize(width), [width]);
+  const timerStyles = useMemo(
+    () => createTimerStyles(width, normalize),
+    [width, normalize],
+  );
+  const [phaseEndNotice, setPhaseEndNotice] = useState(() => getPhaseEndNotice());
+
+  useEffect(() => subscribePhaseEndNotice(setPhaseEndNotice), []);
   const shell = useMainShellOptional();
   const goBack = () => {
     if (navigation?.canGoBack?.()) navigation.goBack();
@@ -579,6 +597,7 @@ export default function TimerAniLab({ navigation }) {
   const { socket } = useSocket();
   const { showToast } = useToast();
   const [profileTipKey, setProfileTipKey] = useState(null);
+  const [selfPomoOpen, setSelfPomoOpen] = useState(false);
   const [profileTipOpen, setProfileTipOpen] = useState(false);
   const [requestedFriendIds, setRequestedFriendIds] = useState(() => new Set());
   const pendingTipKeyRef = useRef(null);
@@ -815,8 +834,12 @@ export default function TimerAniLab({ navigation }) {
 
     loadFriends();
     loadStudying();
+    const pollId = setInterval(() => {
+      loadStudying();
+    }, 8000);
     return () => {
       alive = false;
+      clearInterval(pollId);
     };
   }, [refreshStudyingFriends]);
 
@@ -834,8 +857,8 @@ export default function TimerAniLab({ navigation }) {
       }
       const list = payload.members;
       if (!Array.isArray(list)) return;
-      setStudyingUsers((prev) => {
-        const next = { ...prev };
+      setStudyingUsers(() => {
+        const next = {};
         list.forEach((item) => {
           if (item?.userId != null) next[String(item.userId)] = true;
         });
@@ -1019,13 +1042,11 @@ export default function TimerAniLab({ navigation }) {
 
   // 공부 ON → 즉시 출석 / OFF → 5초 뒤 퇴실
   useEffect(() => {
-    const selfUid = me.userId != null ? String(me.userId) : null;
     const rawOn = new Set(
       Object.entries(studyingUsers || {})
         .filter(([, v]) => v === true)
         .map(([id]) => String(id)),
     );
-    if (selfRunning && selfUid) rawOn.add(selfUid);
 
     rawOn.forEach((uid) => clearLeaveGrace(uid));
 
@@ -1044,13 +1065,7 @@ export default function TimerAniLab({ navigation }) {
     Object.keys(roomPresenceRef.current).forEach((uid) => {
       if (!rawOn.has(uid)) scheduleLeaveGrace(uid);
     });
-  }, [
-    studyingUsers,
-    selfRunning,
-    me.userId,
-    clearLeaveGrace,
-    scheduleLeaveGrace,
-  ]);
+  }, [studyingUsers, clearLeaveGrace, scheduleLeaveGrace]);
 
   useEffect(
     () => () => {
@@ -1179,6 +1194,10 @@ export default function TimerAniLab({ navigation }) {
       setSelfMode('enter');
     }
   }, [roomReady, studyingBootstrapDone, selfPresent, selfSeat?.index, selfUid]);
+
+  useEffect(() => {
+    if (selfMode !== 'seated') setSelfPomoOpen(false);
+  }, [selfMode]);
 
   const beginPendingExit = useCallback((key) => {
     pendingExitKeysRef.current.delete(key);
@@ -1470,6 +1489,12 @@ export default function TimerAniLab({ navigation }) {
             mode={selfMode}
             elapsedMs={selfElapsedMs}
             isSelf
+            onPressCharacter={() => {
+              if (selfMode !== 'seated') return;
+              if (getTimerSettings().pomodoroOn !== true) return;
+              setProfileTipOpen(false);
+              setSelfPomoOpen((open) => !open);
+            }}
             onEnterDone={onSelfEnterDone}
             onSeatedVisualChange={(ready) =>
               setDeskCoverReady((prev) =>
@@ -1543,6 +1568,17 @@ export default function TimerAniLab({ navigation }) {
             })
           : null}
 
+        {selfPomoOpen && selfSeat && selfMode === 'seated' ? (
+          <Pressable
+            style={[StyleSheet.absoluteFill, { zIndex: 230 }]}
+            onPress={() => setSelfPomoOpen(false)}
+          />
+        ) : null}
+
+        {selfPomoOpen && selfSeat && selfMode === 'seated' && getTimerSettings().pomodoroOn === true ? (
+          <StudyRoomPomoTip visible seat={selfSeat} stageW={stage.w} />
+        ) : null}
+
         {tipSeat && profileTipKey ? (
           <StudyRoomProfileTip
             visible={profileTipOpen}
@@ -1568,6 +1604,12 @@ export default function TimerAniLab({ navigation }) {
       >
         <Ionicons name="chevron-back" size={24} color={colors.white} />
       </TouchableOpacity>
+      <TimerPhaseEndPopup
+        notice={isFocused ? phaseEndNotice : null}
+        onClose={() => publishPhaseEndNotice(null)}
+        styles={timerStyles}
+        normalize={normalize}
+      />
     </View>
   );
 }

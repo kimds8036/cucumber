@@ -5,6 +5,7 @@ import { getTimerDayKey } from '../utils/timerDayKey.js';
 import { isoFromMysqlKstNaiveString } from '../utils/timerSessionTimes.js';
 import { upsertStudyDayTotalForUserKey } from '../utils/studyDayTotal.js';
 import {
+  STUDY_ROOM_LOBBY,
   assignUserToStudyRoom,
   getStudyRoomSnapshotForUser,
   leaveStudyRoom,
@@ -253,18 +254,24 @@ export async function broadcastTimerStatus({ userId, status }) {
     console.warn('[FriendSocket] study_room 배정 실패', err?.message);
   }
 
+  const roomPayload = {
+    type: 'study_room_timer_status',
+    userId,
+    username,
+    avatarUrl,
+    status,
+    startedAt,
+    closedTotalMs,
+    roomId: studyRoomId,
+    updatedAt,
+  };
+  // 방에 아직 안 들어간 구경 화면도 시작/종료를 받도록 로비에 항상 보낸다.
+  io.to(STUDY_ROOM_LOBBY).emit('study_room_timer_status', roomPayload);
   if (studyRoomId) {
-    io.to(studyRoomSocketName(studyRoomId)).emit('study_room_timer_status', {
-      type: 'study_room_timer_status',
-      userId,
-      username,
-      avatarUrl,
-      status,
-      startedAt,
-      closedTotalMs,
-      roomId: studyRoomId,
-      updatedAt,
-    });
+    io.to(studyRoomSocketName(studyRoomId)).emit(
+      'study_room_timer_status',
+      roomPayload,
+    );
   }
 
   // 나와 친구 관계인 모든 유저 ID 조회

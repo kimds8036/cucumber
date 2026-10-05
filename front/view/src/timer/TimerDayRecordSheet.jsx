@@ -118,9 +118,6 @@ export default function TimerDayRecordSheet({
         </View>
       );
     }
-    if (isEmpty) {
-      return <Text style={styles.dayRecordEmptyText}>이 날은 기록이 없어요</Text>;
-    }
     if (tab === 'timetable') {
       return (
         <View style={styles.dayRecordBody}>
@@ -128,10 +125,14 @@ export default function TimerDayRecordSheet({
             styles={styles}
             displaySessions={displaySessions}
             displaySubjects={displaySubjects}
+            dayKey={dayKey}
             guideTarget={false}
           />
         </View>
       );
+    }
+    if (isEmpty) {
+      return <Text style={styles.dayRecordEmptyText}>이 날은 기록이 없어요</Text>;
     }
     return (
       <View style={styles.dayRecordBody}>

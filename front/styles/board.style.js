@@ -464,9 +464,13 @@ export const createWriteStyles = (width, normalize) => {
     writeBodyBoxGrow: {
       flexGrow: 1,
     },
-    writeBodyInput: {
+    writeBodySpacer: {
       flexGrow: 1,
-      minHeight: normalize(140),
+      minHeight: normalize(24),
+    },
+    writeBodyInput: {
+      flexGrow: 0,
+      minHeight: normalize(44),
       paddingHorizontal: normalize(14),
       paddingTop: normalize(14),
       paddingBottom: normalize(8),
@@ -496,7 +500,7 @@ export const createWriteStyles = (width, normalize) => {
       marginHorizontal: normalize(14),
       marginBottom: normalize(8),
       padding: normalize(14),
-      backgroundColor: colors.primaryLight3,
+      backgroundColor: '#F6F4F0',
       borderRadius: normalize(12),
       gap: normalize(8),
     },
@@ -514,7 +518,7 @@ export const createWriteStyles = (width, normalize) => {
       height: normalize(18),
       borderRadius: normalize(9),
       borderWidth: 1.5,
-      borderColor: colors.primary,
+      borderColor: colors.textLight2,
     },
     pollOptionInput: {
       flex: 1,
@@ -534,13 +538,13 @@ export const createWriteStyles = (width, normalize) => {
       borderRadius: normalize(12),
       borderWidth: 1,
       borderStyle: 'dashed',
-      borderColor: colors.primary,
+      borderColor: colors.textLight2,
       backgroundColor: colors.white,
     },
     pollAddButtonText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.primaryDark,
+      color: colors.textLight5,
     },
     pollMultiRow: {
       flexDirection: 'row',
@@ -560,8 +564,8 @@ export const createWriteStyles = (width, normalize) => {
       justifyContent: 'center',
     },
     pollCheckboxOn: {
-      borderColor: colors.primary,
-      backgroundColor: colors.primary,
+      borderColor: colors.textLight5,
+      backgroundColor: colors.textLight5,
     },
     pollMultiLabel: {
       fontSize: normalize(fontSizes.lg),
@@ -865,7 +869,7 @@ export const createDetailStyles = (width, normalize) => {
     detailPollBox: {
       marginBottom: normalize(10),
       padding: normalize(14),
-      backgroundColor: colors.primaryLight3,
+      backgroundColor: '#F6F4F0',
       borderRadius: normalize(12),
       gap: normalize(8),
     },
@@ -893,22 +897,24 @@ export const createDetailStyles = (width, normalize) => {
       minHeight: normalize(44),
       paddingHorizontal: normalize(12),
       borderRadius: normalize(12),
+      borderWidth: 1,
+      borderColor: colors.textLight1,
       backgroundColor: colors.white,
       overflow: 'hidden',
     },
     detailPollOptionSelected: {
-      borderWidth: 1,
-      borderColor: colors.primary,
+      borderColor: colors.textLight6,
+      backgroundColor: '#D5D0C8',
     },
     detailPollFill: {
       position: 'absolute',
       left: 0,
       top: 0,
       bottom: 0,
-      backgroundColor: colors.textLight1,
+      backgroundColor: '#E7E4DE',
     },
     detailPollFillMine: {
-      backgroundColor: colors.primary,
+      backgroundColor: '#D9D4CC',
     },
     detailPollRadio: {
       width: normalize(18),
@@ -923,11 +929,14 @@ export const createDetailStyles = (width, normalize) => {
       borderRadius: normalize(4),
     },
     detailPollMarkOn: {
-      borderColor: colors.primary,
-      backgroundColor: colors.primary,
+      borderColor: colors.textLight5,
+      backgroundColor: colors.textLight5,
+    },
+    detailPollOptionTextWrap: {
+      flex: 1,
+      minWidth: 0,
     },
     detailPollOptionText: {
-      flex: 1,
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
       color: colors.textLight5,
@@ -953,16 +962,19 @@ export const createDetailStyles = (width, normalize) => {
       paddingHorizontal: normalize(16),
       paddingVertical: normalize(8),
       borderRadius: normalize(20),
-      backgroundColor: colors.primary,
+      backgroundColor: '#E7E4DE',
     },
     detailPollVoteButtonDisabled: {
-      backgroundColor: colors.textLight1,
+      backgroundColor: colors.textLight05,
     },
     detailPollVoteButtonText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
-      color: colors.white,
+      color: colors.text,
       ...metaTextAndroid,
+    },
+    detailPollVoteButtonTextDisabled: {
+      color: colors.textLight3,
     },
     detailPollRevote: {
       fontSize: normalize(fontSizes.lg),

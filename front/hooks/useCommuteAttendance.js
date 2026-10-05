@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Location from 'expo-location';
 import { api } from '../utils/api';
+import { notifySchoolCheckIn } from '../utils/schoolPeriodsBus';
 import { isWithinSchoolGeofence } from '../utils/commuteGeo';
 import { getCommuteDayKey, shouldShowCommuteBanner } from '../utils/commuteUtils';
 import {
@@ -10,6 +11,11 @@ import {
 } from '../utils/commuteStorage';
 
 const LOCATION_POLL_MS = 15000;
+
+/** 개발 빌드는 주말·공휴일·시간 창과 상관없이 칩을 보여 준다. */
+function devAlwaysShowCommuteChip() {
+  return typeof __DEV__ !== 'undefined' && __DEV__;
+}
 
 function formatAttendanceDateYmd(value) {
   if (value == null) return '';
@@ -80,7 +86,8 @@ export function useCommuteAttendance({ enabled = true, viewerCoords = null } = {
       setPhase('hidden');
       return;
     }
-    const schoolDay = await refreshAttendanceStatus();
+    const schoolDay =
+      devAlwaysShowCommuteChip() || (await refreshAttendanceStatus());
     if (!schoolDay) {
       setPhase('hidden');
       return;
@@ -131,7 +138,8 @@ export function useCommuteAttendance({ enabled = true, viewerCoords = null } = {
           return;
         }
 
-        const schoolDay = await refreshAttendanceStatus();
+        const schoolDay =
+          devAlwaysShowCommuteChip() || (await refreshAttendanceStatus());
         if (!mounted) return;
         if (!schoolDay) {
           setPhase('hidden');
@@ -225,6 +233,7 @@ export function useCommuteAttendance({ enabled = true, viewerCoords = null } = {
           latitude: viewerLat,
           longitude: viewerLng,
         });
+        notifySchoolCheckIn();
       } catch (err) {
         if (err?.response?.status === 409) {
           if (userId != null) {

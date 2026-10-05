@@ -120,6 +120,22 @@ export function TimerContent() {
   const [pokeTarget, setPokeTarget] = useState(null);
   const [pokeVisible, setPokeVisible] = useState(false);
   const [plannerTab, setPlannerTab] = useState('todo');
+  const cardAnchorYRef = useRef(0);
+  const cardAnchorReadyRef = useRef(false);
+  const [cardStuck, setCardStuck] = useState(false);
+  const [cardSlotHeight, setCardSlotHeight] = useState(0);
+  const onPlannerScroll = useCallback((event) => {
+    if (!cardAnchorReadyRef.current) return;
+    const y = event.nativeEvent.contentOffset.y;
+    const stuck = y + 0.5 >= cardAnchorYRef.current;
+    setCardStuck((prev) => (prev === stuck ? prev : stuck));
+  }, []);
+  const onCardSlotLayout = useCallback((event) => {
+    const { y, height } = event.nativeEvent.layout;
+    cardAnchorYRef.current = y;
+    cardAnchorReadyRef.current = height > 0;
+    setCardSlotHeight((prev) => (prev === height ? prev : height));
+  }, []);
   /** 공부 잔디에서 연 지난 날짜 기록 시트 — { dayKey, seconds } | null */
   const [dayRecord, setDayRecord] = useState(null);
   const captureWatermarkReadyRef = useRef(false);
@@ -433,8 +449,12 @@ export function TimerContent() {
       inset={false}
       picked={noticeBanner ?? timerBanner}
       onPress={
-        noticeBanner
-          ? () => navigation.navigate('Announcement')
+        noticeBanner?.id
+          ? () =>
+              navigation.navigate('AnnouncementDetail', {
+                announcementId: noticeBanner.id,
+                title: noticeBanner.title,
+              })
           : undefined
       }
     />
@@ -453,30 +473,17 @@ export function TimerContent() {
           style={[styles.friendStoryRow, friendStoryStickyStyle, tdb('#FFCC00')]}
           collapsable={false}
         >
-          <View style={[styles.friendStoryScroll, tdb('#34C759')]}>
-            {[0, 1, 2, 3].map((idx) => (
-              <View
-                key={`timer-friend-skel-${idx}`}
-                style={styles.friendStoryCircleWrap}
-              >
-                <Skeleton
-                  width={normalize(50)}
-                  height={normalize(50)}
-                  borderRadius={normalize(25)}
-                />
-                <Skeleton
-                  width={normalize(40)}
-                  height={normalize(20)}
-                  borderRadius={normalize(6)}
-                  style={styles.timerSkelFriendName}
-                />
-              </View>
-            ))}
+          <View style={{ width: '100%', paddingRight: normalize(16) }}>
+            <Skeleton
+              width="100%"
+              height={normalize(74)}
+              borderRadius={normalize(16)}
+            />
           </View>
         </View>
         <View style={{ paddingHorizontal: timerGutter }}>
           {timerBannerNode}
-          <TimerDayContentSkeleton styles={styles} normalize={normalize} />
+          <TimerDayContentSkeleton normalize={normalize} />
         </View>
       </ScrollView>
     );
@@ -514,6 +521,7 @@ export function TimerContent() {
       navigation.navigate('TimerAniLab');
     },
     toggleTimer: timer.toggleTimer,
+    onPomodoroMode: timer.setPomodoroMode,
     pauseTimer: timer.pauseTimer,
     startForSubject: timer.startForSubject,
     pomoClockOn: timer.pomoClockOn,
@@ -533,6 +541,21 @@ export function TimerContent() {
     onOpenSettings: () => navigation.navigate('TimerSettings'),
   };
 
+  const plannerChrome = (
+    <View style={{ backgroundColor: colors.white }}>
+      <View style={{ paddingHorizontal: timerGutter }}>
+        <TimerLiveScrollInner segment="card" {...liveScrollProps} />
+      </View>
+      <View style={{ paddingHorizontal: timerGutter }}>
+        <TimerPlannerTabBar
+          value={plannerTab}
+          onChange={setPlannerTab}
+          styles={styles}
+        />
+      </View>
+    </View>
+  );
+
   return (
     <>
       {isFocused ? (
@@ -543,15 +566,18 @@ export function TimerContent() {
           isActive={isFocused}
         >
           <>
+            <View style={styles.scroll}>
             <KeyboardAwareScrollView
               style={[styles.scroll, tdb('#FF3B30')]}
               contentContainerStyle={{ paddingBottom: normalize(24) + tabBarInset }}
               scrollIndicatorInsets={{ bottom: tabBarInset }}
-              stickyHeaderIndices={showDayContentSkeleton ? undefined : [4]}
+              removeClippedSubviews={false}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
               bottomOffset={normalize(20)}
               mode="layout"
+              scrollEventThrottle={16}
+              onScroll={onPlannerScroll}
             >
               {scrollingHeader}
               <View
@@ -569,6 +595,7 @@ export function TimerContent() {
                 />
               </View>
               <View
+                collapsable={false}
                 style={{
                   paddingHorizontal: timerGutter,
                 }}
@@ -577,35 +604,15 @@ export function TimerContent() {
               </View>
               {showDayContentSkeleton ? (
                 <View style={{ paddingHorizontal: timerGutter }}>
-                  <TimerDayContentSkeleton
-                    styles={styles}
-                    normalize={normalize}
-                  />
+                  <TimerDayContentSkeleton normalize={normalize} />
                 </View>
               ) : (
-                <View
-                  style={{
-                    backgroundColor: colors.white,
-                    paddingHorizontal: timerGutter,
-                  }}
-                >
-                  <TimerLiveScrollInner segment="card" {...liveScrollProps} />
-                </View>
-              )}
-              {showDayContentSkeleton ? null : (
-                <View
-                  collapsable={false}
-                  style={{
-                    backgroundColor: colors.white,
-                    paddingHorizontal: timerGutter,
-                    zIndex: 2,
-                  }}
-                >
-                  <TimerPlannerTabBar
-                    value={plannerTab}
-                    onChange={setPlannerTab}
-                    styles={styles}
-                  />
+                <View collapsable={false} onLayout={onCardSlotLayout}>
+                  {cardStuck ? (
+                    <View style={{ height: cardSlotHeight }} />
+                  ) : (
+                    plannerChrome
+                  )}
                 </View>
               )}
               {showDayContentSkeleton ? null : (
@@ -618,6 +625,21 @@ export function TimerContent() {
                 </View>
               )}
             </KeyboardAwareScrollView>
+            {cardStuck && !showDayContentSkeleton ? (
+              <View
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  backgroundColor: colors.white,
+                  zIndex: 3,
+                }}
+              >
+                {plannerChrome}
+              </View>
+            ) : null}
+            </View>
             {timer.initialLoadDone ? (
               <TimerLivePlannerCapture
                 capturePlannerRef={timer.capturePlannerRef}
@@ -657,7 +679,7 @@ export function TimerContent() {
       ) : null}
 
       <TimerPhaseEndPopup
-        notice={timer.phaseEndNotice}
+        notice={isFocused ? timer.phaseEndNotice : null}
         onClose={timer.dismissPhaseEndNotice}
         styles={styles}
         normalize={normalize}

@@ -20,6 +20,20 @@ import { createTimerSettingsStyles, getNormalize } from '../../../styles/timer';
 import { WALK_BY_GENDER } from '../../../assets/timer_ani/frames';
 import { shiftTimerSetting, useTimerSettings } from './timerSettingsStorage';
 
+const PHASE_END_CUES = [
+  { key: 'sound', label: '소리' },
+  { key: 'vibrate', label: '진동' },
+  { key: 'popup', label: '팝업' },
+  { key: 'none', label: '없음' },
+];
+
+const PHASE_END_DESC = {
+  sound: '집중·휴식이 끝나면 알림 소리로 알려줘요',
+  vibrate: '집중·휴식이 끝나면 진동으로 알려줘요',
+  popup: '집중·휴식이 끝나면 화면 팝업으로 알려줘요',
+  none: '집중·휴식이 끝나도 따로 알리지 않아요',
+};
+
 const POMODORO_ROWS = [
   { key: 'focusMin', label: '집중 시간', unit: '분' },
   { key: 'shortBreakMin', label: '짧은 휴식', unit: '분' },
@@ -46,7 +60,7 @@ export default function TimerSettings({ navigation }) {
     [width, normalize],
   );
   const { settings, ready, update } = useTimerSettings();
-  const { pomodoroOn, autoStart, phaseEndAlert, gender } = settings;
+  const { pomodoroOn, autoStart, phaseEndCue, gender } = settings;
 
   const switchColors = {
     trackColor: { false: colors.textLight1, true: colors.primary },
@@ -116,19 +130,39 @@ export default function TimerSettings({ navigation }) {
               {...switchColors}
             />
           </View>
-          <View style={[styles.row, styles.rowBorder]}>
-            <View style={styles.rowTextCol}>
-              <Text style={[styles.rowLabel, !pomodoroOn && styles.rowLabelDisabled]}>
-                종료 알림
-              </Text>
-              <Text style={styles.rowDesc}>집중·휴식이 끝나면 팝업으로 알려줘요</Text>
+          <View style={[styles.cueBlock, styles.rowBorder]}>
+            <Text style={[styles.rowLabel, !pomodoroOn && styles.rowLabelDisabled]}>
+              끝날 때 알림
+            </Text>
+            <Text style={styles.rowDesc}>
+              {PHASE_END_DESC[phaseEndCue] || PHASE_END_DESC.popup}
+            </Text>
+            <View style={styles.cueRow}>
+              {PHASE_END_CUES.map((cue) => {
+                const active = (phaseEndCue || 'popup') === cue.key;
+                return (
+                  <TouchableOpacity
+                    key={cue.key}
+                    style={[styles.cueChip, active && styles.cueChipActive]}
+                    onPress={() => update({ phaseEndCue: cue.key })}
+                    disabled={!pomodoroOn || !ready}
+                    activeOpacity={0.8}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: active }}
+                  >
+                    <Text
+                      style={[
+                        styles.cueChipText,
+                        active && styles.cueChipTextActive,
+                        !pomodoroOn && styles.rowLabelDisabled,
+                      ]}
+                    >
+                      {cue.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
-            <Switch
-              value={phaseEndAlert}
-              onValueChange={(value) => update({ phaseEndAlert: value })}
-              disabled={!pomodoroOn || !ready}
-              {...switchColors}
-            />
           </View>
         </View>
 

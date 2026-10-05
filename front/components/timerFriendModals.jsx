@@ -591,6 +591,7 @@ export const FriendStoryBar = memo(function FriendStoryBar({
                   <View
                     style={[
                       styles.friendStatusDotOnCircle,
+                      styles.friendStatusDotOnCircleMark,
                       isActive
                         ? styles.friendStatusDotActive
                         : styles.friendStatusDotInactive,
