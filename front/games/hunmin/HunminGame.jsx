@@ -10,6 +10,7 @@ import {
   TextInput,
   StyleSheet,
   Pressable,
+  AppState,
   useWindowDimensions,
   ActivityIndicator,
 } from 'react-native';
@@ -270,7 +271,7 @@ export default function HunminGame() {
         : { fontFamily: fonts.regular },
     [fontsLoaded],
   );
-  const { socket } = useSocket();
+  const { socket, connected } = useSocket();
   const inputRef = useRef(null);
 
   const [phase, setPhase] = useState('connecting');
@@ -287,10 +288,12 @@ export default function HunminGame() {
   const [rematchSearching, setRematchSearching] = useState(false);
   const matchedRef = useRef(false);
   const phaseRef = useRef(phase);
+  const roundRef = useRef(null);
   const inMatchRef = useRef(false);
   const submittedRef = useRef(false);
   const bubbleTimersRef = useRef({});
   phaseRef.current = phase;
+  roundRef.current = round;
   submittedRef.current = submitted;
 
   const showBubble = useCallback((userId, text, { correct = false } = {}) => {
@@ -410,6 +413,23 @@ export default function HunminGame() {
         return;
       }
 
+      if (status === 'playing' && payload.round?.endsAt) {
+        const seated = (payload.players || []).some(
+          (player) => player?.userId === youIdRef.current,
+        );
+        const waitingSeat = (payload.waiting || []).some(
+          (player) => player?.userId === youIdRef.current,
+        );
+        if (seated || (!waitingSeat && youIdRef.current == null)) {
+          inMatchRef.current = true;
+          setRound(payload.round);
+          setRemainMs(Math.max(0, payload.round.endsAt - Date.now()));
+          setPhase('playing');
+          return;
+        }
+        setPhase('waiting');
+        return;
+      }
       if (status === 'playing' && !inMatchRef.current) {
         setPhase('waiting');
       } else if (status === 'reveal' && inMatchRef.current) {
@@ -547,7 +567,23 @@ export default function HunminGame() {
       if (payload?.room) applyRoom(payload.room);
     };
 
-    socket.emit('hunmin:match', { username: name });
+    const join = () => {
+      if (!socket.connected) {
+        setPhase('connecting');
+        return;
+      }
+      socket.emit('hunmin:match', { username: name });
+    };
+    const onConnect = () => {
+      console.log('[hunmin] 소켓 재연결, 방 다시 입장');
+      join();
+    };
+    const onDisconnect = () => {
+      setPhase('connecting');
+    };
+    join();
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
     socket.on('hunmin:joined', onJoined);
     socket.on('hunmin:room', onRoom);
     socket.on('hunmin:round_start', onRoundStart);
@@ -560,6 +596,8 @@ export default function HunminGame() {
 
     return () => {
       socket.emit('hunmin:leave');
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
       socket.off('hunmin:joined', onJoined);
       socket.off('hunmin:room', onRoom);
       socket.off('hunmin:round_start', onRoundStart);
@@ -571,6 +609,40 @@ export default function HunminGame() {
       socket.off('hunmin:rematch_search', onRematchSearch);
     };
   }, [socket, username, showBubble]);
+
+  useEffect(() => {
+    if (!socket) return undefined;
+    let grace = null;
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'background') {
+        if (grace) clearTimeout(grace);
+        grace = setTimeout(() => {
+          grace = null;
+          socket.emit('hunmin:leave');
+          console.log('[hunmin] 백그라운드 유예 후 퇴장');
+        }, 8000);
+        return;
+      }
+      if (state === 'active') {
+        if (grace) {
+          clearTimeout(grace);
+          grace = null;
+        }
+        if (!socket.connected) {
+          setPhase('connecting');
+          return;
+        }
+        const name =
+          username ||
+          `학생${String(socket.id || '').slice(-4) || Math.floor(Math.random() * 1000)}`;
+        socket.emit('hunmin:match', { username: name });
+      }
+    });
+    return () => {
+      if (grace) clearTimeout(grace);
+      sub.remove();
+    };
+  }, [socket, username]);
 
   useEffect(() => {
     if (phase !== 'playing' || !round?.endsAt) return undefined;
@@ -597,7 +669,10 @@ export default function HunminGame() {
     socket.emit('hunmin:chat', { text: word });
 
     if (phaseRef.current === 'playing' && !submittedRef.current) {
-      socket.emit('hunmin:answer', { word });
+      socket.emit('hunmin:answer', {
+        word,
+        roundId: roundRef.current?.id,
+      });
     }
   }, [input, socket, showBubble]);
 
@@ -711,6 +786,7 @@ export default function HunminGame() {
         <View style={styles.roomMeta}>
           <Text style={[styles.roomMetaText, gameFont]}>
             방 {room?.roomId || '—'} · {players.length}/{SEAT_COUNT}
+            {connected ? '' : ' · 연결 중'}
             {waiting.length > 0 ? ` · 대기 ${waiting.length}` : ''}
           </Text>
           <Pressable onPress={rematch} hitSlop={8}>
@@ -729,7 +805,9 @@ export default function HunminGame() {
             {phase === 'connecting' && (
               <View style={styles.centerBox}>
                 <ActivityIndicator color={CARNIVAL.point} />
-                <Text style={[styles.centerText, gameFont]}>방 찾는 중…</Text>
+                <Text style={[styles.centerText, gameFont]}>
+                  {connected ? '방 찾는 중…' : '연결 중'}
+                </Text>
               </View>
             )}
             {phase === 'waiting' && (

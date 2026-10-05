@@ -105,6 +105,7 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
   streakDays,
   grassRefreshSec,
   onOpenSettings,
+  registerGuideTarget = true,
 }) {
   const liveExtraMs = useContext(LiveElapsedMsContext);
   const displayTotalMs = isViewingToday
@@ -146,6 +147,7 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
         weeklyRate={weekly?.rate ?? 0}
         streakDays={streakDays ?? 0}
         onOpenSettings={onOpenSettings}
+        registerGuideTarget={registerGuideTarget}
       />
     );
   }

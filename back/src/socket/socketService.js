@@ -11,6 +11,7 @@ import {
   leaveStudyRoom,
   studyRoomSocketName,
 } from '../services/studyRoom.service.js';
+import { freshSeenSql } from '../services/studyPresence.service.js';
 
 export { getStudyRoomSnapshotForUser };
 
@@ -64,8 +65,8 @@ export async function upsertStudySessionStart({ userId, dayKey, subjectId, subje
       }
     }
     await connection.execute(
-      `INSERT INTO study_sessions (user_id, day_key, subject_id, subject_name, started_at, ended_at)
-       VALUES (?, ?, ?, ?, ${KST_NOW_DATETIME_SQL}, NULL)`,
+      `INSERT INTO study_sessions (user_id, day_key, subject_id, subject_name, started_at, ended_at, last_seen_at)
+       VALUES (?, ?, ?, ?, ${KST_NOW_DATETIME_SQL}, NULL, ${KST_NOW_DATETIME_SQL})`,
       [
         userId,
         dayKey,
@@ -423,7 +424,8 @@ export async function getStudyingFriends({ userId }) {
        WHERE user_id IN (${placeholders})
        AND ended_at IS NULL
        AND day_key = ?
-       AND session_kind <> 'break'`,
+       AND session_kind <> 'break'
+       AND ${freshSeenSql('')}`,
     [...friendIds, todayTimerDayKey],
   );
 

@@ -3,6 +3,7 @@ import {
   broadcastTimerStatus,
   addNotifyOnStop,
 } from './socketService.js';
+import { touchStudyPresence } from '../services/studyPresence.service.js';
 
 /**
  * 친구 관련 실시간 이벤트를 한 곳에서 등록하는 헬퍼
@@ -55,6 +56,7 @@ export function registerFriendEvents(socket) {
       if (!status) return;
 
       if (status === 'heartbeat') {
+        await touchStudyPresence(userId);
         return;
       }
 

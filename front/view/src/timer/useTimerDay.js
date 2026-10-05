@@ -46,6 +46,7 @@ import {
 } from './timerHelpers';
 import {
   getTimerSettings,
+  loadTimerSettings,
   timerSettingsToPomodoroConfig,
   updateTimerSettings,
 } from './timerSettingsStorage';
@@ -65,6 +66,7 @@ import {
 } from './phaseEndNoticeStore';
 import { playPhaseEndSound, vibratePhaseEnd } from './phaseEndCue';
 import { registerPomodoroRoomActions } from './pomodoroRoomBridge';
+import { appAlert } from '../../../utils/appAlert';
 
 export function useTimerDay({
   isGuidePreview,
@@ -781,6 +783,32 @@ export function useTimerDay({
     const enable = nextOn === true;
     if (getTimerSettings().pomodoroOn === enable) return;
     updateTimerSettings({ pomodoroOn: enable });
+    if (enable) {
+      const cue = getTimerSettings().phaseEndCue || 'popup';
+      if (cue === 'sound' || cue === 'vibrate') {
+        const modeLabel = cue === 'sound' ? '소리' : '진동';
+        appAlert.alert(
+          '사용 안내',
+          `뽀모도로로 전환했어요.\n지금은 ${modeLabel} 모드예요.\n독서실이나 공공장소에서는 주의해 주세요.`,
+          undefined,
+          { emphasis: ['뽀모도로', modeLabel] },
+        );
+      } else if (cue === 'none') {
+        appAlert.alert(
+          '사용 안내',
+          '뽀모도로로 전환했어요.\n끝나면 따로 알리지 않아요.',
+          undefined,
+          { emphasis: ['뽀모도로'] },
+        );
+      } else {
+        appAlert.alert(
+          '사용 안내',
+          '뽀모도로로 전환했어요.\n끝나면 팝업으로 알려줘요.',
+          undefined,
+          { emphasis: ['뽀모도로', '팝업'] },
+        );
+      }
+    }
 
     const open = getOpenSession(latestSnapshotRef.current?.sessions ?? []);
     const view = getPomodoroView();
@@ -829,7 +857,7 @@ export function useTimerDay({
 
   useEffect(
     () =>
-      subscribePomodoro((view, events) => {
+      subscribePomodoro(async (view, events) => {
         const bridge = pomoBridgeRef.current;
         if (!bridge.pomoOnToday?.()) return;
         const ended = (events || []).find(
@@ -838,17 +866,23 @@ export function useTimerDay({
         );
         if (!ended) return;
         if (ended.type === 'phase_complete') {
-          const cue = getTimerSettings().phaseEndCue;
+          const settings = await loadTimerSettings();
+          const cue = settings.phaseEndCue || 'popup';
           const notice = {
             endedPhase: ended.phase,
             nextPhase: view.phase,
           };
-          if (cue === 'popup') publishPhaseEndNotice(notice);
-          else if (cue === 'vibrate') vibratePhaseEnd();
+          if (cue === 'vibrate') vibratePhaseEnd();
           else if (cue === 'sound') playPhaseEndSound(notice);
+          else if (cue !== 'none') publishPhaseEndNotice(notice);
         }
-        bridge.finishOpenInterval(ended.phase === 'focus', { keepPresence: true });
-        if (view.status === 'running') {
+        // 자동 시작이 켜져 다음 단계가 바로 돌면 방에 남긴다.
+        // 꺼져 있으면 알림 뒤에 출석을 끊고 스터디룸에서 나간다.
+        const stayInRoom = view.status === 'running';
+        bridge.finishOpenInterval(ended.phase === 'focus', {
+          keepPresence: stayInRoom,
+        });
+        if (stayInRoom) {
           bridge.openPomoInterval(
             view.phase,
             latestSnapshotRef.current?.activeSubjectId ?? null,
@@ -1017,19 +1051,25 @@ export function useTimerDay({
   );
 
   useEffect(() => {
-    if (!isFocused || !isRunning) return undefined;
-    emitTimerStatus('heartbeat');
-    const heartbeatInterval = setInterval(() => {
+    if (!isRunning && !pomoClockOn) return undefined;
+    const ping = () => {
+      api.post('/api/timer/heartbeat').catch((error) => {
+        console.warn('[Timer] heartbeat 실패', error?.message || error);
+      });
       emitTimerStatus('heartbeat');
-    }, TIMER_HEARTBEAT_MS);
+    };
+    ping();
+    const heartbeatInterval = setInterval(ping, TIMER_HEARTBEAT_MS);
     return () => {
       clearInterval(heartbeatInterval);
     };
-  }, [isRunning, isFocused, emitTimerStatus]);
+  }, [isRunning, pomoClockOn, emitTimerStatus]);
 
   useEffect(() => {
     const tag = 'youth-paper-timer';
-    if (!isFocused || !isRunning) {
+    // 뽀모도로 휴식은 isRunning 이 꺼져 있다. 시계가 돌아가는 동안은 화면을 유지한다.
+    const clockOn = isRunning || pomoClockOn;
+    if (!isFocused || !clockOn) {
       deactivateKeepAwake(tag);
       return undefined;
     }
@@ -1037,7 +1077,7 @@ export function useTimerDay({
     return () => {
       deactivateKeepAwake(tag);
     };
-  }, [isRunning, isFocused]);
+  }, [isRunning, pomoClockOn, isFocused]);
 
   useEffect(() => {
     prevIsRunningRef.current = isRunning;
