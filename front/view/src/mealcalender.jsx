@@ -6,8 +6,6 @@ import {
   TouchableOpacity,
   useWindowDimensions,
   LayoutAnimation,
-  Platform,
-  UIManager,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -23,13 +21,6 @@ const MEAL_LABEL = {
   lunch: '중식',
   dinner: '석식',
 };
-
-if (
-  Platform.OS === 'android' &&
-  UIManager.setLayoutAnimationEnabledExperimental
-) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 const buildMonthMatrix = (year, month) => {
   const firstDay = new Date(year, month, 1);

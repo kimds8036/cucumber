@@ -310,10 +310,7 @@ export function BoardAllContent({ navigation, posts }) {
         setRefreshing(false);
         return;
       }
-      if (
-        studentBoardSelected &&
-        studentVerificationStatus !== 'APPROVED'
-      ) {
+      if (studentBoardSelected && studentVerificationStatus !== 'APPROVED') {
         if (nextPage === 1 && !append) {
           setServerPosts([]);
           setHasMore(false);
@@ -477,13 +474,7 @@ export function BoardAllContent({ navigation, posts }) {
       if (requestId !== pinnedRequestRef.current) return;
       setPinnedPost(null);
     }
-  }, [
-    boardScope,
-    coords,
-    posts,
-    isGuidePreview,
-    studentFeedLocked,
-  ]);
+  }, [boardScope, coords, posts, isGuidePreview, studentFeedLocked]);
 
   useEffect(() => {
     fetchPostsRef.current = fetchPosts;

@@ -273,12 +273,6 @@ export async function shouldShowInAppReviewPrompt() {
 
   const dayCount = await getReviewPromptActiveDayCount();
   if (dayCount < REVIEW_PROMPT_MIN_ACTIVE_DAYS) {
-    if (__DEV__) {
-      console.log('[InAppReview] skip — not enough active days', {
-        dayCount,
-        needDays: REVIEW_PROMPT_MIN_ACTIVE_DAYS,
-      });
-    }
     return false;
   }
 

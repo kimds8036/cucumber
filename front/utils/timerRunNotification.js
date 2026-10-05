@@ -14,7 +14,6 @@ export function configureTimerNotificationHandler() {
       // 배너 없이 shouldPlaySound 만 켜면 res/raw/music.mp3 를 바로 재생한다.
       const show = inBackground;
       return {
-        shouldShowAlert: show,
         shouldPlaySound: isPhaseCue,
         shouldSetBadge: false,
         shouldShowBanner: show,

@@ -21,9 +21,6 @@ import { useAuth } from './AuthContext';
 
 const FriendContext = createContext(null);
 
-/** 재현용: 빨간점(친구 요청) 관련 로그 — Metro/디버거 콘솔에서 `[FriendBadge]` 검색 */
-const FB = '[FriendBadge]';
-
 export function FriendProvider({ children }) {
   const { socket } = useSocket();
   const { isLoggedIn } = useAuth();
@@ -32,56 +29,23 @@ export function FriendProvider({ children }) {
     useState(false);
   const [studyingFriends, setStudyingFriends] = useState({}); // { [userId]: boolean }
 
-  // 프로필 친구 점 / 헤더 벨 점이 바뀔 때마다 한 줄로 확인
-  useEffect(() => {
-    console.log(FB, 'STATE_CHANGED', {
-      profileFriendDot: hasUnreadFriendRequests,
-      headerBellDot: hasUnreadFriendRequestsForBell,
-      at: new Date().toISOString(),
-    });
-  }, [hasUnreadFriendRequests, hasUnreadFriendRequestsForBell]);
-
   const refreshFriendRequestBadge = useCallback(
     async (opts = {}) => {
-      const { updateBell = false, reason = 'unspecified' } = opts;
+      const { updateBell = false } = opts;
       // 비로그인 상태에서는 호출 자체를 스킵 (토큰 없이 401 노이즈 방지)
       if (!isLoggedIn) {
         setHasUnreadFriendRequests(false);
         if (updateBell) setHasUnreadFriendRequestsForBell(false);
-        console.log(FB, 'refresh SKIP (not logged in)', { reason, updateBell });
         return;
       }
-      console.log(FB, 'refresh START', {
-        reason,
-        updateBell,
-        at: new Date().toISOString(),
-      });
       try {
         const res = await api.get('/api/friends/requests/received');
         const list = res.data?.data || [];
         const hasPending = list.length > 0;
-        const preview = list.slice(0, 3).map((r) => ({
-          requestId: r.requestId,
-          fromUserId: r.userId,
-          name: r.name,
-        }));
-        console.log(FB, 'refresh RESULT (REST /requests/received)', {
-          reason,
-          updateBell,
-          receivedCount: list.length,
-          hasPending,
-          preview,
-        });
         setHasUnreadFriendRequests(hasPending);
         if (updateBell) setHasUnreadFriendRequestsForBell(hasPending);
-        console.log(FB, 'refresh APPLY', {
-          reason,
-          setProfileDot: hasPending,
-          setBellDot: updateBell ? hasPending : '(bell unchanged)',
-        });
       } catch (error) {
         console.error('[FriendContext] 친구 요청 수 조회 실패:', error);
-        console.log(FB, 'refresh ERROR → dots OFF', { reason, updateBell });
         setHasUnreadFriendRequests(false);
         if (updateBell) setHasUnreadFriendRequestsForBell(false);
       }
@@ -114,7 +78,6 @@ export function FriendProvider({ children }) {
     refreshFriendRequestBadge({ updateBell: true, reason: 'mount' });
 
     const handleAppStateChange = (nextState) => {
-      console.log(FB, 'AppState', { nextState, at: new Date().toISOString() });
       if (nextState === 'active') {
         refreshFriendRequestBadge({
           updateBell: true,
@@ -132,18 +95,6 @@ export function FriendProvider({ children }) {
 
     const notificationHandler = (payload) => {
       if (payload?.type !== 'friend_request') return;
-      console.log(FB, 'SOCKET notification (friend_request)', {
-        type: payload?.type,
-        category: payload?.category,
-        relatedType: payload?.relatedType,
-        relatedId: payload?.relatedId,
-        title: payload?.title,
-        at: new Date().toISOString(),
-      });
-      console.log(
-        FB,
-        'SOCKET → set profileDot=true, bellDot=true (no REST here)',
-      );
       setHasUnreadFriendRequests(true);
       setHasUnreadFriendRequestsForBell(true);
     };
@@ -160,7 +111,6 @@ export function FriendProvider({ children }) {
     socket.on('friend_timer_status', timerStatusHandler);
 
     const onConnect = () => {
-      console.log(FB, 'SOCKET connect');
       refreshFriendRequestBadge({ updateBell: true, reason: 'socket_connect' });
       refreshStudyingFriends();
     };
@@ -175,10 +125,6 @@ export function FriendProvider({ children }) {
 
   /** 알림 화면 진입 시 호출 → 헤더 벨 빨간점만 끔. 프로필카드 친구 아이콘은 그대로 */
   const markFriendRequestsSeenForBell = useCallback(() => {
-    console.log(
-      FB,
-      'markFriendRequestsSeenForBell → bellDot=false (프로필 점은 유지)',
-    );
     setHasUnreadFriendRequestsForBell(false);
   }, []);
 
