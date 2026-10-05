@@ -88,7 +88,7 @@ export default function BoardPollCard({ poll, postId, onChange, styles, normaliz
         <MaterialCommunityIcons
           name="vote"
           size={normalize(16)}
-          color={colors.textLight5}
+          color={colors.textLight4}
         />
         <Text style={styles.detailPollTitle}>투표</Text>
         {multi ? (
@@ -154,7 +154,7 @@ export default function BoardPollCard({ poll, postId, onChange, styles, normaliz
                   <Ionicons
                     name="checkmark-circle"
                     size={normalize(16)}
-                    color={colors.primary}
+                    color={colors.textLight4}
                   />
                 ) : null}
                 <Text style={styles.detailPollPercent}>{percent}%</Text>

@@ -500,7 +500,7 @@ export const createWriteStyles = (width, normalize) => {
       marginHorizontal: normalize(14),
       marginBottom: normalize(8),
       padding: normalize(14),
-      backgroundColor: colors.textLight05,
+      backgroundColor: colors.textLight0,
       borderRadius: normalize(12),
       gap: normalize(8),
     },
@@ -518,7 +518,7 @@ export const createWriteStyles = (width, normalize) => {
       height: normalize(18),
       borderRadius: normalize(9),
       borderWidth: 1.5,
-      borderColor: colors.textLight2,
+      borderColor: colors.textLight1,
     },
     pollOptionInput: {
       flex: 1,
@@ -538,13 +538,13 @@ export const createWriteStyles = (width, normalize) => {
       borderRadius: normalize(12),
       borderWidth: 1,
       borderStyle: 'dashed',
-      borderColor: colors.textLight2,
+      borderColor: colors.textLight1,
       backgroundColor: colors.white,
     },
     pollAddButtonText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textLight5,
+      color: colors.textLight4,
     },
     pollMultiRow: {
       flexDirection: 'row',
@@ -558,14 +558,14 @@ export const createWriteStyles = (width, normalize) => {
       height: normalize(18),
       borderRadius: normalize(4),
       borderWidth: 1.5,
-      borderColor: colors.textLight2,
+      borderColor: colors.textLight1,
       backgroundColor: colors.white,
       alignItems: 'center',
       justifyContent: 'center',
     },
     pollCheckboxOn: {
-      borderColor: colors.textLight5,
-      backgroundColor: colors.textLight5,
+      borderColor: colors.textLight4,
+      backgroundColor: colors.textLight4,
     },
     pollMultiLabel: {
       fontSize: normalize(fontSizes.lg),
@@ -869,7 +869,7 @@ export const createDetailStyles = (width, normalize) => {
     detailPollBox: {
       marginBottom: normalize(10),
       padding: normalize(14),
-      backgroundColor: colors.primaryLight2,
+      backgroundColor: colors.textLight0,
       borderRadius: normalize(12),
       gap: normalize(8),
     },
@@ -887,7 +887,7 @@ export const createDetailStyles = (width, normalize) => {
     detailPollHint: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textLight4,
+      color: colors.textLight3,
       ...metaTextAndroid,
     },
     detailPollOption: {
@@ -898,12 +898,12 @@ export const createDetailStyles = (width, normalize) => {
       paddingHorizontal: normalize(12),
       borderRadius: normalize(12),
       borderWidth: 1,
-      borderColor: colors.textLight1,
+      borderColor: colors.textLight05,
       backgroundColor: colors.white,
       overflow: 'hidden',
     },
     detailPollOptionSelected: {
-      borderColor: colors.primary,
+      borderColor: colors.textLight4,
       backgroundColor: colors.white,
     },
     // 떠 있는 뷰의 퍼센트 너비는 칸의 안쪽 여백을 뺀 너비 기준이라, 위치값으로 칸 전체를 덮는 틀 안에서 막대를 그린다.
@@ -916,23 +916,23 @@ export const createDetailStyles = (width, normalize) => {
     },
     detailPollFill: {
       height: '100%',
-      backgroundColor: colors.primary,
+      backgroundColor: colors.textLight05,
     },
     detailPollFillMine: {
-      backgroundColor: colors.primaryLight4,
+      backgroundColor: colors.textLight1,
     },
     detailPollRadio: {
       width: normalize(18),
       height: normalize(18),
       borderRadius: normalize(9),
       borderWidth: 1.5,
-      borderColor: colors.textLight2,
+      borderColor: colors.textLight1,
       alignItems: 'center',
       justifyContent: 'center',
     },
     detailPollMarkOn: {
-      borderColor: colors.primary,
-      backgroundColor: colors.primary,
+      borderColor: colors.textLight4,
+      backgroundColor: colors.textLight4,
     },
     detailPollOptionTextWrap: {
       flex: 1,
@@ -941,7 +941,7 @@ export const createDetailStyles = (width, normalize) => {
     detailPollOptionText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textLight5,
+      color: colors.textLight4,
       ...metaTextAndroid,
     },
     detailPollOptionTextMine: {
@@ -951,7 +951,7 @@ export const createDetailStyles = (width, normalize) => {
     detailPollPercent: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textLight4,
+      color: colors.textLight3,
       ...metaTextAndroid,
     },
     detailPollFooter: {
@@ -964,10 +964,10 @@ export const createDetailStyles = (width, normalize) => {
       paddingHorizontal: normalize(16),
       paddingVertical: normalize(8),
       borderRadius: normalize(20),
-      backgroundColor: colors.primary,
+      backgroundColor: colors.textLight4,
     },
     detailPollVoteButtonDisabled: {
-      backgroundColor: colors.textLight05,
+      backgroundColor: colors.white,
     },
     detailPollVoteButtonText: {
       fontSize: normalize(fontSizes.lg),
@@ -976,12 +976,12 @@ export const createDetailStyles = (width, normalize) => {
       ...metaTextAndroid,
     },
     detailPollVoteButtonTextDisabled: {
-      color: colors.textLight3,
+      color: colors.textLight2,
     },
     detailPollRevote: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textLight4,
+      color: colors.textLight3,
       textDecorationLine: 'underline',
       ...metaTextAndroid,
     },
