@@ -120,6 +120,22 @@ export function TimerContent() {
   const [pokeTarget, setPokeTarget] = useState(null);
   const [pokeVisible, setPokeVisible] = useState(false);
   const [plannerTab, setPlannerTab] = useState('todo');
+  const cardAnchorYRef = useRef(0);
+  const cardAnchorReadyRef = useRef(false);
+  const [cardStuck, setCardStuck] = useState(false);
+  const [cardSlotHeight, setCardSlotHeight] = useState(0);
+  const onPlannerScroll = useCallback((event) => {
+    if (!cardAnchorReadyRef.current) return;
+    const y = event.nativeEvent.contentOffset.y;
+    const stuck = y + 0.5 >= cardAnchorYRef.current;
+    setCardStuck((prev) => (prev === stuck ? prev : stuck));
+  }, []);
+  const onCardSlotLayout = useCallback((event) => {
+    const { y, height } = event.nativeEvent.layout;
+    cardAnchorYRef.current = y;
+    cardAnchorReadyRef.current = height > 0;
+    setCardSlotHeight((prev) => (prev === height ? prev : height));
+  }, []);
   /** 공부 잔디에서 연 지난 날짜 기록 시트 — { dayKey, seconds } | null */
   const [dayRecord, setDayRecord] = useState(null);
   const captureWatermarkReadyRef = useRef(false);
@@ -505,6 +521,7 @@ export function TimerContent() {
       navigation.navigate('TimerAniLab');
     },
     toggleTimer: timer.toggleTimer,
+    onPomodoroMode: timer.setPomodoroMode,
     pauseTimer: timer.pauseTimer,
     startForSubject: timer.startForSubject,
     pomoClockOn: timer.pomoClockOn,
@@ -524,6 +541,21 @@ export function TimerContent() {
     onOpenSettings: () => navigation.navigate('TimerSettings'),
   };
 
+  const plannerChrome = (
+    <View style={{ backgroundColor: colors.white }}>
+      <View style={{ paddingHorizontal: timerGutter }}>
+        <TimerLiveScrollInner segment="card" {...liveScrollProps} />
+      </View>
+      <View style={{ paddingHorizontal: timerGutter }}>
+        <TimerPlannerTabBar
+          value={plannerTab}
+          onChange={setPlannerTab}
+          styles={styles}
+        />
+      </View>
+    </View>
+  );
+
   return (
     <>
       {isFocused ? (
@@ -534,16 +566,18 @@ export function TimerContent() {
           isActive={isFocused}
         >
           <>
+            <View style={styles.scroll}>
             <KeyboardAwareScrollView
               style={[styles.scroll, tdb('#FF3B30')]}
               contentContainerStyle={{ paddingBottom: normalize(24) + tabBarInset }}
               scrollIndicatorInsets={{ bottom: tabBarInset }}
-              stickyHeaderIndices={showDayContentSkeleton ? undefined : [3]}
               removeClippedSubviews={false}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
               bottomOffset={normalize(20)}
               mode="layout"
+              scrollEventThrottle={16}
+              onScroll={onPlannerScroll}
             >
               {scrollingHeader}
               <View
@@ -573,23 +607,12 @@ export function TimerContent() {
                   <TimerDayContentSkeleton normalize={normalize} />
                 </View>
               ) : (
-                <View
-                  collapsable={false}
-                  style={{
-                    backgroundColor: colors.white,
-                    zIndex: 3,
-                  }}
-                >
-                  <View style={{ paddingHorizontal: timerGutter }}>
-                    <TimerLiveScrollInner segment="card" {...liveScrollProps} />
-                  </View>
-                  <View style={{ paddingHorizontal: timerGutter }}>
-                    <TimerPlannerTabBar
-                      value={plannerTab}
-                      onChange={setPlannerTab}
-                      styles={styles}
-                    />
-                  </View>
+                <View collapsable={false} onLayout={onCardSlotLayout}>
+                  {cardStuck ? (
+                    <View style={{ height: cardSlotHeight }} />
+                  ) : (
+                    plannerChrome
+                  )}
                 </View>
               )}
               {showDayContentSkeleton ? null : (
@@ -602,6 +625,21 @@ export function TimerContent() {
                 </View>
               )}
             </KeyboardAwareScrollView>
+            {cardStuck && !showDayContentSkeleton ? (
+              <View
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  backgroundColor: colors.white,
+                  zIndex: 3,
+                }}
+              >
+                {plannerChrome}
+              </View>
+            ) : null}
+            </View>
             {timer.initialLoadDone ? (
               <TimerLivePlannerCapture
                 capturePlannerRef={timer.capturePlannerRef}
@@ -641,7 +679,7 @@ export function TimerContent() {
       ) : null}
 
       <TimerPhaseEndPopup
-        notice={timer.phaseEndNotice}
+        notice={isFocused ? timer.phaseEndNotice : null}
         onClose={timer.dismissPhaseEndNotice}
         styles={styles}
         normalize={normalize}

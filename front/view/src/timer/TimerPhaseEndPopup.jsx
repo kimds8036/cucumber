@@ -1,6 +1,6 @@
 /**
  * 뽀모도로 집중·휴식이 끝났을 때 띄우는 알림.
- * 건너뛰기는 띄우지 않고, 설정에서 끌 수 있다.
+ * 설정이 팝업일 때만 뜬다. 건너뛰기는 띄우지 않는다.
  */
 import React from 'react';
 import { Modal, View, Text, TouchableOpacity } from 'react-native';

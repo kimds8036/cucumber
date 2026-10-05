@@ -47,6 +47,7 @@ import {
 import {
   getTimerSettings,
   timerSettingsToPomodoroConfig,
+  updateTimerSettings,
 } from './timerSettingsStorage';
 import {
   getPomodoroView,
@@ -57,6 +58,13 @@ import {
   pomodoroStart,
   subscribePomodoro,
 } from '../../../utils/pomodoroRuntimeStore';
+import {
+  getPhaseEndNotice,
+  publishPhaseEndNotice,
+  subscribePhaseEndNotice,
+} from './phaseEndNoticeStore';
+import { playPhaseEndSound, vibratePhaseEnd } from './phaseEndCue';
+import { registerPomodoroRoomActions } from './pomodoroRoomBridge';
 
 export function useTimerDay({
   isGuidePreview,
@@ -540,13 +548,14 @@ export function useTimerDay({
     };
   };
 
-  const finishOpenInterval = (countAsStudy) => {
+  const finishOpenInterval = (countAsStudy, options = {}) => {
+    const keepPresence = options.keepPresence === true;
     const snap = latestSnapshotRef.current;
     const sessionsNow = snap?.sessions ?? [];
     const open = getOpenSession(sessionsNow);
     if (!open) {
       setIsRunning(false);
-      setPomoClockOn(false);
+      if (!keepPresence) setPomoClockOn(false);
       return;
     }
     const endedAtMs = Date.now();
@@ -564,9 +573,9 @@ export function useTimerDay({
     setSessions(nextSessions);
     if (addMs > 0) setTotalElapsedMs(nextTotal);
     setIsRunning(false);
-    setPomoClockOn(false);
+    if (!keepPresence) setPomoClockOn(false);
     requestImmediatePersist('pomo-close');
-    emitTimerStatus('idle');
+    if (!keepPresence) emitTimerStatus('idle');
   };
 
   const openPomoInterval = (phase, subjectId) => {
@@ -599,8 +608,6 @@ export function useTimerDay({
         subjectName: meta.subjectName,
         startSeconds: normalizeClockSeconds(getSecondsFromSixAM(new Date()), 0),
       });
-    } else {
-      emitTimerStatus('idle');
     }
     requestImmediatePersist('pomo-open');
   };
@@ -634,18 +641,26 @@ export function useTimerDay({
     openPomoInterval(next.phase, subjectId);
   };
 
+  const stopOpenStudyRecord = () => {
+    const open = getOpenSession(latestSnapshotRef.current?.sessions ?? []);
+    if (!open && !isRunningRef.current) return false;
+    if (open && open.kind !== 'break') endCurrentSession();
+    closeOpenSession(open?.subjectId ?? latestSnapshotRef.current?.activeSubjectId ?? null);
+    setIsRunning(false);
+    setPomoClockOn(false);
+    requestImmediatePersist('pause');
+    emitTimerStatus('idle');
+    return true;
+  };
+
   const pauseTimer = useCallback(() => {
-    if (pomoOnToday()) {
+    const view = getPomodoroView();
+    if (pomoOnToday() && view.status === 'running') {
       pausePomoClock();
       return;
     }
-    if (!isRunning) return;
-    endCurrentSession();
-    closeOpenSession(activeSubjectId);
-    setIsRunning(false);
-    requestImmediatePersist('pause');
-    emitTimerStatus('idle');
-  }, [isRunning, activeSubjectId, requestImmediatePersist, emitTimerStatus]);
+    stopOpenStudyRecord();
+  }, [requestImmediatePersist, emitTimerStatus]);
 
   const startForSubject = (subjectId) => {
     if (pomoOnToday()) {
@@ -664,9 +679,10 @@ export function useTimerDay({
       return;
     }
     if (isRunning && activeSubjectId === subjectId) return;
-    if (isRunning) {
-      endCurrentSession();
-      closeOpenSession(activeSubjectId);
+    const openBeforeStart = getOpenSession(latestSnapshotRef.current?.sessions ?? []);
+    if (isRunning || openBeforeStart) {
+      if (!openBeforeStart || openBeforeStart.kind !== 'break') endCurrentSession();
+      closeOpenSession(openBeforeStart?.subjectId ?? activeSubjectId);
       requestImmediatePersist('subject-switch');
     }
     const selectedSubject = subjects.find((s) => s.id === subjectId);
@@ -700,9 +716,10 @@ export function useTimerDay({
 
   const startTimerTop = () => {
     if (isRunning && activeSubjectId === null) return;
-    if (isRunning) {
-      endCurrentSession();
-      closeOpenSession(activeSubjectId);
+    const open = getOpenSession(latestSnapshotRef.current?.sessions ?? []);
+    if (isRunning || open) {
+      if (!open || open.kind !== 'break') endCurrentSession();
+      closeOpenSession(open?.subjectId ?? activeSubjectId);
       requestImmediatePersist('subject-switch');
     }
     const nowSecForFriends = normalizeClockSeconds(
@@ -750,8 +767,62 @@ export function useTimerDay({
     pomodoroReset(timerSettingsToPomodoroConfig(getTimerSettings()));
   };
 
-  const [phaseEndNotice, setPhaseEndNotice] = useState(null);
-  const dismissPhaseEndNotice = useCallback(() => setPhaseEndNotice(null), []);
+  const announceStudying = (subjectId) => {
+    const meta = subjectMeta(subjectId);
+    emitTimerStatus('studying', {
+      dayKey: latestSnapshotRef.current?.timerDayKey ?? getTimerDayKey(new Date()),
+      subjectId: subjectId ?? null,
+      subjectName: meta.subjectName,
+      startSeconds: normalizeClockSeconds(getSecondsFromSixAM(new Date()), 0),
+    });
+  };
+
+  const setPomodoroMode = (nextOn) => {
+    const enable = nextOn === true;
+    if (getTimerSettings().pomodoroOn === enable) return;
+    updateTimerSettings({ pomodoroOn: enable });
+
+    const open = getOpenSession(latestSnapshotRef.current?.sessions ?? []);
+    const view = getPomodoroView();
+    const studyOpen = Boolean(
+      isRunningRef.current && open && open.kind !== 'break',
+    );
+    const subjectId = open?.subjectId ?? latestSnapshotRef.current?.activeSubjectId ?? null;
+
+    if (enable) {
+      if (!studyOpen) return;
+      const config = timerSettingsToPomodoroConfig(getTimerSettings());
+      pomodoroReset(config);
+      pomodoroStart();
+      setPomoClockOn(true);
+      if (subjectId !== latestSnapshotRef.current?.activeSubjectId) {
+        setActiveSubjectId(subjectId ?? null);
+        writeSnapshot({ activeSubjectId: subjectId ?? null });
+      }
+      announceStudying(subjectId);
+      return;
+    }
+
+    if (view.phase !== 'focus' && (view.status === 'running' || open?.kind === 'break')) {
+      if (view.status === 'running') pomodoroPause();
+      finishOpenInterval(false);
+      pomodoroReset(timerSettingsToPomodoroConfig(getTimerSettings()));
+      return;
+    }
+    if (view.status === 'running') pomodoroPause();
+    if (studyOpen) {
+      setPomoClockOn(false);
+      return;
+    }
+    setPomoClockOn(false);
+  };
+
+  const [phaseEndNotice, setPhaseEndNotice] = useState(() => getPhaseEndNotice());
+  const dismissPhaseEndNotice = useCallback(() => {
+    publishPhaseEndNotice(null);
+  }, []);
+
+  useEffect(() => subscribePhaseEndNotice(setPhaseEndNotice), []);
 
   const pomoBridgeRef = useRef({});
   pomoBridgeRef.current = { pomoOnToday, finishOpenInterval, openPomoInterval };
@@ -766,16 +837,17 @@ export function useTimerDay({
             event.type === 'phase_complete' || event.type === 'phase_skip',
         );
         if (!ended) return;
-        if (
-          ended.type === 'phase_complete' &&
-          getTimerSettings().phaseEndAlert !== false
-        ) {
-          setPhaseEndNotice({
+        if (ended.type === 'phase_complete') {
+          const cue = getTimerSettings().phaseEndCue;
+          const notice = {
             endedPhase: ended.phase,
             nextPhase: view.phase,
-          });
+          };
+          if (cue === 'popup') publishPhaseEndNotice(notice);
+          else if (cue === 'vibrate') vibratePhaseEnd();
+          else if (cue === 'sound') playPhaseEndSound(notice);
         }
-        bridge.finishOpenInterval(ended.phase === 'focus');
+        bridge.finishOpenInterval(ended.phase === 'focus', { keepPresence: true });
         if (view.status === 'running') {
           bridge.openPomoInterval(
             view.phase,
@@ -793,6 +865,17 @@ export function useTimerDay({
     }
     return isRunning ? pauseTimer() : startTimerTop();
   };
+
+  const pomoRoomActionsRef = useRef({ toggle: toggleTimer, skip: pomoSkip });
+  pomoRoomActionsRef.current.toggle = toggleTimer;
+  pomoRoomActionsRef.current.skip = pomoSkip;
+
+  useEffect(() => {
+    return registerPomodoroRoomActions({
+      toggle: () => pomoRoomActionsRef.current.toggle(),
+      skip: () => pomoRoomActionsRef.current.skip(),
+    });
+  }, []);
 
   const reloadTodayFromServer = useCallback(async () => {
     const dayKey = timerDayKey ?? getTimerDayKey(new Date());
@@ -1233,6 +1316,7 @@ export function useTimerDay({
     startForSubject,
     pauseTimer,
     toggleTimer,
+    setPomodoroMode,
     pomoSkip,
     pomoResetClock,
     phaseEndNotice,

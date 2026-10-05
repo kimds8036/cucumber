@@ -1277,7 +1277,7 @@ export const createTimerStyles = (width, normalize) => {
       },
       timetableRow: {
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'stretch',
         borderTopWidth: 0.5,
         borderColor: colors.textLight1,
       },
@@ -1289,6 +1289,7 @@ export const createTimerStyles = (width, normalize) => {
       },
       timetableHourCell: {
         width: normalize(32),
+        height: normalize(20),
         flexShrink: 0,
         alignItems: 'center',
         justifyContent: 'center',
@@ -1320,11 +1321,17 @@ export const createTimerStyles = (width, normalize) => {
       },
       timetableSlotCell: {
         flex: 1,
+        alignSelf: 'stretch',
+        flexDirection: 'row',
+        overflow: 'hidden',
         minWidth: 0,
-        height: normalize(20),
         borderLeftWidth: 0.5,
         borderColor: colors.textLight1,
         backgroundColor: 'transparent',
+      },
+      timetableSlotSegment: {
+        alignSelf: 'stretch',
+        minWidth: 0,
       },
       timetableSchoolBadge: {
         position: 'absolute',
@@ -2369,6 +2376,38 @@ export const createTimerSettingsStyles = (width, normalize) =>
       color: colors.textLight4,
     },
     genderLabelActive: {
+      fontFamily: fonts.bold,
+      color: colors.text,
+    },
+    cueBlock: {
+      paddingTop: normalize(14),
+      paddingBottom: normalize(12),
+    },
+    cueRow: {
+      flexDirection: 'row',
+      gap: normalize(6),
+      marginTop: normalize(10),
+    },
+    cueChip: {
+      flex: 1,
+      height: normalize(32),
+      borderRadius: normalize(10),
+      borderWidth: 1,
+      borderColor: colors.textLight1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.white,
+    },
+    cueChipActive: {
+      borderColor: colors.primary,
+      backgroundColor: colors.primaryLight1,
+    },
+    cueChipText: {
+      fontSize: normalize(fontSizes.lg),
+      fontFamily: fonts.regular,
+      color: colors.textLight4,
+    },
+    cueChipTextActive: {
       fontFamily: fonts.bold,
       color: colors.text,
     },

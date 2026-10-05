@@ -1,8 +1,7 @@
 /**
  * 타이머 플래너 — 타임테이블 (06시~05시, 10분 칸)
- * 격자는 그대로 두고, 학교 시간은 그 위에 absolute 직사각형으로 덮는다.
- * 시작·종료 시각을 시 줄의 픽셀 위치로 바꿔 top / height 에 둔다.
- * 공부 색은 학교 레이어 위에 올라간다.
+ * 격자는 그대로 두고, 학교 시간은 격자 뒤에 absolute로 깐다.
+ * 공부 색은 10분 칸 안에서 칸 높이에 맞춰 채운다.
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, useWindowDimensions } from 'react-native';
@@ -25,23 +24,53 @@ import {
   schoolTimelineSpan,
 } from './timerHelpers';
 
-function barBox(bar, rowWidth) {
-  const left = Math.round(bar.startFraction * rowWidth);
-  const endFraction = bar.startFraction + bar.widthFraction;
-  const right =
-    endFraction >= 0.999 ? rowWidth : Math.round(endFraction * rowWidth);
-  if (right <= left) return null;
-  return {
-    left,
-    width: right - left,
-    color: bar.color,
-  };
+function StudySlotFill({ segments, styles }) {
+  if (!segments?.length) return null;
+  const sorted = [...segments].sort(
+    (a, b) => a.startFraction - b.startFraction,
+  );
+  let pos = 0;
+  const pieces = [];
+  sorted.forEach((seg, index) => {
+    const spacerFlex = Math.max(0, seg.startFraction - pos);
+    pos = seg.startFraction + seg.widthFraction;
+    if (spacerFlex > 0) {
+      pieces.push(
+        <View
+          key={`gap-${index}`}
+          style={[styles.timetableSlotSegment, { flex: spacerFlex }]}
+        />,
+      );
+    }
+    if (seg.widthFraction > 0) {
+      pieces.push(
+        <View
+          key={`color-${index}`}
+          style={[
+            styles.timetableSlotSegment,
+            { flex: seg.widthFraction, backgroundColor: seg.color },
+          ]}
+        />,
+      );
+    }
+  });
+  const trailing = Math.max(0, 1 - pos);
+  if (trailing > 0) {
+    pieces.push(
+      <View
+        key="tail"
+        style={[styles.timetableSlotSegment, { flex: trailing }]}
+      />,
+    );
+  }
+  return pieces;
 }
 
 function TimetableHourRow({
   rowIndex,
   hour,
   joinSchool,
+  studySlots,
   onRowLayout,
   onSlotsLayout,
   styles,
@@ -74,7 +103,7 @@ function TimetableHourRow({
         style={[styles.timetableSlotsRow, tdb('#556B2F')]}
         onLayout={(event) => {
           const { x, y, width, height } = event.nativeEvent.layout;
-          onSlotsLayout({
+          onSlotsLayout(rowIndex, {
             x: Math.round(x),
             y: Math.round(y),
             width: Math.round(width),
@@ -82,24 +111,19 @@ function TimetableHourRow({
           });
         }}
       >
-        {[0, 10, 20, 30, 40, 50].map((minute) => (
+        {[0, 10, 20, 30, 40, 50].map((minute, slotIndex) => (
           <View
             key={minute}
             style={[styles.timetableSlotCell, tdb('#8B4513')]}
-          />
+          >
+            <StudySlotFill
+              segments={studySlots?.[slotIndex]}
+              styles={styles}
+            />
+          </View>
         ))}
       </View>
     </View>
-  );
-}
-
-function sameFrame(prev, next) {
-  return (
-    prev &&
-    prev.x === next.x &&
-    prev.y === next.y &&
-    prev.width === next.width &&
-    prev.height === next.height
   );
 }
 
@@ -238,8 +262,10 @@ export default function TimerTimetable({
     });
   }, []);
 
-  const onSlotsLayout = useCallback((frame) => {
-    setSlotsFrame((prev) => (sameFrame(prev, frame) ? prev : frame));
+  const onSlotsLayout = useCallback((_rowIndex, frame) => {
+    setSlotsFrame((prev) =>
+      prev && prev.x === frame.x && prev.width === frame.width ? prev : frame,
+    );
   }, []);
 
   const schoolSpan = useMemo(
@@ -275,67 +301,29 @@ export default function TimerTimetable({
 
   const nowSec = getSecondsFromSixAM(new Date());
 
-  const studyRects = useMemo(() => {
-    if (!slotsFrame?.width) return [];
-    const rects = [];
+  const studyByRow = useMemo(() => {
+    const byRow = {};
     hourRows.forEach((row) => {
-      const layout = rowLayouts[row.rowIndex];
-      if (!layout) return;
-      [0, 10, 20, 30, 40, 50].forEach((minute) => {
-        const slotStartSeconds = row.slotStartBaseSeconds + minute * 60;
-        const slotStart = toTimerDayTimelineSeconds(slotStartSeconds);
-        const slotEnd = slotStart + 600;
-        const slotIndex = minute / 10;
+      byRow[row.rowIndex] = [0, 10, 20, 30, 40, 50].map((minute) => {
+        const slotStart = toTimerDayTimelineSeconds(
+          row.slotStartBaseSeconds + minute * 60,
+        );
         const segments = [];
         displaySessions.forEach((session) => {
           appendSessionSegmentsForSlot(
             segments,
             session,
             slotStart,
-            slotEnd,
+            slotStart + 600,
             nowSec,
             displaySubjects,
           );
         });
-        segments.forEach((seg, index) => {
-          const box = barBox(
-            {
-              startFraction: (slotIndex + seg.startFraction) / 6,
-              widthFraction: seg.widthFraction / 6,
-            },
-            slotsFrame.width,
-          );
-          if (!box) return;
-          const slotTop = layout.y + slotsFrame.y;
-          const slotHeight = slotsFrame.height;
-          const barHeight = Math.max(1, slotHeight - 4);
-          const top = Math.round(slotTop + (slotHeight - barHeight) / 2);
-          const edged = keepLeftGrid(
-            slotsFrame.x + box.left,
-            box.width,
-            slotsFrame.x,
-          );
-          if (edged.width <= 0) return;
-          rects.push({
-            key: `${row.rowIndex}-${minute}-${index}`,
-            top,
-            height: barHeight,
-            left: edged.left,
-            width: edged.width,
-            color: seg.color,
-          });
-        });
+        return segments;
       });
     });
-    return rects;
-  }, [
-    displaySessions,
-    displaySubjects,
-    hourRows,
-    nowSec,
-    rowLayouts,
-    slotsFrame,
-  ]);
+    return byRow;
+  }, [displaySessions, displaySubjects, hourRows, nowSec]);
 
   return (
     <Wrap
@@ -360,20 +348,6 @@ export default function TimerTimetable({
         </View>
       ) : null}
       <View style={[styles.timetableContainer, tdb('#CD853F')]}>
-        {hourRows.map((row) => (
-          <TimetableHourRow
-            key={row.rowIndex}
-            rowIndex={row.rowIndex}
-            hour={row.hour}
-            joinSchool={
-              hourTouchesSchool(schoolSpan, row.rowIndex) &&
-              hourTouchesSchool(schoolSpan, row.rowIndex - 1)
-            }
-            onRowLayout={onRowLayout}
-            onSlotsLayout={onSlotsLayout}
-            styles={styles}
-          />
-        ))}
         {schoolRects.map((rect) => (
           <View
             key={rect.key}
@@ -388,18 +362,19 @@ export default function TimerTimetable({
             }}
           />
         ))}
-        {studyRects.map((rect) => (
-          <View
-            key={rect.key}
-            pointerEvents="none"
-            style={{
-              position: 'absolute',
-              top: rect.top,
-              height: rect.height,
-              left: rect.left,
-              width: rect.width,
-              backgroundColor: rect.color,
-            }}
+        {hourRows.map((row) => (
+          <TimetableHourRow
+            key={row.rowIndex}
+            rowIndex={row.rowIndex}
+            hour={row.hour}
+            studySlots={studyByRow[row.rowIndex]}
+            joinSchool={
+              hourTouchesSchool(schoolSpan, row.rowIndex) &&
+              hourTouchesSchool(schoolSpan, row.rowIndex - 1)
+            }
+            onRowLayout={onRowLayout}
+            onSlotsLayout={onSlotsLayout}
+            styles={styles}
           />
         ))}
         {labelRect && slotsFrame ? (

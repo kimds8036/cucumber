@@ -87,6 +87,7 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
   handleSaveAsImage,
   onOpenStudyRoom,
   toggleTimer,
+  onPomodoroMode,
   pauseTimer,
   startForSubject,
   pomoClockOn,
@@ -139,6 +140,7 @@ const TimerLiveScrollInnerComponent = function TimerLiveScrollInner({
         handleSaveAsImage={handleSaveAsImage}
         onOpenStudyRoom={onOpenStudyRoom}
         toggleTimer={toggleTimer}
+        onPomodoroMode={onPomodoroMode}
         onPomodoroSkip={pomoSkip}
         onPomodoroReset={pomoResetClock}
         weeklyRate={weekly?.rate ?? 0}

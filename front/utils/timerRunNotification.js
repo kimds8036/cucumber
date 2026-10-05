@@ -6,13 +6,19 @@ let timerNotificationOp = Promise.resolve();
 
 export function configureTimerNotificationHandler() {
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: AppState.currentState !== 'active',
-      shouldPlaySound: false,
-      shouldSetBadge: false,
-      shouldShowBanner: AppState.currentState !== 'active',
-      shouldShowList: AppState.currentState !== 'active',
-    }),
+    handleNotification: async (notification) => {
+      const kind = notification?.request?.content?.data?.kind;
+      const isPhaseCue = kind === 'pomodoro-phase-cue';
+      const inBackground = AppState.currentState !== 'active';
+      const show = isPhaseCue || inBackground;
+      return {
+        shouldShowAlert: show,
+        shouldPlaySound: isPhaseCue,
+        shouldSetBadge: false,
+        shouldShowBanner: show,
+        shouldShowList: show,
+      };
+    },
   });
 }
 
