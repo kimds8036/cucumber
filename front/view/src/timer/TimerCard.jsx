@@ -228,6 +228,7 @@ export default function TimerCard({
   weeklyRate = 0,
   streakDays = 0,
   onOpenSettings,
+  registerGuideTarget = true,
 }) {
   const { settings, ready, update } = useTimerSettings();
   const pomo = usePomodoro();
@@ -255,10 +256,12 @@ export default function TimerCard({
     pomo.longBreakEvery || settings.longBreakEvery || 4,
   );
   const pomoFilled = Math.min(pomoDots, pomo.focusCountInCycle || 0);
+  const CardShell = registerGuideTarget ? GuideFocusTarget : View;
 
   return (
-    <GuideFocusTarget
-      name={T.TIMER_TIMER_CARD}
+    <CardShell
+      {...(registerGuideTarget ? { name: T.TIMER_TIMER_CARD } : null)}
+      collapsable={false}
       style={[styles.timerCard, tdb('#34C759')]}
     >
       <View style={styles.timerMainCol}>
@@ -560,6 +563,6 @@ export default function TimerCard({
           </View>
         </TouchableOpacity>
       </View>
-    </GuideFocusTarget>
+    </CardShell>
   );
 }

@@ -13,6 +13,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Pressable,
+  AppState,
   useWindowDimensions,
 } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
@@ -53,6 +54,10 @@ import {
   setTimerRuntimeState,
   subscribeTimerRuntime,
 } from '../../utils/timerRuntimeStore';
+import {
+  getPomodoroView,
+  subscribePomodoro,
+} from '../../utils/pomodoroRuntimeStore';
 import { formatHMS } from './timer/timerHelpers';
 import { getTimerSettings, loadTimerSettings } from './timer/timerSettingsStorage';
 import { createTimerStyles, getNormalize } from '../../styles/timer';
@@ -95,6 +100,7 @@ function SeatLabels({
   displayId,
   elapsedMs,
   showTimer,
+  onBreak = false,
   z,
   isSelf = false,
 }) {
@@ -116,7 +122,7 @@ function SeatLabels({
           }}
         >
           <Text style={labelStyles.timerText} numberOfLines={1}>
-            {formatHMS(elapsedMs)}
+            {onBreak ? '휴식 중' : formatHMS(elapsedMs)}
           </Text>
         </View>
       ) : null}
@@ -269,6 +275,7 @@ function OtherStudyActor({
   onEnterDone,
   onExitDone,
   elapsedMs,
+  onBreak = false,
   isSelf = false,
   onSeatedVisualChange,
   onPressCharacter,
@@ -564,6 +571,7 @@ function OtherStudyActor({
           displayId={displayId}
           elapsedMs={elapsedMs}
           showTimer
+          onBreak={onBreak}
           z={seat.z}
           isSelf={isSelf}
         />
@@ -585,8 +593,10 @@ export default function TimerAniLab({ navigation }) {
     [width, normalize],
   );
   const [phaseEndNotice, setPhaseEndNotice] = useState(() => getPhaseEndNotice());
+  const [pomoView, setPomoView] = useState(() => getPomodoroView());
 
   useEffect(() => subscribePhaseEndNotice(setPhaseEndNotice), []);
+  useEffect(() => subscribePomodoro((next) => setPomoView(next)), []);
   const shell = useMainShellOptional();
   const goBack = () => {
     if (navigation?.canGoBack?.()) navigation.goBack();
@@ -594,7 +604,7 @@ export default function TimerAniLab({ navigation }) {
   };
 
   const { refreshStudyingFriends } = useFriend();
-  const { socket } = useSocket();
+  const { socket, connected: socketConnected } = useSocket();
   const { showToast } = useToast();
   const [profileTipKey, setProfileTipKey] = useState(null);
   const [selfPomoOpen, setSelfPomoOpen] = useState(false);
@@ -713,9 +723,22 @@ export default function TimerAniLab({ navigation }) {
     };
   }, []);
 
-  // 친구 목록(구분 표시) + 앱 전체 공부 중 목록
+  const loadSeqRef = useRef(0);
+  const loadStudyingRef = useRef(null);
+  const reloadTimerRef = useRef(null);
+  const scheduleRoomReload = useCallback(() => {
+    if (reloadTimerRef.current) clearTimeout(reloadTimerRef.current);
+    reloadTimerRef.current = setTimeout(() => {
+      reloadTimerRef.current = null;
+      loadStudyingRef.current?.();
+    }, 400);
+  }, []);
+
+  // 친구 목록(구분 표시) + 공부 중 명단. 화면 밖·백그라운드에서는 8초 조회를 멈춘다.
   useEffect(() => {
+    if (!isFocused) return undefined;
     let alive = true;
+    let pollId = null;
     refreshStudyingFriends?.();
 
     const loadFriends = async () => {
@@ -767,6 +790,7 @@ export default function TimerAniLab({ navigation }) {
           closedTotalMs: Number(item.closedTotalMs) || 0,
           avatarUrl: item.avatarUrl || item.avatar_url || null,
           profileColorId: item.profileColorId ?? null,
+          presence: item.presence === 'break' ? 'break' : 'study',
         };
       }
       if (roomId != null) setServerRoomId(String(roomId));
@@ -804,11 +828,12 @@ export default function TimerAniLab({ navigation }) {
     };
 
     const loadStudying = async () => {
+      const seq = loadSeqRef.current + 1;
+      loadSeqRef.current = seq;
       try {
         const res = await api.get('/api/timer/study-room/studying');
+        if (!alive || seq !== loadSeqRef.current) return;
         const data = res?.data?.data;
-        if (!alive) return;
-        // 신규: { roomId, members } / 구형 배열 호환
         if (Array.isArray(data)) {
           applyRoomMembers(data, null);
         } else if (data && typeof data === 'object') {
@@ -820,149 +845,77 @@ export default function TimerAniLab({ navigation }) {
           applyRoomMembers([], null);
         }
       } catch (error) {
-        console.error(
-          '[StudyRoom] 공부 중 목록 조회 실패:',
-          error?.message || error,
-        );
-        if (!initialStudyingSeedRef.current) {
-          initialStudyingSeedRef.current = new Set();
-        }
+        if (!alive || seq !== loadSeqRef.current) return;
+        console.error('[StudyRoom] 공부 중 목록 조회 실패', {
+          message: error?.message || String(error),
+        });
       } finally {
-        if (alive) setStudyingBootstrapDone(true);
+        if (alive && seq === loadSeqRef.current) setStudyingBootstrapDone(true);
       }
+    };
+
+    loadStudyingRef.current = loadStudying;
+
+    const startPoll = () => {
+      if (pollId) clearInterval(pollId);
+      pollId = setInterval(() => {
+        loadStudying();
+      }, 8000);
+    };
+    const stopPoll = () => {
+      if (pollId) clearInterval(pollId);
+      pollId = null;
     };
 
     loadFriends();
-    loadStudying();
-    const pollId = setInterval(() => {
+    if (AppState.currentState === 'active') {
       loadStudying();
-    }, 8000);
+      startPoll();
+    }
+    const appSub = AppState.addEventListener('change', (state) => {
+      if (!alive) return;
+      if (state === 'active') {
+        loadStudying();
+        startPoll();
+      } else {
+        stopPoll();
+      }
+    });
     return () => {
       alive = false;
-      clearInterval(pollId);
+      stopPoll();
+      appSub.remove();
+      if (loadStudyingRef.current === loadStudying) {
+        loadStudyingRef.current = null;
+      }
     };
-  }, [refreshStudyingFriends]);
+  }, [isFocused, refreshStudyingFriends]);
 
-  // 스터디룸 소켓 — 서버가 배정한 방만 수신
+  // 소켓은 명단을 직접 고치지 않고, 디바운스된 재조회만 시킨다.
   useEffect(() => {
     if (!socket) return undefined;
-    socket.emit('study_room:join');
-    const roomIdRef = { current: serverRoomId };
-
-    const onJoined = (payload) => {
-      if (!payload || payload.error) return;
-      if (payload.roomId != null) {
-        roomIdRef.current = String(payload.roomId);
-        setServerRoomId(String(payload.roomId));
-      }
-      const list = payload.members;
-      if (!Array.isArray(list)) return;
-      setStudyingUsers(() => {
-        const next = {};
-        list.forEach((item) => {
-          if (item?.userId != null) next[String(item.userId)] = true;
-        });
-        return next;
-      });
-      list.forEach((item) => {
-        if (item?.userId == null) return;
-        const uid = String(item.userId);
-        const startedMs = item.startedAt ? Date.parse(item.startedAt) : NaN;
-        setOthersMeta((prev) => ({
-          ...prev,
-          [uid]: {
-            username: String(
-              item.username || prev[uid]?.username || '학생',
-            ).replace(/^@/, ''),
-            gender: prev[uid]?.gender || pickGenderSafe(),
-            startedAtMs: Number.isFinite(startedMs)
-              ? startedMs
-              : prev[uid]?.startedAtMs ?? null,
-            closedTotalMs:
-              item.closedTotalMs != null
-                ? Number(item.closedTotalMs) || 0
-                : prev[uid]?.closedTotalMs || 0,
-            avatarUrl:
-              item.avatarUrl ||
-              item.avatar_url ||
-              prev[uid]?.avatarUrl ||
-              null,
-            profileColorId:
-              item.profileColorId ?? prev[uid]?.profileColorId ?? null,
-          },
-        }));
-      });
+    const join = () => {
+      socket.emit('study_room:join');
+      scheduleRoomReload();
     };
-
-    const onStatus = (payload) => {
-      const uid = payload?.userId != null ? String(payload.userId) : null;
-      if (!uid) return;
-      if (
-        payload.roomId != null &&
-        roomIdRef.current != null &&
-        String(payload.roomId) !== String(roomIdRef.current)
-      ) {
-        return;
-      }
-      if (payload.roomId != null && roomIdRef.current == null) {
-        roomIdRef.current = String(payload.roomId);
-        setServerRoomId(String(payload.roomId));
-      }
-      const status = payload.status;
-      if (status === 'studying') {
-        setStudyingUsers((prev) => ({ ...prev, [uid]: true }));
-        const startedMs = payload.startedAt
-          ? Date.parse(payload.startedAt)
-          : Date.now();
-        setOthersMeta((prev) => ({
-          ...prev,
-          [uid]: {
-            username: String(
-              payload.username || prev[uid]?.username || '학생',
-            ).replace(/^@/, ''),
-            gender: prev[uid]?.gender || pickGenderSafe(),
-            startedAtMs: Number.isFinite(startedMs) ? startedMs : Date.now(),
-            closedTotalMs:
-              payload.closedTotalMs != null
-                ? Number(payload.closedTotalMs) || 0
-                : prev[uid]?.closedTotalMs || 0,
-            avatarUrl:
-              payload.avatarUrl ||
-              payload.avatar_url ||
-              prev[uid]?.avatarUrl ||
-              null,
-            profileColorId:
-              payload.profileColorId ?? prev[uid]?.profileColorId ?? null,
-          },
-        }));
-        setOtherStartedAt((prev) => {
-          const key = `u:${uid}`;
-          if (prev[key]) return prev;
-          return {
-            ...prev,
-            [key]: Number.isFinite(startedMs) ? startedMs : Date.now(),
-          };
-        });
-      } else if (status === 'idle') {
-        setStudyingUsers((prev) => {
-          if (!prev[uid]) return prev;
-          const next = { ...prev };
-          delete next[uid];
-          return next;
-        });
-      }
+    const onConnect = () => {
+      console.log('[StudyRoom] 소켓 재연결, 명단 다시 읽기');
+      join();
     };
-
-    socket.on('study_room:joined', onJoined);
-    socket.on('study_room_timer_status', onStatus);
+    const onSignal = () => {
+      scheduleRoomReload();
+    };
+    if (socket.connected) join();
+    socket.on('connect', onConnect);
+    socket.on('study_room:joined', onSignal);
+    socket.on('study_room_timer_status', onSignal);
     return () => {
       socket.emit('study_room:leave');
-      socket.off('study_room:joined', onJoined);
-      socket.off('study_room_timer_status', onStatus);
+      socket.off('connect', onConnect);
+      socket.off('study_room:joined', onSignal);
+      socket.off('study_room_timer_status', onSignal);
     };
-    // serverRoomId 초기값만 사용 — 변경 시 재구독하지 않음
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [socket]);
+  }, [socket, scheduleRoomReload]);
 
   // 타이머 런타임 + 오늘 누적(타이머 화면과 동일 기준)
   useEffect(() => subscribeTimerRuntime((s) => setRuntime({ ...s })), []);
@@ -998,6 +951,9 @@ export default function TimerAniLab({ navigation }) {
     : 0;
   // 타이머 화면과 동일: 종료 세션 누적 + (실행 중이면 현재 세션)
   const selfElapsedMs = Math.max(0, (Number(runtime.totalElapsedMs) || 0) + selfLiveMs);
+  const selfOnBreak =
+    (pomoView.status === 'running' || pomoView.status === 'paused') &&
+    (pomoView.phase === 'short_break' || pomoView.phase === 'long_break');
 
   // 타이머 화면은 blur 시 keep-awake 해제 → 스터디룸에서도 실행 중이면 유지
   useEffect(() => {
@@ -1188,10 +1144,9 @@ export default function TimerAniLab({ navigation }) {
           ? settings.gender
           : randomGender();
       setMe((prev) => ({ ...prev, gender }));
-      if (selfUid && initialStudyingSeedRef.current) {
-        initialStudyingSeedRef.current.add(selfUid);
-      }
-      setSelfMode('enter');
+      const alreadySeated =
+        selfUid != null && initialStudyingSeedRef.current?.has(selfUid);
+      setSelfMode(alreadySeated ? 'seated' : 'enter');
     }
   }, [roomReady, studyingBootstrapDone, selfPresent, selfSeat?.index, selfUid]);
 
@@ -1430,6 +1385,20 @@ export default function TimerAniLab({ navigation }) {
           justifyContent: 'center',
           zIndex: 300,
         },
+        linkChip: {
+          position: 'absolute',
+          left: 60,
+          top: Math.max(insets.top, 8) + 10,
+          zIndex: 300,
+          paddingHorizontal: 8,
+          paddingVertical: 4,
+          borderRadius: 10,
+          backgroundColor: 'rgba(39,42,38,0.45)',
+        },
+        linkChipText: {
+          color: colors.white,
+          fontSize: 12,
+        },
       }),
     [insets.top],
   );
@@ -1488,6 +1457,7 @@ export default function TimerAniLab({ navigation }) {
             displayId={me.username}
             mode={selfMode}
             elapsedMs={selfElapsedMs}
+            onBreak={selfOnBreak}
             isSelf
             onPressCharacter={() => {
               if (selfMode !== 'seated') return;
@@ -1526,6 +1496,7 @@ export default function TimerAniLab({ navigation }) {
                   displayId={meta.username}
                   mode={mode}
                   elapsedMs={closedTotal + liveSessionMs}
+                  onBreak={meta.presence === 'break'}
                   isSelf={false}
                   onSeatedVisualChange={(ready) =>
                     setDeskCoverReady((prev) =>
@@ -1604,6 +1575,11 @@ export default function TimerAniLab({ navigation }) {
       >
         <Ionicons name="chevron-back" size={24} color={colors.white} />
       </TouchableOpacity>
+      <View style={styles.linkChip} pointerEvents="none">
+        <Text style={styles.linkChipText}>
+          {socketConnected ? '연결됨' : '연결 중'}
+        </Text>
+      </View>
       <TimerPhaseEndPopup
         notice={isFocused ? phaseEndNotice : null}
         onClose={() => publishPhaseEndNotice(null)}

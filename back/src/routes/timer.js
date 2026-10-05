@@ -6,6 +6,10 @@ import { validate } from '../middleware/validate.js';
 import { closeIncompleteStudySessions } from '../socket/socketService.js';
 import { getStudyRoomSnapshotForUser } from '../services/studyRoom.service.js';
 import {
+  KST_NOW_SQL,
+  touchStudyPresence,
+} from '../services/studyPresence.service.js';
+import {
   expandLegacyInvertedIntervalSessions,
   flattenSessionsForTimerIntervals,
   isoFromMysqlKstNaiveString,
@@ -235,13 +239,15 @@ async function persistStudySessionsForDayKey(
     if (session.id != null) {
       const [updateResult] = await connection.execute(
         `UPDATE study_sessions
-         SET subject_id = ?, subject_name = ?, subject_color = ?, started_at = ?, ended_at = ?
+         SET subject_id = ?, subject_name = ?, subject_color = ?, started_at = ?, ended_at = ?,
+             last_seen_at = IF(? IS NULL, ${KST_NOW_SQL}, last_seen_at)
          WHERE id = ? AND user_id = ? AND day_key = ?`,
         [
           resolvedSubjectId != null ? Number(resolvedSubjectId) : null,
           snapshotName,
           snapshotColor,
           startedSql,
+          endedSql,
           endedSql,
           Number(session.id),
           userId,
@@ -272,7 +278,8 @@ async function persistStudySessionsForDayKey(
              subject_name = COALESCE(?, subject_name),
              subject_color = COALESCE(?, subject_color),
              subject_id = COALESCE(?, subject_id),
-             session_kind = ?
+             session_kind = ?,
+             last_seen_at = IF(? IS NULL, ${KST_NOW_SQL}, last_seen_at)
          WHERE id = ?`,
         [
           endedSql,
@@ -280,6 +287,7 @@ async function persistStudySessionsForDayKey(
           snapshotColor,
           resolvedSubjectId != null ? Number(resolvedSubjectId) : null,
           sessionKind,
+          endedSql,
           Number(openRows[0].id),
         ],
       );
@@ -306,8 +314,8 @@ async function persistStudySessionsForDayKey(
 
     await connection.execute(
       `INSERT INTO study_sessions
-         (user_id, day_key, subject_name, subject_color, subject_id, session_kind, started_at, ended_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+         (user_id, day_key, subject_name, subject_color, subject_id, session_kind, started_at, ended_at, last_seen_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, IF(? IS NULL, ${KST_NOW_SQL}, NULL))`,
       [
         userId,
         dayKey,
@@ -316,6 +324,7 @@ async function persistStudySessionsForDayKey(
         resolvedSubjectId != null ? Number(resolvedSubjectId) : null,
         sessionKind,
         startedSql,
+        endedSql,
         endedSql,
       ],
     );
@@ -1079,6 +1088,20 @@ router.get(
     }
   },
 );
+
+/** 타이머가 켜져 있는 동안 마지막 확인 시각을 갱신한다. */
+router.post('/heartbeat', authenticate, async (req, res) => {
+  try {
+    await touchStudyPresence(req.user.userId);
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('[Timer] heartbeat 실패', error?.message || error);
+    return res.status(500).json({
+      success: false,
+      message: '타이머 확인에 실패했습니다.',
+    });
+  }
+});
 
 /** 스터디룸: 내 방 멤버만 (서버 배정, 최대 16) */
 router.get('/study-room/studying', authenticate, async (req, res) => {

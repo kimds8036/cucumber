@@ -1017,15 +1017,19 @@ export function useTimerDay({
   );
 
   useEffect(() => {
-    if (!isFocused || !isRunning) return undefined;
-    emitTimerStatus('heartbeat');
-    const heartbeatInterval = setInterval(() => {
+    if (!isRunning && !pomoClockOn) return undefined;
+    const ping = () => {
+      api.post('/api/timer/heartbeat').catch((error) => {
+        console.warn('[Timer] heartbeat 실패', error?.message || error);
+      });
       emitTimerStatus('heartbeat');
-    }, TIMER_HEARTBEAT_MS);
+    };
+    ping();
+    const heartbeatInterval = setInterval(ping, TIMER_HEARTBEAT_MS);
     return () => {
       clearInterval(heartbeatInterval);
     };
-  }, [isRunning, isFocused, emitTimerStatus]);
+  }, [isRunning, pomoClockOn, emitTimerStatus]);
 
   useEffect(() => {
     const tag = 'youth-paper-timer';

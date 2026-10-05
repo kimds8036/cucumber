@@ -11,9 +11,17 @@ import React, {
 import {
   View,
   ScrollView,
+  PixelRatio,
   useWindowDimensions,
   Alert,
 } from 'react-native';
+import Animated, {
+  useAnimatedProps,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useDerivedValue,
+  useSharedValue,
+} from 'react-native-reanimated';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { createTimerStyles, getNormalize } from '../../../styles/timer';
 import { colors } from '../../../styles/colors';
@@ -120,22 +128,37 @@ export function TimerContent() {
   const [pokeTarget, setPokeTarget] = useState(null);
   const [pokeVisible, setPokeVisible] = useState(false);
   const [plannerTab, setPlannerTab] = useState('todo');
-  const cardAnchorYRef = useRef(0);
-  const cardAnchorReadyRef = useRef(false);
-  const [cardStuck, setCardStuck] = useState(false);
-  const [cardSlotHeight, setCardSlotHeight] = useState(0);
-  const onPlannerScroll = useCallback((event) => {
-    if (!cardAnchorReadyRef.current) return;
-    const y = event.nativeEvent.contentOffset.y;
-    const stuck = y + 0.5 >= cardAnchorYRef.current;
-    setCardStuck((prev) => (prev === stuck ? prev : stuck));
-  }, []);
+  const scrollY = useSharedValue(0);
+  const origY = useSharedValue(0);
+  const onPlannerScroll = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
   const onCardSlotLayout = useCallback((event) => {
-    const { y, height } = event.nativeEvent.layout;
-    cardAnchorYRef.current = y;
-    cardAnchorReadyRef.current = height > 0;
-    setCardSlotHeight((prev) => (prev === height ? prev : height));
-  }, []);
+    const y = PixelRatio.roundToNearestPixel(event.nativeEvent.layout.y);
+    if (y < 0 || origY.value === y) return;
+    origY.value = y;
+  }, [origY]);
+  const chromeStuck = useDerivedValue(() => {
+    const y = origY.value;
+    if (y <= 0) return false;
+    return scrollY.value >= y;
+  });
+  const inFlowChromeStyle = useAnimatedStyle(() => ({
+    opacity: chromeStuck.value ? 0 : 1,
+    pointerEvents: chromeStuck.value ? 'none' : 'auto',
+  }));
+  const overlayChromeStyle = useAnimatedStyle(() => ({
+    opacity: chromeStuck.value ? 1 : 0,
+    pointerEvents: chromeStuck.value ? 'auto' : 'none',
+  }));
+  const inFlowChromeProps = useAnimatedProps(() => ({
+    pointerEvents: chromeStuck.value ? 'none' : 'auto',
+  }));
+  const overlayChromeProps = useAnimatedProps(() => ({
+    pointerEvents: chromeStuck.value ? 'auto' : 'none',
+  }));
   /** 공부 잔디에서 연 지난 날짜 기록 시트 — { dayKey, seconds } | null */
   const [dayRecord, setDayRecord] = useState(null);
   const captureWatermarkReadyRef = useRef(false);
@@ -541,10 +564,14 @@ export function TimerContent() {
     onOpenSettings: () => navigation.navigate('TimerSettings'),
   };
 
-  const plannerChrome = (
-    <View style={{ backgroundColor: colors.white }}>
+  const renderPlannerChrome = (registerGuideTarget) => (
+    <View style={{ backgroundColor: colors.white }} collapsable={false}>
       <View style={{ paddingHorizontal: timerGutter }}>
-        <TimerLiveScrollInner segment="card" {...liveScrollProps} />
+        <TimerLiveScrollInner
+          segment="card"
+          {...liveScrollProps}
+          registerGuideTarget={registerGuideTarget}
+        />
       </View>
       <View style={{ paddingHorizontal: timerGutter }}>
         <TimerPlannerTabBar
@@ -558,8 +585,7 @@ export function TimerContent() {
 
   return (
     <>
-      {isFocused ? (
-        <LiveElapsedTicker
+      <LiveElapsedTicker
           isRunning={timer.isRunning}
           sessionStartedAtMs={timer.openSessionStartedAtMs}
           resyncAt={timer.liveElapsedResyncAt}
@@ -607,13 +633,14 @@ export function TimerContent() {
                   <TimerDayContentSkeleton normalize={normalize} />
                 </View>
               ) : (
-                <View collapsable={false} onLayout={onCardSlotLayout}>
-                  {cardStuck ? (
-                    <View style={{ height: cardSlotHeight }} />
-                  ) : (
-                    plannerChrome
-                  )}
-                </View>
+                <Animated.View
+                  collapsable={false}
+                  onLayout={onCardSlotLayout}
+                  style={inFlowChromeStyle}
+                  animatedProps={inFlowChromeProps}
+                >
+                  {renderPlannerChrome(true)}
+                </Animated.View>
               )}
               {showDayContentSkeleton ? null : (
                 <View style={{ paddingHorizontal: timerGutter }}>
@@ -625,20 +652,25 @@ export function TimerContent() {
                 </View>
               )}
             </KeyboardAwareScrollView>
-            {cardStuck && !showDayContentSkeleton ? (
-              <View
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  backgroundColor: colors.white,
-                  zIndex: 3,
-                }}
+            {showDayContentSkeleton ? null : (
+              <Animated.View
+                collapsable={false}
+                animatedProps={overlayChromeProps}
+                style={[
+                  overlayChromeStyle,
+                  {
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    backgroundColor: colors.white,
+                    zIndex: 3,
+                  },
+                ]}
               >
-                {plannerChrome}
-              </View>
-            ) : null}
+                {renderPlannerChrome(false)}
+              </Animated.View>
+            )}
             </View>
             {timer.initialLoadDone ? (
               <TimerLivePlannerCapture
@@ -676,7 +708,6 @@ export function TimerContent() {
             ) : null}
           </>
         </LiveElapsedTicker>
-      ) : null}
 
       <TimerPhaseEndPopup
         notice={isFocused ? timer.phaseEndNotice : null}
