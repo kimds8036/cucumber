@@ -500,7 +500,7 @@ export const createWriteStyles = (width, normalize) => {
       marginHorizontal: normalize(14),
       marginBottom: normalize(8),
       padding: normalize(14),
-      backgroundColor: '#F6F4F0',
+      backgroundColor: colors.textLight05,
       borderRadius: normalize(12),
       gap: normalize(8),
     },
@@ -869,7 +869,7 @@ export const createDetailStyles = (width, normalize) => {
     detailPollBox: {
       marginBottom: normalize(10),
       padding: normalize(14),
-      backgroundColor: '#F6F4F0',
+      backgroundColor: colors.textLight05,
       borderRadius: normalize(12),
       gap: normalize(8),
     },

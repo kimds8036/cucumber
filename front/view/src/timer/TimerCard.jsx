@@ -5,6 +5,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, Pressable, Animated } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Feather from '@expo/vector-icons/Feather';
+import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { colors, fonts } from '../../../styles/colors';
 import { DEBUG_TIMER_CARD_OUTLINE } from '../../../styles/timer';
@@ -31,10 +32,10 @@ const cdb = (color) =>
   DEBUG_TIMER_CARD_OUTLINE ? { borderWidth: 1, borderColor: color } : null;
 
 const MODE_COLORS = {
-  pomodoro: '#FFF1EA',
-  timer: '#EDF8EA',
-  pomodoroText: '#C46A58',
-  timerText: '#6F9163',
+  pomodoro: colors.alertLight,
+  timer: colors.primaryLight3,
+  pomodoroText: colors.alertDark,
+  timerText: colors.primary,
 };
 
 function PomodoroModeToggle({ on, disabled, onPress, normalize }) {
@@ -255,6 +256,7 @@ export default function TimerCard({
     pomo.longBreakEvery || settings.longBreakEvery || 4,
   );
   const pomoFilled = Math.min(pomoDots, pomo.focusCountInCycle || 0);
+  const pomoCurrentDot = isBreak ? pomoFilled - 1 : pomoFilled;
 
   return (
     <GuideFocusTarget
@@ -308,6 +310,24 @@ export default function TimerCard({
           ) : null}
           <View style={styles.dateBarRight}>
             <View style={styles.timerCardIconRow}>
+              {showPomodoro ? (
+                <TouchableOpacity
+                  style={styles.timerCardIconBtn}
+                  onPress={() =>
+                    onPomodoroReset
+                      ? onPomodoroReset()
+                      : pomo.reset(timerSettingsToPomodoroConfig(settings))
+                  }
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityLabel="초기화"
+                >
+                  <Ionicons
+                    name="refresh"
+                    size={normalize(16)}
+                    color={colors.textLight3}
+                  />
+                </TouchableOpacity>
+              ) : null}
               <TouchableOpacity
                 style={styles.timerCardIconBtn}
                 onPress={handleSaveAsImage}
@@ -359,17 +379,23 @@ export default function TimerCard({
                     key={`pomo-dot-${i}`}
                     style={[
                       styles.pomoCycleDot,
-                      i < pomoFilled &&
+                      isBreak && styles.pomoCycleDotBreak,
+                      i <= pomoCurrentDot &&
                         (isBreak
                           ? styles.pomoCycleDotActiveBreak
                           : styles.pomoCycleDotActive),
+                      i === pomoCurrentDot && styles.pomoCycleDotCurrent,
                     ]}
                   />
                 ))}
               </View>
             </View>
             <Text
-              style={[styles.timerTime, isBreak && styles.timerTimeBreak]}
+              style={[
+                styles.timerTime,
+                styles.timerTimePomo,
+                isBreak && styles.timerTimeBreak,
+              ]}
               numberOfLines={1}
               adjustsFontSizeToFit
             >
@@ -424,24 +450,8 @@ export default function TimerCard({
                   onPomodoroSkip ? onPomodoroSkip() : pomo.skip()
                 }
               >
-                <Ionicons
-                  name="play-skip-forward"
-                  size={normalize(16)}
-                  color={colors.textLight4}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.pomoSubBtn}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                accessibilityLabel="초기화"
-                onPress={() =>
-                  onPomodoroReset
-                    ? onPomodoroReset()
-                    : pomo.reset(timerSettingsToPomodoroConfig(settings))
-                }
-              >
-                <Ionicons
-                  name="refresh"
+                <FontAwesome6
+                  name="arrows-rotate"
                   size={normalize(16)}
                   color={colors.textLight4}
                 />

@@ -33,7 +33,7 @@ export const colors = {
   replyArrow: '#B5B5B5',
 
   // 상태 컬러
-  alertDark: '#AB6A6A',
+  alertDark: '#D58585',
   alert: '#FF9F9F',
   alertLight: '#FFF0F0',
   scrapDark: '#A46E17',
