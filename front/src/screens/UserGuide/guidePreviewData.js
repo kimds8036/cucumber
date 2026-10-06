@@ -202,6 +202,7 @@ export function getGuideMyPageUserInfo() {
     profileColorId: 1,
     profileColorNumber: 1,
     friendCount: 13,
+    avatarUrl: null,
   };
 }
 

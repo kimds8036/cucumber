@@ -1,20 +1,22 @@
 import { StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
 import { shadow } from './tokens';
-export function createMailStyles(normalize) {
+export function createMailStyles(normalize, width) {
+  const gutter = width * 0.04;
   return StyleSheet.create({
-    safe: { flex: 1, backgroundColor: colors.background },
-    scroll: { flex: 1, backgroundColor: colors.background },
+    safe: { flex: 1, backgroundColor: colors.white },
+    scroll: { flex: 1, backgroundColor: colors.white },
 
     // 목록
     inboxContainer: {
-      padding: normalize(12),
+      paddingVertical: normalize(12),
+      paddingHorizontal: gutter,
       paddingBottom: normalize(20),
       gap: normalize(8),
     },
     inboxTabRow: {
       flexDirection: 'row',
-      paddingHorizontal: normalize(16),
+      paddingHorizontal: gutter,
       gap: normalize(8),
       marginBottom: normalize(8),
       paddingTop: normalize(8),
@@ -29,7 +31,7 @@ export function createMailStyles(normalize) {
       color: '#444',
     },
     inboxTabButtonTextActive: {
-      color: '#fff',
+      color: colors.white,
     },
     inboxTabButtonReceivedActive: {
       backgroundColor: colors.primary,
@@ -52,15 +54,15 @@ export function createMailStyles(normalize) {
       alignSelf: 'center',
     },
     inboxLoadMoreText: {
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     mailCard: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(12),
       padding: normalize(16),
       marginBottom: normalize(8),
       borderWidth: 1,
-      borderColor: colors.textLight10,
+      borderColor: colors.textLight1,
       position: 'relative',
     },
     mailCardUnread: {
@@ -76,21 +78,21 @@ export function createMailStyles(normalize) {
     anonLabel: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
-    dotSep: { fontSize: normalize(fontSizes.xl), color: colors.textSecondary },
+    dotSep: { fontSize: normalize(fontSizes.xl), color: colors.textLight4 },
     mailTime: {
       fontSize: normalize(fontSizes.lg),
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     mailPreview: {
       fontSize: normalize(fontSizes.xl),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginBottom: normalize(10),
     },
     cardDivider: {
       height: 1,
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
       marginBottom: normalize(10),
     },
     mailCardFooter: {
@@ -109,7 +111,7 @@ export function createMailStyles(normalize) {
     },
     replyStatusPendingText: {
       fontSize: normalize(fontSizes.lg),
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     mailCardParent: {
       backgroundColor: '#f7f7f7',
@@ -117,14 +119,14 @@ export function createMailStyles(normalize) {
     mailCardReply: {
       marginLeft: normalize(14),
       borderLeftWidth: 2,
-      borderLeftColor: colors.textLight10,
+      borderLeftColor: colors.textLight1,
     },
 
     // 상세 화면 (첫 번째 디자인)
-    detailRoot: { flex: 1, backgroundColor: colors.background },
-    detailScroll: { padding: normalize(16) },
+    detailRoot: { flex: 1, backgroundColor: colors.white },
+    detailScroll: { paddingVertical: normalize(16), paddingHorizontal: gutter },
     detailLetterCard: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(12),
       paddingHorizontal: normalize(16),
       paddingTop: normalize(18),
@@ -163,12 +165,12 @@ export function createMailStyles(normalize) {
     detailSenderName: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: normalize(2),
     },
     detailTime: {
       fontSize: normalize(fontSizes.lg),
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     typeChip: {
       marginLeft: 'auto',
@@ -177,7 +179,7 @@ export function createMailStyles(normalize) {
     },
     typeChipText: {
       fontSize: normalize(fontSizes.lg),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       fontFamily: fonts.regular,
     },
     detailDivider: {
@@ -187,7 +189,7 @@ export function createMailStyles(normalize) {
     },
     detailBody: {
       fontSize: normalize(fontSizes.xl),
-      color: colors.textPrimary,
+      color: colors.text,
       lineHeight: normalize(22),
     },
     detailBodyContainer: { flex: 1 },
@@ -198,27 +200,27 @@ export function createMailStyles(normalize) {
       alignItems: 'center',
     },
     detailEmptyText: {
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginTop: normalize(8),
     },
     detailReplyBadge: {
       alignSelf: 'flex-start',
       marginLeft: 'auto',
-      backgroundColor: colors.primaryLight20,
+      backgroundColor: colors.primaryLight3,
       borderRadius: 4,
       paddingHorizontal: normalize(6),
       paddingVertical: normalize(2),
       marginBottom: normalize(6),
     },
     detailReplyBadgeText: {
-      color: colors.textPrimary,
+      color: colors.text,
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
     },
     detailNotice: {
       marginBottom: normalize(12),
       fontSize: normalize(fontSizes.lg),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textAlign: 'center',
     },
     repliedSummary: {
@@ -227,13 +229,13 @@ export function createMailStyles(normalize) {
     },
     repliedSummaryText: {
       fontSize: normalize(fontSizes.lg),
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     bottomCtaWrapper: {
-      paddingHorizontal: normalize(16),
+      paddingHorizontal: gutter,
       paddingBottom: normalize(16),
       paddingTop: normalize(8),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     bottomCtaButton: {
       backgroundColor: colors.primary,
@@ -245,14 +247,32 @@ export function createMailStyles(normalize) {
     bottomCtaText: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textWhite,
+      color: colors.white,
     },
     bottomCtaDisabled: {
-      backgroundColor: colors.primaryLight30,
+      backgroundColor: colors.primaryLight4,
+    },
+    /** 서브헤더 우측 전송 pill — 게시글 작성 완료 pill과 동일 */
+    sendPill: {
+      backgroundColor: colors.primaryLight6,
+      borderRadius: normalize(20),
+      paddingHorizontal: normalize(14),
+      paddingVertical: normalize(6),
+    },
+    sendPillText: {
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.bold,
+      color: colors.primaryDark,
+    },
+    sendPillDisabled: {
+      backgroundColor: colors.textLight1,
+    },
+    sendPillTextDisabled: {
+      color: colors.textLight4,
     },
     bottomWaitingText: {
       fontSize: normalize(fontSizes.xl),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textAlign: 'center',
       paddingVertical: normalize(14),
       paddingHorizontal: normalize(8),
@@ -260,17 +280,17 @@ export function createMailStyles(normalize) {
     },
 
     // 답장 화면 (두 번째 디자인 재활용)
-    modalFullSafe: { flex: 1, backgroundColor: colors.background },
+    modalFullSafe: { flex: 1, backgroundColor: colors.white },
     modalFullRoot: { flex: 1 },
     modalFullScroll: { flex: 1 },
     modalFullContent: {
       flexGrow: 1,
-      paddingHorizontal: normalize(16),
+      paddingHorizontal: gutter,
       paddingBottom: normalize(32),
       paddingTop: normalize(16),
     },
     replyFormCard: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(12),
       paddingHorizontal: normalize(16),
       paddingTop: normalize(18),
@@ -282,7 +302,7 @@ export function createMailStyles(normalize) {
     replyFormToLabel: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: normalize(10),
     },
     replyFormToName: {
@@ -293,7 +313,7 @@ export function createMailStyles(normalize) {
       flexGrow: 1,
       flexShrink: 1,
       fontSize: normalize(fontSizes.xl),
-      color: colors.textPrimary,
+      color: colors.text,
       paddingVertical: 0,
       marginBottom: normalize(4),
     },
@@ -304,7 +324,7 @@ export function createMailStyles(normalize) {
     },
     replyFormCount: {
       fontSize: normalize(fontSizes.lg),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       fontFamily: fonts.regular,
       marginTop: normalize(6),
       marginRight: normalize(4),
@@ -315,7 +335,7 @@ export function createMailStyles(normalize) {
       paddingVertical: normalize(3),
       paddingHorizontal: normalize(10),
       borderRadius: normalize(20),
-      backgroundColor: colors.primaryLight30,
+      backgroundColor: colors.primaryLight4,
     },
     replyFormChipIcon: {
       fontSize: normalize(fontSizes.lg),
@@ -324,18 +344,18 @@ export function createMailStyles(normalize) {
     replyFormChipText: {
       fontSize: normalize(fontSizes.lg),
       marginLeft: normalize(4),
-      color: colors.textPrimary,
+      color: colors.text,
       fontFamily: fonts.regular,
     },
     replyFormChipTextNotice: {
       fontSize: normalize(fontSizes.lg),
       marginLeft: normalize(4),
-      color: colors.background2,
+      color: colors.textLight2,
       fontFamily: fonts.regular,
       textAlign: 'center',
     },
     modalLetterPreviewCard: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(12),
       paddingHorizontal: normalize(16),
       paddingTop: normalize(18),
@@ -346,20 +366,20 @@ export function createMailStyles(normalize) {
     modalFullNotice: {
       marginTop: normalize(12),
       fontSize: normalize(fontSizes.lg),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textAlign: 'center',
     },
     modalFullBottom: {
       paddingHorizontal: normalize(16),
       paddingBottom: normalize(16),
       paddingTop: normalize(8),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
 
     // 히스토리 화면
-    historyScroll: { flex: 1, backgroundColor: colors.background },
+    historyScroll: { flex: 1, backgroundColor: colors.white },
     historyContainer: {
-      paddingHorizontal: normalize(16),
+      paddingHorizontal: gutter,
       paddingVertical: normalize(16),
     },
     historyRow: {
@@ -368,13 +388,13 @@ export function createMailStyles(normalize) {
     // 히스토리 카드: 바깥 = 그림자+테두리, 안쪽 = overflow(액센트 막대 라운드) — 그림자는 바깥에만
     historyCard: {
       borderRadius: normalize(12),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       ...shadow.md,
     },
     historyCardInner: {
       borderRadius: normalize(12),
       overflow: 'hidden',
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     historyCardTopRow: {
       flexDirection: 'row',
@@ -400,11 +420,11 @@ export function createMailStyles(normalize) {
     historyTypeBadge: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     historyTimeText: {
       fontSize: normalize(fontSizes.md),
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     historyChipRow: {
       flexDirection: 'row',
@@ -419,44 +439,39 @@ export function createMailStyles(normalize) {
     },
     historyRoleChipMe: {
       backgroundColor: colors.subcolor,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     historyRoleChipOther: {
-      backgroundColor: colors.primaryLight30,
-      color: colors.textPrimary,
+      backgroundColor: colors.primaryLight4,
+      color: colors.text,
     },
     historyCardBody: {
       fontSize: normalize(fontSizes.xl),
-      color: colors.textPrimary,
+      color: colors.text,
       lineHeight: normalize(18),
     },
 
     // ─── 우편 보내기 화면 ─────────────────────────────────────────────
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     keyboardView: {
       flex: 1,
     },
     scrollView: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     section: {
-      backgroundColor: colors.background,
-      paddingHorizontal: normalize(16),
-      paddingTop: normalize(18),
-      paddingBottom: normalize(16),
-      marginBottom: normalize(12),
-      borderRadius: normalize(12),
-      ...shadow.md,
+      backgroundColor: colors.white,
+      marginBottom: normalize(20),
     },
     label: {
-      fontSize: normalize(fontSizes.xxl),
-      fontFamily: fonts.bold,
-      color: colors.textPrimary,
-      marginBottom: normalize(12),
+      fontSize: normalize(fontSizes.xl),
+      fontFamily: fonts.regular,
+      color: colors.textLight4,
+      marginBottom: normalize(6),
     },
     required: {
       color: colors.alert,
@@ -464,23 +479,29 @@ export function createMailStyles(normalize) {
     inputWrapper: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.textLight5,
-      borderRadius: normalize(8),
-      paddingHorizontal: normalize(12),
       height: normalize(48),
+      backgroundColor: colors.white,
+      borderRadius: normalize(14),
+      paddingHorizontal: normalize(12),
+      borderWidth: normalize(1),
+      borderColor: colors.textLight1,
+    },
+    inputWrapperSelected: {
+      borderColor: colors.primary,
+      backgroundColor: colors.primaryLight2,
     },
     input: {
       flex: 1,
       fontSize: normalize(fontSizes.xxl),
-      color: colors.textPrimary,
+      color: colors.text,
       paddingHorizontal: normalize(4),
     },
     resultsContainer: {
       marginTop: normalize(8),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(12),
       borderWidth: normalize(1),
-      borderColor: colors.textLight10,
+      borderColor: colors.textLight1,
       overflow: 'hidden',
     },
     resultItem: {
@@ -489,22 +510,22 @@ export function createMailStyles(normalize) {
       alignItems: 'center',
       padding: normalize(16),
       borderBottomWidth: normalize(1),
-      borderBottomColor: colors.textLight5,
+      borderBottomColor: colors.textLight1,
     },
     resultName: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: normalize(4),
     },
     resultId: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     resultAddress: {
       fontSize: normalize(fontSizes.xl),
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     studentInfo: {
       flex: 1,
@@ -515,12 +536,12 @@ export function createMailStyles(normalize) {
     },
     noResultText: {
       fontSize: normalize(fontSizes.xl),
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     // SendMail 전용 레이아웃
     sendScrollContent: {
       flexGrow: 1,
-      paddingHorizontal: normalize(16),
+      paddingHorizontal: gutter,
       paddingTop: normalize(16),
     },
     loadingBelowInput: {
@@ -533,7 +554,7 @@ export function createMailStyles(normalize) {
     },
     sendInlineHelperText: {
       marginTop: normalize(8),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       fontSize: normalize(12),
       textAlign: 'center',
     },
@@ -557,22 +578,26 @@ export function createMailStyles(normalize) {
       flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.textLight5,
-      borderRadius: normalize(8),
-      paddingHorizontal: normalize(10),
+      borderRadius: normalize(14),
+      paddingHorizontal: normalize(12),
+      borderWidth: normalize(1),
+      borderColor: colors.textLight1,
       height: normalize(48),
     },
     recipientSubField: {
       flex: 1,
       height: normalize(48),
       justifyContent: 'center',
-      backgroundColor: colors.textLight5,
-      borderRadius: normalize(8),
+      backgroundColor: colors.white,
+      borderRadius: normalize(14),
+      paddingHorizontal: normalize(12),
+      borderWidth: normalize(1),
+      borderColor: colors.textLight1,
     },
     recipientFieldInput: {
       flex: 1,
       fontSize: normalize(fontSizes.xl),
-      color: colors.textPrimary,
+      color: colors.text,
       textAlign: 'center',
       paddingHorizontal: normalize(2),
     },
@@ -628,7 +653,7 @@ export function createMailStyles(normalize) {
     recipientInfoBox: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.textLight5,
+      backgroundColor: colors.textLight1,
       padding: normalize(12),
       borderRadius: normalize(8),
       marginTop: normalize(12),
@@ -636,22 +661,25 @@ export function createMailStyles(normalize) {
     },
     recipientInfoText: {
       fontSize: normalize(fontSizes.xl),
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     textAreaWrapper: {
-      backgroundColor: colors.textLight5,
-      borderRadius: normalize(12),
+      backgroundColor: colors.white,
+      borderRadius: normalize(14),
+      paddingHorizontal: normalize(12),
+      borderWidth: normalize(1),
+      borderColor: colors.textLight1,
       padding: normalize(12),
       flex: 1,
     },
     textArea: {
       flex: 1,
       fontSize: normalize(fontSizes.xxl),
-      color: colors.textPrimary,
+      color: colors.text,
     },
     charCount: {
       fontSize: normalize(fontSizes.lg),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textAlign: 'right',
       marginTop: normalize(8),
     },
@@ -659,7 +687,7 @@ export function createMailStyles(normalize) {
       paddingHorizontal: normalize(16),
       paddingBottom: normalize(16),
       paddingTop: normalize(8),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     sendButton: {
       backgroundColor: colors.primary,
@@ -669,10 +697,10 @@ export function createMailStyles(normalize) {
       justifyContent: 'center',
     },
     sendButtonDisabled: {
-      backgroundColor: colors.primaryLight30,
+      backgroundColor: colors.primaryLight4,
     },
     sendButtonText: {
-      color: colors.textWhite,
+      color: colors.white,
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
       // fontWeight 대체
@@ -682,7 +710,7 @@ export function createMailStyles(normalize) {
       paddingHorizontal: normalize(8),
       paddingVertical: normalize(4),
       borderRadius: 999,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
 
     toastOverlay: {
@@ -693,7 +721,7 @@ export function createMailStyles(normalize) {
       padding: normalize(24),
     },
     toastCard: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(16),
       padding: normalize(28),
       maxWidth: 300,
@@ -707,12 +735,12 @@ export function createMailStyles(normalize) {
     toastTitle: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: normalize(8),
     },
     toastDesc: {
       fontSize: normalize(fontSizes.lg),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: normalize(20),
       marginBottom: normalize(18),
       textAlign: 'center',
@@ -727,7 +755,7 @@ export function createMailStyles(normalize) {
     toastOkText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textWhite,
+      color: colors.white,
     },
   });
 }

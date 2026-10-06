@@ -59,7 +59,7 @@ function StarRow({ value, onChange, normalize }) {
             <Ionicons
               name={filled ? 'star' : 'star-outline'}
               size={normalize(32)}
-              color={filled ? '#F5B942' : colors.textLight40}
+              color={filled ? '#F5B942' : colors.textLight4}
             />
           </Pressable>
         );
@@ -180,7 +180,7 @@ export default function InAppReviewPrompt() {
           style={{
             fontSize: normalize(18),
             fontFamily: fonts.bold,
-            color: colors.textPrimary,
+            color: colors.text,
             textAlign: 'center',
             marginBottom: normalize(8),
           }}
@@ -191,7 +191,7 @@ export default function InAppReviewPrompt() {
           style={{
             fontSize: normalize(13),
             fontFamily: fonts.regular,
-            color: colors.textSecondary,
+            color: colors.textLight4,
             textAlign: 'center',
             lineHeight: normalize(20),
             marginBottom: normalize(16),
@@ -219,7 +219,7 @@ export default function InAppReviewPrompt() {
                 style={{
                   fontSize: normalize(14),
                   fontFamily: fonts.bold,
-                  color: colors.textSecondary,
+                  color: colors.textLight4,
                 }}
               >
                 아니요
@@ -241,13 +241,13 @@ export default function InAppReviewPrompt() {
               }}
             >
               {submitting ? (
-                <ActivityIndicator color={colors.textWhite} />
+                <ActivityIndicator color={colors.white} />
               ) : (
                 <Text
                   style={{
                     fontSize: normalize(14),
                     fontFamily: fonts.bold,
-                    color: colors.textWhite,
+                    color: colors.white,
                   }}
                 >
                   좋아요
@@ -263,18 +263,18 @@ export default function InAppReviewPrompt() {
               style={{
                 minHeight: normalize(88),
                 borderWidth: 1,
-                borderColor: colors.border || '#E5E5E5',
+                borderColor: colors.textLight1,
                 borderRadius: 12,
                 paddingHorizontal: normalize(12),
                 paddingVertical: normalize(10),
                 fontSize: normalize(14),
                 fontFamily: fonts.regular,
-                color: colors.textPrimary,
+                color: colors.text,
                 textAlignVertical: 'top',
                 marginBottom: normalize(12),
               }}
               placeholder="예: ○○ 기능이 더 있으면 좋겠어요 (선택)"
-              placeholderTextColor={colors.textLight40}
+              placeholderTextColor={colors.textLight4}
               multiline
               maxLength={500}
               value={comment}
@@ -295,13 +295,13 @@ export default function InAppReviewPrompt() {
               }}
             >
               {submitting ? (
-                <ActivityIndicator color={colors.textWhite} />
+                <ActivityIndicator color={colors.white} />
               ) : (
                 <Text
                   style={{
                     fontSize: normalize(14),
                     fontFamily: fonts.bold,
-                    color: colors.textWhite,
+                    color: colors.white,
                   }}
                 >
                   보내기
@@ -316,7 +316,7 @@ export default function InAppReviewPrompt() {
               <Text
                 style={{
                   fontSize: normalize(13),
-                  color: colors.textSecondary,
+                  color: colors.textLight4,
                   fontFamily: fonts.regular,
                 }}
               >

@@ -21,9 +21,13 @@ export const createHeaderStyles = (width, height) => {
       paddingHorizontal: SPACING_H,
       paddingTop: normalize(8),
       paddingBottom: normalize(8),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       minHeight: normalize(56),
-      paddingHorizontal: normalize(20),
+      elevation: 0,
+      shadowOpacity: 0,
+      shadowRadius: 0,
+      shadowOffset: { width: 0, height: 0 },
+      borderBottomWidth: 0,
     },
     tabContainer: {
       flex: 1,
@@ -33,41 +37,34 @@ export const createHeaderStyles = (width, height) => {
     tabText: {
       fontSize: normalize(fontSizes.heading + 6),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
-    },
-    activeTabText: {
-      fontFamily: fonts.bold,
-      color: colors.textWhite,
-      fontWeight: '600',
+      color: colors.text,
     },
     buttonContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: width * 0.03,
+      gap: normalize(12),
     },
     iconButton: {
       position: 'relative',
-      padding: normalize(8),
-      minWidth: normalize(40),
-      minHeight: normalize(40),
       alignItems: 'center',
       justifyContent: 'center',
-      borderRadius: normalize(25),
-      backgroundColor: colors.green,
-      borderWidth: 1,
-      borderColor: colors.primaryLight50,
     },
     badge: {
       position: 'absolute',
-      top: normalize(-1),
-      right: normalize(4),
+      top: 2,
+      right: 2,
       width: normalize(10),
       height: normalize(10),
       borderRadius: normalize(10),
+      borderColor: colors.white,
+      borderWidth: 2,
       backgroundColor: colors.alert,
     },
   });
 };
+
+/** MainFooter 컨테이너 높이. 기준폭 375 */
+export const FOOTER_HEIGHT = 65;
 
 export const createFooterStyles = (width, height) => {
   const scale = width / 375;
@@ -78,12 +75,12 @@ export const createFooterStyles = (width, height) => {
       flexDirection: 'row',
       justifyContent: 'space-around',
       alignItems: 'stretch',
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       paddingVertical: normalize(10),
       paddingBottom: normalize(-8),
-      height: normalize(65),
+      height: normalize(FOOTER_HEIGHT),
       borderTopWidth: 0.5,
-      borderColor: colors.textLight5,
+      borderColor: colors.textLight1,
     },
     tabButton: {
       flex: 1,
@@ -93,29 +90,15 @@ export const createFooterStyles = (width, height) => {
       minHeight: normalize(50),
       position: 'relative',
     },
-    activeTabIndicator: {
-      position: 'absolute',
-      top: normalize(-10),
-      width: 0,
-      height: 0,
-      backgroundColor: 'transparent',
-      borderStyle: 'solid',
-      borderLeftWidth: normalize(10),
-      borderRightWidth: normalize(10),
-      borderTopWidth: normalize(8),
-      borderLeftColor: 'transparent',
-      borderRightColor: 'transparent',
-      borderTopColor: colors.primary,
-    },
     tabText: {
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.bold,
-      color: colors.textSecondary,
+      color: colors.textLight2,
       marginTop: normalize(4),
       fontWeight: '500',
     },
     activeTabText: {
-      color: colors.primary,
+      color: colors.text,
       fontWeight: '500',
     },
   });
@@ -129,9 +112,14 @@ export const createSubHeaderStyles = (width, height) => {
   return StyleSheet.create({
     header: {
       paddingTop: normalize(10),
-      backgroundColor: colors.background,
-      paddingHorizontal: width * 0.07,
+      backgroundColor: colors.white,
+      paddingHorizontal: width * 0.04,
       flexShrink: 0,
+      elevation: 0,
+      shadowOpacity: 0,
+      shadowRadius: 0,
+      shadowOffset: { width: 0, height: 0 },
+      borderBottomWidth: 0,
     },
     headerTop: {
       flexDirection: 'row',
@@ -152,7 +140,7 @@ export const createSubHeaderStyles = (width, height) => {
     headerTitle: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     headerSubtitle: {
       fontSize: normalize(fontSizes.md),
@@ -170,7 +158,7 @@ export const createSubHeaderStyles = (width, height) => {
     },
     divider: {
       height: 1,
-      backgroundColor: colors.textLight20,
+      backgroundColor: colors.textLight2,
     },
   });
 };
@@ -182,7 +170,7 @@ export const createSubFooterStyles = (width, height) => {
 
   return StyleSheet.create({
     container: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       paddingHorizontal: normalize(16),
       paddingVertical: normalize(12),
     },
@@ -194,17 +182,17 @@ export const createSubFooterStyles = (width, height) => {
       justifyContent: 'center',
     },
     buttonDisabled: {
-      backgroundColor: colors.primaryLight50,
+      backgroundColor: colors.primaryLight5,
     },
     buttonText: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.background,
+      color: colors.white,
     },
     guideText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textAlign: 'center',
       marginBottom: normalize(8),
     },

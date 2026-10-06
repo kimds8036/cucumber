@@ -3,10 +3,10 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Alert,
   InteractionManager,
 } from 'react-native';
 import { colors } from '../../../styles/colors';
+import { appAlert } from '../../../utils/appAlert';
 import {
   runInicisIdentityFlow,
   cancelInicisFlow,
@@ -79,7 +79,7 @@ const RecoveryInicisFields = ({
     try {
       await openPendingInicisBrowser();
     } catch (error) {
-      Alert.alert(
+      appAlert.alert(
         '알림',
         error?.message || '인증 페이지를 열 수 없습니다. 잠시 후 다시 시도해 주세요.',
       );
@@ -96,22 +96,22 @@ const RecoveryInicisFields = ({
 
     const trimmedName = String(name || '').trim();
     if (!trimmedName) {
-      Alert.alert('알림', '이름을 입력해 주세요.');
+      appAlert.alert('알림', '이름을 입력해 주세요.');
       return;
     }
     if (purpose === 'password_recovery' && !String(username || '').trim()) {
-      Alert.alert('알림', '아이디를 입력해 주세요.');
+      appAlert.alert('알림', '아이디를 입력해 주세요.');
       return;
     }
 
     const clientOn = isInicisClientEnabled();
     if (!clientOn) {
-      Alert.alert('알림', '본인인증 기능이 비활성화되어 있습니다.');
+      appAlert.alert('알림', '본인인증 기능이 비활성화되어 있습니다.');
       return;
     }
     const serverOn = await fetchInicisServerEnabled();
     if (!serverOn) {
-      Alert.alert('알림', '본인인증 서비스를 이용할 수 없습니다.');
+      appAlert.alert('알림', '본인인증 서비스를 이용할 수 없습니다.');
       return;
     }
 
@@ -128,13 +128,13 @@ const RecoveryInicisFields = ({
           setTimeout(() => {
             if (!isMountedRef.current) return;
             if (error?.code === 'TIMEOUT') {
-              Alert.alert(
+              appAlert.alert(
                 '본인인증 미완료',
                 '본인인증이 완료되지 않았습니다. 다시 시도해 주세요.',
               );
               return;
             }
-            Alert.alert(
+            appAlert.alert(
               '본인인증 오류',
               error?.message || '본인인증을 진행할 수 없습니다.',
             );
@@ -153,7 +153,7 @@ const RecoveryInicisFields = ({
     const profile = result.profile || {};
     const verifiedName = String(profile.name || '').trim();
     if (!verifiedName) {
-      Alert.alert(
+      appAlert.alert(
         '본인인증 오류',
         '인증 결과에서 이름을 확인하지 못했습니다. 다시 시도해 주세요.',
       );
@@ -188,7 +188,7 @@ const RecoveryInicisFields = ({
             <Text
               style={{
                 fontSize: normalize(15),
-                color: colors.textPrimary,
+                color: colors.text,
                 textAlign: 'center',
               }}
             >

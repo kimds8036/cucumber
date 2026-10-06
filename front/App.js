@@ -43,6 +43,7 @@ import OtherSchoolScreen from './view/src/otherschool';
 import MealCalender from './view/src/mealcalender';
 import Timer from './view/src/timer';
 import TimerAniLab from './view/src/TimerAniLab';
+import TimerSettings from './view/src/timer/TimerSettings';
 import FriendsScreen from './view/src/friendsscreen';
 import CommuteBreakoutGame from './view/src/CommuteBreakoutGame';
 import HiddenPostsAppeals from './view/src/hiddenPostsAppeals';
@@ -134,7 +135,7 @@ const navigationTheme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    background: colors.background,
+    background: colors.white,
   },
 };
 const linking = {
@@ -142,6 +143,7 @@ const linking = {
   config: {
     screens: {
       Main: {
+        initialRouteName: 'timer',
         screens: {
           board: 'board-tab',
           message: 'message',
@@ -279,6 +281,7 @@ function MainStack({ initialRouteName = 'Main' }) {
       <Stack.Screen name="SendSchoolMail" component={SendSchoolMailScreen} />
       <Stack.Screen name="Timer" component={Timer} />
       <Stack.Screen name="TimerAniLab" component={TimerAniLab} />
+      <Stack.Screen name="TimerSettings" component={TimerSettings} />
       <Stack.Screen name="Friends" component={FriendsScreen} />
       <Stack.Screen
         name="CommuteBreakout"
@@ -660,7 +663,7 @@ function RootNavigator() {
 
     return (
       <SafeAreaView
-        style={{ flex: 1, backgroundColor: colors.background }}
+        style={{ flex: 1, backgroundColor: colors.white }}
         edges={['top', 'bottom']}
       >
         {rejectedBody}
@@ -790,7 +793,7 @@ export default function App() {
   useEffect(() => {
     if (Platform.OS !== 'android') return undefined;
     const RNStatusBar = require('react-native').StatusBar;
-    RNStatusBar.setBackgroundColor(colors.background, true);
+    RNStatusBar.setBackgroundColor(colors.white, true);
     RNStatusBar.setBarStyle('dark-content', true);
     return undefined;
   }, []);
@@ -990,9 +993,9 @@ export default function App() {
   return (
     <SafeAreaProvider
       initialMetrics={initialWindowMetrics}
-      style={{ flex: 1, backgroundColor: colors.background }}
+      style={{ flex: 1, backgroundColor: colors.white }}
     >
-      <StatusBar style="dark" backgroundColor={colors.background} />
+      <StatusBar style="dark" backgroundColor={colors.white} />
       <OfflineGate>
         {/* Auth·스플래시 hide는 Gate 밖 — force/error 시 children 미렌더로 hideAsync가 안 불리던 버그 방지 */}
         <AuthProvider>

@@ -26,7 +26,7 @@ const SignupBlockingAlertModal = ({
           style={{
             fontSize: normalize(18),
             fontWeight: '700',
-            color: colors.textPrimary,
+            color: colors.text,
             textAlign: 'center',
             marginBottom: 10,
           }}
@@ -38,7 +38,7 @@ const SignupBlockingAlertModal = ({
         <Text
           style={{
             fontSize: normalize(14),
-            color: colors.textSecondary,
+            color: colors.textLight4,
             textAlign: 'center',
             lineHeight: normalize(22),
             marginBottom: 16,
@@ -63,7 +63,7 @@ const SignupBlockingAlertModal = ({
                 height: 42,
                 borderRadius: 10,
                 backgroundColor: isSecondary
-                  ? colors.textLight5
+                  ? colors.textLight1
                   : colors.primary,
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -78,7 +78,7 @@ const SignupBlockingAlertModal = ({
                 style={{
                   fontSize: normalize(14),
                   fontWeight: '700',
-                  color: isSecondary ? colors.textSecondary : colors.textWhite,
+                  color: isSecondary ? colors.textLight4 : colors.white,
                 }}
               >
                 {btn.text}

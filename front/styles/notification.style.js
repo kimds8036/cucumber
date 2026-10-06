@@ -1,22 +1,23 @@
 import { StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
 
-export const createNotificationSkeletonStyles = (normalize) =>
+export const createNotificationSkeletonStyles = (normalize, width) =>
   StyleSheet.create({
     row: {
       flexDirection: 'row',
-      padding: normalize(16),
+      paddingVertical: normalize(16),
+      paddingHorizontal: width * 0.04,
       alignItems: 'flex-start',
     },
     icon: {
       width: normalize(48),
       height: normalize(48),
       borderRadius: normalize(24),
-      backgroundColor: colors.border,
+      backgroundColor: colors.textLight1,
       marginRight: normalize(12),
     },
     content: { flex: 1 },
-    line: { backgroundColor: colors.border, borderRadius: normalize(4) },
+    line: { backgroundColor: colors.textLight1, borderRadius: normalize(4) },
     titleLine: {
       height: normalize(16),
       width: '60%',
@@ -30,73 +31,77 @@ export const createNotificationSkeletonStyles = (normalize) =>
     timeLine: { height: normalize(12), width: '30%' },
   });
 
-export const createNotificationStyles = (normalize) =>
+export const createNotificationStyles = (normalize, width) =>
   StyleSheet.create({
     rootWrapper: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     tabContainer: {
-      backgroundColor: colors.background,
-      paddingVertical: normalize(4),
+      backgroundColor: colors.white,
     },
     tabContent: {
-      paddingHorizontal: normalize(16),
-      paddingVertical: normalize(8),
+      alignItems: 'center',
+      paddingHorizontal: width * 0.04,
+      paddingVertical: normalize(10),
       gap: normalize(8),
     },
     tabButton: {
       paddingHorizontal: normalize(12),
-      paddingVertical: normalize(5),
+      paddingVertical: normalize(6),
       borderRadius: normalize(20),
-      backgroundColor: colors.textLight5,
+      backgroundColor: colors.white,
+      borderWidth: 1,
+      borderColor: colors.textLight1,
       flexDirection: 'row',
       alignItems: 'center',
       gap: normalize(5),
       position: 'relative',
     },
     tabButtonActive: {
-      backgroundColor: colors.textPrimary,
+      backgroundColor: colors.primary,
+      borderWidth: 0,
     },
     tabText: {
       fontSize: normalize(fontSizes.xl),
-      fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      fontFamily: fonts.bold,
+      color: colors.textLight4,
     },
     tabTextActive: {
-      color: colors.background,
-      fontFamily: fonts.bold,
+      color: colors.white,
     },
     countBadge: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       paddingHorizontal: normalize(6.5),
       paddingVertical: normalize(1),
       borderRadius: normalize(999),
       alignItems: 'center',
     },
     countBadgeActive: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     countText: {
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     countTextActive: {
-      color: colors.textSecondary,
+      color: colors.textLight4,
       fontFamily: fonts.bold,
     },
     tabUnreadDot: {
       position: 'absolute',
-      top: -normalize(2),
+      top: normalize(1),
       right: -normalize(1),
       width: normalize(8),
       height: normalize(8),
-      borderRadius: normalize(4),
+      width: normalize(10),
+      height: normalize(10),
+      borderRadius: normalize(10),
       backgroundColor: colors.alert,
     },
     scrollView: {
@@ -107,13 +112,14 @@ export const createNotificationStyles = (normalize) =>
       flexGrow: 1,
     },
     notificationItem: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       flexDirection: 'row',
-      padding: normalize(18),
+      paddingVertical: normalize(10),
+      paddingHorizontal: width * 0.04,
       alignItems: 'flex-start',
     },
     notificationItemUnread: {
-      backgroundColor: colors.primaryLight10,
+      backgroundColor: colors.primaryLight2,
     },
     iconContainer: {
       borderRadius: normalize(24),
@@ -123,24 +129,23 @@ export const createNotificationStyles = (normalize) =>
     },
     notificationContent: {
       flex: 1,
+      paddingVertical: normalize(6),
     },
     notificationTitle: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
-      marginBottom: normalize(4),
+      color: colors.text,
+      marginBottom: normalize(2),
     },
     notificationText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
-      lineHeight: normalize(22),
-      marginBottom: normalize(4),
+      color: colors.textLight4,
     },
     notificationTime: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textLight40,
+      color: colors.textLight3,
     },
     summaryWatcherRow: {
       marginTop: normalize(8),
@@ -170,14 +175,6 @@ export const createNotificationStyles = (normalize) =>
       color: colors.primaryDark,
       fontFamily: fonts.bold,
     },
-    unreadDot: {
-      width: normalize(8),
-      height: normalize(8),
-      borderRadius: normalize(4),
-      backgroundColor: colors.primaryDark,
-      marginLeft: normalize(8),
-      marginTop: normalize(6),
-    },
     skeletonContainer: {
       paddingTop: normalize(8),
     },
@@ -190,13 +187,13 @@ export const createNotificationStyles = (normalize) =>
     emptyTitle: {
       fontSize: normalize(fontSizes.heading - 2),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       marginTop: normalize(16),
     },
     emptyText: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.regular,
-      color: colors.textLight40,
+      color: colors.textLight3,
       marginTop: normalize(8),
       textAlign: 'center',
     },
@@ -210,7 +207,7 @@ export const createNotificationStyles = (normalize) =>
     emptyButtonText: {
       fontSize: normalize(fontSizes.xl + 1),
       fontFamily: fonts.bold,
-      color: colors.textWhite,
+      color: colors.white,
     },
     footerLoader: {
       paddingVertical: normalize(16),
@@ -219,10 +216,10 @@ export const createNotificationStyles = (normalize) =>
     footerLoaderText: {
       fontSize: normalize(fontSizes.lg + 1),
       fontFamily: fonts.regular,
-      color: colors.textLight40,
+      color: colors.textLight3,
     },
     emptyIcon: {
-      color: colors.border,
+      color: colors.textLight1,
       size: normalize(64),
     },
     notificationIcon: {
@@ -233,16 +230,16 @@ export const createNotificationStyles = (normalize) =>
       height: normalize(12),
     },
     announcementListContainer: {
-      paddingHorizontal: normalize(20),
+      paddingHorizontal: width * 0.04,
       paddingTop: normalize(6),
       paddingBottom: normalize(24),
       gap: normalize(8),
     },
     announcementItem: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       paddingVertical: normalize(10),
       borderBottomWidth: 1,
-      borderColor: colors.textLight10,
+      borderColor: colors.textLight1,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -251,16 +248,33 @@ export const createNotificationStyles = (normalize) =>
       flex: 1,
       paddingRight: normalize(10),
     },
+    announcementTrailing: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(8),
+    },
+    announcementNewBadge: {
+      paddingHorizontal: normalize(6),
+      paddingVertical: normalize(2),
+      borderRadius: normalize(4),
+      backgroundColor: colors.alertLight,
+    },
+    announcementNewText: {
+      fontSize: normalize(10),
+      fontFamily: fonts.bold,
+      color: colors.alertDark,
+      letterSpacing: 0.3,
+    },
     announcementTitle: {
       fontSize: normalize(fontSizes.xl),
-      fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      fontFamily: fonts.regular,
+      color: colors.text,
       marginBottom: normalize(4),
     },
     announcementMeta: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textLight40,
+      color: colors.textLight3,
     },
     announcementEmptyContainer: {
       flexGrow: 1,
@@ -270,6 +284,6 @@ export const createNotificationStyles = (normalize) =>
     announcementEmptyText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textLight20,
+      color: colors.textLight2,
     },
   });

@@ -110,7 +110,7 @@ function createStyles(normalize) {
     title: {
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.xl + 1),
-      color: colors.textPrimary,
+      color: colors.text,
       textAlign: 'center',
       marginBottom: normalize(14),
     },
@@ -135,13 +135,13 @@ function createStyles(normalize) {
     reasonText: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.lg),
-      color: colors.textPrimary,
+      color: colors.text,
       lineHeight: normalize(22),
     },
     hint: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.md),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textAlign: 'center',
       lineHeight: normalize(20),
       marginBottom: normalize(18),
@@ -162,7 +162,7 @@ function createStyles(normalize) {
     btnPrimaryText: {
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.lg),
-      color: colors.textWhite || colors.background,
+      color: colors.white,
     },
     btnSecondary: {
       backgroundColor: colors.textLight5 || 'rgba(0,0,0,0.05)',
@@ -170,7 +170,7 @@ function createStyles(normalize) {
     btnSecondaryText: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.lg),
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
   };
 }

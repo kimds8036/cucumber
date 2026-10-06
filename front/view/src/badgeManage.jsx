@@ -7,6 +7,7 @@ import {
   useWindowDimensions,
   ActivityIndicator,
   Animated,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -60,7 +61,7 @@ function BadgeTile({ item, cardWidth, gap, normalize, saving, onPressOwned }) {
         onPress={handlePress}
         activeOpacity={locked ? 1 : 0.85}
         style={{
-          backgroundColor: '#fff',
+          backgroundColor: colors.white,
           borderRadius: normalize(14),
           padding: normalize(14),
           borderWidth: 2,
@@ -98,14 +99,14 @@ function BadgeTile({ item, cardWidth, gap, normalize, saving, onPressOwned }) {
             <Ionicons
               name={locked ? catalog.iconOutline || 'lock-closed-outline' : catalog.icon}
               size={normalize(26)}
-              color={locked ? colors.textSecondary : catalog.color}
+              color={locked ? colors.textLight4 : catalog.color}
             />
           )}
           {locked ? (
             <Ionicons
               name="lock-closed"
               size={normalize(14)}
-              color={colors.textSecondary}
+              color={colors.textLight4}
             />
           ) : null}
         </View>
@@ -114,7 +115,7 @@ function BadgeTile({ item, cardWidth, gap, normalize, saving, onPressOwned }) {
             marginTop: normalize(10),
             fontWeight: '700',
             fontSize: normalize(15),
-            color: colors.textPrimary,
+            color: colors.text,
             paddingRight: normalize(22),
           }}
         >
@@ -124,7 +125,7 @@ function BadgeTile({ item, cardWidth, gap, normalize, saving, onPressOwned }) {
           style={{
             marginTop: normalize(4),
             fontSize: normalize(12),
-            color: colors.textSecondary,
+            color: colors.textLight4,
             lineHeight: normalize(17),
           }}
         >
@@ -154,7 +155,7 @@ const BadgeManage = ({ navigation }) => {
   const [saving, setSaving] = useState(false);
   const [badges, setBadges] = useState([]);
 
-  const pad = normalize(20);
+  const pad = width * 0.04;
   const gap = normalize(12);
   const cardWidth = Math.floor((width - pad * 2 - gap) / 2);
 
@@ -202,15 +203,22 @@ const BadgeManage = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.white }}>
       <SubHeader title="배지" onBack={() => navigation.goBack()} />
       {loading ? (
         <ActivityIndicator style={{ marginTop: normalize(40) }} color={colors.primary} />
       ) : (
-        <View style={{ paddingHorizontal: pad, paddingTop: normalize(16) }}>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{
+            paddingHorizontal: pad,
+            paddingTop: normalize(16),
+            paddingBottom: normalize(28),
+          }}
+        >
           <Text
             style={{
-              color: colors.textSecondary,
+              color: colors.textLight4,
               fontSize: normalize(13),
               marginBottom: normalize(16),
               lineHeight: normalize(20),
@@ -237,7 +245,18 @@ const BadgeManage = ({ navigation }) => {
               />
             ))}
           </View>
-        </View>
+          <Text
+            style={{
+              marginTop: normalize(8),
+              color: colors.textLight4,
+              fontSize: normalize(12),
+              lineHeight: normalize(18),
+              textAlign: 'center',
+            }}
+          >
+            이미 받은 배지는 지급 조건이 바뀌어도 회수되지 않아요.
+          </Text>
+        </ScrollView>
       )}
     </SafeAreaView>
   );

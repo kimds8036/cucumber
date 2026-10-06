@@ -19,7 +19,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MainHeader from '../frame/mainHeader';
-import MainFooter from '../frame/mainFooter';
+import MainFooter, { MAIN_FOOTER_SAFE_AREA_EDGES } from '../frame/mainFooter';
 import { getMainTabTitle, useMainShellOptional } from '../../context/MainShellContext';
 import { useAuth } from '../../context/AuthContext';
 import StudentVerificationCtaModal from '../../components/auth/StudentVerificationCtaModal';
@@ -27,16 +27,18 @@ import { createMessageStyles, getNormalize } from '../../styles/message.style';
 import { createMessageRoomMenuSheetStyles } from '../../styles/messageRoomMenuSheet.style';
 import { colors, fonts, fontSizes } from '../../styles/colors';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import Feather from '@expo/vector-icons/Feather';
+import FloatingButton from '../../components/common/FloatingButton';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import Entypo from '@expo/vector-icons/Entypo';
 import { StackActions } from '@react-navigation/native';
 import ProfileIcon from '../../assets/Profile.svg';
+import UserAvatar, { pickAvatarUrl } from '../../components/UserAvatar';
 import { api } from '../../utils/api';
 import * as socketManager from './socketManager';
 import { useToast } from '../../context/ToastContext';
 import { useNotification } from '../../context/NotificationContext';
 import { useGuidePreview } from '../../context/GuidePreviewContext';
+import { useMainTabBarInset } from '../../context/MainTabBarInsetContext';
 import { GuideFocusTarget } from '../../components/guide/GuideFocusTarget';
 import { GUIDE_FOCUS_TARGETS as T } from '../../src/screens/UserGuide/guideFocusTargets';
 import {
@@ -45,6 +47,8 @@ import {
 } from '../../src/screens/UserGuide/guidePreviewData';
 import { getProfileInnerColor } from '../../utils/profileIconColor';
 import ChatAdPlaceholder from '../../src/screens/ad/ChatAdPlaceholder';
+import TopAdBanner from '../../components/ads/TopAdBanner';
+import SortChips from '../../components/common/SortChips';
 import { injectAdSlots } from '../../hooks/useAdSlots';
 import { AD_PLACEMENTS } from '../../constants/adPlacements';
 import {
@@ -333,12 +337,12 @@ const SwipeableRow = ({ children, onDelete }) => {
           zIndex: 1,
         }}
       >
-        <Ionicons name="trash-outline" size={24} color="#fff" />
+        <Ionicons name="trash-outline" size={24} color={colors.white} />
       </TouchableOpacity>
       <Animated.View
         style={{
           width: containerWidth + 2,
-          backgroundColor: colors.background,
+          backgroundColor: colors.white,
           transform: [{ translateX }],
           zIndex: 2,
         }}
@@ -362,6 +366,7 @@ export function MessageContent({ navigation }) {
   const adSlots = [];
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
+  const tabBarInset = useMainTabBarInset();
   const styles = useMemo(
     () => createMessageStyles(width, normalize),
     [width, normalize],
@@ -372,7 +377,6 @@ export function MessageContent({ navigation }) {
   );
 
   const [messageType, setMessageType] = useState('note'); // 'note' | 'mail' (쪽지 탭에 익명+DM 혼합)
-  const slideAnim = useRef(new Animated.Value(0)).current; // 0=쪽지, 1=개인우편
   const [noteRooms, setNoteRooms] = useState([]);
   const [mails, setMails] = useState([]);
   const [loadingNote, setLoadingNote] = useState(false);
@@ -410,6 +414,7 @@ export function MessageContent({ navigation }) {
         name: item.other_user_name || item.name || '친구',
         subtitle: item.other_user_school_name || '',
         profileColorId: colorIdx,
+        avatarUrl: pickAvatarUrl(item),
       };
     }
     if (kind === 'note') {
@@ -572,13 +577,6 @@ export function MessageContent({ navigation }) {
       return;
     }
     setMessageType(type);
-    const toValue = type === 'note' ? 0 : 1;
-    Animated.spring(slideAnim, {
-      toValue,
-      useNativeDriver: false,
-      tension: 60,
-      friction: 10,
-    }).start();
   };
 
   const fetchRooms = useCallback(async () => {
@@ -644,6 +642,7 @@ export function MessageContent({ navigation }) {
           other_user_name: r.other_user_name,
           other_user_school_name: r.other_user_school_name,
           other_user_color_id: r.other_user_color_id,
+          avatarUrl: pickAvatarUrl(r),
           sortTime: parseUtcToLocal(at)?.getTime() ?? 0,
         };
       });
@@ -820,12 +819,10 @@ export function MessageContent({ navigation }) {
     if (!isGuidePreview) return;
     if (guideMessageTab === 'mail') {
       setMessageType('mail');
-      slideAnim.setValue(1);
       return;
     }
     setMessageType('note');
-    slideAnim.setValue(0);
-  }, [isGuidePreview, guideMessageTab, slideAnim]);
+  }, [isGuidePreview, guideMessageTab]);
 
   // 쪽지 탭: 익명 채팅방 + DM 방 동시 조회 후 최신순 병합
   useEffect(() => {
@@ -932,59 +929,42 @@ export function MessageContent({ navigation }) {
 
   return (
     <>
-      {/* 쪽지/개인우편 토글 — 슬라이딩 pill */}
-      <View style={styles.toggleContainer}>
-        <View style={styles.toggleTrack}>
-          <Animated.View
-            style={[
-              styles.togglePill,
-              {
-                left: slideAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['0%', '50%'],
-                }),
-              },
+      <View style={{ flex: 1 }}>
+      <ScrollView
+        style={{ flex: 1, backgroundColor: colors.white }}
+        stickyHeaderIndices={[2]}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: normalize(80) + tabBarInset }}
+      >
+        <MainHeader
+          headerTitle={getMainTabTitle('message')}
+          navigation={navigation}
+        />
+        <TopAdBanner placement="message" />
+        <View
+          style={{
+            backgroundColor: colors.white,
+            elevation: 0,
+            shadowOpacity: 0,
+            shadowRadius: 0,
+            shadowOffset: { width: 0, height: 0 },
+            borderBottomWidth: 0,
+          }}
+          collapsable={false}
+        >
+          <SortChips
+            value={messageType}
+            onChange={handleMessageTypeChange}
+            options={[
+              { value: 'note', label: '쪽지' },
+              { value: 'mail', label: '우편' },
             ]}
           />
-          <TouchableOpacity
-            style={styles.toggleOption}
-            onPress={() => handleMessageTypeChange('note')}
-            activeOpacity={1}
-          >
-            <Text
-              style={[
-                styles.toggleOptionText,
-                messageType === 'note' && styles.toggleOptionTextActive,
-              ]}
-            >
-              쪽지
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.toggleOption}
-            onPress={() => handleMessageTypeChange('mail')}
-            activeOpacity={1}
-          >
-            <Text
-              style={[
-                styles.toggleOptionText,
-                messageType === 'mail' && styles.toggleOptionTextActive,
-              ]}
-            >
-              개인 우편
-            </Text>
-          </TouchableOpacity>
         </View>
-      </View>
 
-      {/* 메인 내용 영역 */}
-      <View style={styles.contentArea}>
+      <View style={{ paddingHorizontal: width * 0.04 }}>
         {messageType === 'note' ? (
           <>
-            <ScrollView
-              style={styles.list}
-              showsVerticalScrollIndicator={false}
-            >
               {loadingNote && noteRooms.length === 0 ? (
                 <MessageListSkeleton
                   styles={styles}
@@ -1001,7 +981,7 @@ export function MessageContent({ navigation }) {
                   <Text
                     style={{
                       fontFamily: fonts.regular,
-                      color: colors.textSecondary,
+                      color: colors.textLight4,
                     }}
                   >
                     아직 시작된 쪽지가 없습니다.
@@ -1050,16 +1030,17 @@ export function MessageContent({ navigation }) {
                               name: item.other_user_name || item.name,
                               schoolName: item.other_user_school_name || '',
                               colorIndex: colorIdx,
+                              avatarUrl: item.avatarUrl || null,
                             },
                           });
                         }}
                       >
                         <View style={styles.listItemLeft}>
                           <View style={[styles.profileCircle]}>
-                            <ProfileIcon
-                              width={normalize(35)}
-                              height={normalize(35)}
-                              color={iconColor}
+                            <UserAvatar
+                              uri={item.avatarUrl}
+                              size={normalize(35)}
+                              colorId={colorIdx}
                             />
                           </View>
                           <View style={styles.listItemBody}>
@@ -1156,15 +1137,9 @@ export function MessageContent({ navigation }) {
                   );
                 })
               )}
-            </ScrollView>
           </>
         ) : (
-          <View style={{ flex: 1 }}>
-            <ScrollView
-              style={styles.list}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: normalize(80) }}
-            >
+          <>
               {loadingMail && mails.length === 0 ? (
                 <MessageListSkeleton
                   styles={styles}
@@ -1181,7 +1156,7 @@ export function MessageContent({ navigation }) {
                   <Text
                     style={{
                       fontFamily: fonts.regular,
-                      color: colors.textSecondary,
+                      color: colors.textLight4,
                     }}
                   >
                     아직 도착한 우편이 없습니다.
@@ -1320,7 +1295,7 @@ export function MessageContent({ navigation }) {
                                 : 'arrow-right-long'
                             }
                             size={normalize(14)}
-                            color={colors.background2}
+                            color={colors.textLight2}
                           />
                         )}
                       </View>
@@ -1328,27 +1303,15 @@ export function MessageContent({ navigation }) {
                   );
                 })
               )}
-            </ScrollView>
-          </View>
+          </>
         )}
       </View>
+      </ScrollView>
+      </View>
 
-      {/* 개인 우편함: 우측 하단 글쓰기(비행기) 플로팅 버튼 */}
       {messageType === 'mail' ? (
         <GuideFocusTarget name={T.MESSAGE_MAIL_WRITE_FAB}>
-          <TouchableOpacity
-            style={styles.floatingButton}
-            activeOpacity={0.8}
-            onPress={() => navigation?.navigate('SendMail')}
-          >
-            <Feather
-              name="send"
-              size={normalize(30)}
-              top={normalize(2)}
-              right={normalize(1)}
-              color={colors.background}
-            />
-          </TouchableOpacity>
+          <FloatingButton onPress={() => navigation?.navigate('SendMail')} />
         </GuideFocusTarget>
       ) : null}
 
@@ -1370,13 +1333,21 @@ export function MessageContent({ navigation }) {
             <>
               <View style={roomMenuSheetStyles.sheetRoomInfo}>
                 <View style={roomMenuSheetStyles.sheetAvatar}>
-                  <ProfileIcon
-                    width={normalize(45)}
-                    height={normalize(45)}
-                    color={getProfileInnerColor(
-                      roomMenuSheetMeta.profileColorId,
-                    )}
-                  />
+                  {roomMenuTarget.kind === 'dm' ? (
+                    <UserAvatar
+                      uri={roomMenuSheetMeta.avatarUrl}
+                      size={normalize(45)}
+                      colorId={roomMenuSheetMeta.profileColorId}
+                    />
+                  ) : (
+                    <ProfileIcon
+                      width={normalize(45)}
+                      height={normalize(45)}
+                      color={getProfileInnerColor(
+                        roomMenuSheetMeta.profileColorId,
+                      )}
+                    />
+                  )}
                 </View>
                 <View>
                   <Text style={roomMenuSheetStyles.sheetName}>
@@ -1435,7 +1406,7 @@ export function MessageContent({ navigation }) {
                   <Ionicons
                     name="flag-outline"
                     size={16}
-                    color={colors.textSecondary}
+                    color={colors.textLight4}
                   />
                 </View>
                 <View>
@@ -1494,8 +1465,7 @@ export function MessageContent({ navigation }) {
 // 단독 메시지 화면 (헤더+푸터 포함, 필요 시 사용)
 const Message = ({ navigation }) => {
   return (
-    <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-      <MainHeader headerTitle={getMainTabTitle('message')} />
+    <SafeAreaView style={{ flex: 1 }} edges={MAIN_FOOTER_SAFE_AREA_EDGES}>
       <MessageContent navigation={navigation} />
       <MainFooter
         activeTab="message"

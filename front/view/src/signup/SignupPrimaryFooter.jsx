@@ -13,7 +13,7 @@ import { getNormalize } from '../../../styles/frame.style';
 /**
  * 회원가입 공통 하단 액션 푸터
  * 디자인 기준: createSignupStyles primaryButton / primaryButtonText
- * 좌우: 화면 기준 width * 0.07
+ * 좌우: 화면 기준 width * 0.04
  * 위아래: 버튼 위·아래 각 normalize(8)
  *   - hint가 있으면 paddingTop=0 + hint↔버튼 간격 8 (합산 여백 8 유지)
  * SafeArea bottom inset은 넣지 않음 (화면/셸 SafeArea 담당)
@@ -21,7 +21,7 @@ import { getNormalize } from '../../../styles/frame.style';
  * @param {boolean} cancelParentPadding
  *   signup container(paddingHorizontal: width*0.04) 안에 있을 때 true
  * @param {boolean} embedded
- *   이미 width*0.07 패딩된 본문 안에 있을 때 true (이중 패딩 방지)
+ *   이미 width*0.04 패딩된 본문 안에 있을 때 true (이중 패딩 방지)
  */
 const SignupPrimaryFooter = ({
   label,
@@ -65,7 +65,7 @@ const SignupPrimaryFooter = ({
           activeOpacity={0.85}
         >
           {loading ? (
-            <ActivityIndicator color={colors.textWhite} />
+            <ActivityIndicator color={colors.white} />
           ) : (
             <Text
               style={[styles.buttonText, isDisabled && styles.buttonTextDisabled]}
@@ -84,7 +84,7 @@ function createStyles(
   width,
   { cancelParentPadding, embedded, hasHint },
 ) {
-  const screenGutter = width * 0.07;
+  const screenGutter = width * 0.04;
   const parentInset = width * 0.04;
   const edge = normalize(8);
 
@@ -97,7 +97,7 @@ function createStyles(
       ...(cancelParentPadding && !embedded
         ? { marginHorizontal: -parentInset }
         : null),
-      backgroundColor: colors.background,
+      backgroundColor: 'transparent',
       zIndex: 10,
       flexShrink: 0,
     },
@@ -108,7 +108,7 @@ function createStyles(
       marginBottom: edge,
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textAlign: 'center',
     },
     button: {
@@ -120,15 +120,15 @@ function createStyles(
       justifyContent: 'center',
     },
     buttonDisabled: {
-      backgroundColor: colors.disabled,
+      backgroundColor: colors.textLight05,
     },
     buttonText: {
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.xxl),
-      color: colors.textWhite,
+      color: colors.white,
     },
     buttonTextDisabled: {
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
   });
 }

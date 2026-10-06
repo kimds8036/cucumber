@@ -1,14 +1,16 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
   ScrollView,
-  Alert,
   StyleSheet,
   useWindowDimensions,
+  Animated,
 } from 'react-native';
+import Feather from '@expo/vector-icons/Feather';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
 import { api } from '../../../utils/api';
+import { appAlert } from '../../../utils/appAlert';
 import { normalizeBirthDateForCompare } from './signupBirthDatePolicy';
 import SubmittingLockModal from '../../../components/common/SubmittingLockModal';
 import SignupPrimaryFooter from './SignupPrimaryFooter';
@@ -52,15 +54,15 @@ const SignStepStudentIdVerify = ({
     if (SIGNUP_REDESIGN_SKIP_VALIDATION) return true;
 
     if (!identity?.name?.trim() || !identity?.birthDate) {
-      Alert.alert('알림', '이름·생년월일·전화번호 인증을 먼저 완료해 주세요.');
+      appAlert.alert('알림', '이름·생년월일·전화번호 인증을 먼저 완료해 주세요.');
       return false;
     }
     if (!schoolId) {
-      Alert.alert('알림', '재학 중인 학교를 먼저 선택해 주세요.');
+      appAlert.alert('알림', '재학 중인 학교를 먼저 선택해 주세요.');
       return false;
     }
     if (!primaryBase64) {
-      Alert.alert('알림', '학생증 사진을 첨부해 주세요.');
+      appAlert.alert('알림', '학생증 사진을 첨부해 주세요.');
       return false;
     }
     return true;
@@ -113,7 +115,7 @@ const SignStepStudentIdVerify = ({
 
       const data = res.data?.data;
       if (!res.data?.success || !data?.passed) {
-        Alert.alert(
+        appAlert.alert(
           '학생증 제출 실패',
           res.data?.message || '학생증 사진을 다시 첨부해 주세요.',
         );
@@ -144,7 +146,7 @@ const SignStepStudentIdVerify = ({
             ? '학생증 업로드에 시간이 걸리거나 연결이 끊겼습니다. Wi‑Fi·데이터를 확인한 뒤 다시 시도해 주세요.'
             : e?.response?.data?.message ||
               '학생증 제출 중 오류가 발생했습니다.';
-      Alert.alert('인증 오류', msg);
+      appAlert.alert('인증 오류', msg);
     } finally {
       setUploading(false);
     }
@@ -162,23 +164,11 @@ const SignStepStudentIdVerify = ({
   if (alreadyVerified) {
     return (
       <View style={bodyStyle}>
-        <View style={localStyles.completeContent}>
-          <Text style={localStyles.completeEmoji}>🎉</Text>
-          <Text style={localStyles.completeTitle}>가입이 완료되었습니다!</Text>
-          <Text style={localStyles.completeSubtitle}>
-            학생증 확인 완료 후 서비스를 이용할 수 있어요
-          </Text>
-          <Text style={localStyles.completeSubtitle}>
-            확인이 완료되면 알림을 보내드릴게요
-          </Text>
-        </View>
-
-        <SignupPrimaryFooter
-          label="확인"
-          onPress={() => onConfirm?.()}
-          disabled={submitting}
-          loading={submitting}
-          embedded
+        <SignupCompleteWelcome
+          styles={localStyles}
+          normalize={normalize}
+          submitting={submitting}
+          onConfirm={onConfirm}
         />
       </View>
     );
@@ -246,12 +236,47 @@ const SignStepStudentIdVerify = ({
   );
 };
 
+function SignupCompleteWelcome({ styles, normalize, submitting, onConfirm }) {
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(opacity, {
+      toValue: 1,
+      duration: 900,
+      useNativeDriver: true,
+    }).start();
+  }, [opacity]);
+
+  return (
+    <>
+      <Animated.View style={[styles.completeContent, { opacity }]}>
+        <View style={styles.completeCheck}>
+          <Feather name="check" size={normalize(28)} color={colors.white} />
+        </View>
+        <Text style={styles.completeHello}>환영합니다</Text>
+        <Text style={styles.completeTitle}>가입이 완료되었습니다!</Text>
+        <Text style={styles.completeSubtitle}>
+          학생증 확인 완료 후 서비스를 이용할 수 있어요
+        </Text>
+        <Text style={styles.completeSubtitle}>
+          확인이 완료되면 알림을 보내드릴게요
+        </Text>
+      </Animated.View>
+      <SignupPrimaryFooter
+        label="확인"
+        onPress={() => onConfirm?.()}
+        disabled={submitting}
+        loading={submitting}
+        embedded
+      />
+    </>
+  );
+}
+
 function createLocalStyles(normalize, width) {
   return StyleSheet.create({
     body: {
       flex: 1,
-      marginHorizontal: -width * 0.04,
-      paddingHorizontal: width * 0.07,
     },
     stepRoot: {
       flex: 1,
@@ -275,21 +300,33 @@ function createLocalStyles(normalize, width) {
       alignItems: 'center',
       paddingHorizontal: normalize(12),
     },
-    completeEmoji: {
-      fontSize: normalize(40),
-      marginBottom: normalize(12),
+    completeCheck: {
+      width: normalize(56),
+      height: normalize(56),
+      borderRadius: normalize(28),
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: normalize(16),
+    },
+    completeHello: {
+      fontFamily: fonts.bold,
+      fontSize: normalize(fontSizes.heading),
+      color: colors.text,
+      textAlign: 'center',
+      marginBottom: normalize(6),
     },
     completeTitle: {
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.xl),
-      color: colors.textPrimary,
+      color: colors.text,
       textAlign: 'center',
       marginBottom: normalize(8),
     },
     completeSubtitle: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.md),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textAlign: 'center',
       lineHeight: normalize(22),
     },

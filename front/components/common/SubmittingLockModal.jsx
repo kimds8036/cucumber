@@ -42,7 +42,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   card: {
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
     borderRadius: 16,
     paddingVertical: 28,
     paddingHorizontal: 32,
@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
   text: {
     fontFamily: fonts.bold,
     fontSize: 16,
-    color: colors.textPrimary,
+    color: colors.text,
     textAlign: 'center',
   },
 });

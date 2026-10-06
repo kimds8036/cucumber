@@ -7,6 +7,13 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { colors } from '../../../styles/colors';
 import EquippedBadge from '../../../components/EquippedBadge';
 
+function formatStatCount(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v) || v < 0) return '0';
+  if (v > 99) return '99+';
+  return String(Math.floor(v));
+}
+
 function CommentBody({ content, styles }) {
   const parts = [];
   let last = 0;
@@ -47,7 +54,6 @@ export default function BoardCommentTree({
   flatComments,
   commentLikedState,
   replyToCommentId,
-  onFocusReply,
   onCommentLike,
   onToggleReplies,
   onOpenMenu,
@@ -55,16 +61,29 @@ export default function BoardCommentTree({
   styles,
   normalize,
 }) {
-  const horizontalPadding = styles?.commentSection?.paddingHorizontal ?? 0;
+  const showGroupDivider = (index) => {
+    const next = flatComments[index + 1];
+    if (next && next.type !== 'comment') return false;
+    for (let i = index + 1; i < flatComments.length; i += 1) {
+      if (flatComments[i]?.type === 'comment') return true;
+    }
+    return false;
+  };
 
   const renderComment = useMemo(
     () =>
-      (item, isReply = false, parentAuthorLabel = null) => {
+      (
+        item,
+        isReply = false,
+        parentAuthorLabel = null,
+        showDivider = false,
+        { wrapInGutter = true } = {},
+      ) => {
         const isCommentLiked =
           commentLikedState[item.id] !== undefined
             ? commentLikedState[item.id]
             : Boolean(item.liked);
-        const isAuthorLabel = item.authorLabel === '작성자';
+        const isAuthorLabel = Boolean(item.isWriter);
         const bodyHasTag = /@익명\d+/.test(item.content);
         const contentEl = bodyHasTag ? (
           <CommentBody content={item.content} styles={styles} />
@@ -75,35 +94,93 @@ export default function BoardCommentTree({
         const commentBlock = (
           <View style={styles.commentBlock}>
             <View
-              style={[styles.detailAuthorRow, { marginBottom: normalize(6) }]}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: normalize(4),
+                minHeight: normalize(18),
+              }}
             >
-              <Text
-                style={
-                  isAuthorLabel
-                    ? styles.detailAuthor
-                    : styles.detailAuthorAnonymous
-                }
-                numberOfLines={1}
-              >
-                {item.authorLabel}
-              </Text>
-              <EquippedBadge
+              <View style={styles.commentMetaRow}>
+                <Text
+                  style={[
+                    styles.commentAuthorName,
+                    isAuthorLabel && styles.commentAuthorWriterName,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {isAuthorLabel ? '작성자' : item.authorLabel}
+                </Text>
+                <EquippedBadge
                   badge={item.equippedBadge}
                   size={normalize(13)}
-                  style={{ marginLeft: normalize(3), flexShrink: 0 }}
+                  style={{
+                    marginLeft: normalize(3),
+                    flexShrink: 0,
+                    alignSelf: 'center',
+                  }}
                 />
-              <Text style={styles.detailDot}>•</Text>
-              <Text style={styles.detailTime} numberOfLines={1}>
-                {item.time}
-              </Text>
-              {item.isPinned ? (
-                <MaterialCommunityIcons
-                  name="pin"
-                  size={normalize(12)}
-                  color={colors.textSecondary}
-                  style={{ marginLeft: normalize(4)}}
-                />
-              ) : null}
+                <Text
+                  style={[styles.commentTime, { marginLeft: normalize(10) }]}
+                  numberOfLines={1}
+                >
+                  {item.time}
+                </Text>
+                {item.isPinned ? (
+                  <View style={styles.commentPinSlot}>
+                    <MaterialCommunityIcons
+                      name="pin"
+                      size={normalize(12)}
+                      color={colors.textLight4}
+                    />
+                  </View>
+                ) : null}
+              </View>
+              <View
+                style={[
+                  styles.commentFooterLeft,
+                  { flex: 0, marginLeft: normalize(8), gap: normalize(0) },
+                ]}
+              >
+                <TouchableOpacity
+                  style={styles.commentLikeRow}
+                  onPress={() => onCommentLike(item.id)}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <View style={styles.commentLikeIcon}>
+                    <FontAwesome
+                      name={isCommentLiked ? 'heart' : 'heart-o'}
+                      size={normalize(13)}
+                      color={colors.alert}
+                    />
+                  </View>
+                  <Text style={styles.commentLikeCount}>
+                    {formatStatCount(item.likes ?? 0)}
+                  </Text>
+                </TouchableOpacity>
+                <View
+                  ref={(r) => {
+                    if (r) commentMenuRefs.current[item.id] = r;
+                  }}
+                  collapsable={false}
+                >
+                  <TouchableOpacity
+                    style={styles.detailMenuBtn}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    onPress={() =>
+                      onOpenMenu(item.id, commentMenuRefs.current[item.id])
+                    }
+                  >
+                    <Entypo
+                      name="dots-three-vertical"
+                      size={normalize(13)}
+                      color={colors.textLight4}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
             </View>
             {parentAuthorLabel ? (
               <View
@@ -120,89 +197,32 @@ export default function BoardCommentTree({
                 {contentEl}
               </View>
             ) : (
-              contentEl
+              <View>{contentEl}</View>
             )}
-            <View style={styles.commentFooter}>
-              <View style={styles.commentFooterLeft}>
-                <TouchableOpacity
-                  style={styles.commentLikeRow}
-                  onPress={() => onCommentLike(item.id)}
-                  activeOpacity={0.7}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                >
-                  <FontAwesome
-                    name={isCommentLiked ? 'heart' : 'heart-o'}
-                    size={normalize(13)}
-                    color={colors.alert}
-                  />
-                  <Text style={styles.detailStatText}>{item.likes}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.commentReplyButton}
-                  activeOpacity={0.7}
-                  onPress={() => onFocusReply(item.id)}
-                >
-                  <Text style={styles.commentReplyButtonText}>댓글 달기</Text>
-                </TouchableOpacity>
-              </View>
-              <View
-                ref={(r) => {
-                  if (r) commentMenuRefs.current[item.id] = r;
-                }}
-                collapsable={false}
-              >
-                <TouchableOpacity
-                  style={styles.detailMenuBtn}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  onPress={() =>
-                    onOpenMenu(item.id, commentMenuRefs.current[item.id])
-                  }
-                >
-                  <Entypo
-                    name="dots-three-vertical"
-                    size={normalize(14)}
-                    color={colors.textSecondary}
-                  />
-                </TouchableOpacity>
-              </View>
+          </View>
+        );
+
+        const rowStyle = [
+          isReply ? styles.commentReplyItem : styles.commentRow,
+          item.isPinned && styles.commentPinned,
+          isReplyingToThis && !isReply && styles.commentBubbleReplying,
+          showDivider && !wrapInGutter && styles.commentRowDivider,
+        ];
+
+        const inner = (
+          <View style={rowStyle}>
+            <View style={styles.commentBubble}>
+              {commentBlock}
             </View>
           </View>
         );
 
-        const bubble = (
-          <View
-            style={[
-              styles.commentBubble,
-              isReply && styles.commentBubbleReply,
-              isReplyingToThis && styles.commentBubbleReplying,
-            ]}
-          >
-            {commentBlock}
-          </View>
-        );
-
-        if (isReply) {
-          return (
-            <View
-              key={item.id}
-              style={styles.commentItemReply}
-              collapsable={false}
-            >
-              <View style={styles.commentReplyArrow}>
-                <Ionicons
-                  name="return-down-forward"
-                  size={normalize(16)}
-                  color={colors.textSecondary}
-                />
-              </View>
-              {bubble}
-            </View>
-          );
-        }
+        if (!wrapInGutter) return inner;
 
         return (
-          <View key={item.id} style={styles.commentItem} collapsable={false}>
-            {bubble}
+          <View key={item.id} collapsable={false}>
+            {inner}
+            {showDivider ? <View style={styles.commentRowDividerInset} /> : null}
           </View>
         );
       },
@@ -211,61 +231,79 @@ export default function BoardCommentTree({
       commentMenuRefs,
       normalize,
       onCommentLike,
-      onFocusReply,
       onOpenMenu,
       replyToCommentId,
       styles,
     ],
   );
 
-  const renderItem = ({ item }) => {
+  const isReplyBlock = (type) => type === 'reply';
+
+  const renderItem = ({ item, index }) => {
+    const showDivider = showGroupDivider(index);
     if (item.type === 'comment') {
-      return (
-        <View style={{ paddingHorizontal: horizontalPadding }}>
-          {renderComment(item.data, false, null)}
-        </View>
-      );
+      return renderComment(item.data, false, null, showDivider);
     }
     if (item.type === 'reply') {
+      const isFirstReply = !isReplyBlock(flatComments[index - 1]?.type);
+      const isLastReply = !isReplyBlock(flatComments[index + 1]?.type);
+      const isReplyingToThis = replyToCommentId === item.data.id;
       return (
-        <View style={{ paddingHorizontal: horizontalPadding }}>
-          {renderComment(item.data, true, item.parentAuthorLabel)}
+        <View
+          style={[styles.commentGutter, showDivider && styles.commentRowDivider]}
+          collapsable={false}
+        >
+          <View
+            style={[
+              styles.commentReplyGroup,
+              !isFirstReply && styles.commentReplyGroupNext,
+              isLastReply && styles.commentReplyGroupLast,
+            ]}
+          >
+            {isFirstReply ? (
+              <Ionicons
+                name="return-down-forward"
+                size={normalize(18)}
+                color={colors.replyArrow}
+                style={styles.commentReplyArrow}
+              />
+            ) : (
+              <View style={styles.commentReplyArrowSpacer} />
+            )}
+            <View
+              style={[
+                styles.commentReplyWell,
+                isReplyingToThis && styles.commentBubbleReplying,
+              ]}
+            >
+              {renderComment(item.data, true, item.parentAuthorLabel, false, {
+                wrapInGutter: false,
+              })}
+            </View>
+          </View>
         </View>
       );
     }
-    if (item.type === 'more') {
+    if (item.type === 'more' || item.type === 'collapse') {
+      const expanded = item.type === 'collapse';
       return (
-        <View style={{ paddingHorizontal: horizontalPadding }}>
-          <TouchableOpacity
-            style={styles.loadMoreRowReply}
-            onPress={() => onToggleReplies(item.commentId)}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name="chevron-down"
-              size={normalize(18)}
-              color={colors.textSecondary}
-            />
-            <Text style={styles.loadMoreText}>댓글 더보기</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    }
-    if (item.type === 'collapse') {
-      return (
-        <View style={{ paddingHorizontal: horizontalPadding }}>
-          <TouchableOpacity
-            style={styles.loadMoreRowReply}
-            onPress={() => onToggleReplies(item.commentId)}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name="chevron-up"
-              size={normalize(18)}
-              color={colors.textSecondary}
-            />
-            <Text style={styles.loadMoreText}>댓글 접기</Text>
-          </TouchableOpacity>
+        <View style={styles.commentSection}>
+          <View style={showDivider ? styles.commentRowDivider : null}>
+            <TouchableOpacity
+              style={styles.loadMoreRowReply}
+              onPress={() => onToggleReplies(item.commentId)}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={expanded ? 'chevron-up' : 'chevron-down'}
+                size={normalize(13)}
+                color={colors.textLight4}
+              />
+              <Text style={styles.loadMoreText}>
+                {expanded ? '댓글 접기' : '댓글 더보기'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       );
     }

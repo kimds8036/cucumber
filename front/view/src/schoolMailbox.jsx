@@ -1,24 +1,18 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  useWindowDimensions,
-} from 'react-native';
+import { View, Text, SectionList, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Feather from '@expo/vector-icons/Feather';
-import { Ionicons } from '@expo/vector-icons';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
+import FloatingButton from '../../components/common/FloatingButton';
 import SubHeader from '../frame/subHeader';
-import { colors, fonts } from '../../styles/colors';
-import { getNormalize } from '../../styles/frame.style';
-import { createSchoolMailStyles } from '../../styles/SchoolMail.style';
+import { createBoardStyles, getNormalize } from '../../styles/board.style';
+import { createSchoolBoardStyles } from '../../styles/schoolBoard.style';
 import Skeleton from '../../components/common/Skeleton';
+import BoardPostCard from '../../components/Boardpostcard';
+import BoardPostCardSkeleton from '../../components/board/BoardPostCardSkeleton';
 import { api } from '../../utils/api';
 import { subscribeSchoolMailLike, subscribeSchoolMailDeleted } from '../../utils/listSyncEvents';
 import { getSchoolMailFromLabel } from './utils/schoolMailFromLabel';
-import MailboxAdPlaceholder from '../../src/screens/ad/MailboxAdPlaceholder';
+import AdPlaceholder from '../../src/screens/ad/AdPlaceholder';
+import TopAdBanner from '../../components/ads/TopAdBanner';
 import { injectAdSlots } from '../../hooks/useAdSlots';
 import { AD_PLACEMENTS } from '../../constants/adPlacements';
 import { useRequireStudentVerified } from '../../hooks/useRequireStudentVerified';
@@ -49,44 +43,50 @@ function formatTimeAgo(createdAt) {
   return date.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
 }
 
-function isMailNew(createdAt) {
-  if (!createdAt) return false;
-  let dateStr =
-    typeof createdAt === 'string' ? createdAt.trim() : String(createdAt);
-  if (
-    /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(dateStr) &&
-    !/[Z+-]/.test(dateStr)
-  ) {
-    dateStr = dateStr.replace(' ', 'T') + 'Z';
-  }
-  const t = new Date(dateStr).getTime();
-  if (Number.isNaN(t)) return false;
-  return Date.now() - t < 24 * 60 * 60 * 1000;
-}
-
+/** 우편 → BoardPostCard가 읽는 게시글 모양 */
 function mapMailForCard(raw, mailboxSchoolId) {
-  const content = raw.content ?? '';
   return {
-    ...raw,
-    preview: content.slice(0, 50),
+    id: raw.id,
+    type: 'mail',
     fromLabel: getSchoolMailFromLabel(raw, mailboxSchoolId),
     time: formatTimeAgo(raw.created_at) || String(raw.created_at ?? ''),
+    content: raw.content ?? '',
     likes: raw.like_count ?? 0,
     comments: raw.comment_count ?? 0,
+    scrapCount: 0,
     liked: raw.is_liked ?? false,
+    tags: [],
+    thumbnail: null,
   };
 }
 
-const SchoolMailboxScreen = ({ navigation, route }) => {
+const SKELETON_ITEMS = [0, 1, 2, 3].map((idx) => ({
+  type: 'skeleton',
+  id: `school-mailbox-skel-${idx}`,
+}));
+
+/**
+ * 학교 우편함 목록.
+ * - 단독 화면: 헤더 `학교명 우편함`, 배너는 목록과 함께 스크롤
+ * - embedded: 학교 게시판(`schoolBoardAll`) 안에서 `listHeader`(배너)와 `stickyHeader`(칩 줄)를 받아 같은 목록에 그린다
+ */
+const SchoolMailboxScreen = ({
+  navigation,
+  route,
+  embedded = false,
+  listHeader = null,
+  stickyHeader = null,
+}) => {
   const { allowed, Gate } = useRequireStudentVerified(navigation, {
     message: '학교 우편은 학생인증 후 이용할 수 있어요.',
     reason: 'school_mail',
   });
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(
-    () => createSchoolMailStyles(width, normalize),
-    [width, normalize],
+  const styles = useMemo(() => createBoardStyles(width, normalize), [width]);
+  const listStyles = useMemo(
+    () => createSchoolBoardStyles(width, normalize),
+    [width],
   );
 
   const schoolName = route?.params?.schoolName ?? 'OO고등학교';
@@ -100,16 +100,6 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const mailsWithAds = useMemo(
-    () =>
-      injectAdSlots(mails, adSlots, {
-        placement: AD_PLACEMENTS.FEED_SCHOOL_MAIL,
-        adType: 'mailAd',
-        idPrefix: 'mail_ad',
-        skipFirstIndex: false,
-      }),
-    [mails, adSlots],
-  );
 
   const fetchMails = useCallback(
     async (nextPage = 1, append = false) => {
@@ -196,197 +186,128 @@ const SchoolMailboxScreen = ({ navigation, route }) => {
     fetchMails(1, false);
   }, [schoolId, fetchMails]);
 
-  const renderItem = ({ item: raw }) => {
-    if (raw.type === 'mailAd') {
-      return (
-        <MailboxAdPlaceholder styles={styles} adData={raw.adData} />
-      );
-    }
-    const mail = mapMailForCard(raw, schoolId);
-    return (
-      <TouchableOpacity
-        style={styles.card}
-        activeOpacity={0.8}
-        onPress={() =>
-          navigation?.navigate('SchoolMailDetail', {
-            mailId: raw.id,
-            schoolName,
-            schoolId,
-          })
-        }
-      >
-        <View style={styles.cardTopRow}>
-          <View style={styles.cardMetaRow}>
-            <Text style={styles.cardFromLabel} numberOfLines={1}>
-              {mail.fromLabel}
-            </Text>
-            <Text style={styles.cardMetaDot}>•</Text>
-            <Text style={styles.cardTime} numberOfLines={1}>
-              {mail.time}
-            </Text>
-          </View>
-          {isMailNew(raw.created_at) && (
-            <View style={styles.newBadge}>
-              <Text style={styles.newBadgeText}>NEW</Text>
-            </View>
-          )}
-        </View>
+  const showSkeleton = loading && mails.length === 0;
 
-        <Text style={styles.cardPreview} numberOfLines={2}>
-          {mail.preview}
-        </Text>
+  const listData = useMemo(() => {
+    if (showSkeleton) return SKELETON_ITEMS;
+    const cards = mails.map((raw) => mapMailForCard(raw, schoolId));
+    return injectAdSlots(cards, adSlots, {
+      placement: AD_PLACEMENTS.FEED_SCHOOL_MAIL,
+      adType: 'mailAd',
+      idPrefix: 'mail_ad',
+      skipFirstIndex: false,
+    });
+  }, [showSkeleton, mails, schoolId, adSlots]);
 
-        <View style={styles.cardFooterRow}>
-          <View style={styles.statRow}>
-            <View style={styles.statItem}>
-              <FontAwesome
-                name={mail.liked ? 'heart' : 'heart-o'}
-                size={normalize(14)}
-                color={colors.alert}
-              />
-              <Text style={styles.statText}>{mail.likes}</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Ionicons
-                name="chatbubble-outline"
-                size={normalize(15)}
-                color={colors.primary}
-              />
-              <Text style={styles.statText}>{mail.comments}</Text>
-            </View>
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-  };
+  const sections = useMemo(() => [{ data: listData }], [listData]);
 
-  const listEmpty =
-    loading && mails.length === 0 ? (
-      <View style={{ width: '100%' }}>
-        {[0, 1, 2, 3].map((idx) => (
-          <View key={`school-mailbox-skel-${idx}`} style={styles.card}>
-            <View style={styles.cardTopRow}>
-              <Skeleton
-                width={normalize(62)}
-                height={normalize(11)}
-                borderRadius={normalize(6)}
-              />
-              <Skeleton
-                width={normalize(44)}
-                height={normalize(10)}
-                borderRadius={normalize(5)}
-              />
-            </View>
-            <Skeleton
-              width="100%"
-              height={normalize(13)}
-              borderRadius={normalize(6)}
-              style={{ marginBottom: normalize(4) }}
-            />
-            <Skeleton
-              width="82%"
-              height={normalize(13)}
-              borderRadius={normalize(6)}
-              style={{ marginBottom: normalize(8) }}
-            />
-            <View style={styles.cardFooterRow}>
-              <View style={styles.statRow}>
-                <Skeleton
-                  width={normalize(24)}
-                  height={normalize(11)}
-                  borderRadius={normalize(5)}
-                />
-                <Skeleton
-                  width={normalize(24)}
-                  height={normalize(11)}
-                  borderRadius={normalize(5)}
-                />
-              </View>
-            </View>
-          </View>
-        ))}
-      </View>
-    ) : !loading && (!schoolId || mails.length === 0) ? (
-      <View
-        style={{
-          paddingVertical: normalize(40),
-          alignItems: 'center',
-          width: '100%',
-        }}
-      >
-        <Text
-          style={{ fontFamily: fonts.regular, color: colors.textSecondary }}
-        >
-          {!schoolId ? '학교 정보가 없습니다.' : '아직 우편이 없습니다'}
-        </Text>
-      </View>
-    ) : null;
-
-  if (!allowed) return <Gate />;
-
-  return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <SubHeader title="학교 우편함" onBack={() => navigation?.goBack()} />
-
-      <View style={styles.container}>
-        <FlatList
-          style={styles.list}
-          contentContainerStyle={[
-            styles.gridContainer,
-            mails.length === 0 && { flexGrow: 1 },
-          ]}
-          data={mailsWithAds}
-          keyExtractor={(item) =>
-            item.type === 'mailAd' ? item.id : String(item.id)
-          }
-          numColumns={2}
-          columnWrapperStyle={{ justifyContent: 'space-between' }}
-          renderItem={renderItem}
-          ListEmptyComponent={listEmpty}
-          refreshing={loading}
-          onRefresh={handleRefresh}
-          onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.4}
-          ListFooterComponent={
-            loadingMore ? (
-              <View
-                style={{
-                  paddingVertical: normalize(16),
-                  width: '100%',
-                  alignItems: 'center',
-                }}
-              >
-                <Skeleton
-                  width={normalize(16)}
-                  height={normalize(16)}
-                  borderRadius={normalize(8)}
-                />
-              </View>
-            ) : null
-          }
-          showsVerticalScrollIndicator={false}
+  const renderItem = ({ item }) => {
+    let body;
+    if (item.type === 'skeleton') {
+      body = <BoardPostCardSkeleton styles={styles} normalize={normalize} />;
+    } else if (item.type === 'mailAd') {
+      body = (
+        <AdPlaceholder
+          normalize={normalize}
+          styles={styles}
+          adData={item.adData}
         />
-
-        <TouchableOpacity
-          style={styles.floatingButton}
-          activeOpacity={0.8}
+      );
+    } else {
+      body = (
+        <BoardPostCard
+          post={item}
+          normalize={normalize}
+          styles={styles}
+          authorLabel={item.fromLabel}
+          hideDistanceBadge
           onPress={() =>
-            navigation?.navigate('SendSchoolMail', {
+            navigation?.navigate('SchoolMailDetail', {
+              mailId: item.id,
               schoolName,
               schoolId,
-              sourceScreen,
             })
           }
-        >
-          <Feather
-            name="send"
-            size={normalize(30)}
-            top={normalize(2)}
-            right={normalize(1)}
-            color={colors.background}
-          />
-        </TouchableOpacity>
+        />
+      );
+    }
+    return <View style={listStyles.cardGutter}>{body}</View>;
+  };
+
+  const listEmpty = !loading ? (
+    <View style={listStyles.emptyContainer}>
+      <Text style={listStyles.emptyText}>
+        {!schoolId ? '학교 정보가 없습니다.' : '아직 우편이 없습니다'}
+      </Text>
+    </View>
+  ) : null;
+
+  if (!allowed) {
+    if (!embedded) return <Gate />;
+    return (
+      <View style={{ flex: 1 }}>
+        {listHeader}
+        {stickyHeader}
+        <Gate />
       </View>
+    );
+  }
+
+  const list = (
+    <View style={{ flex: 1 }}>
+      <SectionList
+        style={{ flex: 1 }}
+        sections={sections}
+        keyExtractor={(item) => String(item.id)}
+        renderItem={renderItem}
+        renderSectionHeader={stickyHeader ? () => stickyHeader : undefined}
+        stickySectionHeadersEnabled={Boolean(stickyHeader)}
+        ListHeaderComponent={
+          embedded ? listHeader : <TopAdBanner placement="board" />
+        }
+        refreshing={loading && !showSkeleton}
+        onRefresh={handleRefresh}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.4}
+        ListFooterComponent={
+          listData.length === 0 ? (
+            listEmpty
+          ) : loadingMore ? (
+            <View style={listStyles.loadingMoreContainer}>
+              <Skeleton
+                width={normalize(16)}
+                height={normalize(16)}
+                borderRadius={normalize(8)}
+              />
+            </View>
+          ) : null
+        }
+        contentContainerStyle={listStyles.listContentContainer}
+        showsVerticalScrollIndicator={false}
+      />
+
+      <FloatingButton
+        aboveFooter
+        onPress={() =>
+          navigation?.navigate('SendSchoolMail', {
+            schoolName,
+            schoolId,
+            sourceScreen,
+          })
+        }
+      />
+    </View>
+  );
+
+  if (embedded) return list;
+
+  return (
+    <SafeAreaView style={listStyles.container} edges={['top']}>
+      <SubHeader
+        title={`${schoolName} 우편함`}
+        onBack={() => navigation?.goBack()}
+      />
+      {list}
     </SafeAreaView>
   );
 };

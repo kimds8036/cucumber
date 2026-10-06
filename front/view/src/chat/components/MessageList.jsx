@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Dimensions, View, useWindowDimensions } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import Skeleton from '../../../../components/common/Skeleton';
 import { CHAT_LIST_SPINNER_DELAY_MS } from '../constants/chatConfig';
@@ -45,9 +45,15 @@ export default function MessageList({
   normalize,
   handleContentSizeChange,
   onViewableItemsChanged,
+  /** 목록 위에 띄운 입력칸 높이. 마지막 메시지가 입력칸에 가려지지 않게 끝에 빈 칸을 둔다. */
+  bottomSpacerHeight = 0,
 }) {
+  const { width } = useWindowDimensions();
   const initialScrollIndex = Math.max(0, (data?.length ?? 1) - 1);
-  const n = typeof normalize === 'function' ? normalize : (v) => v;
+  const n =
+    typeof normalize === 'function'
+      ? normalize
+      : (size) => Math.round((Dimensions.get('window').width / 375) * size);
   const renderItem = useCallback(
     ({ item }) => {
       if (item.type === 'dateBanner')
@@ -124,12 +130,17 @@ export default function MessageList({
             </View>
           ) : null
         }
+        ListFooterComponent={
+          bottomSpacerHeight > 0 ? (
+            <View style={{ height: bottomSpacerHeight }} />
+          ) : null
+        }
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={16}
         decelerationRate="normal"
-        contentContainerStyle={{ paddingHorizontal: n(6) }}
+        contentContainerStyle={{ paddingHorizontal: width * 0.04 }}
         onContentSizeChange={handleContentSizeChange}
         onScroll={handleScroll}
         onViewableItemsChanged={onViewableItemsChanged}

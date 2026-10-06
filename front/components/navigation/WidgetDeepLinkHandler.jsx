@@ -20,7 +20,7 @@ export default function WidgetDeepLinkHandler() {
 
     const applyTab = (tab) => {
       if (!tab || cancelled) return;
-      // 탭 네비게이터가 180ms 지연일 수 있어 약간 뒤에도 한 번 더
+      // 탭 네비게이터가 한 프레임 늦게 붙을 수 있어 조금 뒤에도 한 번 더
       navigateToMainTab(tab);
       setTimeout(() => {
         if (!cancelled) navigateToMainTab(tab);

@@ -123,9 +123,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primaryLight10,
+    backgroundColor: colors.primaryLight2,
     borderWidth: 1,
-    borderColor: colors.primaryLight50,
+    borderColor: colors.primaryLight5,
     borderRadius: 16,
     paddingVertical: 14,
     marginBottom: 14,
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
   previewHour: {
     fontFamily: fonts.regular,
     fontSize: 36,
-    color: colors.textPrimary,
+    color: colors.text,
     fontVariant: ['tabular-nums'],
     minWidth: 64,
     textAlign: 'right',
@@ -148,7 +148,7 @@ const styles = StyleSheet.create({
   previewMinute: {
     fontFamily: fonts.regular,
     fontSize: 36,
-    color: colors.textPrimary,
+    color: colors.text,
     fontVariant: ['tabular-nums'],
     minWidth: 64,
     textAlign: 'left',
@@ -160,9 +160,9 @@ const styles = StyleSheet.create({
   stepCol: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.textLight1,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.textLight1,
     borderRadius: 14,
     paddingVertical: 10,
     paddingHorizontal: 8,
@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   stepLabel: {
     fontFamily: fonts.regular,
     fontSize: 12,
-    color: colors.textSecondary,
+    color: colors.textLight4,
     marginBottom: 4,
   },
   chevronBtn: {
@@ -181,12 +181,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   chevronPressed: {
-    backgroundColor: colors.primaryLight20,
+    backgroundColor: colors.primaryLight3,
   },
   stepValue: {
     fontFamily: fonts.regular,
     fontSize: 24,
-    color: colors.textPrimary,
+    color: colors.text,
     fontVariant: ['tabular-nums'],
     paddingVertical: 2,
   },

@@ -52,7 +52,7 @@ const INITIAL_PREFETCH_PAGES = 3;
 const MAX_INITIAL_PAGE_SWEEP = 30;
 /** 초기 진입 시 최소 확보할 표시 알림 수 (필터 적용 후 기준) */
 const MIN_INITIAL_VISIBLE_COUNT = 20;
-const SHOW_LAYOUT_BORDERS = false;
+const SHOW_LAYOUT_BORDERS = __DEV__ && false;
 
 const popToMainRoot = (navigation) => {
   navigation?.dispatch?.(StackActions.popToTop());
@@ -156,12 +156,12 @@ const NotificationScreen = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(
-    () => createNotificationStyles(normalize),
-    [normalize],
+    () => createNotificationStyles(normalize, width),
+    [normalize, width],
   );
   const skeletonStyles = useMemo(
-    () => createNotificationSkeletonStyles(normalize),
-    [normalize],
+    () => createNotificationSkeletonStyles(normalize, width),
+    [normalize, width],
   );
   const [selectedTab, setSelectedTab] = useState('all');
   const [notifications, setNotifications] = useState([]);
@@ -676,6 +676,7 @@ const NotificationScreen = ({ navigation }) => {
               name: room.other_user_name || watcher.name || '친구',
               schoolName: room.other_user_school_name || '',
               colorIndex: safeColorIndex,
+              avatarUrl: room.other_user_avatar_url || room.avatar_url || null,
             };
           }
         } catch (friendError) {
@@ -951,7 +952,12 @@ const NotificationScreen = ({ navigation }) => {
                 onPress={() => handlePressNotification(notification)}
                 activeOpacity={0.7}
               >
-                <View style={[styles.iconContainer]}>
+                <View
+                  style={[
+                    styles.iconContainer,
+                    getDebugBorderStyle('#FF2D55'),
+                  ]}
+                >
                   <Ionicons
                     name={notification.icon}
                     size={styles.notificationIcon.size}

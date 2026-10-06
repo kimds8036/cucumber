@@ -5,7 +5,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { colors, fonts, fontSizes } from '../styles/colors';
 import { normalizeTagsFromApi } from '../utils/normalizePostTags';
 import DistanceBadge from './DistanceBadge';
-import EquippedBadge from './EquippedBadge';
+import { collectPostImageUris } from './board/PostImageSlider';
 
 /**
  * BoardPostCard
@@ -22,7 +22,33 @@ import EquippedBadge from './EquippedBadge';
  *  - showDistanceBadge : 위치 권한 등으로 배지 영역 표시
  *  - distanceStale : 좌표 없음(주황 칩), coords 있으면 캐시·GPS 모두 초록
  *  - distanceLoading : 거리 미계산 시 주황 칩 + 점 로딩
+ *  - featured : 인기 1등 고정 카드. 불꽃 아이콘 + 본문 한 줄만 표시
+ *  - authorLabel : 시간 앞에 붙는 보낸 사람 라벨 (학교 우편 카드용)
+ *  - highlightQuery : 본문에서 강조할 검색어 (검색 결과용)
+ *  - highlightStyle : 강조 글자 스타일
  */
+function escapeRegExp(text) {
+  return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function renderHighlightedContent(content, query, highlightStyle) {
+  const text = String(content ?? '');
+  const q = String(query ?? '').trim();
+  if (!q) return text;
+  const lowerQ = q.toLowerCase();
+  return text
+    .split(new RegExp(`(${escapeRegExp(q)})`, 'gi'))
+    .map((part, i) =>
+      part.toLowerCase() === lowerQ ? (
+        <Text key={i} style={highlightStyle}>
+          {part}
+        </Text>
+      ) : (
+        part
+      ),
+    );
+}
+
 const BoardPostCard = ({
   post,
   normalize,
@@ -35,9 +61,13 @@ const BoardPostCard = ({
   showDistanceBadge = true,
   distanceStale = false,
   distanceLoading = false,
+  featured = false,
+  authorLabel = '',
+  highlightQuery = '',
+  highlightStyle,
 }) => {
-  const hasThumb =
-    typeof post.thumbnail === 'string' && post.thumbnail.trim().length > 0;
+  const thumbUri = collectPostImageUris(post)[0] || '';
+  const hasThumb = thumbUri.length > 0;
   const [containerWidth, setContainerWidth] = useState(0);
   const [tagWidths, setTagWidths] = useState([]);
   const [measureFallback, setMeasureFallback] = useState(false);
@@ -48,6 +78,7 @@ const BoardPostCard = ({
   const MORE_CHIP_RESERVE = normalize(40);
 
   const tags = useMemo(() => {
+    if (featured) return [];
     const rawList = normalizeTagsFromApi(post.tags);
     return rawList
       .map((tag) =>
@@ -56,7 +87,7 @@ const BoardPostCard = ({
           : String(tag ?? '').trim(),
       )
       .filter(Boolean);
-  }, [post.tags]);
+  }, [post.tags, featured]);
 
   const tagsSignature = useMemo(() => tags.join('\u0001'), [tags]);
 
@@ -174,38 +205,47 @@ const BoardPostCard = ({
   const scrapCount = Number(post.scrapCount) || 0;
   const hasVisibleStats = likesCount > 0 || commentsCount > 0 || scrapCount > 0;
 
+  if (featured) {
+    return (
+      <TouchableOpacity
+        style={[styles.postItem, styles.postItemFeatured]}
+        activeOpacity={0.7}
+        onPress={() => onPress?.(post)}
+      >
+        <View style={styles.featuredRow}>
+          <Ionicons name="flame" size={normalize(20)} color={colors.alert} />
+          <Text
+            style={styles.featuredContent}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {post.content}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  }
+
   return (
     <TouchableOpacity
       style={styles.postItem}
       activeOpacity={0.7}
       onPress={() => onPress?.(post)}
     >
-      {/* 헤더: 좌측 작성자|시간(·위치), 우측 거리 배지 */}
+      {/* 헤더: 좌측 시간, 우측 거리 배지 */}
       <View style={styles.postHeader}>
         <View style={styles.postAuthorRow}>
-          <Text style={styles.postAuthor} numberOfLines={1}>
-            {post.author}
-          </Text>
-          <EquippedBadge
-            badge={post.equippedBadge}
-            size={normalize(13)}
-            style={{ marginLeft: normalize(3) }}
-          />
-          <Text style={styles.postDot}>•</Text>
+          {authorLabel ? (
+            <Text
+              style={[styles.postAuthor, { marginRight: normalize(4) }]}
+              numberOfLines={1}
+            >
+              {authorLabel}
+            </Text>
+          ) : null}
           <Text style={styles.postTime} numberOfLines={1}>
             {post.time}
           </Text>
-          {post.location ? (
-            <View style={[styles.postTimeRow, styles.postLocationWrap]}>
-              <Text style={styles.postDot}>•</Text>
-              <Text
-                style={[styles.postLocationText, styles.postLocationInlineText]}
-                numberOfLines={1}
-              >
-                {post.location}
-              </Text>
-            </View>
-          ) : null}
         </View>
         {!hideDistanceBadge && showDistanceBadge ? (
           <DistanceBadge
@@ -232,7 +272,13 @@ const BoardPostCard = ({
             numberOfLines={3}
             ellipsizeMode="tail"
           >
-            {post.content}
+            {highlightQuery
+              ? renderHighlightedContent(
+                  post.content,
+                  highlightQuery,
+                  highlightStyle,
+                )
+              : post.content}
           </Text>
 
           {tags.length > 0 ? (
@@ -375,7 +421,7 @@ const BoardPostCard = ({
 
         {hasThumb ? (
           <Image
-            source={{ uri: post.thumbnail.trim() }}
+            source={{ uri: thumbUri }}
             style={styles.postThumb}
             resizeMode="cover"
           />

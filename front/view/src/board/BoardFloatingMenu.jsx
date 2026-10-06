@@ -34,7 +34,7 @@ export default function BoardFloatingMenu({
   visible,
   anchor,
   context,
-  allComments,
+  allComments = [],
   isMyPostFromApi,
   currentUserId,
   postAuthorId,
@@ -46,6 +46,8 @@ export default function BoardFloatingMenu({
   onNoteToUser,
   onReportPost,
   onReportComment,
+  onReplyComment,
+  items,
   styles,
   normalize,
   width,
@@ -53,7 +55,9 @@ export default function BoardFloatingMenu({
   const isPostMenu = context === 'post';
   const isCommentMenu = isPostMenu ? null : normalizeCommentId(context);
   const commentForMenu =
-    isCommentMenu != null ? findCommentById(allComments, isCommentMenu) : null;
+    isCommentMenu != null && !Array.isArray(items)
+      ? findCommentById(allComments ?? [], isCommentMenu)
+      : null;
   const isPostAuthor =
     postAuthorId != null &&
     currentUserId != null &&
@@ -68,7 +72,9 @@ export default function BoardFloatingMenu({
   if (!visible || context == null) return null;
 
   let menuItems;
-  if (isPostMenu && isMyPostFromApi) {
+  if (Array.isArray(items)) {
+    menuItems = items;
+  } else if (isPostMenu && isMyPostFromApi) {
     menuItems = [
       { label: '공유하기', iconName: 'share-outline', onPress: onSharePost },
       { label: '삭제하기', iconName: 'trash-outline', onPress: onDeletePost },
@@ -77,7 +83,7 @@ export default function BoardFloatingMenu({
     menuItems = [
       {
         label: '쪽지 보내기',
-        iconName: 'chatbubble-outline',
+        iconName: 'paper-plane-outline',
         onPress: () => {
           if (!onNoteToUser?.postUserId) return;
           if (onNoteToUser.postUserId === currentUserId) {
@@ -96,6 +102,11 @@ export default function BoardFloatingMenu({
     ];
   } else if (isMyComment) {
     menuItems = [
+      {
+        label: '답글 달기',
+        iconName: 'chatbubble-outline',
+        onPress: () => onReplyComment?.(isCommentMenu),
+      },
       {
         label: '삭제하기',
         iconName: 'trash-outline',
@@ -124,8 +135,13 @@ export default function BoardFloatingMenu({
     }
     menuItems.push(
       {
-        label: '쪽지 보내기',
+        label: '답글 달기',
         iconName: 'chatbubble-outline',
+        onPress: () => onReplyComment?.(isCommentMenu),
+      },
+      {
+        label: '쪽지 보내기',
+        iconName: 'paper-plane-outline',
         onPress: () => {
           if (
             commentForMenu.userId &&
@@ -146,6 +162,11 @@ export default function BoardFloatingMenu({
     );
   } else if (isCommentMenu != null) {
     menuItems = [
+      {
+        label: '답글 달기',
+        iconName: 'chatbubble-outline',
+        onPress: () => onReplyComment?.(isCommentMenu),
+      },
       {
         label: '신고 / 차단',
         iconName: 'flag-outline',
@@ -182,12 +203,12 @@ export default function BoardFloatingMenu({
           <TouchableWithoutFeedback>
             <View
               style={{
-                backgroundColor: colors.background,
+                backgroundColor: colors.white,
                 borderRadius: normalize(12),
                 minWidth: width * 0.45,
                 maxWidth: width * 0.7,
                 paddingVertical: normalize(4),
-                shadowColor: colors.shadow,
+                shadowColor: colors.text,
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.15,
                 shadowRadius: 5,
@@ -221,7 +242,7 @@ export default function BoardFloatingMenu({
                       style={{
                         fontSize: normalize(13),
                         fontFamily: fonts.regular,
-                        color: colors.textPrimary,
+                        color: colors.text,
                       }}
                     >
                       {item.label}
@@ -230,13 +251,13 @@ export default function BoardFloatingMenu({
                       <MaterialCommunityIcons
                         name={item.iconName}
                         size={normalize(17)}
-                        color={colors.textSecondary}
+                        color={colors.textLight4}
                       />
                     ) : (
                       <Ionicons
                         name={item.iconName}
                         size={normalize(17)}
-                        color={colors.textSecondary}
+                        color={colors.textLight4}
                       />
                     )}
                   </TouchableOpacity>
@@ -244,7 +265,7 @@ export default function BoardFloatingMenu({
                     <View
                       style={{
                         height: 1,
-                        backgroundColor: colors.textLight10,
+                        backgroundColor: colors.textLight1,
                         marginHorizontal: normalize(8),
                       }}
                     />

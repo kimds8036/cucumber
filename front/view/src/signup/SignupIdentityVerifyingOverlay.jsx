@@ -73,7 +73,7 @@ const SignupIdentityVerifyingOverlay = ({
           onPress={onOpenManually}
         >
           {openingManually ? (
-            <ActivityIndicator size="small" color={colors.background} />
+            <ActivityIndicator size="small" color={colors.white} />
           ) : (
             <Text
               style={[
@@ -122,9 +122,9 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     maxWidth: 340,
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: colors.text,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
@@ -132,12 +132,12 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: fonts.bold,
-    color: colors.textPrimary,
+    color: colors.text,
     textAlign: 'center',
   },
   subtitle: {
     fontFamily: fonts.regular,
-    color: colors.textMuted,
+    color: colors.textLight4,
     textAlign: 'center',
   },
   primaryButton: {
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     fontFamily: fonts.bold,
-    color: colors.background,
+    color: colors.white,
   },
   secondaryButton: {
     width: '100%',
@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: {
     fontFamily: fonts.bold,
-    color: colors.textSecondary,
+    color: colors.textLight4,
   },
   buttonDisabled: {
     opacity: 0.7,

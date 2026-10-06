@@ -1,15 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
   Keyboard,
   TouchableWithoutFeedback,
   useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../../styles/colors';
 import { createFindStyles } from '../../../styles/find.style';
@@ -19,6 +16,10 @@ import { api } from '../../../utils/api';
 import { isValidPassword, PASSWORD_ERROR } from '../../../utils/signupValidation';
 import RecoveryInicisFields from './RecoveryInicisFields';
 import SignupStepScroll from './SignupStepScroll';
+import AuthScreenShell from './AuthScreenShell';
+import AuthTextField from './AuthTextField';
+import AuthPrimaryButton from './AuthPrimaryButton';
+import { appAlert } from '../../../utils/appAlert';
 
 const PWfind = ({ navigation }) => {
   const { width } = useWindowDimensions();
@@ -87,7 +88,7 @@ const PWfind = ({ navigation }) => {
     }
 
     if (!name.trim() || !username.trim()) {
-      Alert.alert('알림', '이름과 아이디를 입력해 주세요.');
+      appAlert.alert('알림', '이름과 아이디를 입력해 주세요.');
       resetVerification();
       return;
     }
@@ -101,7 +102,7 @@ const PWfind = ({ navigation }) => {
       });
       const data = res.data?.data;
       if (!data?.recoveryToken) {
-        Alert.alert('알림', '본인 확인에 실패했습니다.');
+        appAlert.alert('알림', '본인 확인에 실패했습니다.');
         resetVerification();
         return;
       }
@@ -120,14 +121,14 @@ const PWfind = ({ navigation }) => {
       if (code === 'SOCIAL_ACCOUNT') {
         const label =
           error?.response?.data?.data?.providerLabel || '소셜';
-        Alert.alert(
+        appAlert.alert(
           '소셜 로그인 가입 계정',
           msg ||
             `${label}로 가입한 계정입니다.\n비밀번호 찾기를 사용할 수 없습니다.\n${label} 로그인으로 이용해 주세요.`,
           [{ text: '로그인하기', onPress: () => navigation.navigate('Login') }],
         );
       } else {
-        Alert.alert('확인 실패', msg);
+        appAlert.alert('확인 실패', msg);
       }
       resetVerification();
     } finally {
@@ -137,19 +138,19 @@ const PWfind = ({ navigation }) => {
 
   const handleResetPassword = async () => {
     if (!canResetPassword) {
-      Alert.alert('알림', '새 비밀번호 정보를 모두 입력해주세요.');
+      appAlert.alert('알림', '새 비밀번호 정보를 모두 입력해주세요.');
       return;
     }
     if (newPassword !== newPasswordConfirm) {
-      Alert.alert('알림', '새 비밀번호와 확인 값이 일치하지 않습니다.');
+      appAlert.alert('알림', '새 비밀번호와 확인 값이 일치하지 않습니다.');
       return;
     }
     if (!isValidPassword(newPassword)) {
-      Alert.alert('알림', PASSWORD_ERROR);
+      appAlert.alert('알림', PASSWORD_ERROR);
       return;
     }
     if (!recoveryToken || !verifiedUser) {
-      Alert.alert('알림', '본인 확인을 먼저 완료해 주세요.');
+      appAlert.alert('알림', '본인 확인을 먼저 완료해 주세요.');
       return;
     }
 
@@ -162,14 +163,14 @@ const PWfind = ({ navigation }) => {
         newPassword,
       });
 
-      Alert.alert('완료', '비밀번호가 변경되었습니다.', [
+      appAlert.alert('완료', '비밀번호가 변경되었습니다.', [
         { text: '로그인하기', onPress: goToLogin },
       ]);
     } catch (error) {
       const msg =
         error?.response?.data?.message ||
         '비밀번호 변경 중 오류가 발생했습니다.';
-      Alert.alert('오류', msg);
+      appAlert.alert('오류', msg);
     } finally {
       setResetting(false);
     }
@@ -177,7 +178,7 @@ const PWfind = ({ navigation }) => {
 
   if (!screenReady) {
     return (
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <AuthScreenShell>
         <View style={styles.headerSection}>
           <View style={styles.headerTop}>
             <Skeleton
@@ -225,12 +226,12 @@ const PWfind = ({ navigation }) => {
             borderRadius={normalize(14)}
           />
         </View>
-      </SafeAreaView>
+      </AuthScreenShell>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <AuthScreenShell>
       <View style={styles.headerSection}>
         <View style={styles.headerTop}>
           <TouchableOpacity
@@ -249,7 +250,7 @@ const PWfind = ({ navigation }) => {
             <Ionicons
               name="chevron-back"
               size={normalize(24)}
-              color={colors.textPrimary}
+              color={colors.text}
             />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>비밀번호 찾기</Text>
@@ -266,28 +267,23 @@ const PWfind = ({ navigation }) => {
           <SignupStepScroll normalize={normalize} bottomOffset={step === 2 ? 100 : 72}>
             {step === 1 ? (
               <>
-                <Text style={styles.inputLabel}>이름</Text>
-                <View style={styles.inputWrapper}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="이름 입력"
-                    placeholderTextColor={colors.textSecondary}
-                    value={name}
-                    onChangeText={handleIdentityFieldChange(setName)}
-                  />
-                </View>
-
-                <Text style={styles.inputLabel}>아이디</Text>
-                <View style={styles.inputWrapper}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="아이디 입력"
-                    placeholderTextColor={colors.textSecondary}
-                    value={username}
-                    onChangeText={handleIdentityFieldChange(setUsername)}
-                    autoCapitalize="none"
-                  />
-                </View>
+                <AuthTextField
+                  label="이름"
+                  icon="user"
+                  placeholder="이름 입력"
+                  value={name}
+                  autoCapitalize="words"
+                  onChangeText={handleIdentityFieldChange(setName)}
+                  style={{ marginBottom: 14 }}
+                />
+                <AuthTextField
+                  label="아이디"
+                  icon="at-sign"
+                  placeholder="아이디 입력"
+                  value={username}
+                  onChangeText={handleIdentityFieldChange(setUsername)}
+                  style={{ marginBottom: 16 }}
+                />
 
                 <RecoveryInicisFields
                   styles={styles}
@@ -303,49 +299,42 @@ const PWfind = ({ navigation }) => {
               </>
             ) : (
               <>
-                <Text style={styles.inputLabel}>이름</Text>
-                <View style={styles.inputWrapper}>
-                  <TextInput
-                    style={[styles.input, styles.inputReadonly]}
-                    value={verifiedUser?.name || ''}
-                    editable={false}
-                  />
-                </View>
-
-                <Text style={styles.inputLabel}>아이디</Text>
-                <View style={styles.inputWrapper}>
-                  <TextInput
-                    style={[styles.input, styles.inputReadonly]}
-                    value={verifiedUser?.username || ''}
-                    editable={false}
-                  />
-                </View>
-
-                <Text style={styles.inputLabel}>새 비밀번호</Text>
-                <View style={styles.inputWrapper}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="영문+숫자 8자 이상"
-                    placeholderTextColor={colors.textSecondary}
-                    value={newPassword}
-                    onChangeText={setNewPassword}
-                    secureTextEntry
-                    autoCapitalize="none"
-                  />
-                </View>
-
-                <Text style={styles.inputLabel}>새 비밀번호 확인</Text>
-                <View style={styles.inputWrapper}>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="새 비밀번호 다시 입력"
-                    placeholderTextColor={colors.textSecondary}
-                    value={newPasswordConfirm}
-                    onChangeText={setNewPasswordConfirm}
-                    secureTextEntry
-                    autoCapitalize="none"
-                  />
-                </View>
+                <AuthTextField
+                  label="이름"
+                  icon="user"
+                  value={verifiedUser?.name || ''}
+                  editable={false}
+                  style={{ marginBottom: 14 }}
+                />
+                <AuthTextField
+                  label="아이디"
+                  icon="at-sign"
+                  value={verifiedUser?.username || ''}
+                  editable={false}
+                  style={{ marginBottom: 14 }}
+                />
+                <AuthTextField
+                  label="새 비밀번호"
+                  icon="lock"
+                  placeholder="영문+숫자 8자 이상"
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  secureTextEntry
+                  style={{ marginBottom: 14 }}
+                />
+                <AuthTextField
+                  label="새 비밀번호 확인"
+                  icon="lock"
+                  placeholder="새 비밀번호 다시 입력"
+                  value={newPasswordConfirm}
+                  onChangeText={setNewPasswordConfirm}
+                  secureTextEntry
+                  error={
+                    newPasswordConfirm && newPassword !== newPasswordConfirm
+                      ? '새 비밀번호와 확인 값이 일치하지 않습니다.'
+                      : ''
+                  }
+                />
               </>
             )}
           </SignupStepScroll>
@@ -363,22 +352,15 @@ const PWfind = ({ navigation }) => {
           </Text>
         ) : null}
         {step === 2 ? (
-          <TouchableOpacity
-            style={[
-              styles.primaryButton,
-              (!canResetPassword || resetting) && styles.primaryButtonDisabled,
-            ]}
-            activeOpacity={0.9}
-            disabled={!canResetPassword || resetting}
+          <AuthPrimaryButton
+            label={resetting ? '변경 중...' : '비밀번호 변경'}
             onPress={handleResetPassword}
-          >
-            <Text style={styles.primaryButtonText}>
-              {resetting ? '변경 중...' : '비밀번호 변경'}
-            </Text>
-          </TouchableOpacity>
+            disabled={!canResetPassword}
+            loading={resetting}
+          />
         ) : null}
       </View>
-    </SafeAreaView>
+    </AuthScreenShell>
   );
 };
 

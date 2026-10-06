@@ -3,6 +3,7 @@ import { useWindowDimensions } from 'react-native';
 import ChatScreen from './ChatScreen';
 import useDMChat from '../hooks/useDMChat';
 import * as socketManager from '../../socketManager';
+import { pickAvatarUrl } from '../../../../components/UserAvatar';
 import {
   getNormalize as getBoardNormalize,
   createDetailStyles,
@@ -12,6 +13,7 @@ export default function DMChatScreen({ navigation, route }) {
   const roomId = route?.params?.roomId;
   const friend = route?.params?.friend ?? {};
   const friendName = friend.name || '친구';
+  const avatarUrl = pickAvatarUrl(friend);
 
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getBoardNormalize(width), [width]);
@@ -51,6 +53,7 @@ export default function DMChatScreen({ navigation, route }) {
       mainPlaceholder="메시지를 입력하세요"
       chatInputStyles={chatInputStyles}
       opponentName={friendName}
+      opponentAvatarUrl={avatarUrl}
       navigation={navigation}
     />
   );

@@ -1,4 +1,4 @@
-import { Alert } from 'react-native';
+import { appAlert } from '../../../utils/appAlert';
 import { api } from '../../../utils/api';
 
 const DUPLICATE_CODES = new Set([
@@ -75,7 +75,7 @@ export function buildDuplicateAccountAlertMessage({
 }
 
 function showDuplicateLoginAlert(message, navigation) {
-  Alert.alert('이미 가입된 계정', message, [
+  appAlert.alert('이미 가입된 계정', message, [
     {
       text: '로그인하기',
       onPress: () => navigation?.navigate?.('Login'),

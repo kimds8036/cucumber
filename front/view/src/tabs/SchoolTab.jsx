@@ -46,11 +46,11 @@ const SchoolTab = ({ navigation }) => {
   }, [isApproved, isFocused, studentVerifyUiOpen]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <View style={{ flex: 1, backgroundColor: colors.white }}>
       {isApproved ? (
         <OurSchoolScreen navigation={navigation} />
       ) : (
-        <View style={{ flex: 1, backgroundColor: colors.background }} />
+        <View style={{ flex: 1, backgroundColor: colors.white }} />
       )}
       <StudentVerificationCtaModal
         visible={ctaVisible && !isApproved}

@@ -87,7 +87,7 @@ const SignStepBirthDateCalendar = ({
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const dismissingRef = useRef(false);
   const calendarMetrics = useMemo(() => {
-    const gridWidth = width - width * 0.14;
+    const gridWidth = width - width * 0.08;
     const cellSize = gridWidth / 7;
     return {
       gridHeight: cellSize * CALENDAR_ROW_COUNT,
@@ -277,7 +277,7 @@ const SignStepBirthDateCalendar = ({
             <Ionicons
               name="chevron-back-circle"
               size={normalize(22)}
-              color={colors.background2}
+              color={colors.textLight2}
             />
           </TouchableOpacity>
 
@@ -299,7 +299,7 @@ const SignStepBirthDateCalendar = ({
             <Ionicons
               name="chevron-forward-circle"
               size={normalize(22)}
-              color={colors.background2}
+              color={colors.textLight2}
             />
           </TouchableOpacity>
         </View>
@@ -410,7 +410,7 @@ const SignStepBirthDateCalendar = ({
                 maximumDate={pickerMaxDate}
                 onChange={handlePickerChange}
                 themeVariant="light"
-                textColor={colors.textPrimary}
+                textColor={colors.text}
                 style={styles.pickerWheel}
               />
             </View>
@@ -438,8 +438,6 @@ function createStyles(normalize, width, calendarMetrics) {
   return StyleSheet.create({
     body: {
       flex: 1,
-      marginHorizontal: -width * 0.04,
-      paddingHorizontal: width * 0.07,
     },
     mainContent: {
       flex: 1,
@@ -457,7 +455,7 @@ function createStyles(normalize, width, calendarMetrics) {
     monthLabelBtn: {
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.xxl),
-      color: colors.textPrimary,
+      color: colors.text,
       textAlign: 'center',
     },
     weekdayRow: {
@@ -469,7 +467,7 @@ function createStyles(normalize, width, calendarMetrics) {
       textAlign: 'center',
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.lg),
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     sundayText: {
       color: CALENDAR_SUNDAY,
@@ -501,11 +499,11 @@ function createStyles(normalize, width, calendarMetrics) {
     dayText: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.xl),
-      color: colors.textPrimary,
+      color: colors.text,
     },
     dayTextSelected: {
       fontFamily: fonts.bold,
-      color: colors.textWhite,
+      color: colors.white,
     },
     summarySection: {
       marginTop: normalize(28),
@@ -514,12 +512,12 @@ function createStyles(normalize, width, calendarMetrics) {
       marginBottom: normalize(10),
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.lg),
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     summaryValue: {
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.xxl + 2),
-      color: colors.textPrimary,
+      color: colors.text,
       paddingBottom: normalize(2),
     },
     summaryUnderline: {
@@ -541,14 +539,14 @@ function createStyles(normalize, width, calendarMetrics) {
     },
     pickerModalOverlay: {
       flex: 1,
-      backgroundColor: colors.overlayLight,
+      backgroundColor: colors.textLight3,
     },
     pickerSheet: {
       position: 'absolute',
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderTopLeftRadius: normalize(20),
       borderTopRightRadius: normalize(20),
       paddingBottom: normalize(24),
@@ -570,17 +568,17 @@ function createStyles(normalize, width, calendarMetrics) {
       paddingHorizontal: normalize(16),
       paddingVertical: normalize(12),
       borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: colors.border,
+      borderBottomColor: colors.textLight1,
     },
     pickerToolbarTitle: {
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.xl),
-      color: colors.textPrimary,
+      color: colors.text,
     },
     pickerToolbarBtn: {
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.xl),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       minWidth: normalize(44),
     },
     pickerToolbarOk: {

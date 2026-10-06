@@ -5,24 +5,23 @@ import {
   Image,
   TouchableOpacity,
   useWindowDimensions,
-  Alert,
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import LogoIcon from '../../../assets/Logo.svg';
 import kakaoLoginIcon from '../../../assets/kakao_login_icon.png';
 import appleLogo from '../../../assets/apple_logo.png';
 import { colors } from '../../../styles/colors';
-import { createLoginStyles } from '../../../styles/login.style';
 import { createSignupEntryStyles } from '../../../styles/signupEntry.style';
 import SignupConsentSheet from './SignupConsentSheet';
+import AuthScreenShell from './AuthScreenShell';
+import AuthCard from './AuthCard';
 import { isAppleAuthAvailable } from '../../../services/appleAuth';
 import { reportInstallOpen } from '../../../utils/appPresence';
+import { appAlert } from '../../../utils/appAlert';
 
 const SignupEntry = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = (size) => Math.round((width / 375) * size);
-  const loginStyles = useMemo(() => createLoginStyles(width, normalize), [width]);
   const styles = useMemo(
     () => createSignupEntryStyles(width, normalize),
     [width],
@@ -43,7 +42,7 @@ const SignupEntry = ({ navigation }) => {
           .toLowerCase() === 'true';
       const available = await isAppleAuthAvailable();
       if (!available && !(__DEV__ && mockOn)) {
-        Alert.alert(
+        appAlert.alert(
           'Apple 로그인',
           Platform.OS === 'ios'
             ? '이 기기에서는 Apple 로그인을 사용할 수 없습니다.'
@@ -75,66 +74,64 @@ const SignupEntry = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <AuthScreenShell>
       <View style={styles.center}>
-        <View style={loginStyles.logoContainer}>
-          <View style={loginStyles.logo}>
+        <AuthCard>
+          <View style={styles.brand}>
             <LogoIcon
-              width={normalize(100)}
-              height={normalize(100)}
+              width={normalize(56)}
+              height={normalize(56)}
               color={colors.primary}
             />
+            <Text style={styles.title}>Youth Paper</Text>
           </View>
-          <View style={loginStyles.titleContainer}>
-            <Text style={loginStyles.titleLarge}>Youth Paper</Text>
+
+          <View style={styles.buttonStack}>
+            <TouchableOpacity
+              style={[styles.socialButton, styles.kakaoButton]}
+              onPress={() => void openConsent('kakao')}
+              activeOpacity={0.85}
+            >
+              <View style={styles.socialButtonContent}>
+                <Image
+                  source={kakaoLoginIcon}
+                  style={styles.kakaoIcon}
+                  resizeMode="contain"
+                />
+                <Text style={[styles.socialButtonText, styles.kakaoButtonText]}>
+                  카카오로 시작하기
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.socialButton, styles.appleButton]}
+              onPress={() => void openConsent('apple')}
+              activeOpacity={0.85}
+            >
+              <View style={styles.socialButtonContent}>
+                <Image
+                  source={appleLogo}
+                  style={styles.appleIcon}
+                  resizeMode="contain"
+                />
+                <Text style={[styles.socialButtonText, styles.appleButtonText]}>
+                  Apple로 시작하기
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.socialButton, styles.phoneButton]}
+              onPress={() => void openConsent('phone')}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.socialButtonText, styles.phoneButtonText]}>
+                전화번호로 시작하기
+              </Text>
+            </TouchableOpacity>
           </View>
-        </View>
-
-        <View style={styles.buttonStack}>
-          <TouchableOpacity
-            style={[styles.socialButton, styles.kakaoButton]}
-            onPress={() => void openConsent('kakao')}
-            activeOpacity={0.85}
-          >
-            <View style={styles.socialButtonContent}>
-              <Image
-                source={kakaoLoginIcon}
-                style={styles.kakaoIcon}
-                resizeMode="contain"
-              />
-              <Text style={[styles.socialButtonText, styles.kakaoButtonText]}>
-                카카오로 시작하기
-              </Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.socialButton, styles.appleButton]}
-            onPress={() => void openConsent('apple')}
-            activeOpacity={0.85}
-          >
-            <View style={styles.socialButtonContent}>
-              <Image
-                source={appleLogo}
-                style={styles.appleIcon}
-                resizeMode="contain"
-              />
-              <Text style={[styles.socialButtonText, styles.appleButtonText]}>
-                Apple로 시작하기
-              </Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.socialButton, styles.phoneButton]}
-            onPress={() => void openConsent('phone')}
-            activeOpacity={0.85}
-          >
-            <Text style={[styles.socialButtonText, styles.phoneButtonText]}>
-              전화번호로 시작하기
-            </Text>
-          </TouchableOpacity>
-        </View>
+        </AuthCard>
       </View>
 
       <View style={styles.footer}>
@@ -158,7 +155,7 @@ const SignupEntry = ({ navigation }) => {
         }}
         onConfirm={handleConsentConfirm}
       />
-    </SafeAreaView>
+    </AuthScreenShell>
   );
 };
 

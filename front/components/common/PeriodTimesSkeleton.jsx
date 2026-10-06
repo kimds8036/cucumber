@@ -1,9 +1,11 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Dimensions, View } from 'react-native';
 import Skeleton from './Skeleton';
 
 export default function PeriodTimesSkeleton({ normalize, rows = 6 }) {
-  const n = normalize || ((v) => v);
+  const n =
+    normalize ||
+    ((size) => Math.round((Dimensions.get('window').width / 375) * size));
   return (
     <View style={{ paddingHorizontal: n(4), paddingVertical: n(4) }}>
       {Array.from({ length: rows }).map((_, i) => (

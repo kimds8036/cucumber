@@ -126,7 +126,7 @@ const TipPlaceholder = ({
                 style={{
                   fontSize: n(fontSizes.xxl),
                   fontFamily: fonts.bold,
-                  color: colors.textPrimary,
+                  color: colors.text,
                   marginBottom: n(2),
                 }}
               >
@@ -137,7 +137,7 @@ const TipPlaceholder = ({
                 style={{
                   fontSize: n(fontSizes.lg),
                   fontFamily: fonts.regular,
-                  color: colors.textSecondary,
+                  color: colors.textLight4,
                 }}
               >
                 {tipMessage}

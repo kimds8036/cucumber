@@ -61,18 +61,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 28,
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
   },
   title: {
     fontSize: 18,
     fontWeight: '700',
-    color: colors.textPrimary,
+    color: colors.text,
     marginBottom: 10,
     textAlign: 'center',
   },
   body: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: colors.textLight4,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 24,
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
   primaryText: {
     fontSize: 14,
     fontWeight: '700',
-    color: colors.textWhite,
+    color: colors.white,
   },
   secondaryBtn: {
     paddingVertical: 8,
@@ -97,6 +97,6 @@ const styles = StyleSheet.create({
   },
   secondaryText: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: colors.textLight4,
   },
 });

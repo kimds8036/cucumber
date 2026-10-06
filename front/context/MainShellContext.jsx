@@ -11,7 +11,7 @@ import React, {
  */
 
 export const MAIN_TAB_TITLES = {
-  board: '전체 게시판',
+  board: '게시판',
   message: '메시지',
   school: '우리 학교',
   timer: '타이머',
@@ -30,7 +30,9 @@ export function MainShellProvider({
   activeTab,
   setActiveTab,
 }) {
-  const [headerTitle, setHeaderTitleState] = useState(MAIN_TAB_TITLES.board);
+  const [headerTitle, setHeaderTitleState] = useState(() =>
+    getMainTabTitle(activeTab),
+  );
   /** @type {[BoardFeedMode, function]} */
   const [boardFeedMode, setBoardFeedModeState] = useState('national');
   const [studentVerifyRequest, setStudentVerifyRequest] = useState(null);

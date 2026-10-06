@@ -2,17 +2,17 @@ import { StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
 import { shadow } from './tokens';
 // 우리 학교 화면 전용 스타일 (학교 정보 + 급식 + 잔디 + 바로가기 + 인기)
-export const createOurSchoolStyles = (normalize) => {
+export const createOurSchoolStyles = (normalize, width) => {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     scrollView: {
       flex: 1,
     },
     scrollContent: {
-      padding: normalize(16),
+      paddingHorizontal: width * 0.04,
       paddingBottom: normalize(16),
       paddingTop: normalize(8),
     },
@@ -23,12 +23,11 @@ export const createOurSchoolStyles = (normalize) => {
       alignSelf: 'stretch',
       flexDirection: 'column',
       justifyContent: 'center',
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(16),
       padding: normalize(16),
       borderWidth: 2,
       borderColor: colors.primary,
-      ...shadow.md,
     },
     schoolNameRow: {
       flexDirection: 'row',
@@ -41,7 +40,7 @@ export const createOurSchoolStyles = (normalize) => {
     schoolName: {
       fontSize: normalize(fontSizes.heading),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     locationContainer: {
       flexDirection: 'row',
@@ -51,12 +50,12 @@ export const createOurSchoolStyles = (normalize) => {
     locationText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginLeft: normalize(4),
     },
     schoolInfoDivider: {
       alignSelf: 'stretch',
-      backgroundColor: colors.textLight10,
+      backgroundColor: colors.textLight1,
       marginTop: normalize(15),
       marginBottom: normalize(15),
       height: 1,
@@ -83,19 +82,17 @@ export const createOurSchoolStyles = (normalize) => {
     statValue: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       textAlign: 'center',
       lineHeight: normalize(fontSizes.lg + 4),
     },
-    mealCardBlock: {
-      marginBottom: normalize(12),
-    },
     mealSectionCard: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(16),
       paddingHorizontal: normalize(10),
       paddingVertical: normalize(10),
-      ...shadow.md,
+      borderWidth: 1,
+      borderColor: colors.textLight1,
     },
     mealSectionHeader: {
       flexDirection: 'row',
@@ -108,13 +105,13 @@ export const createOurSchoolStyles = (normalize) => {
     mealSectionTitle: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       paddingLeft: normalize(4),
     },
     mealSectionMore: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       paddingRight: normalize(4),
     },
     mealCard: {
@@ -122,7 +119,7 @@ export const createOurSchoolStyles = (normalize) => {
       flex: 1,
       flexDirection: 'column',
       justifyContent: 'flex-start',
-      backgroundColor: colors.primaryLight20,
+      backgroundColor: colors.primaryLight3,
       borderRadius: normalize(16),
       padding: normalize(12),
     },
@@ -157,12 +154,12 @@ export const createOurSchoolStyles = (normalize) => {
     mealSlotTitle: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     mealSlotBadge: {
       paddingHorizontal: normalize(5),
       borderRadius: normalize(100),
-      backgroundColor: colors.primaryLight30,
+      backgroundColor: colors.primaryLight4,
     },
     mealSlotBadgeText: {
       fontSize: normalize(fontSizes.md-1),
@@ -176,19 +173,19 @@ export const createOurSchoolStyles = (normalize) => {
     mealSlotMenuText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: normalize(2),
     },
     mealSlotEmptyText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     mealBannerBox: {
       flex: 1,
       alignSelf: 'stretch',
       minHeight: normalize(96),
-      backgroundColor: colors.primaryLight20,
+      backgroundColor: colors.primaryLight3,
       borderRadius: normalize(16),
       padding: normalize(12),
       alignItems: 'center',
@@ -197,12 +194,12 @@ export const createOurSchoolStyles = (normalize) => {
     mealBannerText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textAlign: 'center',
     },
     mealModalBackdrop: {
       flex: 1,
-      backgroundColor: colors.overlay,
+      backgroundColor: 'rgba(0,0,0,0.5)',
       justifyContent: 'center',
       alignItems: 'center',
       paddingHorizontal: normalize(18),
@@ -229,13 +226,13 @@ export const createOurSchoolStyles = (normalize) => {
     mealModalTitle: {
       fontSize: normalize(fontSizes.title),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     mealModalBadge: {
       paddingHorizontal: normalize(6),
       paddingVertical: normalize(2),
       borderRadius: normalize(10),
-      backgroundColor: colors.primaryLight30,
+      backgroundColor: colors.primaryLight4,
     },
     mealModalBadgeText: {
       fontSize: normalize(fontSizes.lg),
@@ -245,14 +242,14 @@ export const createOurSchoolStyles = (normalize) => {
     mealModalMenuText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       lineHeight: normalize(24),
       marginBottom: normalize(6),
     },
     mealModalEmptyText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     mealCardTop: {
       flexDirection: 'column',
@@ -266,13 +263,13 @@ export const createOurSchoolStyles = (normalize) => {
     mealLabel: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginBottom: normalize(2),
     },
     mealType: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     mealItemsWrap: {
       flexDirection: 'column',
@@ -280,7 +277,7 @@ export const createOurSchoolStyles = (normalize) => {
     mealItem: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     mealMore: {
       fontSize: normalize(fontSizes.lg),
@@ -293,7 +290,7 @@ export const createOurSchoolStyles = (normalize) => {
       paddingHorizontal: normalize(10),
       paddingVertical: normalize(12),
       marginBottom: normalize(12),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       ...shadow.md,
       overflow: 'visible',
       zIndex: 2,
@@ -310,7 +307,7 @@ export const createOurSchoolStyles = (normalize) => {
     grassCardTitle: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       flexShrink: 1,
     },
     grassCardInfoBtn: {
@@ -326,7 +323,7 @@ export const createOurSchoolStyles = (normalize) => {
       paddingHorizontal: normalize(12),
       paddingVertical: normalize(10),
       borderRadius: normalize(10),
-      backgroundColor: colors.surface,
+      backgroundColor: colors.textLight1,
       shadowColor: '#272A26',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.06,
@@ -336,7 +333,7 @@ export const createOurSchoolStyles = (normalize) => {
     grassCardTooltipText: {
       fontSize: normalize(fontSizes.md),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: normalize(20),
     },
     shortcutContainer: {
@@ -347,10 +344,11 @@ export const createOurSchoolStyles = (normalize) => {
     },
     shortcutButton: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(16),
       padding: normalize(16),
-      ...shadow.md,
+      borderWidth: 1,
+      borderColor: colors.textLight1,
     },
     shortcutTopRow: {
       flexDirection: 'row',
@@ -361,19 +359,20 @@ export const createOurSchoolStyles = (normalize) => {
     shortcutTitle: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     shortcutSubtitle: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     popularSection: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(16),
       padding: normalize(16),
       marginBottom: normalize(12),
-      ...shadow.md,
+      borderWidth: 1,
+      borderColor: colors.textLight1,
     },
     popularHeader: {
       flexDirection: 'row',
@@ -384,7 +383,7 @@ export const createOurSchoolStyles = (normalize) => {
     popularTitle: {
       fontSize: normalize(fontSizes.title),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     popularItem: {
       flexDirection: 'row',
@@ -392,7 +391,7 @@ export const createOurSchoolStyles = (normalize) => {
       alignItems: 'center',
       paddingVertical: normalize(12),
       borderBottomWidth: 1,
-      borderBottomColor: colors.textLight10,
+      borderBottomColor: colors.textLight1,
     },
     popularItemLast: {
       borderBottomWidth: 0,
@@ -406,7 +405,7 @@ export const createOurSchoolStyles = (normalize) => {
     popularItemTitle: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       flex: 1,
     },
     popularItemRight: {
@@ -421,7 +420,7 @@ export const createOurSchoolStyles = (normalize) => {
     countText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
   });
 };
@@ -432,11 +431,11 @@ export const createSchoolMailStyles = (width, normalize) => {
   return StyleSheet.create({
     safe: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       paddingTop: normalize(6),
     },
     // 학교 정보 바: OO고등학교 • 총 N통 | NEW 2
@@ -448,18 +447,18 @@ export const createSchoolMailStyles = (width, normalize) => {
       paddingVertical: normalize(10),
       paddingBottom: normalize(6),
       borderBottomWidth: 1,
-      borderBottomColor: colors.textLight10,
+      borderBottomColor: colors.textLight1,
     },
     schoolInfoText: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     schoolNewBadge: {
       paddingHorizontal: normalize(10),
       paddingVertical: normalize(4),
       borderRadius: normalize(14),
-      backgroundColor: colors.primaryLight30,
+      backgroundColor: colors.primaryLight4,
     },
     schoolNewBadgeText: {
       fontSize: normalize(fontSizes.lg),
@@ -505,7 +504,7 @@ export const createSchoolMailStyles = (width, normalize) => {
       paddingHorizontal: normalize(6),
       paddingVertical: normalize(2),
       borderRadius: normalize(10),
-      backgroundColor: colors.primaryLight30,
+      backgroundColor: colors.primaryLight4,
     },
     newBadgeText: {
       fontSize: normalize(fontSizes.md),
@@ -515,7 +514,7 @@ export const createSchoolMailStyles = (width, normalize) => {
     cardPreview: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       lineHeight: normalize(18),
       marginBottom: normalize(8),
       minHeight: normalize(36),
@@ -529,7 +528,7 @@ export const createSchoolMailStyles = (width, normalize) => {
     cardTime: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     statRow: {
       flexDirection: 'row',
@@ -544,20 +543,8 @@ export const createSchoolMailStyles = (width, normalize) => {
     statText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
 
-    floatingButton: {
-      position: 'absolute',
-      right: normalize(20),
-      bottom: normalize(50),
-      width: normalize(50),
-      height: normalize(50),
-      borderRadius: normalize(28),
-      backgroundColor: colors.primary,
-      justifyContent: 'center',
-      alignItems: 'center',
-      ...shadow.lg,
-    },
   });
 };

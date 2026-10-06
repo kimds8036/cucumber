@@ -10,6 +10,11 @@ import {
 export const DEFAULT_SUBJECTS = [];
 export const DEFAULT_TASKS = [];
 
+/** 한 줄을 넘기면 카드가 늘어나므로 입력 길이를 막는다 */
+export const TIMER_SUBJECT_NAME_MAX = 15;
+export const TIMER_TASK_CONTENT_MAX = 15;
+export const TIMER_WEEKLY_ITEM_MAX = 15;
+
 /** 레이아웃 위치 확인용 — 확인 끝나면 false 로 변경 */
 export const DEBUG_TIMER_LAYOUT_BORDERS = false;
 export const tdb = (color) =>
@@ -17,6 +22,9 @@ export const tdb = (color) =>
 
 export const HOURS = Array.from({ length: 24 }, (_, i) => i);
 export const TIMETABLE_GRAY = '#A6DA95';
+export const SCHOOL_TIMETABLE_BG = '#E4E0D8';
+export const SCHOOL_TIMETABLE_HINT =
+  '등교 인증을 하면 시간표에 저장된 학교 시간이 자동으로 채워져요';
 export const TIMER_DAY_START_HOUR = 6;
 export const TIMER_HEARTBEAT_MS = 60 * 1000;
 export const TIMER_BACKGROUND_AUTO_CLOSE_MS = 15 * 60 * 1000;
@@ -193,13 +201,63 @@ export function pushSlotSegmentForRange(
   const overlapEnd = Math.min(rangeEnd, slotEnd);
   const widthFraction = (overlapEnd - overlapStart) / 600;
   if (widthFraction <= 0) return;
-  const color = resolveSessionColor(session, displaySubjects);
+  const base = resolveSessionColor(session, displaySubjects);
+  const color =
+    session?.kind === 'break' ? lightenHex(base, 0.7) : base;
   if (!color) return;
   segments.push({
     color,
     widthFraction,
     startFraction: (overlapStart - slotStart) / 600,
   });
+}
+
+function clockToTimelineSeconds(hhmm) {
+  const match = String(hhmm || '').trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 23 || minute > 59) return null;
+  const fromMidnight = hour * 3600 + minute * 60;
+  return (
+    (fromMidnight - TIMER_DAY_START_HOUR * 3600 + TIMER_SECONDS_PER_DAY) %
+    TIMER_SECONDS_PER_DAY
+  );
+}
+
+/** 저장된 교시를 하나의 학교 구간(가장 이른 시작~가장 늦은 끝)으로 묶는다. */
+export function schoolTimelineSpan(periods) {
+  let start = null;
+  let end = null;
+  (Array.isArray(periods) ? periods : []).forEach((period) => {
+    const periodStart = clockToTimelineSeconds(period?.startTime);
+    const periodEnd = clockToTimelineSeconds(period?.endTime);
+    if (periodStart == null || periodEnd == null || periodEnd <= periodStart) return;
+    start = start == null ? periodStart : Math.min(start, periodStart);
+    end = end == null ? periodEnd : Math.max(end, periodEnd);
+  });
+  if (start == null || end == null || end <= start) return null;
+  return { start, end };
+}
+
+/** 10분 칸 안에서 학교 시간이 차지하는 비율 */
+export function schoolFractionsForSlot(slotStartSeconds, periods) {
+  const slotStart = toTimerDayTimelineSeconds(slotStartSeconds);
+  const slotEnd = slotStart + 600;
+  const out = [];
+  (Array.isArray(periods) ? periods : []).forEach((period) => {
+    const start = clockToTimelineSeconds(period?.startTime);
+    const end = clockToTimelineSeconds(period?.endTime);
+    if (start == null || end == null || end <= start) return;
+    const overlapStart = Math.max(slotStart, start);
+    const overlapEnd = Math.min(slotEnd, end);
+    if (overlapEnd <= overlapStart) return;
+    out.push({
+      startFraction: (overlapStart - slotStart) / 600,
+      widthFraction: (overlapEnd - overlapStart) / 600,
+    });
+  });
+  return out;
 }
 
 export function appendSessionSegmentsForSlot(
@@ -358,6 +416,7 @@ export function buildSnapshotCompleteSessions(
       subjectId: session?.subjectId != null ? Number(session.subjectId) : null,
       subjectName: session?.subjectName ?? subjectMeta?.name ?? null,
       subjectColor: session?.subjectColor ?? subjectMeta?.color ?? null,
+      kind: session?.kind === 'break' ? 'break' : 'study',
       startedAt: startedIso,
       endedAt: endedIso,
     };

@@ -29,7 +29,7 @@ export default function MailReplyScreen({ navigation, route }) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createMailStyles(normalize), [normalize]);
+  const styles = useMemo(() => createMailStyles(normalize, width), [normalize, width]);
 
   const mail = route?.params?.mail;
   const mailId = route?.params?.mailId ?? route?.params?.mail?.id;
@@ -149,7 +149,7 @@ export default function MailReplyScreen({ navigation, route }) {
       <SafeAreaView style={styles.container} edges={['top']}>
         <View
           style={{
-            paddingHorizontal: normalize(16),
+            paddingHorizontal: width * 0.04,
             paddingTop: normalize(16),
           }}
         >
@@ -249,7 +249,7 @@ export default function MailReplyScreen({ navigation, route }) {
               <TextInput
                 style={styles.replyFormInput}
                 placeholder="내용을 입력하세요"
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={colors.textLight4}
                 value={replyText}
                 onChangeText={handleReplyTextChange}
                 multiline
@@ -273,7 +273,7 @@ export default function MailReplyScreen({ navigation, route }) {
                       <MaterialCommunityIcons
                         name="television-classic"
                         size={15}
-                        color={colors.textPrimary}
+                        color={colors.text}
                       />
                       <Text style={styles.replyFormChipText}>x 2</Text>
                     </TouchableOpacity>

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect, Fragment } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,29 +6,57 @@ import {
   Image,
   TouchableOpacity,
   TouchableWithoutFeedback,
+  Pressable,
   Keyboard,
-  Platform,
   useWindowDimensions,
   Alert,
   ScrollView,
-  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  KeyboardAwareScrollView,
+  KeyboardController,
+  KeyboardEvents,
+} from 'react-native-keyboard-controller';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { StackActions } from '@react-navigation/native';
 import SubHeader from '../frame/subHeader';
+import SortChips from '../../components/common/SortChips';
+import ImageViewer from './ImageViewer';
 import { createWriteStyles, getNormalize } from '../../styles/board.style';
 import { api } from '../../utils/api';
 import { invalidateProfileCountsCache } from '../../utils/profileCountsCache';
 import { colors, fonts, fontSizes } from '../../styles/colors';
+import { useAuth } from '../../context/AuthContext';
 import { useLocationContext } from '../../context/LocationContext';
 import * as Location from 'expo-location';
 
+const BOARD_OPTIONS = [
+  { value: 'national', label: '전체' },
+  { value: 'student', label: '학생' },
+  { value: 'school', label: '학교' },
+];
+
+const BOARD_HINTS = {
+  national: '모든 사람들이 볼 수 있어요',
+  student: '학생들만 볼 수 있어요',
+  school: '우리 학교 학생들만 볼 수 있어요',
+};
+
+const POLL_MIN_OPTIONS = 2;
+const POLL_MAX_OPTIONS = 10;
+
+const createPollOptions = () => ['', ''];
+
+const FALLBACK_HASHTAGS = ['중간고사', '수행평가', '급식'];
+
+
 const BoardWrite = ({ navigation, route }) => {
+  const { studentVerificationStatus } = useAuth();
+  const studentBoardEnabled = studentVerificationStatus === 'APPROVED';
   const { coords, refreshLocation } = useLocationContext();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(
     () => createWriteStyles(width, normalize),
@@ -39,24 +67,107 @@ const BoardWrite = ({ navigation, route }) => {
   const [hashtags, setHashtags] = useState([]); // 추가된 해시태그 배열 (서버에는 tags로 전달)
   const [hashtagInput, setHashtagInput] = useState(''); // 입력 중인 해시태그
   const [hashtagSuggestions, setHashtagSuggestions] = useState([]); // 추천 태그 목록
+  const [recommendedHashtags, setRecommendedHashtags] = useState(FALLBACK_HASHTAGS);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [postImages, setPostImages] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [locationEnabled, setLocationEnabled] = useState(true);
-  const [activePanel, setActivePanel] = useState(null); // 'tag' | null
-  const [tagPanelVisible, setTagPanelVisible] = useState(false);
+  const [pollOpen, setPollOpen] = useState(false);
+  const [pollOptions, setPollOptions] = useState(createPollOptions);
+  const [pollMulti, setPollMulti] = useState(false);
+  const [viewerUri, setViewerUri] = useState(null);
   const boardContext = route?.params?.boardContext || 'national';
-  const [selectedBoard, setSelectedBoard] = useState(
-    boardContext === 'school'
-      ? '학교게시판'
-      : boardContext === 'student'
-        ? '학생게시판'
-        : '전체게시판',
-  );
-  const [boardDropdownVisible, setBoardDropdownVisible] = useState(false);
-  const tagInputRef = useRef(null);
-  const tagPanelAnim = useRef(new Animated.Value(0)).current;
-  const TAG_PANEL_HEIGHT = normalize(56);
+  const [selectedBoard, setSelectedBoard] = useState('national');
+  const scrollRef = useRef(null);
+  const bodyInputRef = useRef(null);
+  const hashtagFieldRef = useRef(null);
+  const pollRowRefs = useRef([]);
+  const scrollOffsetRef = useRef(0);
+  const focusedFieldRef = useRef(null);
+
+  useEffect(() => {
+    if (!studentBoardEnabled) {
+      setSelectedBoard('national');
+      return;
+    }
+    if (boardContext === 'school' || boardContext === 'student') {
+      setSelectedBoard(boardContext);
+    }
+  }, [studentBoardEnabled, boardContext]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get('/api/posts/tags/recommended');
+        const tags = res.data?.data?.tags;
+        if (cancelled || !Array.isArray(tags)) return;
+        setRecommendedHashtags(
+          tags
+            .map((tag) => String(tag?.name || '').replace(/^#/, '').trim())
+            .filter(Boolean),
+        );
+      } catch {
+        // 서버에 목록이 없으면 기존 세 개를 그대로 보여 준다.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const scrollFocusedFieldIntoView = useCallback(() => {
+    const field = focusedFieldRef.current;
+    const scroll = scrollRef.current;
+    if (!field?.measureInWindow || typeof scroll?.scrollTo !== 'function') {
+      return;
+    }
+    field.measureInWindow((_x, y, _width, fieldHeight) => {
+      const keyboardHeight = KeyboardController.state().height || 0;
+      const visibleBottom = height - keyboardHeight - 24;
+      const overlap = y + fieldHeight - visibleBottom;
+      if (overlap <= 0) return;
+      const fitsAboveKeyboard = fieldHeight <= visibleBottom - 24;
+      const delta = fitsAboveKeyboard
+        ? overlap
+        : Math.min(overlap, Math.max(0, y - 12));
+      if (delta <= 0) return;
+      scroll.scrollTo({
+        y: scrollOffsetRef.current + delta,
+        animated: true,
+      });
+    });
+  }, [height]);
+
+  useEffect(() => {
+    const subscription = KeyboardEvents.addListener('keyboardDidShow', () => {
+      if (focusedFieldRef.current) scrollFocusedFieldIntoView();
+    });
+    return () => subscription.remove();
+  }, [scrollFocusedFieldIntoView]);
+
+  const handleFieldFocus = (field) => {
+    if (!field) return;
+    focusedFieldRef.current = field;
+    const wait = KeyboardController.isVisible()
+      ? 0
+      : Math.max(KeyboardController.state().duration || 0, 280);
+    setTimeout(() => {
+      if (focusedFieldRef.current === field) scrollFocusedFieldIntoView();
+    }, wait);
+  };
+
+  const handleFieldBlur = (field) => {
+    if (focusedFieldRef.current === field) focusedFieldRef.current = null;
+  };
+
+  const handleBoardChange = (next) => {
+    if (next !== 'national' && !studentBoardEnabled) {
+      Alert.alert('알림', '학생증 인증을 해주세요');
+      return;
+    }
+    setSelectedBoard(next);
+  };
 
   const handleBack = () => {
     navigation.goBack();
@@ -146,44 +257,56 @@ const BoardWrite = ({ navigation, route }) => {
     }
   };
 
-  const handleToggleTagPanel = () => {
-    setActivePanel((prev) => (prev === 'tag' ? null : 'tag'));
-  };
-
   const handlePressPhoto = async () => {
-    setActivePanel(null);
     await handlePickPostImages();
   };
 
-  const handleToggleLocation = async () => {
-    setActivePanel(null);
-    const next = !locationEnabled;
-    setLocationEnabled(next);
+  const handleToggleLocation = () => {
+    setLocationEnabled((prev) => !prev);
   };
 
-  useEffect(() => {
-    if (activePanel === 'tag') {
-      setTagPanelVisible(true);
-      Animated.timing(tagPanelAnim, {
-        toValue: 1,
-        duration: 160,
-        useNativeDriver: false,
-      }).start();
-    } else {
-      Animated.timing(tagPanelAnim, {
-        toValue: 0,
-        duration: 140,
-        useNativeDriver: false,
-      }).start(({ finished }) => {
-        if (finished) setTagPanelVisible(false);
-      });
-    }
-  }, [activePanel, tagPanelAnim]);
+  const resetPoll = () => {
+    setPollOpen(false);
+    setPollOptions(createPollOptions());
+    setPollMulti(false);
+  };
 
-  useEffect(() => {
-    // 태그 패널이 열릴 때 자동으로 키보드를 올리지 않도록
-    // 기존의 tagInput 자동 focus 로직을 제거했습니다.
-  }, [activePanel]);
+  const handlePressPoll = () => {
+    if (!pollOpen) {
+      setPollOpen(true);
+      return;
+    }
+    Alert.alert('삭제할까요?', undefined, [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '삭제',
+        style: 'destructive',
+        onPress: resetPoll,
+      },
+    ]);
+  };
+
+  const handleChangePollOption = (index, text) => {
+    setPollOptions((prev) =>
+      prev.map((option, optionIndex) =>
+        optionIndex === index ? text : option,
+      ),
+    );
+  };
+
+  const handleAddPollOption = () => {
+    setPollOptions((prev) =>
+      prev.length >= POLL_MAX_OPTIONS ? prev : [...prev, ''],
+    );
+  };
+
+  const handleRemovePollOption = (index) => {
+    setPollOptions((prev) =>
+      prev.length <= POLL_MIN_OPTIONS
+        ? prev
+        : prev.filter((_, optionIndex) => optionIndex !== index),
+    );
+  };
 
   const handleComplete = async () => {
     if (isSubmitting) return;
@@ -197,18 +320,9 @@ const BoardWrite = ({ navigation, route }) => {
       let boardType = 'national';
       let schoolId = null;
 
-      const resolvedContext =
-        selectedBoard === '학교게시판'
-          ? 'school'
-          : selectedBoard === '학생게시판'
-            ? 'student'
-            : boardContext === 'student'
-              ? 'student'
-              : boardContext === 'school'
-                ? 'school'
-                : 'national';
+      const boardForSubmit = studentBoardEnabled ? selectedBoard : 'national';
 
-      if (resolvedContext === 'school') {
+      if (boardForSubmit === 'school') {
         const schoolRes = await api.get('/api/schools/me');
         const id = schoolRes.data?.data?.id;
         if (!id) {
@@ -217,7 +331,7 @@ const BoardWrite = ({ navigation, route }) => {
         }
         boardType = 'school';
         schoolId = id;
-      } else if (resolvedContext === 'student') {
+      } else if (boardForSubmit === 'student') {
         boardType = 'student';
       }
 
@@ -233,6 +347,17 @@ const BoardWrite = ({ navigation, route }) => {
           name: `image_${index}.jpg`,
         });
       });
+      if (pollOpen) {
+        const options = pollOptions.map((item) => item.trim()).filter(Boolean);
+        if (options.length < POLL_MIN_OPTIONS) {
+          Alert.alert('알림', '투표 항목을 2개 이상 입력해주세요.');
+          return;
+        }
+        formData.append(
+          'poll',
+          JSON.stringify({ multi: pollMulti, options }),
+        );
+      }
       if (locationEnabled) {
         let lat = coords?.latitude;
         let lng = coords?.longitude;
@@ -260,6 +385,7 @@ const BoardWrite = ({ navigation, route }) => {
       });
       await invalidateProfileCountsCache();
 
+      Keyboard.dismiss();
       Alert.alert('완료', '게시글이 작성되었습니다.', [
         {
           text: '확인',
@@ -298,124 +424,94 @@ const BoardWrite = ({ navigation, route }) => {
   );
 
   const writeMainColumn = (
-    <Fragment>
-      <View style={styles.box} />
-
-      {/* 제목 필드가 있을 때를 가정한 본문 상단 구분선 */}
-      <View style={styles.writeBodyTopDivider} />
-
-      {/* 본문 입력 */}
-      <View style={styles.content}>
+    <View style={styles.writeComposer}>
+      <View style={[styles.writeBodyBox, styles.writeBodyBoxGrow]}>
         <TextInput
-          style={styles.textInput}
-          placeholder="오늘의 이야기를 들려주세요"
-          placeholderTextColor={colors.textSecondary}
+          ref={bodyInputRef}
+          style={styles.writeBodyInput}
+          placeholder="내용을 입력해 주세요"
+          placeholderTextColor={colors.textLight4}
           multiline
+          scrollEnabled={false}
           value={content}
           onChangeText={setContent}
+          onFocus={() => {
+            focusedFieldRef.current = null;
+          }}
         />
-      </View>
-    </Fragment>
-  );
-
-  const topToolbarSection = useMemo(
-    () => (
-      <View
-        style={[
-          styles.topToolbarSection,
-          styles.topToolbarSectionWithZIndex,
-          activePanel === 'tag' && styles.topToolbarSectionTagOpen,
-        ]}
-      >
-        {/* 하단 툴바 */}
-        <View style={styles.topToolbar}>
-          <TouchableOpacity
-            style={styles.boardChip}
-            onPress={() => setBoardDropdownVisible((v) => !v)}
-          >
-            <Text style={styles.boardChipText}>{selectedBoard}</Text>
-            <Text style={styles.boardChipArrow}>▼</Text>
-          </TouchableOpacity>
-          <View style={styles.toolbarDivider} />
-          <TouchableOpacity
-            onPress={handleToggleTagPanel}
-            style={styles.toolbarIconButton}
-          >
-            <Ionicons
-              name="pricetag-outline"
-              size={22}
-              color={
-                activePanel === 'tag' ? colors.primary : colors.textSecondary
-              }
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={handlePressPhoto}
-            style={styles.toolbarIconButton}
-          >
-            <Ionicons
-              name="image-outline"
-              size={22}
-              color={colors.textSecondary}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={handleToggleLocation}
-            style={styles.toolbarLocationButton}
-          >
-            <Ionicons
-              name={locationEnabled ? 'location-sharp' : 'location-outline'}
-              size={22}
-              color={locationEnabled ? colors.primary : colors.textSecondary}
-            />
-          </TouchableOpacity>
-        </View>
-        {boardDropdownVisible && (
-          <View style={styles.boardDropdown}>
-            {['전체게시판', '학생게시판', '학교게시판'].map((item) => (
-              <TouchableOpacity
-                key={item}
-                style={styles.boardDropdownItem}
-                onPress={() => {
-                  setSelectedBoard(item);
-                  setBoardDropdownVisible(false);
+        <Pressable
+          style={styles.writeBodySpacer}
+          onPress={() => bodyInputRef.current?.focus()}
+        />
+        {pollOpen ? (
+          <View style={styles.pollBox}>
+            {pollOptions.map((option, index) => (
+              <View
+                key={`poll-option-${index}`}
+                style={styles.pollOptionRow}
+                ref={(node) => {
+                  pollRowRefs.current[index] = node;
                 }}
               >
-                <Text
-                  style={[
-                    styles.boardDropdownText,
-                    selectedBoard === item && styles.boardDropdownTextSelected,
-                  ]}
-                >
-                  {item}
-                </Text>
-              </TouchableOpacity>
+                <TextInput
+                  style={styles.pollOptionInput}
+                  placeholder={`항목 ${index + 1}`}
+                  placeholderTextColor={colors.textLight4}
+                  value={option}
+                  onChangeText={(text) => handleChangePollOption(index, text)}
+                  onFocus={() => handleFieldFocus(pollRowRefs.current[index])}
+                  onBlur={() => handleFieldBlur(pollRowRefs.current[index])}
+                  maxLength={50}
+                />
+                {pollOptions.length > POLL_MIN_OPTIONS ? (
+                  <TouchableOpacity
+                    onPress={() => handleRemovePollOption(index)}
+                    hitSlop={8}
+                  >
+                    <Ionicons name="close" size={18} color={colors.textLight4} />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
             ))}
+            {pollOptions.length < POLL_MAX_OPTIONS ? (
+              <TouchableOpacity
+                style={styles.pollAddButton}
+                onPress={handleAddPollOption}
+              >
+                <Text style={styles.pollAddButtonText}>+ 항목 추가</Text>
+              </TouchableOpacity>
+            ) : null}
+            <TouchableOpacity
+              style={styles.pollMultiRow}
+              onPress={() => setPollMulti((prev) => !prev)}
+            >
+              <View
+                style={[styles.pollCheckbox, pollMulti && styles.pollCheckboxOn]}
+              >
+                {pollMulti ? (
+                  <Ionicons name="checkmark" size={14} color={colors.white} />
+                ) : null}
+              </View>
+              <Text style={styles.pollMultiLabel}>복수 선택</Text>
+            </TouchableOpacity>
           </View>
-        )}
-
-        {/* 칩 영역: 사진 -> 태그 */}
-
+        ) : null}
         {postImages.length > 0 && (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.photoStripContent}
+            style={styles.writeBodyPhotoScroll}
+            contentContainerStyle={styles.writeBodyPhotoStrip}
             keyboardShouldPersistTaps="handled"
           >
-            {postImages.length < 5 && (
-              <TouchableOpacity
-                onPress={handlePressPhoto}
-                style={styles.photoAddButton}
-              >
-                <Ionicons name="add" size={20} color={colors.textSecondary} />
-              </TouchableOpacity>
-            )}
             {postImages.map((uri, index) => (
-              <View key={index} style={styles.photoItemWrap}>
-                <Image source={{ uri }} style={styles.photoThumb} />
+              <View key={`${uri}-${index}`} style={styles.photoItemWrap}>
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  onPress={() => setViewerUri(uri)}
+                >
+                  <Image source={{ uri }} style={styles.photoThumb} />
+                </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() =>
                     setPostImages((prev) => prev.filter((_, i) => i !== index))
@@ -425,115 +521,90 @@ const BoardWrite = ({ navigation, route }) => {
                   <Ionicons
                     name="close-circle"
                     size={18}
-                    color={colors.background}
+                    color={colors.white}
                   />
                 </TouchableOpacity>
               </View>
             ))}
           </ScrollView>
         )}
-
-        {activePanel === 'tag' && hashtagSuggestions.length > 0 && (
-          <View
-            style={[
-              styles.writeHashtagSuggestionWrapper,
-              styles.hashtagSuggestionSectionTop,
-            ]}
+        <View style={styles.writeBodyActions}>
+          <TouchableOpacity
+            onPress={handleToggleLocation}
+            style={styles.toolbarLocationButton}
+            hitSlop={8}
           >
+            <Ionicons
+              name={locationEnabled ? 'location-sharp' : 'location-outline'}
+              size={22}
+              color={locationEnabled ? colors.primary : colors.textLight4}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handlePressPhoto}
+            style={styles.toolbarIconButton}
+            hitSlop={8}
+          >
+            <Ionicons
+              name={postImages.length > 0 ? 'image' : 'image-outline'}
+              size={postImages.length > 0 ? 24 : 22}
+              color={postImages.length > 0 ? colors.primary : colors.textLight4}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handlePressPoll}
+            style={styles.toolbarIconButton}
+            hitSlop={8}
+          >
+            <MaterialCommunityIcons
+              name={pollOpen ? 'vote' : 'vote-outline'}
+              size={22}
+              color={pollOpen ? colors.textLight6 : colors.textLight4}
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
+      {guideBlock}
+      <View style={styles.writeHashtagBlock}>
+        <View ref={hashtagFieldRef} style={styles.writeHashtagField}>
+          <Text style={styles.writeHashtagPrefix}>#</Text>
+          <TextInput
+            style={styles.writeHashtagFieldInput}
+            placeholder="해시태그 입력(선택)"
+            placeholderTextColor={colors.textLight4}
+            value={hashtagInput}
+            onChangeText={handleHashtagInputChange}
+            onFocus={() => {
+              focusedFieldRef.current = null;
+            }}
+            onSubmitEditing={handleAddHashtag}
+            returnKeyType="done"
+            maxLength={30}
+          />
+          <Text style={styles.writeHashtagCounter}>{hashtags.length}/5</Text>
+        </View>
+        {hashtagSuggestions.length > 0 ? (
+          <View style={styles.writeHashtagSuggestionWrapper}>
             <Text style={styles.writeHashtagSuggestionTitle}>
               {loadingSuggestions ? '태그 불러오는 중...' : '추천 태그'}
             </Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.writeHashtagTagScroll}
-              contentContainerStyle={styles.writeHashtagTagList}
-              keyboardShouldPersistTaps="handled"
-            >
-              {hashtagSuggestions.map((t) => (
+            <View style={styles.writeHashtagTagList}>
+              {hashtagSuggestions.map((tag) => (
                 <TouchableOpacity
-                  key={t.id ?? t.name}
+                  key={tag.id ?? tag.name}
                   style={styles.writeHashtagSuggestionChip}
-                  onPress={() => handleSelectSuggestion(t.name)}
+                  onPress={() => handleSelectSuggestion(tag.name)}
                 >
                   <Text style={styles.writeHashtagSuggestionText}>
-                    {t.name}
+                    {tag.name}
                   </Text>
                 </TouchableOpacity>
               ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {tagPanelVisible && (
-          <Animated.View
-            pointerEvents={tagPanelVisible ? 'box-none' : 'none'}
-            style={{
-              height: tagPanelAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0, TAG_PANEL_HEIGHT],
-              }),
-              overflow: 'hidden',
-              zIndex: 20,
-              ...Platform.select({ android: { elevation: 20 }, ios: {} }),
-            }}
-          >
-            {/* 실제 패널 */}
-            <View
-              style={[
-                styles.tagPanelContainer,
-                styles.tagPanelContainerWithZIndex,
-              ]}
-              collapsable={false}
-            >
-              <View
-                style={[
-                  styles.writeHashtagWrapper,
-                  styles.tagPanelWrapperCompact,
-                ]}
-              >
-                <View style={styles.writeHashtagInputRow}>
-                  <Text style={styles.writeHashtagPrefix}>#</Text>
-                  <View
-                    style={[
-                      styles.writeHashtagDashedWrap,
-                      styles.writeHashtagDashedWrapWithZIndex,
-                    ]}
-                  >
-                    <TextInput
-                      ref={tagInputRef}
-                      style={styles.writeHashtagInputInline}
-                      placeholder="태그 추가"
-                      placeholderTextColor={colors.textSecondary}
-                      value={hashtagInput}
-                      onChangeText={handleHashtagInputChange}
-                      onSubmitEditing={handleAddHashtag}
-                      returnKeyType="done"
-                      maxLength={30}
-                      textAlignVertical="center"
-                      underlineColorAndroid="transparent"
-                    />
-                  </View>
-                  <Text style={styles.writeHashtagCounter}>
-                    {hashtags.length}/5
-                  </Text>
-                </View>
-              </View>
             </View>
-          </Animated.View>
-        )}
-
-        {hashtags.length > 0 && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.writeHashtagAttachedTagScroll}
-            contentContainerStyle={[
-              styles.writeHashtagTagList,
-              styles.hashtagTagListWithPadding,
-            ]}
-            keyboardShouldPersistTaps="handled"
-          >
+          </View>
+        ) : null}
+        {hashtags.length > 0 ? (
+          <View style={styles.writeHashtagTagList}>
             {hashtags.map((tag) => (
               <View key={tag} style={styles.writeHashtagTagChip}>
                 <Text style={styles.writeHashtagTagText}>#{tag}</Text>
@@ -545,23 +616,24 @@ const BoardWrite = ({ navigation, route }) => {
                 </TouchableOpacity>
               </View>
             ))}
-          </ScrollView>
-        )}
+          </View>
+        ) : null}
+        <View style={styles.writeHashtagRecommend}>
+          <Text style={styles.writeHashtagSuggestionTitle}>추천 해시태그</Text>
+          <View style={styles.writeHashtagTagList}>
+            {recommendedHashtags.map((tag) => (
+              <TouchableOpacity
+                key={tag}
+                style={styles.writeHashtagRecommendChip}
+                onPress={() => handleSelectSuggestion(tag)}
+              >
+                <Text style={styles.writeHashtagRecommendText}>#{tag}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
       </View>
-    ),
-    [
-      activePanel,
-      tagPanelVisible,
-      hashtags,
-      hashtagInput,
-      postImages,
-      locationEnabled,
-      selectedBoard,
-      boardDropdownVisible,
-      hashtagSuggestions,
-      loadingSuggestions,
-      isSubmitting,
-    ],
+    </View>
   );
 
   const canSubmit =
@@ -569,10 +641,7 @@ const BoardWrite = ({ navigation, route }) => {
 
   return (
     <TouchableWithoutFeedback
-      onPress={() => {
-        setBoardDropdownVisible(false);
-        Keyboard.dismiss();
-      }}
+      onPress={Keyboard.dismiss}
       accessible={false}
     >
       <View style={styles.screen}>
@@ -580,7 +649,7 @@ const BoardWrite = ({ navigation, route }) => {
           <View style={styles.fullFlex}>
             <SafeAreaView style={styles.container} edges={['top']}>
               <SubHeader
-                title="글쓰기"
+                title="게시글 작성"
                 onBack={handleBack}
                 onRightPress={handleComplete}
                 rightDisabled={!canSubmit}
@@ -597,27 +666,43 @@ const BoardWrite = ({ navigation, route }) => {
                         !canSubmit && styles.completePillTextDisabled,
                       ]}
                     >
-                      {isSubmitting ? '등록 중...' : '등록'}
+                      {isSubmitting ? '•••' : '완료'}
                     </Text>
                   </View>
                 }
               />
-              {topToolbarSection}
 
               <KeyboardAwareScrollView
+                ref={scrollRef}
                 style={styles.fullFlex}
                 contentContainerStyle={styles.scrollContentGrow}
                 keyboardShouldPersistTaps="handled"
                 keyboardDismissMode="on-drag"
                 showsVerticalScrollIndicator={false}
+                scrollEventThrottle={16}
+                onScroll={(event) => {
+                  scrollOffsetRef.current = event.nativeEvent.contentOffset.y;
+                }}
                 onScrollBeginDrag={Keyboard.dismiss}
                 bottomOffset={16}
               >
+                <SortChips
+                  value={selectedBoard}
+                  onChange={handleBoardChange}
+                  options={BOARD_OPTIONS}
+                  containerStyle={{ paddingBottom: 0 }}
+                />
+                <Text style={styles.boardScopeHint}>
+                  {BOARD_HINTS[selectedBoard]}
+                </Text>
                 {writeMainColumn}
               </KeyboardAwareScrollView>
-
-              {guideBlock}
             </SafeAreaView>
+            <ImageViewer
+              visible={Boolean(viewerUri)}
+              uri={viewerUri}
+              onClose={() => setViewerUri(null)}
+            />
           </View>
         </View>
       </View>

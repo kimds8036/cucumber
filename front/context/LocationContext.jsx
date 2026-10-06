@@ -11,14 +11,17 @@ import {
   AppState,
   Linking,
   Platform,
+  Pressable,
+  StyleSheet,
   Text,
-  TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useAuth } from './AuthContext';
 import { colors, fonts } from '../styles/colors';
-import Skeleton from '../components/common/Skeleton';
 import {
   clearLastLocation,
   loadLastLocation,
@@ -29,8 +32,9 @@ const LocationContext = createContext(null);
 
 export function LocationProvider({ children }) {
   const { isLoggedIn } = useAuth();
-  const [isReady, setIsReady] = useState(false);
-  const [permissionGranted, setPermissionGranted] = useState(false);
+  const [isReady, setIsReady] = useState(true);
+  /** null: 아직 모름(게이트 숨김) / true / false */
+  const [permissionGranted, setPermissionGranted] = useState(null);
   const [coords, setCoordsState] = useState(null);
   const [coordsIsFresh, setCoordsIsFresh] = useState(false);
   const coordsRef = useRef(null);
@@ -50,37 +54,16 @@ export function LocationProvider({ children }) {
   );
 
   useEffect(() => {
-    permissionGrantedRef.current = permissionGranted;
+    permissionGrantedRef.current = permissionGranted === true;
   }, [permissionGranted]);
 
-  const runLocationFlow = useCallback(async () => {
-    const hadCoords = coordsRef.current != null;
-    if (!hadCoords) {
-      setIsReady(false);
-    }
-
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== Location.PermissionStatus.GRANTED) {
-      setPermissionGranted(false);
-      setCoordsState(null);
-      coordsRef.current = null;
-      setCoordsIsFresh(false);
-      await clearLastLocation();
-      setIsReady(true);
-      return;
-    }
-
-    setPermissionGranted(true);
-
+  const hydrateCoordsIfGranted = useCallback(async () => {
     if (!coordsRef.current) {
       const cached = await loadLastLocation();
       if (cached) {
         applyCoords(cached, { fresh: false });
       }
     }
-
-    setIsReady(true);
-
     try {
       const pos = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
@@ -100,10 +83,41 @@ export function LocationProvider({ children }) {
     }
   }, [applyCoords]);
 
+  const runLocationFlow = useCallback(
+    async ({ requestIfNeeded = false } = {}) => {
+      const existing = await Location.getForegroundPermissionsAsync();
+      let status = existing.status;
+
+      if (
+        status !== Location.PermissionStatus.GRANTED &&
+        requestIfNeeded
+      ) {
+        const asked = await Location.requestForegroundPermissionsAsync();
+        status = asked.status;
+      }
+
+      if (status !== Location.PermissionStatus.GRANTED) {
+        setPermissionGranted(false);
+        setCoordsState(null);
+        coordsRef.current = null;
+        setCoordsIsFresh(false);
+        await clearLastLocation();
+        setIsReady(true);
+        return false;
+      }
+
+      setPermissionGranted(true);
+      setIsReady(true);
+      await hydrateCoordsIfGranted();
+      return true;
+    },
+    [hydrateCoordsIfGranted],
+  );
+
   useEffect(() => {
     if (!isLoggedIn) {
       setIsReady(true);
-      setPermissionGranted(false);
+      setPermissionGranted(null);
       setCoordsState(null);
       coordsRef.current = null;
       setCoordsIsFresh(false);
@@ -114,19 +128,41 @@ export function LocationProvider({ children }) {
     let cancelled = false;
 
     (async () => {
-      const cached = await loadLastLocation();
+      const existing = await Location.getForegroundPermissionsAsync();
       if (cancelled) return;
-      if (cached) {
-        applyCoords(cached, { fresh: false });
+
+      if (existing.status === Location.PermissionStatus.GRANTED) {
+        setPermissionGranted(true);
         setIsReady(true);
+        const cached = await loadLastLocation();
+        if (!cancelled && cached) {
+          applyCoords(cached, { fresh: false });
+        }
+        if (!cancelled) {
+          await hydrateCoordsIfGranted();
+        }
+        return;
       }
-      await runLocationFlow();
+
+      if (existing.status === Location.PermissionStatus.UNDETERMINED) {
+        const asked = await Location.requestForegroundPermissionsAsync();
+        if (cancelled) return;
+        if (asked.status === Location.PermissionStatus.GRANTED) {
+          setPermissionGranted(true);
+          setIsReady(true);
+          await hydrateCoordsIfGranted();
+          return;
+        }
+      }
+
+      setPermissionGranted(false);
+      setIsReady(true);
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [isLoggedIn, runLocationFlow, applyCoords]);
+  }, [isLoggedIn, applyCoords, hydrateCoordsIfGranted]);
 
   const refreshLocation = useCallback(async () => {
     if (!isLoggedIn || !permissionGrantedRef.current) return;
@@ -158,7 +194,14 @@ export function LocationProvider({ children }) {
         return;
       }
       if (nextState === 'active') {
-        refreshLocation();
+        Location.getForegroundPermissionsAsync()
+          .then(({ status }) => {
+            if (status === Location.PermissionStatus.GRANTED) {
+              setPermissionGranted(true);
+              refreshLocation();
+            }
+          })
+          .catch(() => {});
       }
     });
 
@@ -166,7 +209,7 @@ export function LocationProvider({ children }) {
   }, [isLoggedIn, refreshLocation]);
 
   const retryPermission = useCallback(async () => {
-    await runLocationFlow();
+    await runLocationFlow({ requestIfNeeded: true });
   }, [runLocationFlow]);
 
   const value = useMemo(
@@ -204,120 +247,162 @@ export function useLocationContext() {
 }
 
 /**
- * 로그인 후 메인 앱 진입 시 위치 권한이 없으면 앱 사용을 막습니다.
- * 권한이 허용되면 좌표 수신 전에도 메인으로 진입합니다(캐시·비동기 GPS).
+ * 권한이 거부된 뒤에만 안내 화면. 확인 중이거나 허용이면 바로 홈.
  */
 export function LocationGate({ children }) {
-  const { isReady, permissionGranted, retryPermission } = useLocationContext();
+  const { permissionGranted, retryPermission } = useLocationContext();
+  const { width } = useWindowDimensions();
+  const n = (size) => Math.round((width / 375) * size);
 
-  if (!isReady) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: colors.background,
-        }}
-      >
-        <Skeleton width={28} height={28} borderRadius={14} />
-        <Text
-          style={{
-            marginTop: 16,
-            fontFamily: fonts.regular,
-            color: colors.textSecondary,
-          }}
-        >
-          위치 권한을 확인하는 중이에요…
-        </Text>
-      </View>
-    );
+  if (permissionGranted !== false) {
+    return children;
   }
 
-  if (!permissionGranted) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-          paddingHorizontal: 28,
-          backgroundColor: colors.background,
-        }}
-      >
-        <Text
-          style={{
-            fontFamily: fonts.bold,
-            fontSize: 18,
-            color: colors.textPrimary,
-            textAlign: 'center',
-            marginBottom: 12,
-          }}
-        >
-          위치 권한이 필요해요
-        </Text>
-        <Text
-          style={{
-            fontFamily: fonts.regular,
-            fontSize: 15,
-            color: colors.textSecondary,
-            textAlign: 'center',
-            lineHeight: 22,
-            marginBottom: 28,
-          }}
-        >
-          게시판 거리·근처 글 보기를 위해 위치 접근을 허용해 주세요. 설정에서
-          권한을 켠 뒤 앱으로 돌아오면 계속할 수 있어요.
-        </Text>
-        <TouchableOpacity
-          onPress={() => retryPermission()}
-          style={{
-            borderWidth: 1,
-            borderColor: colors.border,
-            paddingVertical: 12,
-            paddingHorizontal: 20,
-            borderRadius: 12,
-            marginBottom: 10,
-          }}
-        >
-          <Text
-            style={{
-              fontFamily: fonts.bold,
-              color: colors.textPrimary,
-              fontSize: 15,
-            }}
+  return (
+    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+      <View style={[styles.inner, { paddingHorizontal: n(24) }]}>
+        <View style={styles.hero}>
+          <View
+            style={[
+              styles.iconCircle,
+              {
+                width: n(88),
+                height: n(88),
+                borderRadius: n(44),
+                marginBottom: n(24),
+              },
+            ]}
           >
-            권한 다시 요청
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => Linking.openSettings()}
-          style={{
-            backgroundColor: colors.primary,
-            paddingVertical: 14,
-            paddingHorizontal: 24,
-            borderRadius: 12,
-            marginBottom: 12,
-          }}
-        >
-          <Text style={{ fontFamily: fonts.bold, color: '#fff', fontSize: 16 }}>
-            설정 열기
-          </Text>
-        </TouchableOpacity>
-        {Platform.OS === 'android' ? (
+            <Feather name="map-pin" size={n(30)} color={colors.primaryDark} />
+          </View>
           <Text
-            style={{
-              fontFamily: fonts.regular,
-              fontSize: 12,
-              color: colors.textSecondary,
-            }}
+            style={[
+              styles.title,
+              { fontSize: n(22), lineHeight: n(30), marginBottom: n(10) },
+            ]}
           >
-            일부 기기에서는 위치 권한을 “앱 사용 중에만”으로 설정해 주세요.
+            위치 권한이 필요해요
           </Text>
-        ) : null}
-      </View>
-    );
-  }
+          <Text
+            style={[
+              styles.body,
+              { fontSize: n(14), lineHeight: n(22) },
+            ]}
+          >
+            근처 글과 거리를 보여 주려면{'\n'}위치 접근을 허용해 주세요.
+          </Text>
+        </View>
 
-  return children;
+        <View style={[styles.actions, { paddingBottom: n(8), gap: n(10) }]}>
+          <Pressable
+            onPress={() => Linking.openSettings()}
+            style={({ pressed }) => [
+              styles.button,
+              styles.primaryButton,
+              {
+                height: n(52),
+                borderRadius: n(16),
+              },
+              pressed && styles.primaryPressed,
+            ]}
+          >
+            <Text style={[styles.primaryLabel, { fontSize: n(15) }]}>
+              설정에서 허용하기
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => retryPermission()}
+            style={({ pressed }) => [
+              styles.button,
+              styles.secondaryButton,
+              {
+                height: n(52),
+                borderRadius: n(16),
+              },
+              pressed && styles.secondaryPressed,
+            ]}
+          >
+            <Text style={[styles.secondaryLabel, { fontSize: n(15) }]}>
+              권한 다시 요청
+            </Text>
+          </Pressable>
+          <Text
+            style={[
+              styles.hint,
+              { fontSize: n(12), lineHeight: n(18), marginTop: n(6) },
+            ]}
+          >
+            {Platform.OS === 'android'
+              ? '설정에서 위치를 “앱 사용 중에만”으로 켜 주세요.'
+              : '허용한 뒤 앱으로 돌아오면 이어서 볼 수 있어요.'}
+          </Text>
+        </View>
+      </View>
+    </SafeAreaView>
+  );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: colors.white,
+  },
+  inner: {
+    flex: 1,
+  },
+  hero: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconCircle: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primaryLight3,
+  },
+  title: {
+    fontFamily: fonts.bold,
+    color: colors.text,
+    textAlign: 'center',
+  },
+  body: {
+    fontFamily: fonts.regular,
+    color: colors.textLight6,
+    textAlign: 'center',
+  },
+  actions: {
+    width: '100%',
+  },
+  button: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryButton: {
+    backgroundColor: colors.primaryDark,
+  },
+  primaryPressed: {
+    opacity: 0.88,
+  },
+  secondaryButton: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.textLight1,
+  },
+  secondaryPressed: {
+    backgroundColor: colors.textLight0,
+  },
+  primaryLabel: {
+    fontFamily: fonts.bold,
+    color: colors.white,
+  },
+  secondaryLabel: {
+    fontFamily: fonts.bold,
+    color: colors.textLight8,
+  },
+  hint: {
+    fontFamily: fonts.regular,
+    color: colors.textLight4,
+    textAlign: 'center',
+  },
+});

@@ -17,6 +17,7 @@ export default memo(MessageItem, (prev, next) => {
     a.content === b.content &&
     a.isReadByOther === b.isReadByOther &&
     a.showProfile === b.showProfile &&
+    prev.opponentAvatarUrl === next.opponentAvatarUrl &&
     a.showTimestamp === b.showTimestamp &&
     a.images?.length === b.images?.length
   );

@@ -8,24 +8,25 @@ import React, {
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   useWindowDimensions,
   Platform,
   Keyboard,
   TouchableWithoutFeedback,
-  Alert,
-  Modal,
   BackHandler,
   Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { createLoginStyles } from '../../../styles/login.style';
 import { colors } from '../../../styles/colors';
+import LogoIcon from '../../../assets/Logo.svg';
 import kakaoLoginIcon from '../../../assets/kakao_login_icon.png';
 import appleLogo from '../../../assets/apple_logo.png';
+import AuthScreenShell from './AuthScreenShell';
+import AuthCard from './AuthCard';
+import AuthTextField from './AuthTextField';
+import AuthPrimaryButton from './AuthPrimaryButton';
 import {
   api,
   setAuthToken,
@@ -34,10 +35,11 @@ import {
   getApiUserFacingMessage,
 } from '../../../utils/api';
 import { useAuth } from '../../../context/AuthContext';
-import { GrowingUnderline } from './SchoolSearchField';
 import { loginWithKakao } from '../../../services/kakaoAuth';
 import { loginWithApple } from '../../../services/appleAuth';
 import { reportInstallOpen } from '../../../utils/appPresence';
+import { appAlert } from '../../../utils/appAlert';
+import AppPopupModal from '../../../components/common/AppPopupModal';
 
 /** 로그인 실패 안내 — 사용자용 문구만 (기술 정보는 __DEV__ 콘솔) */
 function buildLoginFailureMessage(error) {
@@ -79,8 +81,8 @@ const Login = ({ navigation }) => {
 
   const [id, setId] = useState('');
   const [password, setPassword] = useState('');
-  const [idFocused, setIdFocused] = useState(false);
-  const [passwordFocused, setPasswordFocused] = useState(false);
+  const [idError, setIdError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const [screenReady] = useState(true);
   const [policyModal, setPolicyModal] = useState({
     visible: false,
@@ -128,7 +130,7 @@ const Login = ({ navigation }) => {
     try {
       const { accessToken } = await loginWithKakao();
       if (!accessToken) {
-        Alert.alert('로그인 실패', '카카오 토큰을 받지 못했습니다.');
+        appAlert.alert('로그인 실패', '카카오 토큰을 받지 못했습니다.');
         return;
       }
 
@@ -170,7 +172,7 @@ const Login = ({ navigation }) => {
       }
       const serverCode = error?.response?.data?.code;
       if (serverCode === 'NEEDS_SIGNUP') {
-        Alert.alert(
+        appAlert.alert(
           '가입 필요',
           '연동된 계정이 없습니다. 카카오로 회원가입을 진행해 주세요.',
           [
@@ -252,7 +254,7 @@ const Login = ({ navigation }) => {
         });
         return;
       }
-      Alert.alert('로그인 실패', buildLoginFailureMessage(error));
+      appAlert.alert('로그인 실패', buildLoginFailureMessage(error));
     }
   }, [login, navigation]);
 
@@ -260,11 +262,11 @@ const Login = ({ navigation }) => {
     try {
       const { identityToken, isMock } = await loginWithApple();
       if (!identityToken) {
-        Alert.alert('로그인 실패', 'Apple 토큰을 받지 못했습니다.');
+        appAlert.alert('로그인 실패', 'Apple 토큰을 받지 못했습니다.');
         return;
       }
       if (isMock && !__DEV__) {
-        Alert.alert('알림', 'Apple 로그인은 iOS에서만 사용할 수 있습니다.');
+        appAlert.alert('알림', 'Apple 로그인은 iOS에서만 사용할 수 있습니다.');
         return;
       }
 
@@ -298,12 +300,12 @@ const Login = ({ navigation }) => {
         return;
       }
       if (error?.code === 'APPLE_UNAVAILABLE') {
-        Alert.alert('알림', error.message || 'Apple 로그인을 사용할 수 없습니다.');
+        appAlert.alert('알림', error.message || 'Apple 로그인을 사용할 수 없습니다.');
         return;
       }
       const serverCode = error?.response?.data?.code;
       if (serverCode === 'NEEDS_SIGNUP') {
-        Alert.alert(
+        appAlert.alert(
           '가입 필요',
           '연동된 계정이 없습니다. Apple로 회원가입을 진행해 주세요.',
           [
@@ -316,7 +318,7 @@ const Login = ({ navigation }) => {
         );
         return;
       }
-      Alert.alert(
+      appAlert.alert(
         '로그인 실패',
         buildLoginFailureMessage(error),
       );
@@ -325,9 +327,12 @@ const Login = ({ navigation }) => {
 
   const handleLogin = useCallback(async () => {
     if (!id || !password) {
-      Alert.alert('알림', '아이디와 비밀번호를 입력해주세요.');
+      setIdError(!id ? '아이디를 입력해 주세요.' : '');
+      setPasswordError(!password ? '비밀번호를 입력해 주세요.' : '');
       return;
     }
+    setIdError('');
+    setPasswordError('');
 
     try {
       const loginPayload = {
@@ -475,7 +480,7 @@ const Login = ({ navigation }) => {
         return;
       }
 
-      Alert.alert('로그인 실패', buildLoginFailureMessage(error));
+      appAlert.alert('로그인 실패', buildLoginFailureMessage(error));
     }
   }, [id, password, login]);
 
@@ -506,133 +511,122 @@ const Login = ({ navigation }) => {
   if (!screenReady) return null;
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+    <AuthScreenShell>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.body}>
           <KeyboardAwareScrollView
             ref={scrollRef}
             mode="layout"
             style={{ flex: 1 }}
-            contentContainerStyle={styles.bodyScroll}
+            contentContainerStyle={[
+              styles.bodyScroll,
+              keyboardOpen && styles.bodyScrollKeyboard,
+            ]}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
             showsVerticalScrollIndicator={false}
             bottomOffset={16}
-            scrollEnabled={keyboardOpen}
+            scrollEnabled
           >
-            <Text style={styles.screenTitle}>로그인</Text>
-
-            <View style={styles.underlineInputContainer}>
-              <TextInput
-                style={[
-                  styles.underlineInput,
-                  idFocused && styles.underlineInputFocused,
-                ]}
-                placeholder="아이디"
-                placeholderTextColor={colors.textSecondary}
-                value={id}
-                onChangeText={setId}
-                onFocus={() => {
-                  setIdFocused(true);
-                  scrollLoginInputsAboveKeyboard();
-                }}
-                onBlur={() => setIdFocused(false)}
-                autoCapitalize="none"
-              />
-              <View style={styles.underlineGrowSlot}>
-                <GrowingUnderline
-                  active={idFocused || Boolean(id)}
-                  normalize={normalize}
-                  fillColor={colors.textLight40}
+            <AuthCard>
+              <View style={styles.brand}>
+                <LogoIcon
+                  width={normalize(56)}
+                  height={normalize(56)}
+                  color={colors.primary}
                 />
+                <Text style={styles.brandTitle}>Youth Paper</Text>
+                <Text style={styles.brandSub}>다시 만나서 반가워요</Text>
               </View>
 
-              <TextInput
-                style={[
-                  styles.underlineInput,
-                  styles.underlineInputSpaced,
-                  passwordFocused && styles.underlineInputFocused,
-                ]}
-                placeholder="비밀번호"
-                placeholderTextColor={colors.textSecondary}
-                value={password}
-                onChangeText={setPassword}
-                onFocus={() => {
-                  setPasswordFocused(true);
-                  scrollLoginInputsAboveKeyboard();
+              <AuthTextField
+                icon="user"
+                placeholder="아이디"
+                value={id}
+                error={idError}
+                autoCapitalize="none"
+                autoCorrect={false}
+                onChangeText={(text) => {
+                  setId(text);
+                  if (idError) setIdError('');
                 }}
-                onBlur={() => setPasswordFocused(false)}
+                onFocus={scrollLoginInputsAboveKeyboard}
+                style={styles.fieldGap}
+              />
+              <AuthTextField
+                icon="lock"
+                placeholder="비밀번호"
+                value={password}
+                error={passwordError}
                 secureTextEntry
                 autoCapitalize="none"
+                autoCorrect={false}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  if (passwordError) setPasswordError('');
+                }}
+                onFocus={scrollLoginInputsAboveKeyboard}
+                style={styles.fieldGap}
               />
-              <View style={styles.underlineGrowSlot}>
-                <GrowingUnderline
-                  active={passwordFocused || Boolean(password)}
-                  normalize={normalize}
-                  fillColor={colors.textLight40}
-                />
+
+              <AuthPrimaryButton
+                label="로그인"
+                onPress={handleLogin}
+                style={styles.loginCta}
+              />
+
+              <View style={styles.findLinkContainer}>
+                <TouchableOpacity onPress={() => navigation.navigate('IDfind')}>
+                  <Text style={styles.linkText}>아이디 찾기</Text>
+                </TouchableOpacity>
+                <Text style={styles.linkDivider}>|</Text>
+                <TouchableOpacity onPress={() => navigation.navigate('PWfind')}>
+                  <Text style={styles.linkText}>비밀번호 찾기</Text>
+                </TouchableOpacity>
               </View>
-            </View>
 
-            <TouchableOpacity
-              style={styles.loginButton}
-              onPress={handleLogin}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.loginButtonText}>로그인</Text>
-            </TouchableOpacity>
+              <View style={styles.socialDividerRow}>
+                <View style={styles.socialDividerLine} />
+                <Text style={styles.socialDividerText}>간편 로그인</Text>
+                <View style={styles.socialDividerLine} />
+              </View>
 
-            <View style={styles.findLinkContainer}>
-              <TouchableOpacity onPress={() => navigation.navigate('IDfind')}>
-                <Text style={styles.linkText}>아이디 찾기</Text>
-              </TouchableOpacity>
-              <Text style={styles.linkDivider}>|</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('PWfind')}>
-                <Text style={styles.linkText}>비밀번호 찾기</Text>
-              </TouchableOpacity>
-            </View>
+              <View style={styles.socialRow}>
+                <TouchableOpacity
+                  style={[styles.socialCircleButton, styles.kakaoCircleButton]}
+                  onPress={handleKakaoLogin}
+                  activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityLabel="카카오로 로그인"
+                >
+                  <Image
+                    source={kakaoLoginIcon}
+                    style={{
+                      width: normalize(25),
+                      height: normalize(25),
+                    }}
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
 
-            <View style={styles.socialDividerRow}>
-              <View style={styles.socialDividerLine} />
-              <Text style={styles.socialDividerText}>간편 로그인</Text>
-              <View style={styles.socialDividerLine} />
-            </View>
-
-            <View style={styles.socialRow}>
-              <TouchableOpacity
-                style={[styles.socialCircleButton, styles.kakaoCircleButton]}
-                onPress={handleKakaoLogin}
-                activeOpacity={0.85}
-                accessibilityRole="button"
-                accessibilityLabel="카카오로 로그인"
-              >
-                <Image
-                  source={kakaoLoginIcon}
-                  style={{
-                    width: normalize(25),
-                    height: normalize(25),
-                  }}
-                  resizeMode="contain"
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.socialCircleButton, styles.appleCircleButton]}
-                onPress={handleAppleLogin}
-                activeOpacity={0.85}
-                accessibilityRole="button"
-                accessibilityLabel="Apple로 로그인"
-              >
-                <Image
-                  source={appleLogo}
-                  style={{
-                    width: normalize(25),
-                    height: normalize(35),
-                  }}
-                  resizeMode="contain"
-                />
-              </TouchableOpacity>
-            </View>
+                <TouchableOpacity
+                  style={[styles.socialCircleButton, styles.appleCircleButton]}
+                  onPress={handleAppleLogin}
+                  activeOpacity={0.85}
+                  accessibilityRole="button"
+                  accessibilityLabel="Apple로 로그인"
+                >
+                  <Image
+                    source={appleLogo}
+                    style={{
+                      width: normalize(25),
+                      height: normalize(35),
+                    }}
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
+              </View>
+            </AuthCard>
 
             <View style={styles.signupFooter}>
               <Text style={styles.signupFooterText}>
@@ -649,115 +643,39 @@ const Login = ({ navigation }) => {
         </View>
       </TouchableWithoutFeedback>
 
-      <Modal
+      <AppPopupModal
         visible={policyModal.visible}
-        transparent
-        animationType="fade"
-        onRequestClose={() =>
+        onClose={() =>
           setPolicyModal((prev) => ({ ...prev, visible: false }))
         }
+        dismissOnBackdrop
       >
-        <TouchableWithoutFeedback
-          onPress={() =>
-            setPolicyModal((prev) => ({ ...prev, visible: false }))
-          }
-        >
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: 'rgba(0,0,0,0.38)',
-              justifyContent: 'center',
-              paddingHorizontal: normalize(24),
+        <Text style={styles.policyTitle}>{policyModal.title}</Text>
+        <Text style={styles.policyHighlight}>{policyModal.highlight}</Text>
+        <Text style={styles.policyBody}>{policyModal.body}</Text>
+        <View style={styles.policyActions}>
+          <TouchableOpacity
+            style={styles.policyOutlineBtn}
+            onPress={() => {
+              setPolicyModal((prev) => ({ ...prev, visible: false }));
+              navigation.navigate('Inquiry', {
+                contactUsername: id?.trim() || '',
+              });
             }}
           >
-            <TouchableWithoutFeedback>
-              <View
-                style={{
-                  backgroundColor: '#fff',
-                  borderRadius: normalize(14),
-                  padding: normalize(18),
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: normalize(17),
-                    fontWeight: '700',
-                    color: colors.textPrimary,
-                    marginBottom: normalize(10),
-                  }}
-                >
-                  {policyModal.title}
-                </Text>
-                <Text
-                  style={{
-                    fontSize: normalize(15),
-                    fontWeight: '700',
-                    color: '#D32F2F',
-                    marginBottom: normalize(10),
-                  }}
-                >
-                  {policyModal.highlight}
-                </Text>
-                <Text
-                  style={{
-                    fontSize: normalize(14),
-                    lineHeight: normalize(20),
-                    color: colors.textSecondary,
-                  }}
-                >
-                  {policyModal.body}
-                </Text>
-                <View
-                  style={{
-                    marginTop: normalize(16),
-                    flexDirection: 'row',
-                    justifyContent: 'flex-end',
-                    alignItems: 'center',
-                    gap: normalize(8),
-                  }}
-                >
-                  <TouchableOpacity
-                    style={{
-                      borderWidth: 1,
-                      borderColor: colors.primary,
-                      borderRadius: normalize(10),
-                      paddingVertical: normalize(8),
-                      paddingHorizontal: normalize(14),
-                      marginRight: normalize(8),
-                    }}
-                    onPress={() => {
-                      setPolicyModal((prev) => ({ ...prev, visible: false }));
-                      navigation.navigate('Inquiry', {
-                        contactUsername: id?.trim() || '',
-                      });
-                    }}
-                  >
-                    <Text style={{ color: colors.primary, fontWeight: '700' }}>
-                      문의하기
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={{
-                      backgroundColor: colors.primary,
-                      borderRadius: normalize(10),
-                      paddingVertical: normalize(8),
-                      paddingHorizontal: normalize(14),
-                    }}
-                    onPress={() =>
-                      setPolicyModal((prev) => ({ ...prev, visible: false }))
-                    }
-                  >
-                    <Text style={{ color: '#fff', fontWeight: '700' }}>
-                      확인
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
-    </SafeAreaView>
+            <Text style={styles.policyOutlineText}>문의하기</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.policyFillBtn}
+            onPress={() =>
+              setPolicyModal((prev) => ({ ...prev, visible: false }))
+            }
+          >
+            <Text style={styles.policyFillText}>확인</Text>
+          </TouchableOpacity>
+        </View>
+      </AppPopupModal>
+    </AuthScreenShell>
   );
 };
 

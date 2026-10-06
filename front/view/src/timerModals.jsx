@@ -30,6 +30,10 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../../styles/colors';
 import { getNormalize, createTimerModalsStyles } from '../../styles/timer';
 import { getTimerDayKey } from '../../utils/timerStorage';
+import {
+  TIMER_SUBJECT_NAME_MAX,
+  TIMER_TASK_CONTENT_MAX,
+} from './timer/timerHelpers';
 import Skeleton from '../../components/common/Skeleton';
 import { useKeyboardHandler } from 'react-native-keyboard-controller';
 
@@ -233,9 +237,10 @@ export const AddSubjectModal = ({ visible, onClose, onAdd }) => {
               <TextInput
                 style={m.input}
                 placeholder="과목명"
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={colors.textLight4}
                 value={name}
-                onChangeText={setName}
+                onChangeText={(text) => setName(String(text || '').slice(0, TIMER_SUBJECT_NAME_MAX))}
+                maxLength={TIMER_SUBJECT_NAME_MAX}
                 autoFocus
               />
               {subjectPresets.length > 0 ? (
@@ -272,39 +277,39 @@ export const AddSubjectModal = ({ visible, onClose, onAdd }) => {
                   </ScrollView>
                 </View>
               ) : null}
-              <View style={m.colorRow}>
-                <View style={m.colorLabelRow}>
-                  <Text style={[m.label, m.labelNoMargin]}>색상</Text>
+              <View style={m.colorSection}>
+                <Text style={m.label}>색상</Text>
+                <View style={m.colorRow}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={m.colorScroll}
+                    keyboardShouldPersistTaps="always"
+                  >
+                    <View style={m.colorWrap}>
+                      {SUBJECT_COLORS.map((c) => (
+                        <TouchableOpacity
+                          key={c}
+                          onPress={() => setColor(c)}
+                          style={[
+                            m.colorDot,
+                            { backgroundColor: c },
+                            color === c && m.colorDotSelected,
+                          ]}
+                        />
+                      ))}
+                    </View>
+                  </ScrollView>
+                  <TouchableOpacity onPress={pickRandom} style={m.randomBtn}>
+                    <Ionicons
+                      name="shuffle"
+                      size={normalize(14)}
+                      color={colors.textLight4}
+                      style={m.randomIcon}
+                    />
+                    <Text style={m.randomText}>랜덤</Text>
+                  </TouchableOpacity>
                 </View>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={m.colorScroll}
-                  keyboardShouldPersistTaps="always"
-                >
-                  <View style={m.colorWrap}>
-                    {SUBJECT_COLORS.map((c) => (
-                      <TouchableOpacity
-                        key={c}
-                        onPress={() => setColor(c)}
-                        style={[
-                          m.colorDot,
-                          { backgroundColor: c },
-                          color === c && m.colorDotSelected,
-                        ]}
-                      />
-                    ))}
-                  </View>
-                </ScrollView>
-                <TouchableOpacity onPress={pickRandom} style={m.randomBtn}>
-                  <Ionicons
-                    name="shuffle"
-                    size={normalize(14)}
-                    color={colors.textSecondary}
-                    style={m.randomIcon}
-                  />
-                  <Text style={m.randomText}>랜덤</Text>
-                </TouchableOpacity>
               </View>
               <View style={m.row}>
                 <TouchableOpacity style={m.cancelBtn} onPress={onClose}>
@@ -447,9 +452,12 @@ export const AddTaskModal = ({
               <TextInput
                 style={[m.input, m.inputMultiline]}
                 placeholder="할 일 내용"
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={colors.textLight4}
                 value={content}
-                onChangeText={setContent}
+                onChangeText={(text) =>
+                  setContent(String(text || '').slice(0, TIMER_TASK_CONTENT_MAX))
+                }
+                maxLength={TIMER_TASK_CONTENT_MAX}
                 multiline
                 autoFocus
               />
@@ -584,7 +592,7 @@ export const CalendarModal = ({
                 <Ionicons
                   name="chevron-back"
                   size={normalize(20)}
-                  color={colors.textPrimary}
+                  color={colors.text}
                 />
               </TouchableOpacity>
               <Text style={m.calendarMonthTitle}>
@@ -598,7 +606,7 @@ export const CalendarModal = ({
                 <Ionicons
                   name="chevron-forward"
                   size={normalize(20)}
-                  color={canGoNextMonth ? colors.textPrimary : colors.textLight20}
+                  color={canGoNextMonth ? colors.text : colors.textLight2}
                 />
               </TouchableOpacity>
             </View>
@@ -637,7 +645,7 @@ export const CalendarModal = ({
                           style={[
                             m.dayText,
                             isSelected && m.dayTextSelected,
-                            isFuture && { color: colors.textLight20 },
+                            isFuture && { color: colors.textLight2 },
                           ]}
                         >
                           {day}

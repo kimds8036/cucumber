@@ -17,6 +17,15 @@ import { normalizeTagsFromApi } from '../../utils/normalizePostTags';
 import { equippedBadgeFromApiRow } from '../../constants/badges';
 import BoardPostCard from '../../components/Boardpostcard';
 import Skeleton from '../../components/common/Skeleton';
+import SortChips from '../../components/common/SortChips';
+
+/** value는 서버 board_type (학교우편만 별도 API) */
+const BOARD_CHIPS = [
+  { value: 'national', label: '전체게시판' },
+  { value: 'student', label: '학생게시판' },
+  { value: 'school', label: '학교게시판' },
+];
+const MAIL_CHIP = { value: 'mail', label: '학교우편' };
 
 /** 서버 created_at(UTC)을 "n분 전" 형식으로 (boardAll과 동일) */
 function formatTimeAgo(createdAt) {
@@ -88,44 +97,52 @@ const ActivityPage = ({ navigation, route }) => {
     [width, normalize],
   );
   const listKind = tabFromRoute(route);
+  const chipOptions = useMemo(
+    () => (listKind === 'written' ? [...BOARD_CHIPS, MAIL_CHIP] : BOARD_CHIPS),
+    [listKind],
+  );
+  const [boardTab, setBoardTab] = useState(BOARD_CHIPS[0].value);
   const [posts, setPosts] = useState([]);
   const [schoolMails, setSchoolMails] = useState([]);
   const [loading, setLoading] = useState(false);
   const layoutEpochRef = useRef(0);
+  const isMailTab = boardTab === MAIL_CHIP.value;
 
   useEffect(() => {
     let mounted = true;
     const kind = tabFromRoute(route);
+    const tab =
+      kind !== 'written' && boardTab === MAIL_CHIP.value
+        ? BOARD_CHIPS[0].value
+        : boardTab;
 
     const fetchData = async () => {
+      setLoading(true);
+      setPosts([]);
+      setSchoolMails([]);
       try {
-        setLoading(true);
-        const url =
-          kind === 'written' ? '/api/posts/my' : '/api/posts/scrapped';
-        const requests = [api.get(url, { params: { page: 1, limit: 50 } })];
-        if (kind === 'written') {
-          requests.push(api.get('/api/mails/school/my', { params: { limit: 50 } }));
-        }
-        const [res, mailRes] = await Promise.all(requests);
-
-        if (!mounted) return;
-
-        const mapped = (res.data?.data?.posts || []).map((p) =>
-          mapServerPostToCard(p, kind),
-        );
-        setPosts(mapped);
-        if (kind === 'written') {
+        if (tab === MAIL_CHIP.value) {
+          const mailRes = await api.get('/api/mails/school/my', {
+            params: { limit: 50 },
+          });
+          if (!mounted) return;
           setSchoolMails(mailRes?.data?.data?.mails || []);
         } else {
-          setSchoolMails([]);
+          const url =
+            kind === 'written' ? '/api/posts/my' : '/api/posts/scrapped';
+          const res = await api.get(url, {
+            params: { boardType: tab, page: 1, limit: 50 },
+          });
+          if (!mounted) return;
+          setPosts(
+            (res.data?.data?.posts || []).map((p) =>
+              mapServerPostToCard(p, kind),
+            ),
+          );
         }
         layoutEpochRef.current += 1;
       } catch (error) {
         console.error('내 활동 게시글 로드 실패:', error);
-        if (mounted) {
-          setPosts([]);
-          setSchoolMails([]);
-        }
       } finally {
         if (mounted) setLoading(false);
       }
@@ -135,24 +152,42 @@ const ActivityPage = ({ navigation, route }) => {
     return () => {
       mounted = false;
     };
-  }, [route?.params?.tab]);
+  }, [route?.params?.tab, boardTab]);
 
   const screenTitle = listKind === 'written' ? '내가 쓴 글' : '스크랩한 글';
   const layoutEpoch = layoutEpochRef.current;
+  const hasItems = isMailTab ? schoolMails.length > 0 : posts.length > 0;
+  const emptyIcon = isMailTab
+    ? 'mail-outline'
+    : listKind === 'written'
+      ? 'document-text-outline'
+      : 'bookmark-outline';
+  const emptyText = isMailTab
+    ? '아직 보낸 학교 우편이 없어요'
+    : listKind === 'written'
+      ? '아직 작성한 글이 없어요'
+      : '스크랩한 글이 없습니다';
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <SubHeader title={screenTitle} onBack={() => navigation.goBack()} />
+      <SortChips
+        value={boardTab}
+        onChange={setBoardTab}
+        options={chipOptions}
+        containerStyle={{ paddingTop: normalize(8) }}
+        scrollable
+      />
 
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingHorizontal: width * 0.04, paddingTop: normalize(16) },
+          { paddingHorizontal: width * 0.04, paddingTop: normalize(6) },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {loading && posts.length === 0 && schoolMails.length === 0 ? (
+        {loading && !hasItems ? (
           <View>
             {[0, 1, 2, 3].map((idx) => (
               <View key={`skel-${idx}`} style={boardStyles.postItem}>
@@ -209,20 +244,10 @@ const ActivityPage = ({ navigation, route }) => {
               </View>
             ))}
           </View>
-        ) : posts.length > 0 || (listKind === 'written' && schoolMails.length > 0) ? (
+        ) : hasItems ? (
           <View>
-            {listKind === 'written' && schoolMails.length > 0 ? (
-              <View style={{ marginBottom: normalize(20) }}>
-                <Text
-                  style={{
-                    fontFamily: 'Baloo2-Bold',
-                    fontSize: normalize(15),
-                    color: colors.textPrimary,
-                    marginBottom: normalize(10),
-                  }}
-                >
-                  학교 우편
-                </Text>
+            {isMailTab ? (
+              <View>
                 {schoolMails.map((mail) => (
                   <TouchableOpacity
                     key={`mail-${mail.id}`}
@@ -235,7 +260,7 @@ const ActivityPage = ({ navigation, route }) => {
                     <Text
                       style={{
                         fontSize: normalize(12),
-                        color: colors.textSecondary,
+                        color: colors.textLight4,
                         marginBottom: normalize(6),
                       }}
                     >
@@ -244,7 +269,7 @@ const ActivityPage = ({ navigation, route }) => {
                     <Text
                       style={{
                         fontSize: normalize(14),
-                        color: colors.textPrimary,
+                        color: colors.text,
                         lineHeight: normalize(20),
                       }}
                       numberOfLines={2}
@@ -254,52 +279,33 @@ const ActivityPage = ({ navigation, route }) => {
                   </TouchableOpacity>
                 ))}
               </View>
-            ) : null}
-            {posts.length > 0 ? (
-              <Text
-                style={{
-                  fontFamily: 'Baloo2-Bold',
-                  fontSize: normalize(15),
-                  color: colors.textPrimary,
-                  marginBottom: normalize(10),
-                }}
-              >
-                게시판
-              </Text>
-            ) : null}
-            {posts.map((post) => (
-              <BoardPostCard
-                key={post.id}
-                post={post}
-                normalize={normalize}
-                styles={boardStyles}
-                layoutStableEpoch={layoutEpoch}
-                hideDistanceBadge
-                onPress={() =>
-                  navigation.navigate('BoardDetail', {
-                    post: { ...post, author: post.author },
-                    isMyPost: listKind === 'written',
-                  })
-                }
-              />
-            ))}
+            ) : (
+              posts.map((post) => (
+                <BoardPostCard
+                  key={post.id}
+                  post={post}
+                  normalize={normalize}
+                  styles={boardStyles}
+                  layoutStableEpoch={layoutEpoch}
+                  hideDistanceBadge
+                  onPress={() =>
+                    navigation.navigate('BoardDetail', {
+                      post: { ...post, author: post.author },
+                      isMyPost: listKind === 'written',
+                    })
+                  }
+                />
+              ))
+            )}
           </View>
         ) : (
           <View style={styles.empty}>
             <Ionicons
-              name={
-                listKind === 'written'
-                  ? 'document-text-outline'
-                  : 'bookmark-outline'
-              }
+              name={emptyIcon}
               size={normalize(48)}
-              color={colors.textLight20}
+              color={colors.textLight2}
             />
-            <Text style={styles.emptyText}>
-              {listKind === 'written'
-                ? '아직 작성한 글이 없어요'
-                : '스크랩한 글이 없습니다'}
-            </Text>
+            <Text style={styles.emptyText}>{emptyText}</Text>
           </View>
         )}
         <View style={styles.scrollBottomSpacer} />

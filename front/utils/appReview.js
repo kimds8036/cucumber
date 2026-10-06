@@ -4,9 +4,17 @@
 import { Linking, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
-import * as StoreReview from 'expo-store-review';
 import { api } from './api';
 import { getStoreUrlForPlatform } from './shareLinks';
+
+/** 개발 클라이언트에 ExpoStoreReview가 없으면 require 시점에 앱이 죽는다. */
+function loadStoreReview() {
+  try {
+    return require('expo-store-review');
+  } catch {
+    return null;
+  }
+}
 
 const STORAGE_KEY = '@youthpaper/store_review_meta_v1';
 const FEEDBACK_KEY = '@youthpaper/in_app_review_feedback_v1';
@@ -93,6 +101,15 @@ export async function openStoreListing() {
 export async function requestAppReview({ openStoreFallback = true } = {}) {
   let available = false;
   let hasAction = false;
+  const StoreReview = loadStoreReview();
+  if (!StoreReview) {
+    if (openStoreFallback) {
+      await openStoreListing();
+      await writeMeta({ lastAskedAt: Date.now() });
+      return 'store';
+    }
+    return 'unavailable';
+  }
   try {
     available = await StoreReview.isAvailableAsync();
     if (available) {

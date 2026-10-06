@@ -139,20 +139,20 @@ const styles = StyleSheet.create({
   stage: {
     flex: 1,
     minHeight: 280,
-    backgroundColor: '#000',
+    backgroundColor: colors.text,
     borderRadius: 12,
     overflow: 'hidden',
   },
   readyMask: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#000',
+    backgroundColor: colors.text,
   },
   readyText: {
     marginTop: 10,
-    color: colors.textWhite,
+    color: colors.white,
     fontSize: 14,
   },
   statusBottom: {
