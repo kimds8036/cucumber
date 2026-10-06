@@ -6,22 +6,22 @@ export const getNormalize = (width) => {
   return (size) => Math.round(scale * size);
 };
 
-export const createPinStyles = (normalize) =>
+export const createPinStyles = (normalize, width) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     content: {
       flex: 1,
       alignItems: 'center',
       paddingTop: normalize(100),
-      paddingHorizontal: normalize(24),
+      paddingHorizontal: width * 0.04,
     },
     title: {
       fontSize: normalize(fontSizes.xl + 2),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       textAlign: 'center',
       marginBottom: normalize(40),
     },
@@ -35,7 +35,7 @@ export const createPinStyles = (normalize) =>
       height: normalize(16),
       borderRadius: normalize(8),
       borderWidth: 2,
-      borderColor: colors.border,
+      borderColor: colors.textLight1,
       backgroundColor: colors.transparent,
     },
     dotFilled: {
@@ -79,7 +79,7 @@ export const createPinStyles = (normalize) =>
     keypadKeyText: {
       fontSize: normalize(fontSizes.xl + 6),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     keypadKeyPlaceholder: {
       width: normalize(58),

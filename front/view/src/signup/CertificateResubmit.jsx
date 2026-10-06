@@ -6,11 +6,11 @@ import {
   StyleSheet,
   useWindowDimensions,
   ScrollView,
-  Alert,
 } from 'react-native';
 import { colors, fonts } from '../../../styles/colors';
 import { getNormalize } from '../../../styles/frame.style';
 import { api } from '../../../utils/api';
+import { appAlert } from '../../../utils/appAlert';
 import SignupHelperText from './SignupHelperText';
 import { useAuth } from '../../../context/AuthContext';
 import SubmittingLockModal from '../../../components/common/SubmittingLockModal';
@@ -33,7 +33,7 @@ const CertificateResubmit = ({ navigation }) => {
     const certificateViewUrl = certificateUrl.trim();
     const certificateAccessCode = accessNumber.trim();
     if (!certificateViewUrl || !certificateAccessCode) {
-      Alert.alert('알림', '열람용 주소와 열람 번호를 모두 입력해 주세요.');
+      appAlert.alert('알림', '열람용 주소와 열람 번호를 모두 입력해 주세요.');
       return;
     }
 
@@ -47,7 +47,7 @@ const CertificateResubmit = ({ navigation }) => {
         throw new Error(res.data?.message || '제출에 실패했습니다.');
       }
       await refreshStudentVerification();
-      Alert.alert(
+      appAlert.alert(
         '제출 완료',
         res.data?.message ||
           '재학증명서가 제출되었습니다. 관리자 승인을 기다려 주세요.',
@@ -58,7 +58,7 @@ const CertificateResubmit = ({ navigation }) => {
         navigation.goBack();
       }
     } catch (e) {
-      Alert.alert(
+      appAlert.alert(
         '제출 실패',
         e?.response?.data?.message ||
           e?.message ||
@@ -79,7 +79,7 @@ const CertificateResubmit = ({ navigation }) => {
         }}
       />
 
-      <View style={[styles.body, { paddingHorizontal: width * 0.07 }]}>
+      <View style={[styles.body, { paddingHorizontal: width * 0.04 }]}>
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingBottom: normalize(16) }}
@@ -105,7 +105,7 @@ const CertificateResubmit = ({ navigation }) => {
               value={certificateUrl}
               onChangeText={setCertificateUrl}
               placeholder="ex) https://naver.me/XXXXXXXX"
-              placeholderTextColor={colors.textSecondary}
+              placeholderTextColor={colors.textLight4}
               autoCapitalize="none"
               autoCorrect={false}
               spellCheck={false}
@@ -130,7 +130,7 @@ const CertificateResubmit = ({ navigation }) => {
               value={accessNumber}
               onChangeText={setAccessNumber}
               placeholder="ex) 000000"
-              placeholderTextColor={colors.textSecondary}
+              placeholderTextColor={colors.textLight4}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="number-pad"
@@ -154,7 +154,7 @@ const CertificateResubmit = ({ navigation }) => {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
   },
   body: {
     flex: 1,
@@ -162,18 +162,18 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: fonts.regular,
-    color: colors.textPrimary,
+    color: colors.text,
     marginBottom: 6,
   },
   inputWrapper: {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.textLight1,
     borderRadius: 12,
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
   },
   input: {
     fontFamily: fonts.regular,
-    color: colors.textPrimary,
+    color: colors.text,
     paddingHorizontal: 14,
     paddingVertical: 12,
   },

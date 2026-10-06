@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { Dimensions, Text, View } from 'react-native';
 import { colors, fonts, fontSizes } from '../../../../styles/colors';
 
 function formatBannerDate(dateKey) {
@@ -18,12 +18,15 @@ function formatBannerDate(dateKey) {
 }
 
 export default function DateBanner({ date, normalize }) {
-  const n = typeof normalize === 'function' ? normalize : (v) => v;
+  const n =
+    typeof normalize === 'function'
+      ? normalize
+      : (size) => Math.round((Dimensions.get('window').width / 375) * size);
   return (
     <View style={{ alignItems: 'center', paddingVertical: n(10) }}>
       <View
         style={{
-          backgroundColor: colors.textLight10,
+          backgroundColor: colors.textLight05,
           paddingHorizontal: n(14),
           borderRadius: n(12),
           height: n(24),
@@ -33,7 +36,7 @@ export default function DateBanner({ date, normalize }) {
         <Text
           style={{
             fontSize: n(fontSizes.md),
-            color: colors.textSecondary,
+            color: colors.textLight5,
             fontFamily: fonts?.regular,
           }}
         >

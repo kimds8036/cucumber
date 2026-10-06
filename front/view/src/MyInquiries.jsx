@@ -11,10 +11,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import SubHeader from '../frame/subHeader';
+import FloatingButton from '../../components/common/FloatingButton';
 import { colors, fonts, fontSizes } from '../../styles/colors';
-import { shadow } from '../../styles/tokens';
 import { api } from '../../utils/api';
 
 function statusMeta(status) {
@@ -22,13 +21,13 @@ function statusMeta(status) {
     return {
       label: '답변 완료',
       color: colors.primary,
-      backgroundColor: colors.primaryLight10,
+      backgroundColor: colors.primaryLight2,
     };
   }
   if (status === 'closed') {
     return {
       label: '종료',
-      color: colors.textSecondary,
+      color: colors.textLight4,
       backgroundColor: 'rgba(39, 42, 38, 0.05)',
     };
   }
@@ -107,7 +106,7 @@ const MyInquiries = ({
 
   const styles = useMemo(
     () => ({
-      container: { flex: 1, backgroundColor: colors.background },
+      container: { flex: 1, backgroundColor: colors.white },
       emptyWrap: {
         flex: 1,
         alignItems: 'center',
@@ -118,15 +117,15 @@ const MyInquiries = ({
       emptyText: {
         fontFamily: fonts.regular,
         fontSize: normalize(fontSizes.md),
-        color: colors.textSecondary,
+        color: colors.textLight4,
         textAlign: 'center',
         lineHeight: normalize(22),
       },
       row: {
-        paddingHorizontal: normalize(16),
+        paddingHorizontal: width * 0.04,
         paddingVertical: normalize(14),
         borderBottomWidth: 1,
-        borderBottomColor: colors.border,
+        borderBottomColor: colors.textLight1,
         flexDirection: 'row',
         alignItems: 'center',
         gap: normalize(12),
@@ -160,12 +159,12 @@ const MyInquiries = ({
       dateText: {
         fontFamily: fonts.regular,
         fontSize: normalize(12),
-        color: colors.textSecondary,
+        color: colors.textLight4,
       },
       preview: {
         fontFamily: fonts.regular,
         fontSize: normalize(fontSizes.lg),
-        color: colors.textPrimary,
+        color: colors.text,
         marginLeft: normalize(2),
       },
       unreadDot: {
@@ -174,22 +173,8 @@ const MyInquiries = ({
         borderRadius: normalize(4),
         backgroundColor: colors.primary,
       },
-      floatingButton: {
-        position: 'absolute',
-        right: normalize(20),
-        bottom: normalize(20),
-        width: normalize(50),
-        height: normalize(50),
-        borderRadius: normalize(28),
-        backgroundColor: colors.primary,
-        justifyContent: 'center',
-        alignItems: 'center',
-        ...shadow.lg,
-        marginBottom: normalize(30),
-        marginRight: normalize(10),
-      },
     }),
-    [normalize],
+    [normalize, width],
   );
 
   const Root = fullScreenOverlay ? View : SafeAreaView;
@@ -233,7 +218,7 @@ const MyInquiries = ({
         <Ionicons
           name="chevron-forward"
           size={normalize(18)}
-          color={colors.textSecondary}
+          color={colors.textLight4}
         />
       </TouchableOpacity>
     );
@@ -282,17 +267,7 @@ const MyInquiries = ({
           }
         />
       )}
-      <TouchableOpacity
-        style={styles.floatingButton}
-        activeOpacity={0.8}
-        onPress={openCompose}
-      >
-        <FontAwesome5
-          name="plus"
-          size={normalize(24)}
-          color={colors.background}
-        />
-      </TouchableOpacity>
+      <FloatingButton aboveFooter onPress={openCompose} />
     </Root>
   );
 };

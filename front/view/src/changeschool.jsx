@@ -49,7 +49,7 @@ const ChangeSchool = ({ navigation }) => {
     return (
       <SafeAreaView style={styles.root} edges={['top']}>
         <View style={{ flex: 1 }}>
-          <View style={{ padding: 16 }}>
+          <View style={{ paddingVertical: 16, paddingHorizontal: width * 0.04 }}>
             <Skeleton
               width={normalize(110)}
               height={normalize(18)}
@@ -86,7 +86,12 @@ const ChangeSchool = ({ navigation }) => {
           keyboardVerticalOffset={0}
         >
           <SubHeader title="학교 변경" onBack={() => navigation.goBack()} />
-          <View style={[styles.container, { paddingTop: normalize(8) }]}>
+          <View
+            style={[
+              styles.container,
+              { paddingTop: normalize(8), paddingHorizontal: width * 0.04 },
+            ]}
+          >
             <View style={styles.searchBox}>
               <Ionicons
                 name="search-outline"
@@ -132,7 +137,7 @@ const ChangeSchool = ({ navigation }) => {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
   },
   container: {
     flex: 1,

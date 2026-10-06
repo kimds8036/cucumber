@@ -15,6 +15,12 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SubHeader from '../frame/subHeader';
 import CommentInput from '../../components/CommentInput.jsx';
+import {
+  INPUT_BAR_OVERLAY_STYLE,
+  INPUT_BAR_WRAPPER_BACKGROUND,
+  USES_NATIVE_INPUT_BAR,
+  useInputBarOverlay,
+} from '../../components/NativeInputBarIOS.jsx';
 import { usePlatformInsets } from '../../hooks/usePlatformInsets';
 import { colors } from '../../styles/colors';
 import { createDetailStyles, getNormalize } from '../../styles/board.style';
@@ -26,7 +32,7 @@ import { useBoardDetail } from './board/useBoardDetail';
 import BoardPostContent from './board/BoardPostContent';
 import BoardCommentTree from './board/BoardCommentTree';
 import BoardFloatingMenu from './board/BoardFloatingMenu';
-import Skeleton from '../../components/common/Skeleton';
+import BoardDetailSkeleton from './board/BoardDetailSkeleton';
 import ReportModal from '../../components/common/ReportModal.jsx';
 import { filterCommentTreeExcludingUser } from '../../utils/blockUser';
 import TopAdBanner from '../../components/ads/TopAdBanner';
@@ -64,11 +70,12 @@ export default function BoardDetail({ navigation, route }) {
   const inputTranslateY = useSharedValue(0);
   const keyboardOffset = useSharedValue(0);
   const bottomInputRef = useRef(null);
+  const { overlayHeight, onOverlayLayout } = useInputBarOverlay();
   const scrollViewRef = useRef(null);
   const postMenuButtonRef = useRef(null);
   const commentMenuRefs = useRef({});
   const scrollToCommentIdRef = useRef(null);
-  const INITIAL_REPLIES = 3;
+  const INITIAL_REPLIES = 0;
 
   const closeFloatingMenu = () => {
     setFloatingMenuVisible(false);
@@ -186,6 +193,15 @@ export default function BoardDetail({ navigation, route }) {
     return result;
   };
 
+  const countCommentNodes = (comments) => {
+    let total = 0;
+    for (const comment of comments || []) {
+      total += 1;
+      total += countCommentNodes(comment.replies);
+    }
+    return total;
+  };
+
   const buildFlatComments = (comments, expandedRepliesMap) => {
     const result = [];
     for (const c of comments) {
@@ -223,6 +239,8 @@ export default function BoardDetail({ navigation, route }) {
     () => buildFlatComments(visibleComments, expandedReplies),
     [visibleComments, expandedReplies],
   );
+
+  const commentCount = countCommentNodes(visibleComments);
 
   const openFloatingMenu = (context, ref) => {
     const menuContext =
@@ -382,7 +400,6 @@ export default function BoardDetail({ navigation, route }) {
     commentLikedState,
     replyToCommentId,
     expandedReplies,
-    onFocusReply: focusReplyInput,
     onCommentLike: handleCommentLike,
     onToggleReplies: toggleRepliesExpand,
     onOpenMenu: openFloatingMenu,
@@ -393,13 +410,22 @@ export default function BoardDetail({ navigation, route }) {
   });
 
   const postImages = Array.isArray(post?.images) ? post.images : [];
-  const hasAllImageRatios =
-    postImages.length === 0 ||
-    postImages.every((uri) => Boolean(imageRatios[uri]));
+  const boardTitle =
+    post?.boardType === 'national'
+      ? '전체 게시판'
+      : post?.boardType === 'student'
+        ? '학생 게시판'
+        : post?.boardType === 'school'
+          ? post?.schoolName
+            ? `${post.schoolName} 게시판`
+            : '학교 게시판'
+          : '게시판';
+  const hasFirstImageRatio =
+    postImages.length === 0 || Boolean(imageRatios[postImages[0]]);
   const isWaitingImageLayout =
     !isInitialLoading &&
     postImages.length > 0 &&
-    !hasAllImageRatios &&
+    !hasFirstImageRatio &&
     !imageRevealBypass;
   const showInitialSkeleton = isInitialLoading || isWaitingImageLayout;
 
@@ -408,7 +434,7 @@ export default function BoardDetail({ navigation, route }) {
       setImageRevealBypass(false);
       return;
     }
-    if (postImages.length === 0 || hasAllImageRatios) {
+    if (postImages.length === 0 || hasFirstImageRatio) {
       setImageRevealBypass(false);
       return;
     }
@@ -416,26 +442,24 @@ export default function BoardDetail({ navigation, route }) {
       setImageRevealBypass(true);
     }, 1200);
     return () => clearTimeout(timer);
-  }, [isInitialLoading, hasAllImageRatios, postImages.length, post?.id]);
+  }, [isInitialLoading, hasFirstImageRatio, postImages.length, post?.id]);
 
   return (
-    <View
-      style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}
-    >
+    <View style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}>
       <SafeAreaView style={styles.container} edges={['top']}>
         <View
           style={{
             zIndex: 1,
             elevation: 0,
-            backgroundColor: colors.background,
+            backgroundColor: colors.white,
           }}
         >
-          <SubHeader title="게시판" onBack={() => navigation.goBack()} />
+          <SubHeader title={boardTitle} onBack={() => navigation.goBack()} />
         </View>
         <View
           style={{
             flex: 1,
-            backgroundColor: colors.background,
+            backgroundColor: colors.white,
             overflow: 'hidden',
             zIndex: 0,
           }}
@@ -470,16 +494,27 @@ export default function BoardDetail({ navigation, route }) {
                       normalize={normalize}
                       width={width}
                       postMenuButtonRef={postMenuButtonRef}
+                      onPollChange={(poll) =>
+                        setPost((prev) => ({ ...prev, poll }))
+                      }
                       showDistanceBadge={permissionGranted}
                       distanceStale={distanceStale}
                       distanceLoading={distanceLoading}
                     />
-                    <TopAdBanner styles={styles} />
+                    <TopAdBanner placement="board" />
+                    <View style={styles.commentGutter}>
+                      <View style={styles.commentListHeader}>
+                        <Text style={styles.commentListHeaderText}>댓글</Text>
+                        <Text style={styles.commentListHeaderText}>
+                          {commentCount}
+                        </Text>
+                      </View>
+                    </View>
                   </View>
                 }
                 contentContainerStyle={[
                   styles.scrollContent,
-                  { paddingBottom: 0 },
+                  { paddingBottom: overlayHeight },
                 ]}
                 onScrollToIndexFailed={(info) => {
                   setTimeout(() => {
@@ -496,129 +531,26 @@ export default function BoardDetail({ navigation, route }) {
               />
             </Animated.View>
             {showInitialSkeleton ? (
-              <View
-                pointerEvents="none"
-                style={{
-                  position: 'absolute',
-                  left: 0,
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  backgroundColor: colors.background,
-                }}
-              >
-                <View style={styles.contentSection}>
-                  <View
-                    style={{ flexDirection: 'row', marginBottom: normalize(8) }}
-                  >
-                    <Skeleton
-                      width={normalize(52)}
-                      height={normalize(12)}
-                      borderRadius={normalize(6)}
-                    />
-                    <View style={{ width: normalize(8) }} />
-                    <Skeleton
-                      width={normalize(68)}
-                      height={normalize(12)}
-                      borderRadius={normalize(6)}
-                    />
-                  </View>
-                  <Skeleton
-                    width="100%"
-                    height={normalize(14)}
-                    borderRadius={normalize(6)}
-                    style={{ marginBottom: normalize(6) }}
-                  />
-                  <Skeleton
-                    width="90%"
-                    height={normalize(14)}
-                    borderRadius={normalize(6)}
-                    style={{ marginBottom: normalize(10) }}
-                  />
-                  <Skeleton
-                    width="100%"
-                    height={normalize(260)}
-                    borderRadius={normalize(10)}
-                    style={{ marginBottom: normalize(10) }}
-                  />
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: normalize(14),
-                    }}
-                  >
-                    <Skeleton
-                      width={normalize(34)}
-                      height={normalize(14)}
-                      borderRadius={normalize(6)}
-                    />
-                    <Skeleton
-                      width={normalize(34)}
-                      height={normalize(14)}
-                      borderRadius={normalize(6)}
-                    />
-                    <Skeleton
-                      width={normalize(34)}
-                      height={normalize(14)}
-                      borderRadius={normalize(6)}
-                    />
-                  </View>
-                </View>
-                <View style={styles.adSection}>
-                  <View style={styles.adSectionRow}>
-                    <Skeleton
-                      width={normalize(28)}
-                      height={normalize(16)}
-                      borderRadius={normalize(8)}
-                    />
-                    <Skeleton
-                      width="72%"
-                      height={normalize(14)}
-                      borderRadius={normalize(6)}
-                    />
-                  </View>
-                </View>
-                <View
-                  style={[styles.commentSection, { paddingTop: normalize(10) }]}
-                >
-                  {[0, 1, 2].map((idx) => (
-                    <View
-                      key={`board-detail-comment-skel-${idx}`}
-                      style={styles.commentItem}
-                    >
-                      <Skeleton
-                        width={normalize(120)}
-                        height={normalize(11)}
-                        borderRadius={normalize(6)}
-                        style={{ marginBottom: normalize(8) }}
-                      />
-                      <Skeleton
-                        width="100%"
-                        height={normalize(13)}
-                        borderRadius={normalize(6)}
-                        style={{ marginBottom: normalize(6) }}
-                      />
-                      <Skeleton
-                        width={normalize(140)}
-                        height={normalize(11)}
-                        borderRadius={normalize(6)}
-                        style={{ marginBottom: normalize(12) }}
-                      />
-                    </View>
-                  ))}
-                </View>
-              </View>
+              <BoardDetailSkeleton
+                styles={styles}
+                normalize={normalize}
+                width={width}
+                showDistanceBadge={permissionGranted}
+              />
             ) : null}
 
             <Animated.View
               style={[
+                INPUT_BAR_OVERLAY_STYLE,
                 {
-                  backgroundColor: colors.background,
-                  paddingBottom: Math.max(insets.bottom, normalize(12)),
+                  backgroundColor: INPUT_BAR_WRAPPER_BACKGROUND,
+                  paddingBottom: USES_NATIVE_INPUT_BAR
+                    ? insets.bottom
+                    : Math.max(insets.bottom, normalize(12)),
                 },
                 inputAnimStyle,
               ]}
+              onLayout={onOverlayLayout}
             >
               <CommentInput
                 bottomInputRef={bottomInputRef}
@@ -662,6 +594,7 @@ export default function BoardDetail({ navigation, route }) {
             if (!target?.userId || target.userId === currentUserId) return;
             openReportModal('comment', commentId, target.userId);
           }}
+          onReplyComment={focusReplyInput}
           styles={styles}
           normalize={normalize}
           width={width}

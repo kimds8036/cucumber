@@ -2,16 +2,15 @@ import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
   Keyboard,
   Pressable,
-  Platform,
   useWindowDimensions,
 } from 'react-native';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
-import SchoolSearchField, { GrowingUnderline } from './SchoolSearchField';
+import SchoolSearchField from './SchoolSearchField';
 import SignupStepScroll from './SignupStepScroll';
+import AuthTextField from './AuthTextField';
 
 /** 계정 만들기 ↔ 학생인증 사이 — 재학 학교·학년·반 */
 const SignStepSchoolSelect = ({
@@ -61,48 +60,31 @@ const SignStepSchoolSelect = ({
   const gradeClassFields = selectedSchool ? (
     <View style={localStyles.gradeClassRow}>
       <View style={localStyles.gradeClassCol}>
-        <Text style={localStyles.fieldLabel}>학년</Text>
-        <View style={localStyles.underlineField}>
-          <TextInput
-            style={localStyles.fieldInput}
-            placeholder=""
-            placeholderTextColor={colors.textSecondary}
-            value={gradeNum}
-            onChangeText={(text) => {
-              onGradeNumChange?.(text.replace(/\D/g, '').slice(0, 1));
-            }}
-            keyboardType="number-pad"
-            maxLength={1}
-            returnKeyType="next"
-          />
-        </View>
-        <GrowingUnderline
-          active={Boolean(gradeNum)}
-          normalize={normalize}
-          fillColor={colors.textLight40}
+        <AuthTextField
+          label="학년"
+          compact
+          value={gradeNum}
+          placeholder="1"
+          onChangeText={(text) => {
+            onGradeNumChange?.(text.replace(/\D/g, '').slice(0, 1));
+          }}
+          keyboardType="number-pad"
+          maxLength={1}
+          returnKeyType="next"
         />
       </View>
-
       <View style={localStyles.gradeClassCol}>
-        <Text style={localStyles.fieldLabel}>반</Text>
-        <View style={localStyles.underlineField}>
-          <TextInput
-            style={localStyles.fieldInput}
-            placeholder=""
-            placeholderTextColor={colors.textSecondary}
-            value={classNum}
-            onChangeText={(text) => {
-              onClassNumChange?.(text.replace(/\D/g, '').slice(0, 2));
-            }}
-            keyboardType="number-pad"
-            maxLength={2}
-            returnKeyType="done"
-          />
-        </View>
-        <GrowingUnderline
-          active={Boolean(classNum)}
-          normalize={normalize}
-          fillColor={colors.textLight40}
+        <AuthTextField
+          label="반"
+          compact
+          value={classNum}
+          placeholder="1"
+          onChangeText={(text) => {
+            onClassNumChange?.(text.replace(/\D/g, '').slice(0, 2));
+          }}
+          keyboardType="number-pad"
+          maxLength={2}
+          returnKeyType="done"
         />
       </View>
     </View>
@@ -156,15 +138,13 @@ function createLocalStyles(normalize, width) {
   return StyleSheet.create({
     body: {
       flex: 1,
-      marginHorizontal: -width * 0.04,
-      paddingHorizontal: width * 0.07,
     },
     fieldLabel: {
       marginBottom: normalize(6),
       fontFamily: fonts.regular,
       fontSize: normalize(fontSizes.md),
       letterSpacing: 0.2,
-      color: colors.textLight40,
+      color: colors.textLight4,
     },
     gradeClassRow: {
       flexDirection: 'row',
@@ -174,22 +154,6 @@ function createLocalStyles(normalize, width) {
     gradeClassCol: {
       flex: 1,
       minWidth: 0,
-    },
-    underlineField: {
-      paddingVertical: normalize(10),
-      paddingHorizontal: normalize(2),
-    },
-    fieldInput: {
-      paddingVertical: 0,
-      paddingHorizontal: 0,
-      fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.xxl),
-      minHeight: normalize(fontSizes.xxl),
-      color: colors.textPrimary,
-      ...Platform.select({
-        android: { includeFontPadding: false, textAlignVertical: 'center' },
-        ios: {},
-      }),
     },
   });
 }

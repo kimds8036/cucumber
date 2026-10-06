@@ -134,6 +134,7 @@ export function normalizeSessionsArray(sessionsRaw, contextDayKey) {
         s.subjectColor != null ? String(s.subjectColor).trim() : null,
       startedAtMs,
       endedAtMs: endEffective,
+      kind: s.kind === 'break' ? 'break' : 'study',
     };
   });
 }

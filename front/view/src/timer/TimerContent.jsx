@@ -11,13 +11,26 @@ import React, {
 import {
   View,
   ScrollView,
+  PixelRatio,
   useWindowDimensions,
   Alert,
 } from 'react-native';
+import Animated, {
+  useAnimatedProps,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useDerivedValue,
+  useSharedValue,
+} from 'react-native-reanimated';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { createTimerStyles, getNormalize } from '../../../styles/timer';
+import { colors } from '../../../styles/colors';
+import MainHeader from '../../frame/mainHeader';
+import { getMainTabTitle } from '../../../context/MainShellContext';
 import { api, getApiUserFacingMessage } from '../../../utils/api';
 import { saveImageUriToGallery, alertGallerySaveFailure } from '../../../utils/saveImageToGallery';
 import TimerDayContentSkeleton from './TimerDayContentSkeleton';
+import TimerPhaseEndPopup from './TimerPhaseEndPopup';
 import Skeleton from '../../../components/common/Skeleton';
 import { AddSubjectModal, AddTaskModal, CalendarModal } from '../timerModals';
 import {
@@ -34,6 +47,7 @@ import { useNavigation, useFocusEffect, useIsFocused } from '@react-navigation/n
 import { runAfterTabTransition } from '../../../utils/runAfterTabTransition';
 import { useFriendStudyEvents } from '../../../hooks/useFriendStudyEvents';
 import { useGuidePreview } from '../../../context/GuidePreviewContext';
+import { useMainTabBarInset } from '../../../context/MainTabBarInsetContext';
 import { getGuideTimerFriends } from '../../../src/screens/UserGuide/guidePreviewData';
 import { appAlert } from '../../../utils/appAlert';
 import {
@@ -42,12 +56,19 @@ import {
 } from '../../../utils/timerRuntimeStore';
 import { preloadStudyRoomAssets } from '../../../utils/preloadStudyRoomAssets';
 import { tdb } from './timerHelpers';
+import TopAdBanner from '../../../components/ads/TopAdBanner';
+import { pickActiveNoticeForBanner, pickBanner } from '../../../constants/bannerAssets';
 import { useTimerDay } from './useTimerDay';
 import {
   LiveElapsedTicker,
   TimerLiveScrollInner,
   TimerLivePlannerCapture,
 } from './TimerLiveViews';
+import { TimerPlannerTabBar } from './TimerPlannerTabs';
+import TimerDayRecordSheet from './TimerDayRecordSheet';
+import { useTimerDayRecord } from './useTimerDayRecord';
+import { useTimerWeekly } from './useTimerWeekly';
+import { useStudyStreak } from './useStudyStreak';
 import {
   preloadTimerCaptureWatermark,
   waitForTimerCapturePaint,
@@ -58,11 +79,47 @@ export function TimerContent() {
   const { isGuidePreview } = useGuidePreview();
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
+  const tabBarInset = useMainTabBarInset();
   const styles = useMemo(
     () => createTimerStyles(width, normalize),
     [width, normalize],
   );
   const isFocused = useIsFocused();
+  const [timerBanner] = useState(() => pickBanner('timer'));
+  const [noticeBanner, setNoticeBanner] = useState(null);
+  const [timerBannerReady, setTimerBannerReady] = useState(isGuidePreview);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isGuidePreview) {
+        setNoticeBanner(null);
+        setTimerBannerReady(true);
+        return undefined;
+      }
+      let cancelled = false;
+      (async () => {
+        try {
+          const res = await api.get('/api/announcements', {
+            params: { limit: 20 },
+          });
+          const items = Array.isArray(res.data?.data?.items)
+            ? res.data.data.items
+            : [];
+          // API 광고가 연결되면 hasApiAd를 true로 넘겨 공지 배너를 3일로 줄인다.
+          const active = pickActiveNoticeForBanner(items, { hasApiAd: false });
+          if (!cancelled) setNoticeBanner(active);
+        } catch (error) {
+          console.warn('[Timer] 공지 배너 조회 실패', error?.message || error);
+          if (!cancelled) setNoticeBanner(null);
+        } finally {
+          if (!cancelled) setTimerBannerReady(true);
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [isGuidePreview]),
+  );
 
   const [friends, setFriends] = useState(INITIAL_FRIENDS);
   const [suggestions, setSuggestions] = useState([]);
@@ -70,6 +127,40 @@ export function TimerContent() {
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [pokeTarget, setPokeTarget] = useState(null);
   const [pokeVisible, setPokeVisible] = useState(false);
+  const [plannerTab, setPlannerTab] = useState('todo');
+  const scrollY = useSharedValue(0);
+  const origY = useSharedValue(0);
+  const onPlannerScroll = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+  const onCardSlotLayout = useCallback((event) => {
+    const y = PixelRatio.roundToNearestPixel(event.nativeEvent.layout.y);
+    if (y < 0 || origY.value === y) return;
+    origY.value = y;
+  }, [origY]);
+  const chromeStuck = useDerivedValue(() => {
+    const y = origY.value;
+    if (y <= 0) return false;
+    return scrollY.value >= y;
+  });
+  const inFlowChromeStyle = useAnimatedStyle(() => ({
+    opacity: chromeStuck.value ? 0 : 1,
+    pointerEvents: chromeStuck.value ? 'none' : 'auto',
+  }));
+  const overlayChromeStyle = useAnimatedStyle(() => ({
+    opacity: chromeStuck.value ? 1 : 0,
+    pointerEvents: chromeStuck.value ? 'auto' : 'none',
+  }));
+  const inFlowChromeProps = useAnimatedProps(() => ({
+    pointerEvents: chromeStuck.value ? 'none' : 'auto',
+  }));
+  const overlayChromeProps = useAnimatedProps(() => ({
+    pointerEvents: chromeStuck.value ? 'auto' : 'none',
+  }));
+  /** 공부 잔디에서 연 지난 날짜 기록 시트 — { dayKey, seconds } | null */
+  const [dayRecord, setDayRecord] = useState(null);
   const captureWatermarkReadyRef = useRef(false);
   const captureReadyWaitersRef = useRef([]);
 
@@ -167,6 +258,7 @@ export function TimerContent() {
               f.profileColor?.id,
             colorIndex: index % FRIEND_ICON_COLORS.length,
             isSuggestion: false,
+            avatarUrl: f.avatarUrl || f.avatar_url || null,
           })),
         );
         setSuggestions(
@@ -188,6 +280,7 @@ export function TimerContent() {
                 s.profileColor?.id,
               colorIndex: index % FRIEND_ICON_COLORS.length,
               isSuggestion: true,
+              avatarUrl: s.avatarUrl || s.avatar_url || null,
             };
           }),
         );
@@ -325,15 +418,23 @@ export function TimerContent() {
     ]),
   );
 
-  const handleSaveAsImage = async () => {
-    if (!timer.capturePlannerRef.current?.capture) {
+  const dayRecordData = useTimerDayRecord(dayRecord?.dayKey ?? null);
+  const weekly = useTimerWeekly();
+  const grassRefreshSec = timer.isRunning
+    ? null
+    : Math.floor((timer.totalElapsedMs || 0) / 1000);
+  const streakDays = useStudyStreak(grassRefreshSec);
+  const dayRecordCaptureRef = useRef(null);
+
+  const captureToGallery = async (captureRef) => {
+    if (!captureRef.current?.capture) {
       return;
     }
     try {
       await preloadTimerCaptureWatermark();
       await waitForCaptureWatermarkReady();
       await waitForTimerCapturePaint();
-      const uri = await timer.capturePlannerRef.current.capture();
+      const uri = await captureRef.current.capture();
       await saveImageUriToGallery(uri);
       appAlert.alert('저장 완료', '갤러리에 저장되었어요.');
     } catch (e) {
@@ -341,104 +442,236 @@ export function TimerContent() {
     }
   };
 
+  const handleSaveAsImage = () => captureToGallery(timer.capturePlannerRef);
+  const handleSaveDayRecord = () => captureToGallery(dayRecordCaptureRef);
+
+  const timerGutter = width * 0.04;
+  const scrollingHeader = (
+    <MainHeader
+      headerTitle={getMainTabTitle('timer')}
+      navigation={navigation}
+    />
+  );
+  const friendStoryStickyStyle = {
+    backgroundColor: colors.white,
+    paddingHorizontal: timerGutter,
+    paddingTop: normalize(8),
+  };
+
+  const timerBannerNode = !timer.initialLoadDone || !timerBannerReady ? (
+    <View
+      style={{
+        height: normalize(80),
+        marginBottom: normalize(10),
+        backgroundColor: colors.white,
+      }}
+    />
+  ) : (
+    <TopAdBanner
+      placement="timer"
+      inset={false}
+      picked={noticeBanner ?? timerBanner}
+      onPress={
+        noticeBanner?.id
+          ? () =>
+              navigation.navigate('AnnouncementDetail', {
+                announcementId: noticeBanner.id,
+                title: noticeBanner.title,
+              })
+          : undefined
+      }
+    />
+  );
+
   if (!timer.initialLoadDone) {
     return (
       <ScrollView
         style={[styles.scroll, tdb('#FF3B30')]}
-        contentContainerStyle={[styles.scrollContent, tdb('#FF9500')]}
+        contentContainerStyle={{ paddingBottom: normalize(24) + tabBarInset }}
+        scrollIndicatorInsets={{ bottom: tabBarInset }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={[styles.friendStoryRow, tdb('#FFCC00')]}>
-          <View style={[styles.friendStoryScroll, tdb('#34C759')]}>
-            {[0, 1, 2, 3].map((idx) => (
-              <View
-                key={`timer-friend-skel-${idx}`}
-                style={styles.friendStoryCircleWrap}
-              >
-                <Skeleton
-                  width={normalize(56)}
-                  height={normalize(56)}
-                  borderRadius={normalize(28)}
-                />
-                <Skeleton
-                  width={normalize(44)}
-                  height={normalize(11)}
-                  borderRadius={normalize(6)}
-                  style={styles.timerSkelFriendName}
-                />
-              </View>
-            ))}
+        {scrollingHeader}
+        <View
+          style={[styles.friendStoryRow, friendStoryStickyStyle, tdb('#FFCC00')]}
+          collapsable={false}
+        >
+          <View style={{ width: '100%', paddingRight: normalize(16) }}>
+            <Skeleton
+              width="100%"
+              height={normalize(74)}
+              borderRadius={normalize(16)}
+            />
           </View>
         </View>
-
-        <TimerDayContentSkeleton styles={styles} normalize={normalize} />
+        <View style={{ paddingHorizontal: timerGutter }}>
+          {timerBannerNode}
+          <TimerDayContentSkeleton normalize={normalize} />
+        </View>
       </ScrollView>
     );
   }
 
-  const showDayContentSkeleton = timer.isDayLoading;
+  const showDayContentSkeleton = timer.isDayLoading && plannerTab !== 'grass';
+
+  const openDayRecord = (dayKey, seconds) => {
+    setDayRecord({ dayKey, seconds });
+  };
+
+  const closeDayRecord = () => {
+    setDayRecord(null);
+  };
+
+  const liveScrollProps = {
+    styles,
+    normalize,
+    isViewingToday: timer.isViewingToday,
+    totalElapsedMs: timer.totalElapsedMs,
+    displayTotalElapsedMs: timer.displayTotalElapsedMs,
+    displaySessions: timer.displaySessionsForTimetable,
+    displaySubjects: timer.effectiveDisplaySubjects,
+    displayTasks: timer.displayTasks,
+    isRunning: timer.isRunning,
+    activeSubjectId: timer.activeSubjectId,
+    selectedDayKey: timer.selectedDayKey,
+    goPrevDay: timer.goPrevDay,
+    goNextDay: timer.goNextDay,
+    canGoNextDay: timer.canGoNextDay,
+    setShowCalendar: timer.setShowCalendar,
+    handleSaveAsImage,
+    onOpenStudyRoom: () => {
+      preloadStudyRoomAssets();
+      navigation.navigate('TimerAniLab');
+    },
+    toggleTimer: timer.toggleTimer,
+    onPomodoroMode: timer.setPomodoroMode,
+    pauseTimer: timer.pauseTimer,
+    startForSubject: timer.startForSubject,
+    pomoClockOn: timer.pomoClockOn,
+    pomoSkip: timer.pomoSkip,
+    pomoResetClock: timer.pomoResetClock,
+    collapsedSubjects: timer.collapsedSubjects,
+    toggleSubjectCollapsed: timer.toggleSubjectCollapsed,
+    openAddTaskForSubject: timer.openAddTaskForSubject,
+    setShowAddSubject: timer.setShowAddSubject,
+    setTaskStatus: timer.setTaskStatus,
+    deleteSubject: timer.deleteSubject,
+    deleteTask: timer.deleteTask,
+    onOpenDayRecord: openDayRecord,
+    weekly,
+    streakDays,
+    grassRefreshSec,
+    onOpenSettings: () => navigation.navigate('TimerSettings'),
+  };
+
+  const renderPlannerChrome = (registerGuideTarget) => (
+    <View style={{ backgroundColor: colors.white }} collapsable={false}>
+      <View style={{ paddingHorizontal: timerGutter }}>
+        <TimerLiveScrollInner
+          segment="card"
+          {...liveScrollProps}
+          registerGuideTarget={registerGuideTarget}
+        />
+      </View>
+      <View style={{ paddingHorizontal: timerGutter }}>
+        <TimerPlannerTabBar
+          value={plannerTab}
+          onChange={setPlannerTab}
+          styles={styles}
+        />
+      </View>
+    </View>
+  );
 
   return (
     <>
-      {isFocused ? (
-        <LiveElapsedTicker
+      <LiveElapsedTicker
           isRunning={timer.isRunning}
           sessionStartedAtMs={timer.openSessionStartedAtMs}
           resyncAt={timer.liveElapsedResyncAt}
           isActive={isFocused}
         >
           <>
-            <ScrollView
+            <View style={styles.scroll}>
+            <KeyboardAwareScrollView
               style={[styles.scroll, tdb('#FF3B30')]}
-              contentContainerStyle={[styles.scrollContent, tdb('#FF9500')]}
+              contentContainerStyle={{ paddingBottom: normalize(24) + tabBarInset }}
+              scrollIndicatorInsets={{ bottom: tabBarInset }}
+              removeClippedSubviews={false}
               showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              bottomOffset={normalize(20)}
+              mode="layout"
+              scrollEventThrottle={16}
+              onScroll={onPlannerScroll}
             >
-              <FriendStoryBar
-                friends={storyFriends}
-                studyingFriends={studyingFriends}
-                normalize={normalize}
-                styles={styles}
-                loading={friendsBarLoading}
-                onFriendPress={handleFriendPress}
-                onAddFriendPress={handleOpenAddFriend}
-              />
-              {showDayContentSkeleton ? (
-                <TimerDayContentSkeleton styles={styles} normalize={normalize} />
-              ) : (
-                <TimerLiveScrollInner
-                  styles={styles}
+              {scrollingHeader}
+              <View
+                style={friendStoryStickyStyle}
+                collapsable={false}
+              >
+                <FriendStoryBar
+                  friends={storyFriends}
+                  studyingFriends={studyingFriends}
                   normalize={normalize}
-                  isViewingToday={timer.isViewingToday}
-                  totalElapsedMs={timer.totalElapsedMs}
-                  displayTotalElapsedMs={timer.displayTotalElapsedMs}
-                  displaySessions={timer.displaySessionsForTimetable}
-                  displaySubjects={timer.effectiveDisplaySubjects}
-                  displayTasks={timer.displayTasks}
-                  isRunning={timer.isRunning}
-                  activeSubjectId={timer.activeSubjectId}
-                  selectedDayKey={timer.selectedDayKey}
-                  goPrevDay={timer.goPrevDay}
-                  goNextDay={timer.goNextDay}
-                  canGoNextDay={timer.canGoNextDay}
-                  setShowCalendar={timer.setShowCalendar}
-                  handleSaveAsImage={handleSaveAsImage}
-                  onOpenStudyRoom={() => {
-                    preloadStudyRoomAssets();
-                    navigation.navigate('TimerAniLab');
-                  }}
-                  toggleTimer={timer.toggleTimer}
-                  pauseTimer={timer.pauseTimer}
-                  startForSubject={timer.startForSubject}
-                  collapsedSubjects={timer.collapsedSubjects}
-                  toggleSubjectCollapsed={timer.toggleSubjectCollapsed}
-                  openAddTaskForSubject={timer.openAddTaskForSubject}
-                  setShowAddSubject={timer.setShowAddSubject}
-                  setTaskStatus={timer.setTaskStatus}
-                  deleteSubject={timer.deleteSubject}
-                  deleteTask={timer.deleteTask}
+                  styles={styles}
+                  loading={friendsBarLoading}
+                  onFriendPress={handleFriendPress}
+                  onAddFriendPress={handleOpenAddFriend}
                 />
+              </View>
+              <View
+                collapsable={false}
+                style={{
+                  paddingHorizontal: timerGutter,
+                }}
+              >
+                {timerBannerNode}
+              </View>
+              {showDayContentSkeleton ? (
+                <View style={{ paddingHorizontal: timerGutter }}>
+                  <TimerDayContentSkeleton normalize={normalize} />
+                </View>
+              ) : (
+                <Animated.View
+                  collapsable={false}
+                  onLayout={onCardSlotLayout}
+                  style={inFlowChromeStyle}
+                  animatedProps={inFlowChromeProps}
+                >
+                  {renderPlannerChrome(true)}
+                </Animated.View>
               )}
-            </ScrollView>
+              {showDayContentSkeleton ? null : (
+                <View style={{ paddingHorizontal: timerGutter }}>
+                  <TimerLiveScrollInner
+                    segment="body"
+                    plannerTab={plannerTab}
+                    {...liveScrollProps}
+                  />
+                </View>
+              )}
+            </KeyboardAwareScrollView>
+            {showDayContentSkeleton ? null : (
+              <Animated.View
+                collapsable={false}
+                animatedProps={overlayChromeProps}
+                style={[
+                  overlayChromeStyle,
+                  {
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    backgroundColor: colors.white,
+                    zIndex: 3,
+                  },
+                ]}
+              >
+                {renderPlannerChrome(false)}
+              </Animated.View>
+            )}
+            </View>
             {timer.initialLoadDone ? (
               <TimerLivePlannerCapture
                 capturePlannerRef={timer.capturePlannerRef}
@@ -456,10 +689,32 @@ export function TimerContent() {
                 onWatermarkLoad={notifyCaptureWatermarkReady}
               />
             ) : null}
+            {dayRecord && !dayRecordData.loading ? (
+              <TimerLivePlannerCapture
+                capturePlannerRef={dayRecordCaptureRef}
+                styles={styles}
+                normalize={normalize}
+                isViewingToday={false}
+                isRunning={false}
+                activeSubjectId={null}
+                totalElapsedMs={0}
+                displayTotalElapsedMs={dayRecordData.totalElapsedMs}
+                displaySessions={dayRecordData.displaySessions}
+                displaySubjects={dayRecordData.displaySubjects}
+                displayTasks={dayRecordData.displayTasks}
+                selectedDayKey={dayRecord.dayKey}
+                onWatermarkLoad={notifyCaptureWatermarkReady}
+              />
+            ) : null}
           </>
         </LiveElapsedTicker>
-      ) : null}
 
+      <TimerPhaseEndPopup
+        notice={isFocused ? timer.phaseEndNotice : null}
+        onClose={timer.dismissPhaseEndNotice}
+        styles={styles}
+        normalize={normalize}
+      />
       <AddSubjectModal
         visible={timer.showAddSubject}
         onClose={() => timer.setShowAddSubject(false)}
@@ -480,6 +735,20 @@ export function TimerContent() {
         onClose={() => timer.setShowCalendar(false)}
         currentDayKey={timer.selectedDayKey}
         onSelectDay={timer.setSelectedDayKey}
+      />
+      <TimerDayRecordSheet
+        dayKey={dayRecord?.dayKey ?? null}
+        seconds={dayRecord?.seconds ?? 0}
+        loading={dayRecordData.loading}
+        onClose={closeDayRecord}
+        onSave={handleSaveDayRecord}
+        styles={styles}
+        normalize={normalize}
+        displaySessions={dayRecordData.displaySessions}
+        displaySubjects={dayRecordData.displaySubjects}
+        displayTasks={dayRecordData.displayTasks}
+        collapsedSubjects={dayRecordData.collapsedSubjects}
+        toggleSubjectCollapsed={dayRecordData.toggleSubjectCollapsed}
       />
 
       <FriendPokeController

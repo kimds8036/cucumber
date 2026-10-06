@@ -63,7 +63,7 @@ const SignStep4 = ({
           <TextInput
             style={styles.input}
             placeholder="학년"
-            placeholderTextColor={colors.textSecondary}
+            placeholderTextColor={colors.textLight4}
             value={grade}
             onChangeText={(text) => {
               setGrade(text.replace(/\D/g, '').slice(0, 1));
@@ -78,7 +78,7 @@ const SignStep4 = ({
           <TextInput
             style={styles.input}
             placeholder="반"
-            placeholderTextColor={colors.textSecondary}
+            placeholderTextColor={colors.textLight4}
             value={classNum}
             onChangeText={(text) => {
               setClassNum(text.replace(/\D/g, '').slice(0, 2));

@@ -55,10 +55,13 @@ function TimeField({ label, value, onPress, normalize, styles }) {
 const PeriodTimeSettings = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createStyles(normalize), [normalize]);
+  const styles = useMemo(
+    () => createStyles(normalize, width),
+    [normalize, width],
+  );
   const ns = useMemo(
-    () => createNotificationSettingsStyles(normalize),
-    [normalize],
+    () => createNotificationSettingsStyles(normalize, width),
+    [normalize, width],
   );
 
   const SectionHeader = ({ icon, title, description, Icon = Ionicons }) => (
@@ -439,9 +442,9 @@ const PeriodTimeSettings = ({ navigation }) => {
   );
 };
 
-function createStyles(normalize) {
+function createStyles(normalize, width) {
   return {
-    safe: { flex: 1, backgroundColor: colors.background },
+    safe: { flex: 1, backgroundColor: colors.white },
     scroll: { flex: 1 },
     content: {
       paddingBottom: normalize(24),
@@ -452,7 +455,7 @@ function createStyles(normalize) {
     },
     cardDivider: {
       height: 1,
-      backgroundColor: colors.border,
+      backgroundColor: colors.textLight1,
       marginHorizontal: normalize(2),
     },
     row: {
@@ -467,7 +470,7 @@ function createStyles(normalize) {
     periodTitle: {
       fontSize: normalize(13),
       fontWeight: '700',
-      color: colors.textPrimary,
+      color: colors.text,
     },
     deleteText: {
       fontSize: normalize(13),
@@ -481,27 +484,25 @@ function createStyles(normalize) {
     },
     timeField: {
       flex: 1,
-      backgroundColor: colors.surface,
+      backgroundColor: colors.textLight05,
       borderRadius: normalize(10),
       paddingVertical: normalize(10),
       paddingHorizontal: normalize(12),
-      borderWidth: 1,
-      borderColor: colors.border,
     },
     timeFieldLabel: {
       fontSize: normalize(11),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginBottom: normalize(2),
     },
     timeFieldValue: {
       fontSize: normalize(16),
       fontWeight: '700',
-      color: colors.textPrimary,
+      color: colors.text,
       fontVariant: ['tabular-nums'],
     },
     tilde: {
       fontSize: normalize(16),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       fontWeight: '600',
     },
     addBtn: {
@@ -515,9 +516,9 @@ function createStyles(normalize) {
       paddingVertical: normalize(6),
       paddingHorizontal: normalize(8),
       borderWidth: 1,
-      borderColor: colors.primaryLight70,
+      borderColor: colors.primaryLight6,
       borderRadius: normalize(20),
-      backgroundColor: colors.primaryLight10,
+      backgroundColor: colors.primaryLight2,
     },
     addBtnText: {
       fontSize: normalize(13),
@@ -525,7 +526,7 @@ function createStyles(normalize) {
       color: colors.primaryDark,
     },
     resetCard: {
-      marginHorizontal: normalize(16),
+      marginHorizontal: width * 0.04,
       alignItems: 'center',
       justifyContent: 'center',
       gap: normalize(6),
@@ -564,21 +565,21 @@ function createStyles(normalize) {
     },
     error: {
       marginTop: normalize(10),
-      marginHorizontal: normalize(20),
+      marginHorizontal: width * 0.04,
       fontSize: normalize(13),
       color: colors.alertDark,
       lineHeight: normalize(18),
     },
     resetModalTitle: {
       fontSize: normalize(18),
-      color: colors.textPrimary,
+      color: colors.text,
       fontWeight: '700',
       textAlign: 'center',
       marginBottom: normalize(10),
     },
     resetModalBody: {
       fontSize: normalize(14),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       textAlign: 'center',
       lineHeight: normalize(22),
       marginBottom: normalize(16),
@@ -591,14 +592,14 @@ function createStyles(normalize) {
       flex: 1,
       height: normalize(42),
       borderRadius: normalize(10),
-      backgroundColor: colors.textLight5,
+      backgroundColor: colors.textLight1,
       alignItems: 'center',
       justifyContent: 'center',
     },
     resetModalCancelText: {
       fontSize: normalize(14),
       fontWeight: '700',
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     resetModalDelete: {
       flex: 1,
@@ -611,7 +612,7 @@ function createStyles(normalize) {
     resetModalDeleteText: {
       fontSize: normalize(14),
       fontWeight: '700',
-      color: colors.textWhite,
+      color: colors.white,
     },
     modalBackdrop: {
       flex: 1,
@@ -619,7 +620,7 @@ function createStyles(normalize) {
       justifyContent: 'flex-end',
     },
     modalCard: {
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderTopLeftRadius: normalize(18),
       borderTopRightRadius: normalize(18),
       paddingTop: normalize(16),
@@ -629,7 +630,7 @@ function createStyles(normalize) {
       textAlign: 'center',
       fontSize: normalize(16),
       fontWeight: '700',
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: normalize(4),
     },
     pickerRow: {
@@ -645,12 +646,12 @@ function createStyles(normalize) {
     },
     pickerItem: {
       fontSize: normalize(18),
-      color: colors.textPrimary,
+      color: colors.text,
     },
     modalActions: {
       flexDirection: 'row',
       borderTopWidth: 1,
-      borderTopColor: colors.border,
+      borderTopColor: colors.textLight1,
     },
     modalBtn: {
       flex: 1,
@@ -659,7 +660,7 @@ function createStyles(normalize) {
     },
     modalBtnCancel: {
       fontSize: normalize(16),
-      color: colors.textSecondary,
+      color: colors.textLight4,
       fontWeight: '600',
     },
     modalBtnOk: {
@@ -668,7 +669,7 @@ function createStyles(normalize) {
       fontWeight: '700',
     },
     modalBtnOkDisabled: {
-      color: colors.textLight40,
+      color: colors.textLight3,
     },
     pickerError: {
       marginHorizontal: normalize(20),

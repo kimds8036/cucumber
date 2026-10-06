@@ -5,12 +5,12 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ScrollView,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, fontSizes } from '../../../styles/colors';
+import { appAlert } from '../../../utils/appAlert';
 
 const MAX_PHOTOS = 2;
 
@@ -39,7 +39,7 @@ export default function StudentIdPhotoAttachFields({
       if (busy) return;
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert('권한 필요', '사진 첨부를 위해 앨범 접근 권한이 필요합니다.');
+        appAlert.alert('권한 필요', '사진 첨부를 위해 앨범 접근 권한이 필요합니다.');
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -51,7 +51,7 @@ export default function StudentIdPhotoAttachFields({
       if (result.canceled || !result.assets?.[0]) return;
       const asset = result.assets[0];
       if (!asset.base64) {
-        Alert.alert('첨부 실패', '이미지를 다시 선택해 주세요.');
+        appAlert.alert('첨부 실패', '이미지를 다시 선택해 주세요.');
         return;
       }
       const payload = {
@@ -70,7 +70,7 @@ export default function StudentIdPhotoAttachFields({
     (assets) => {
       const valid = (assets || []).filter((a) => a?.base64 && a?.uri);
       if (valid.length === 0) {
-        Alert.alert('첨부 실패', '이미지를 다시 선택해 주세요.');
+        appAlert.alert('첨부 실패', '이미지를 다시 선택해 주세요.');
         return;
       }
       const toPayload = (asset) => ({
@@ -96,7 +96,7 @@ export default function StudentIdPhotoAttachFields({
     if (busy || !canAddMore) return;
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('권한 필요', '사진 첨부를 위해 앨범 접근 권한이 필요합니다.');
+      appAlert.alert('권한 필요', '사진 첨부를 위해 앨범 접근 권한이 필요합니다.');
       return;
     }
     const remaining = MAX_PHOTOS - photoCount;
@@ -133,10 +133,10 @@ export default function StudentIdPhotoAttachFields({
     <View style={styles.root}>
       <Text style={styles.slotLabel}>
         학생증 사진
-        <Text style={styles.required}> (필수 · 최대 2장)</Text>
+        <Text style={styles.required}>   (최대 2장 첨부 가능)</Text>
       </Text>
       <Text style={styles.hint}>
-        학생증의 이름과 학교명이 잘 보이도록 사진을 첨부해 주세요. 앞·뒷면이
+        학생증의 이름과 학교명이 잘 보이도록 사진을 첨부해 주세요. {'\n'}앞 · 뒷면이
         필요하면 두 장까지 연속으로 선택할 수 있어요.
       </Text>
 
@@ -157,7 +157,7 @@ export default function StudentIdPhotoAttachFields({
               <Ionicons
                 name="add"
                 size={normalize(20)}
-                color={colors.textSecondary}
+                color={colors.textLight4}
               />
             </TouchableOpacity>
           ) : null}
@@ -183,7 +183,7 @@ export default function StudentIdPhotoAttachFields({
                   <Ionicons
                     name="close-circle"
                     size={normalize(18)}
-                    color={colors.background}
+                    color={colors.white}
                   />
                 </TouchableOpacity>
               ) : null}
@@ -225,29 +225,28 @@ export default function StudentIdPhotoAttachFields({
 function createStyles(normalize) {
   return StyleSheet.create({
     root: {
-      gap: normalize(12),
+      gap: normalize(6),
     },
     slotLabel: {
       fontFamily: fonts.bold,
-      fontSize: normalize(fontSizes.lg),
-      color: colors.textPrimary,
+      fontSize: normalize(fontSizes.xl),
+      color: colors.text,
     },
     required: {
       fontFamily: fonts.regular,
       color: colors.primaryDark,
-      fontSize: normalize(fontSizes.sm),
+      fontSize: normalize(fontSizes.md),
     },
     hint: {
       fontFamily: fonts.regular,
-      fontSize: normalize(fontSizes.md),
-      color: colors.textSecondary,
-      lineHeight: normalize(22),
+      fontSize: normalize(fontSizes.lg),
+      color: colors.textLight4,
     },
     attachBox: {
       borderWidth: 1.5,
       borderStyle: 'dashed',
       borderColor: colors.primary,
-      backgroundColor: colors.surface || colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(12),
       paddingVertical: normalize(28),
       alignItems: 'center',
@@ -256,7 +255,7 @@ function createStyles(normalize) {
     },
     attachText: {
       fontFamily: fonts.regular,
-      fontSize: normalize(15),
+      fontSize: normalize(fontSizes.xl + 1),
       color: colors.primaryDark,
     },
     photoStrip: {
@@ -271,7 +270,7 @@ function createStyles(normalize) {
       borderRadius: normalize(10),
       borderWidth: 1.5,
       borderStyle: 'dashed',
-      borderColor: colors.textLight10,
+      borderColor: colors.textLight1,
       alignItems: 'center',
       justifyContent: 'center',
       marginRight: normalize(8),
@@ -285,13 +284,13 @@ function createStyles(normalize) {
       width: normalize(80),
       height: normalize(80),
       borderRadius: normalize(10),
-      backgroundColor: colors.surface || '#F5F5F5',
+      backgroundColor: colors.white,
     },
     photoDeleteButton: {
       position: 'absolute',
       top: normalize(-6),
       right: normalize(-6),
-      backgroundColor: colors.textPrimary,
+      backgroundColor: colors.text,
       borderRadius: normalize(10),
     },
     altLinkWrap: {

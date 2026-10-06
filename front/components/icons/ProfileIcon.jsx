@@ -1,5 +1,6 @@
 import React from 'react';
 import Svg, { Path } from 'react-native-svg';
+import { colors } from '../../styles/colors';
 
 const BUBBLE = '#A6DA95';
 
@@ -16,7 +17,7 @@ const P5 =
 const P6 =
   'M149.943 122.994C148.468 123.531 147.832 125.283 148.643 126.627C149.281 127.684 150.601 128.111 151.734 127.622C172.452 118.69 183.777 111.757 200.966 97.9282C201.928 97.1543 202.166 95.7878 201.529 94.7306C200.718 93.3866 198.873 93.1315 197.711 94.1865C181.797 108.633 170.569 115.493 149.943 122.994Z';
 
-export default function ProfileIcon({ color = '#FFFFFF', size = 40 }) {
+export default function ProfileIcon({ color = colors.white, size = 40 }) {
   const eyeColor = color;
 
   return (

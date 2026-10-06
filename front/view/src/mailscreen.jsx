@@ -26,6 +26,7 @@ import {
   navigateToResendPersonalMail,
 } from '../../utils/personalMail';
 import ReportModal from '../../components/common/ReportModal.jsx';
+import FloatingButton from '../../components/common/FloatingButton';
 import { useRequireStudentVerified } from '../../hooks/useRequireStudentVerified';
 
 function parseUtcToLocal(createdAt) {
@@ -202,7 +203,7 @@ function mapMailToListItem(mail, isReceived) {
 function MailInbox({ onOpen, onBack, navigation }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createMailStyles(normalize), [normalize]);
+  const styles = useMemo(() => createMailStyles(normalize, width), [normalize, width]);
   const inboxMenuSheetStyles = useMemo(
     () => createMailInboxMenuSheetStyles(normalize),
     [normalize],
@@ -333,7 +334,7 @@ function MailInbox({ onOpen, onBack, navigation }) {
         <View
           style={{
             flex: 1,
-            paddingHorizontal: normalize(14),
+            paddingHorizontal: width * 0.04,
             paddingTop: normalize(10),
           }}
         >
@@ -372,7 +373,7 @@ function MailInbox({ onOpen, onBack, navigation }) {
           <Octicons
             name="history"
             size={normalize(22)}
-            color={colors.textPrimary}
+            color={colors.text}
           />
         }
         onRightPress={() => navigation?.navigate('MailHistory')}
@@ -513,13 +514,10 @@ function MailInbox({ onOpen, onBack, navigation }) {
           </TouchableOpacity>
         )}
       </ScrollView>
-      <TouchableOpacity
-        style={styles.floatingButton}
-        activeOpacity={0.8}
+      <FloatingButton
+        aboveFooter
         onPress={() => navigation?.navigate('SendMail')}
-      >
-        <Text style={styles.floatingButtonText}>+</Text>
-      </TouchableOpacity>
+      />
 
       <Modal
         visible={inboxMenuVisible}
@@ -600,7 +598,7 @@ function MailInbox({ onOpen, onBack, navigation }) {
                   <Ionicons
                     name="flag-outline"
                     size={16}
-                    color={colors.textSecondary}
+                    color={colors.textLight4}
                   />
                 </View>
                 <View>
@@ -640,7 +638,7 @@ function MailInbox({ onOpen, onBack, navigation }) {
 function MailDetail({ mail: initialMail, onBack, navigation }) {
   const { width, height } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createMailStyles(normalize), [normalize]);
+  const styles = useMemo(() => createMailStyles(normalize, width), [normalize, width]);
 
   const { refreshHasUnread } = useNotification();
 
@@ -865,7 +863,7 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
             <Octicons
               name="history"
               size={normalize(18)}
-              color={colors.textPrimary}
+              color={colors.text}
             />
           }
           onRightPress={() =>
@@ -878,7 +876,7 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
           <View
             style={{
               flex: 1,
-              paddingHorizontal: normalize(16),
+              paddingHorizontal: width * 0.04,
               paddingTop: normalize(16),
             }}
           >
@@ -940,7 +938,7 @@ function MailDetail({ mail: initialMail, onBack, navigation }) {
           <Octicons
             name="history"
             size={normalize(18)}
-            color={colors.textPrimary}
+            color={colors.text}
           />
         }
         onRightPress={() =>

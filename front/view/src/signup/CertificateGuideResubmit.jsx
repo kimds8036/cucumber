@@ -23,11 +23,10 @@ const CertificateGuideResubmit = ({ navigation, onProceed }) => {
         title="재학증명서 가이드"
         onBack={() => navigation.goBack()}
       />
-      <View style={[local.body, { paddingHorizontal: width * 0.07 }]}>
+      <View style={[local.body, { paddingHorizontal: width * 0.04 }]}>
         <SignStepCertificateGuide
           styles={styles}
           onProceed={onProceed}
-          insetBody={false}
         />
       </View>
     </View>
@@ -37,7 +36,7 @@ const CertificateGuideResubmit = ({ navigation, onProceed }) => {
 const local = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
   },
   body: {
     flex: 1,

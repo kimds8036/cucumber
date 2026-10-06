@@ -41,7 +41,7 @@ const SignupPrepMaterialsModal = ({
         style={{
           fontFamily: fonts.bold,
           fontSize: normalize(18),
-          color: colors.textPrimary,
+          color: colors.text,
           textAlign: 'center',
           marginBottom: 10,
         }}
@@ -54,7 +54,7 @@ const SignupPrepMaterialsModal = ({
         style={{
           fontFamily: fonts.regular,
           fontSize: normalize(14),
-          color: colors.textSecondary,
+          color: colors.textLight4,
           textAlign: 'center',
           lineHeight: normalize(22),
           marginBottom: 16,
@@ -66,7 +66,7 @@ const SignupPrepMaterialsModal = ({
 
       <View
         style={{
-          backgroundColor: colors.surface,
+          backgroundColor: colors.white,
           borderRadius: normalize(12),
           padding: normalize(14),
           marginBottom: normalize(8),
@@ -76,7 +76,7 @@ const SignupPrepMaterialsModal = ({
           style={{
             fontFamily: fonts.bold,
             fontSize: normalize(15),
-            color: colors.textPrimary,
+            color: colors.text,
             marginBottom: normalize(4),
           }}
         >
@@ -86,7 +86,7 @@ const SignupPrepMaterialsModal = ({
           style={{
             fontFamily: fonts.regular,
             fontSize: normalize(13),
-            color: colors.textSecondary,
+            color: colors.textLight4,
             lineHeight: normalize(19),
           }}
         >
@@ -96,7 +96,7 @@ const SignupPrepMaterialsModal = ({
 
       <View
         style={{
-          backgroundColor: colors.surface,
+          backgroundColor: colors.white,
           borderRadius: normalize(12),
           padding: normalize(14),
           marginBottom: 16,
@@ -106,7 +106,7 @@ const SignupPrepMaterialsModal = ({
           style={{
             fontFamily: fonts.bold,
             fontSize: normalize(15),
-            color: colors.textPrimary,
+            color: colors.text,
             marginBottom: normalize(4),
           }}
         >
@@ -116,7 +116,7 @@ const SignupPrepMaterialsModal = ({
           style={{
             fontFamily: fonts.regular,
             fontSize: normalize(13),
-            color: colors.textSecondary,
+            color: colors.textLight4,
             lineHeight: normalize(19),
           }}
         >
@@ -140,7 +140,7 @@ const SignupPrepMaterialsModal = ({
           style={{
             fontFamily: fonts.bold,
             fontSize: normalize(14),
-            color: colors.textWhite,
+            color: colors.white,
           }}
         >
           확인했습니다
@@ -152,7 +152,7 @@ const SignupPrepMaterialsModal = ({
           marginTop: 8,
           height: 42,
           borderRadius: 10,
-          backgroundColor: colors.textLight5,
+          backgroundColor: colors.textLight05,
           alignItems: 'center',
           justifyContent: 'center',
         }}
@@ -163,7 +163,7 @@ const SignupPrepMaterialsModal = ({
           style={{
             fontFamily: fonts.bold,
             fontSize: normalize(14),
-            color: colors.textSecondary,
+            color: colors.textLight4,
           }}
         >
           돌아가기

@@ -4,7 +4,6 @@ import {
   Text,
   Image,
   ScrollView,
-  useWindowDimensions,
 } from 'react-native';
 import SignupPrimaryFooter from './SignupPrimaryFooter';
 
@@ -98,23 +97,10 @@ function GuideStepDescription({ parts, styles }) {
 const SignStepCertificateGuide = ({
   styles,
   onProceed,
-  insetBody = true,
 }) => {
-  const { width } = useWindowDimensions();
   const scrollRef = useRef(null);
   const [hasReachedBottom, setHasReachedBottom] = useState(false);
   const [viewportHeight, setViewportHeight] = useState(0);
-  const bodyStyle = useMemo(
-    () => ({
-      ...(insetBody
-        ? {
-            marginHorizontal: -width * 0.04,
-            paddingHorizontal: width * 0.07,
-          }
-        : {}),
-    }),
-    [width, insetBody],
-  );
 
   const markReachedBottom = useCallback(() => {
     setHasReachedBottom(true);
@@ -148,7 +134,6 @@ const SignStepCertificateGuide = ({
       style={[
         styles.ageGateContainer,
         styles.certificateGuideContainer,
-        bodyStyle,
       ]}
     >
       <ScrollView

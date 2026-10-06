@@ -158,7 +158,7 @@ const LockScreen = ({ onUnlock }) => {
     : '암호가 올바르지 않습니다';
 
   const biometricIconColor = isPinLockedOut
-    ? colors.textLight20
+    ? colors.textLight2
     : colors.primary;
 
   const biometricKeypadSlot = biometricActive ? (

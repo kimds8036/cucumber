@@ -36,7 +36,7 @@ const AnnouncementDetail = ({ navigation, route }) => {
   const [error, setError] = useState('');
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createServiceStyles(normalize), [normalize]);
+  const styles = useMemo(() => createServiceStyles(normalize, width), [normalize, width]);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,7 +89,7 @@ const AnnouncementDetail = ({ navigation, route }) => {
         {loading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: 24 }} />
         ) : error ? (
-          <Text style={{ color: colors.textSecondary, marginTop: 16 }}>
+          <Text style={{ color: colors.textLight4, marginTop: 16 }}>
             {error}
           </Text>
         ) : (
@@ -97,7 +97,7 @@ const AnnouncementDetail = ({ navigation, route }) => {
             {item?.publishedAt ? (
               <Text
                 style={{
-                  color: colors.textSecondary,
+                  color: colors.textLight4,
                   marginBottom: normalize(16),
                   fontSize: normalize(13),
                 }}

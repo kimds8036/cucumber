@@ -3,8 +3,7 @@ import { View, Text, TouchableOpacity, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import Loading from '../../../../components/Loading';
 import { colors } from '../../../../styles/colors';
-import ProfileIcon from '../../../../assets/Profile.svg';
-import { getProfileInnerColor } from '../../../../utils/profileIconColor';
+import UserAvatar from '../../../../components/UserAvatar';
 
 function formatChatDateBanner(dateKey) {
   if (!dateKey) return '';
@@ -75,11 +74,11 @@ const OptimizedImage = memo(({ uri, onPress, onLongPress, isSending }) => (
           backgroundColor: 'rgba(0,0,0,0.38)',
         }}
       >
-        <Loading color="#fff" size="small" />
+        <Loading color={colors.white} size="small" />
         <Text
           style={{
             marginTop: 8,
-            color: '#fff',
+            color: colors.white,
             fontSize: 12,
             fontWeight: '600',
           }}
@@ -131,7 +130,7 @@ const DateBanner = ({ msg, normalize }) => (
         backgroundColor: '#EEE',
       }}
     >
-      <Text style={{ fontSize: normalize(11), color: colors.textSecondary }}>
+      <Text style={{ fontSize: normalize(11), color: colors.textLight4 }}>
         {formatChatDateBanner(msg.dateKey)}
       </Text>
     </View>
@@ -142,13 +141,9 @@ const DateBanner = ({ msg, normalize }) => (
  * 상대방 메시지일 때만 보이는 프로필 영역
  * @param {{ chatStyles: any, normalize: Function }} props
  */
-const SenderProfile = ({ chatStyles, normalize, colorId }) => (
+const SenderProfile = ({ chatStyles, normalize, colorId, uri }) => (
   <View style={chatStyles.chatProfileCircle}>
-    <ProfileIcon
-      width={normalize(30)}
-      height={normalize(30)}
-      color={getProfileInnerColor(colorId)}
-    />
+    <UserAvatar uri={uri} size={normalize(38)} colorId={colorId} />
   </View>
 );
 
@@ -306,7 +301,7 @@ const MessageBubble = ({
                     paddingVertical: 0,
                   },
               msg.isFailed && { borderWidth: 1, borderColor: colors.alert },
-              msg.is_deleted && { backgroundColor: colors.textLight10 },
+              msg.is_deleted && { backgroundColor: colors.textLight1 },
             ]}
           >
             {(onBubbleLongPress) => (
@@ -529,9 +524,10 @@ const MessageItem = memo(
     onCopyMessage,
     onReplyMessage,
     onPressReplyTarget,
-    opponentName,
-    onOpenLongPressMenu,
-  }) => {
+  opponentName,
+  opponentAvatarUrl,
+  onOpenLongPressMenu,
+}) => {
     if (msg.type === 'dateBanner') {
       return <DateBanner msg={msg} normalize={normalize} />;
     }
@@ -571,6 +567,7 @@ const MessageItem = memo(
             chatStyles={chatStyles}
             normalize={normalize}
             colorId={msg.senderColorId}
+            uri={opponentAvatarUrl}
           />
         ) : (
           <View style={chatStyles.chatProfileSpacer} pointerEvents="none" />
@@ -599,6 +596,8 @@ const MessageItem = memo(
     if (prevProps.onPressReplyTarget !== nextProps.onPressReplyTarget)
       return false;
     if (prevProps.onOpenLongPressMenu !== nextProps.onOpenLongPressMenu)
+      return false;
+    if (prevProps.opponentAvatarUrl !== nextProps.opponentAvatarUrl)
       return false;
 
     const pm = prevProps.msg;

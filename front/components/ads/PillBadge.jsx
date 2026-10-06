@@ -9,18 +9,18 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
   },
   adPill: {
-    backgroundColor: colors.textLight20,
+    backgroundColor: colors.textLight2,
   },
   tipPill: {
-    backgroundColor: colors.primaryLight30,
+    backgroundColor: colors.primaryLight4,
   },
   text: {
-    color: colors.background,
+    color: colors.white,
     fontSize: fontSizes.md,
     fontFamily: fonts.regular,
   },
   tiptext: {
-    color: colors.textSecondary,
+    color: colors.textLight4,
     fontSize: fontSizes.md,
     fontFamily: fonts.bold,
   },

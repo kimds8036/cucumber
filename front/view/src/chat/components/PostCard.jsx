@@ -1,5 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Image, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Dimensions,
+  Image,
+  Text,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { api } from '../../../../utils/api';
@@ -9,7 +16,7 @@ import Skeleton from '../../../../components/common/Skeleton';
 const postCache = {};
 
 /** 실제 카드와 비슷한 바깥 여백 + 고정 높이(레이아웃 점프 완화) */
-function PostCardSkeleton({ n, onLayout }) {
+function PostCardSkeleton({ n, gutter, onLayout }) {
   const bar = (w, h, mt = 0) => (
     <View
       style={{
@@ -17,7 +24,7 @@ function PostCardSkeleton({ n, onLayout }) {
         height: h,
         marginTop: mt,
         borderRadius: n(4),
-        backgroundColor: colors.textLight10,
+        backgroundColor: colors.textLight1,
       }}
     />
   );
@@ -27,15 +34,15 @@ function PostCardSkeleton({ n, onLayout }) {
       pointerEvents="none"
       onLayout={onLayout}
       style={{
-        backgroundColor: colors.background,
-        marginHorizontal: n(12),
+        backgroundColor: colors.white,
+        marginHorizontal: gutter,
         marginTop: n(6),
         marginBottom: n(4),
         borderRadius: n(10),
         paddingHorizontal: n(12),
         paddingVertical: n(8),
         height: n(100),
-        shadowColor: '#000',
+        shadowColor: colors.text,
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.06,
         shadowRadius: 6,
@@ -60,7 +67,7 @@ function PostCardSkeleton({ n, onLayout }) {
             width: 56,
             height: 56,
             borderRadius: 8,
-            backgroundColor: colors.textLight10,
+            backgroundColor: colors.textLight1,
             justifyContent: 'center',
             alignItems: 'center',
           }}
@@ -81,9 +88,14 @@ export default function PostCard({
   onThumbnailLoaded,
   onLoadingChange,
 }) {
+  const { width } = useWindowDimensions();
+  const gutter = width * 0.04;
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(() => Boolean(roomId));
-  const n = typeof normalize === 'function' ? normalize : (v) => v;
+  const n =
+    typeof normalize === 'function'
+      ? normalize
+      : (size) => Math.round((Dimensions.get('window').width / 375) * size);
   const readyFiredRef = useRef(false);
   const thumbLoadFiredRef = useRef(false);
   const loadingRef = useRef(loading);
@@ -185,7 +197,7 @@ export default function PostCard({
   }, [roomId]);
 
   if (loading) {
-    return <PostCardSkeleton n={n} onLayout={handleLayout} />;
+    return <PostCardSkeleton n={n} gutter={gutter} onLayout={handleLayout} />;
   }
 
   if (!post) return null;
@@ -196,14 +208,14 @@ export default function PostCard({
       onLayout={handleLayout}
       onPress={() => onPress?.(post)}
       style={{
-        backgroundColor: colors.background,
-        marginHorizontal: n(12),
+        backgroundColor: colors.white,
+        marginHorizontal: gutter,
         marginTop: n(6),
         marginBottom: n(4),
         borderRadius: n(10),
         paddingHorizontal: n(12),
         paddingVertical: n(8),
-        shadowColor: '#000',
+        shadowColor: colors.text,
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.06,
         shadowRadius: 6,
@@ -233,7 +245,7 @@ export default function PostCard({
                 flex: 1,
                 fontSize: n(11),
                 fontFamily: fonts.regular,
-                color: colors.textSecondary,
+                color: colors.textLight4,
               }}
             >
               {post.author}
@@ -250,7 +262,7 @@ export default function PostCard({
                 style={{
                   fontSize: n(11),
                   fontFamily: fonts.regular,
-                  color: colors.textSecondary,
+                  color: colors.textLight4,
                   marginRight: n(10),
                 }}
               >
@@ -266,7 +278,7 @@ export default function PostCard({
                 style={{
                   fontSize: n(11),
                   fontFamily: fonts.regular,
-                  color: colors.textSecondary,
+                  color: colors.textLight4,
                 }}
               >
                 {post.comments}
@@ -281,7 +293,7 @@ export default function PostCard({
               width: 56,
               height: 56,
               borderRadius: 8,
-              backgroundColor: colors.textLight10,
+              backgroundColor: colors.textLight1,
             }}
             resizeMode="cover"
             onLoad={handleThumbnailLoad}
@@ -296,7 +308,7 @@ export default function PostCard({
           marginTop: n(5),
           fontSize: n(13),
           fontFamily: fonts.regular,
-          color: colors.textPrimary,
+          color: colors.text,
           lineHeight: n(18),
         }}
       >

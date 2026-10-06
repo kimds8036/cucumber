@@ -1,17 +1,17 @@
 import { Platform, StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
-import { shadow } from './tokens';
 
 export const createFindStyles = (width, normalize) => {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       paddingHorizontal: width * 0.04,
     },
     headerSection: {
       paddingTop: normalize(8),
-      backgroundColor: colors.background,
+      paddingHorizontal: width * 0.04,
+      backgroundColor: 'transparent',
     },
     headerTop: {
       flexDirection: 'row',
@@ -26,9 +26,9 @@ export const createFindStyles = (width, normalize) => {
       padding: normalize(8),
     },
     headerTitle: {
-      fontSize: normalize(fontSizes.heading),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.textLight4,
     },
     description: {
       marginTop: normalize(12),
@@ -36,48 +36,49 @@ export const createFindStyles = (width, normalize) => {
       textAlign: 'center',
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       lineHeight: normalize(22),
       paddingHorizontal: normalize(8),
     },
     contentSection: {
       flex: 1,
       paddingTop: normalize(8),
+      paddingHorizontal: width * 0.04,
     },
     inputLabel: {
-      fontSize: normalize(fontSizes.xxl),
+      fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
-      marginBottom: normalize(8),
-      marginLeft: normalize(20),
+      color: colors.textLight4,
+      marginBottom: normalize(6),
+      marginLeft: normalize(2),
     },
     inputWrapper: {
       width: '100%',
-      alignItems: 'center',
-      marginBottom: normalize(8),
+      alignItems: 'stretch',
+      marginBottom: normalize(12),
     },
     input: {
-      width: '98%',
-      minHeight: normalize(50),
-      borderWidth: 1,
-      borderColor: colors.primary,
-      borderRadius: normalize(24),
-      paddingHorizontal: normalize(20),
+      width: '100%',
+      minHeight: normalize(52),
+      borderWidth: 1.5,
+      borderColor: colors.textLight2,
+      borderRadius: normalize(16),
+      paddingHorizontal: normalize(14),
       paddingVertical: normalize(12),
-      fontSize: normalize(fontSizes.xxl),
+      fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
-      marginBottom: normalize(12),
-      backgroundColor: colors.background,
+      color: colors.text,
+      marginBottom: 0,
+      backgroundColor: colors.white,
       textAlignVertical: 'center',
       ...Platform.select({
         android: { includeFontPadding: false, elevation: 0 },
-        ios: shadow.sm,
+        ios: {},
       }),
     },
     inputReadonly: {
       backgroundColor: colors.textLight5,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     helperText: {
       marginTop: normalize(2),
@@ -85,15 +86,15 @@ export const createFindStyles = (width, normalize) => {
       marginLeft: normalize(20),
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     resultCard: {
       width: '98%',
       alignSelf: 'center',
       borderWidth: 1,
-      borderColor: colors.primaryLight50,
+      borderColor: colors.primaryLight5,
       borderRadius: normalize(20),
-      backgroundColor: colors.primaryLight10,
+      backgroundColor: colors.primaryLight2,
       paddingVertical: normalize(16),
       paddingHorizontal: normalize(16),
       marginTop: normalize(2),
@@ -102,18 +103,19 @@ export const createFindStyles = (width, normalize) => {
     resultTitle: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginBottom: normalize(6),
     },
     resultValue: {
       fontSize: normalize(fontSizes.title),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     footerSection: {
       paddingTop: normalize(8),
       paddingBottom: normalize(16),
-      backgroundColor: colors.background,
+      paddingHorizontal: width * 0.04,
+      backgroundColor: 'transparent',
     },
     primaryButton: {
       width: '100%',
@@ -124,12 +126,12 @@ export const createFindStyles = (width, normalize) => {
       paddingVertical: normalize(14),
     },
     primaryButtonDisabled: {
-      backgroundColor: colors.textLight20,
+      backgroundColor: colors.textLight05,
     },
     primaryButtonText: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textWhite,
+      color: colors.white,
     },
     inputWithButton: {
       flexDirection: 'row',
@@ -151,17 +153,19 @@ export const createFindStyles = (width, normalize) => {
       alignItems: 'center',
     },
     verifyButtonDisabled: {
-      backgroundColor: colors.textLight20,
+      backgroundColor: colors.textLight05,
     },
     verifyButtonWide: {
-      width: '98%',
-      alignSelf: 'center',
+      width: '100%',
+      alignSelf: 'stretch',
       marginBottom: normalize(12),
+      minHeight: normalize(52),
+      borderRadius: normalize(16),
     },
     verifyButtonText: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textWhite,
+      color: colors.white,
     },
     verifiedHint: {
       marginTop: normalize(4),
@@ -169,7 +173,7 @@ export const createFindStyles = (width, normalize) => {
       marginLeft: normalize(20),
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.primary,
+      color: colors.textLight2,
     },
   });
 };

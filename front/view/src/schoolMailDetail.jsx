@@ -8,45 +8,46 @@ import React, {
 import {
   View,
   Text,
-  TouchableOpacity,
-  ScrollView,
-  RefreshControl,
+  FlatList,
   useWindowDimensions,
-  Modal,
-  TouchableWithoutFeedback,
   Platform,
   Alert,
+  InteractionManager,
 } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   runOnJS,
 } from 'react-native-reanimated';
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { Entypo } from '@expo/vector-icons';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useKeyboardHandler } from 'react-native-keyboard-controller';
 import SubHeader from '../frame/subHeader';
-import Skeleton from '../../components/common/Skeleton';
+import BoardDetailSkeleton from './board/BoardDetailSkeleton';
 import CommentInput from '../../components/CommentInput.jsx';
+import {
+  INPUT_BAR_OVERLAY_STYLE,
+  INPUT_BAR_WRAPPER_BACKGROUND,
+  USES_NATIVE_INPUT_BAR,
+  useInputBarOverlay,
+} from '../../components/NativeInputBarIOS.jsx';
+import ReportModal from '../../components/common/ReportModal.jsx';
+import TopAdBanner from '../../components/ads/TopAdBanner';
 import { colors, fonts } from '../../styles/colors';
-import { getNormalize } from '../../styles/frame.style';
-import { createSchoolMailDetailStyles } from '../../styles/SchoolMail.style';
+import { createDetailStyles, getNormalize } from '../../styles/board.style';
 import { api } from '../../utils/api';
+import { usePlatformInsets } from '../../hooks/usePlatformInsets';
 import { useRequireStudentVerified } from '../../hooks/useRequireStudentVerified';
 import { emitSchoolMailLike, emitSchoolMailDeleted } from '../../utils/listSyncEvents';
+import { filterCommentTreeExcludingUser } from '../../utils/blockUser';
 import {
   getSchoolMailFromLabel,
   getSchoolMailCommentAuthorLabel,
 } from './utils/schoolMailFromLabel';
-import { useKeyboardHandler } from 'react-native-keyboard-controller';
-import ReportModal from '../../components/common/ReportModal.jsx';
-import { filterCommentTreeExcludingUser } from '../../utils/blockUser';
+import BoardPostContent from './board/BoardPostContent';
+import BoardCommentTree from './board/BoardCommentTree';
+import BoardFloatingMenu from './board/BoardFloatingMenu';
 
-const INITIAL_REPLIES = 3;
+const INITIAL_REPLIES = 0;
 
 function formatTimeAgo(createdAt) {
   if (!createdAt) return '';
@@ -99,7 +100,7 @@ function filterCommentsTree(comments, deletedSet) {
 function findCommentInTree(nodes, id) {
   if (!nodes?.length) return null;
   for (const n of nodes) {
-    if (n.id === id) return n;
+    if (Number(n.id) === Number(id)) return n;
     const f = findCommentInTree(n.replies, id);
     if (f) return f;
   }
@@ -110,7 +111,13 @@ function bumpLikeInTree(nodes, id, liked, likeCount) {
   if (!nodes?.length) return nodes;
   return nodes.map((n) => {
     if (n.id === id) {
-      return { ...n, is_liked: liked, like_count: likeCount, likes: likeCount };
+      return {
+        ...n,
+        is_liked: liked,
+        liked,
+        like_count: likeCount,
+        likes: likeCount,
+      };
     }
     if (n.replies?.length) {
       return { ...n, replies: bumpLikeInTree(n.replies, id, liked, likeCount) };
@@ -119,7 +126,7 @@ function bumpLikeInTree(nodes, id, liked, likeCount) {
   });
 }
 
-/** API 평면 댓글 → parent_id 기준 트리 */
+/** API 평면 댓글 → parent_id 기준 트리 (BoardCommentTree가 읽는 필드 포함) */
 function buildCommentTree(flat, mailSchoolId, mailAuthorUserId) {
   if (!flat?.length) return [];
   const sorted = [...flat].sort((a, b) => {
@@ -143,6 +150,7 @@ function buildCommentTree(flat, mailSchoolId, mailAuthorUserId) {
       time: formatTimeAgo(raw.created_at),
       likes: Number(raw.like_count ?? 0),
       is_liked: Boolean(raw.is_liked),
+      liked: Boolean(raw.is_liked),
       isWriter: authorLabel === '작성자',
       isPinned: Boolean(raw.is_pinned),
     });
@@ -151,7 +159,7 @@ function buildCommentTree(flat, mailSchoolId, mailAuthorUserId) {
   sorted.forEach((raw) => {
     const node = map.get(raw.id);
     const pid = raw.parent_id;
-    if (pid == null || pid === undefined) {
+    if (pid == null) {
       roots.push(node);
     } else {
       const parent = map.get(pid);
@@ -174,38 +182,30 @@ function flattenReplies(replies, depth = 0, parentAuthorLabel = null) {
   return result;
 }
 
-function CommentBody({ content, styles: st }) {
-  const text = content ?? '';
-  const parts = [];
-  let last = 0;
-  const regex = /@(익명\d+)/g;
-  let m;
-  while ((m = regex.exec(text)) !== null) {
-    if (m.index > last) {
-      parts.push(
-        <Text key={`t-${last}`} style={st.commentBody}>
-          {text.slice(last, m.index)}
-        </Text>,
-      );
+function buildFlatComments(comments, expandedRepliesMap) {
+  const result = [];
+  for (const c of comments) {
+    result.push({ type: 'comment', data: c });
+    const flattened = flattenReplies(c.replies || [], 0, c.authorLabel);
+    const isExpanded = expandedRepliesMap[c.id];
+    const repliesToShow = isExpanded
+      ? flattened
+      : flattened.slice(0, INITIAL_REPLIES);
+    for (const { reply, parentAuthorLabel } of repliesToShow) {
+      result.push({ type: 'reply', data: reply, parentAuthorLabel });
     }
-    parts.push(
-      <Text key={`tag-${m.index}`} style={[st.commentBody, st.commentTag]}>
-        @{m[1]}
-      </Text>,
-    );
-    last = regex.lastIndex;
+    if (flattened.length > INITIAL_REPLIES && !isExpanded) {
+      result.push({
+        type: 'more',
+        commentId: c.id,
+        count: flattened.length - INITIAL_REPLIES,
+      });
+    }
+    if (isExpanded && flattened.length > INITIAL_REPLIES) {
+      result.push({ type: 'collapse', commentId: c.id });
+    }
   }
-  if (last < text.length) {
-    parts.push(
-      <Text key={`t-${last}`} style={st.commentBody}>
-        {text.slice(last)}
-      </Text>,
-    );
-  }
-  if (parts.length === 0) {
-    return <Text style={st.commentBody}>{text}</Text>;
-  }
-  return <Text style={st.commentBody}>{parts}</Text>;
+  return result;
 }
 
 export default function SchoolMailDetail({ navigation, route }) {
@@ -216,10 +216,10 @@ export default function SchoolMailDetail({ navigation, route }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(
-    () => createSchoolMailDetailStyles(width, normalize),
+    () => createDetailStyles(width, normalize),
     [width, normalize],
   );
-  const insets = useSafeAreaInsets();
+  const insets = usePlatformInsets();
 
   const schoolName = route?.params?.schoolName;
   const routeSchoolId = route?.params?.schoolId;
@@ -228,7 +228,6 @@ export default function SchoolMailDetail({ navigation, route }) {
   const [mail, setMail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
 
   const [comments, setComments] = useState([]);
   const [replyToCommentId, setReplyToCommentId] = useState(null);
@@ -236,6 +235,7 @@ export default function SchoolMailDetail({ navigation, route }) {
   const [expandedReplies, setExpandedReplies] = useState({});
   const [deletedCommentIds, setDeletedCommentIds] = useState([]);
   const [bottomComment, setBottomComment] = useState('');
+  const [isSendingComment, setIsSendingComment] = useState(false);
 
   const [postLiked, setPostLiked] = useState(false);
   const [floatingMenuVisible, setFloatingMenuVisible] = useState(false);
@@ -248,13 +248,13 @@ export default function SchoolMailDetail({ navigation, route }) {
   const [myUserId, setMyUserId] = useState(null);
 
   const scrollViewRef = useRef(null);
-  const commentLayoutMap = useRef({});
   const inputRef = useRef(null);
+  const { overlayHeight, onOverlayLayout } = useInputBarOverlay();
   const postMenuButtonRef = useRef(null);
   const commentMenuRefs = useRef({});
-  const commentWrapperRefs = useRef({});
   const scrollToCommentIdRef = useRef(null);
   const inputTranslateY = useSharedValue(0);
+  const keyboardOffset = useSharedValue(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -275,7 +275,7 @@ export default function SchoolMailDetail({ navigation, route }) {
     if (mailId == null) {
       setLoading(false);
       setError('우편을 찾을 수 없습니다.');
-      return;
+      return undefined;
     }
     (async () => {
       try {
@@ -319,52 +319,13 @@ export default function SchoolMailDetail({ navigation, route }) {
     };
   }, [mailId, allowed]);
 
-  const onRefreshMail = useCallback(async () => {
-    if (!allowed || mailId == null) return;
-    setRefreshing(true);
-    setError(null);
-    try {
-      const res = await api.get(`/api/mails/school/${mailId}`);
-      const data = res.data?.data;
-      setMail(data ?? null);
-      if (data) {
-        setPostLiked(Boolean(data.is_liked));
-        try {
-          const cr = await api.get(`/api/mails/school/${mailId}/comments`);
-          const flat = cr.data?.data?.comments ?? [];
-          setComments(buildCommentTree(flat, data.school_id, data.user_id));
-        } catch (ce) {
-          console.error(
-            '학교 우편 댓글 로드 실패:',
-            ce?.response?.data || ce.message,
-          );
-          setComments([]);
-        }
-      }
-      if (!data) setError('우편을 찾을 수 없습니다.');
-    } catch (e) {
-      console.error(
-        '학교 우편 상세 새로고침 실패:',
-        e?.response?.data || e.message,
-      );
-      setMail(null);
-      setError(e?.response?.data?.message ?? '우편을 불러오지 못했습니다.');
-    } finally {
-      setRefreshing(false);
-    }
-  }, [mailId]);
-
-  const mailBody = mail?.content ?? '';
-  const fromLine = getSchoolMailFromLabel(
-    mail,
-    routeSchoolId ?? mail?.school_id,
-  );
-  const timeLabel =
-    formatTimeAgo(mail?.created_at) || String(mail?.created_at ?? '');
-
   const visibleComments = useMemo(
     () => filterCommentsTree(comments, new Set(deletedCommentIds)),
     [comments, deletedCommentIds],
+  );
+  const flatComments = useMemo(
+    () => buildFlatComments(visibleComments, expandedReplies),
+    [visibleComments, expandedReplies],
   );
   const treeCommentCount = useMemo(
     () => countCommentsTree(visibleComments),
@@ -372,38 +333,27 @@ export default function SchoolMailDetail({ navigation, route }) {
   );
   const displayCommentCount = mail?.comment_count ?? treeCommentCount;
 
-  const commentParseStyles = useMemo(
+  const isMailAuthor =
+    mail?.user_id != null &&
+    myUserId != null &&
+    Number(mail.user_id) === Number(myUserId);
+
+  const postForContent = useMemo(
     () => ({
-      commentBody: styles.smDetailCommentBody,
-      commentTag: styles.smDetailCommentTag,
+      id: mail?.id,
+      author: getSchoolMailFromLabel(mail, routeSchoolId ?? mail?.school_id),
+      time: formatTimeAgo(mail?.created_at) || String(mail?.created_at ?? ''),
+      location: '',
+      content: mail?.content ?? '',
+      likes: Number(mail?.like_count ?? 0),
+      comments: displayCommentCount,
+      images: [],
+      tags: [],
     }),
-    [styles],
+    [mail, routeSchoolId, displayCommentCount],
   );
 
-  const scrollToComment = useCallback(
-    (commentId) => {
-      const yCached = commentLayoutMap.current[commentId];
-      const ref = commentWrapperRefs.current[commentId];
-      if (scrollViewRef.current && yCached != null) {
-        scrollViewRef.current.scrollTo({
-          y: Math.max(0, yCached - normalize(80)),
-          animated: true,
-        });
-        return;
-      }
-      if (ref && scrollViewRef.current) {
-        ref.measureLayout(
-          scrollViewRef.current,
-          (_x, y) => {
-            const ly = Math.max(0, y - normalize(80));
-            scrollViewRef.current?.scrollTo({ y: ly, animated: true });
-          },
-          () => {},
-        );
-      }
-    },
-    [normalize],
-  );
+  const headerTitle = schoolName ? `${schoolName} 우편함` : '학교 우편함';
 
   const openFloatingMenu = (context, ref) => {
     if (ref?.measureInWindow) {
@@ -414,7 +364,6 @@ export default function SchoolMailDetail({ navigation, route }) {
       });
       return;
     }
-    // ref 측정 실패 시에도 메뉴가 열리도록 중앙 오픈 fallback
     setFloatingMenuAnchor(null);
     setFloatingMenuContext(context);
     setFloatingMenuVisible(true);
@@ -422,8 +371,6 @@ export default function SchoolMailDetail({ navigation, route }) {
 
   const closeFloatingMenu = () => {
     setFloatingMenuVisible(false);
-    setFloatingMenuAnchor(null);
-    setFloatingMenuContext(null);
   };
 
   const openReportModal = (targetType, targetId, reportedUserId) => {
@@ -505,71 +452,100 @@ export default function SchoolMailDetail({ navigation, route }) {
     }
   };
 
-  const clearReplyTarget = () => {
-    setReplyToCommentId(null);
-    setReplyToAuthorLabel('');
+  const scrollToComment = (commentId) => {
+    const index = flatComments.findIndex(
+      (item) =>
+        (item.type === 'comment' || item.type === 'reply') &&
+        item.data.id === commentId,
+    );
+    if (index === -1 || !scrollViewRef.current) return;
+    try {
+      scrollViewRef.current.scrollToIndex({
+        index,
+        animated: true,
+        viewOffset: normalize(80),
+        viewPosition: 0,
+      });
+    } catch (e) {
+      scrollViewRef.current.scrollToEnd({ animated: true });
+    }
   };
 
-  const focusReplyInput = (commentId, authorLabel) => {
-    setReplyToCommentId(commentId);
-    const raw =
-      authorLabel != null ? String(authorLabel).replace(/^@/, '') : '';
-    setReplyToAuthorLabel(raw ? `@${raw}` : '');
-    scrollToCommentIdRef.current = commentId;
-    scrollToComment(commentId);
+  const handleKeyboardShowScroll = () => {
+    const delay = Platform.OS === 'ios' ? 200 : 100;
     setTimeout(() => {
-      inputRef.current?.focus();
-    }, 260);
-  };
-
-  const handleKeyboardShowScroll = useCallback(() => {
-    const delay = Platform.OS === 'ios' ? 380 : 250;
-    setTimeout(() => {
-      const cid = scrollToCommentIdRef.current;
-      if (cid) {
-        scrollToComment(cid);
+      const commentId = scrollToCommentIdRef.current;
+      if (commentId) {
         scrollToCommentIdRef.current = null;
-      } else {
+        scrollToComment(commentId);
+      } else if (!replyToCommentId) {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }
     }, delay);
-  }, [scrollToComment]);
+  };
 
   useKeyboardHandler(
     {
       onMove: (e) => {
         'worklet';
-        inputTranslateY.value = -Math.max(e.height - insets.bottom, 0);
+        keyboardOffset.value = Math.max(e.height - insets.bottom, 0);
+        inputTranslateY.value = -keyboardOffset.value;
       },
       onEnd: (e) => {
         'worklet';
-        inputTranslateY.value = -Math.max(e.height - insets.bottom, 0);
+        keyboardOffset.value = Math.max(e.height - insets.bottom, 0);
+        inputTranslateY.value = -keyboardOffset.value;
         if (e.height > 0) {
           runOnJS(handleKeyboardShowScroll)();
         }
       },
     },
-    [handleKeyboardShowScroll, insets.bottom],
+    [insets.bottom, replyToCommentId],
   );
 
   const inputAnimStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: inputTranslateY.value }],
   }));
+  const listAnimStyle = useAnimatedStyle(() => ({
+    paddingBottom: keyboardOffset.value,
+  }));
+
+  const focusReplyInput = (commentId) => {
+    setReplyToCommentId(null);
+    setReplyToAuthorLabel('');
+    scrollToCommentIdRef.current = null;
+    setTimeout(() => {
+      const target = findCommentInTree(comments, commentId);
+      setReplyToCommentId(commentId);
+      setReplyToAuthorLabel(target?.authorLabel ?? '');
+      scrollToCommentIdRef.current = commentId;
+    }, 50);
+    InteractionManager.runAfterInteractions(() => {
+      inputRef.current?.focus();
+    });
+  };
 
   useEffect(() => {
-    if (!replyToCommentId) return;
-    const t = setTimeout(() => {
+    if (!replyToCommentId) return undefined;
+    const task = InteractionManager.runAfterInteractions(() => {
       inputRef.current?.focus();
-    }, 520);
-    return () => clearTimeout(t);
+    });
+    return () => task.cancel();
   }, [replyToCommentId]);
 
   const toggleRepliesExpand = (commentId) => {
     setExpandedReplies((prev) => ({ ...prev, [commentId]: !prev[commentId] }));
   };
 
+  const clearReplyTarget = () => {
+    setReplyToCommentId(null);
+    setReplyToAuthorLabel('');
+  };
+
   const handleCommentSend = async () => {
-    if (!bottomComment.trim() || mailId == null) return;
+    if (!bottomComment.trim() || mailId == null || isSendingComment) return;
+    const wasReply = Boolean(replyToCommentId);
+    setIsSendingComment(true);
     try {
       await api.post(`/api/mails/school/${mailId}/comments`, {
         content: bottomComment.trim(),
@@ -587,11 +563,21 @@ export default function SchoolMailDetail({ navigation, route }) {
       if (m) setPostLiked(Boolean(m.is_liked));
       const flat = comRes.data?.data?.comments ?? [];
       setComments(buildCommentTree(flat, m?.school_id, m?.user_id));
+      if (!wasReply) {
+        setTimeout(
+          () => {
+            scrollViewRef.current?.scrollToEnd({ animated: true });
+          },
+          Platform.OS === 'ios' ? 120 : 80,
+        );
+      }
     } catch (e) {
       Alert.alert(
         '오류',
         e?.response?.data?.message ?? '댓글 전송에 실패했습니다.',
       );
+    } finally {
+      setIsSendingComment(false);
     }
   };
 
@@ -618,30 +604,27 @@ export default function SchoolMailDetail({ navigation, route }) {
     ]);
   }, [mail?.id, navigation]);
 
-  const handleDeleteComment = useCallback(
-    async (commentId) => {
-      if (!commentId) return;
-      Alert.alert('삭제', '댓글을 삭제할까요?', [
-        { text: '취소', style: 'cancel' },
-        {
-          text: '삭제',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(`/api/mails/school/comments/${commentId}`);
-              setDeletedCommentIds((prev) => [...prev, commentId]);
-            } catch (e) {
-              Alert.alert(
-                '오류',
-                e?.response?.data?.message ?? '삭제에 실패했습니다.',
-              );
-            }
-          },
+  const handleDeleteComment = useCallback((commentId) => {
+    if (!commentId) return;
+    Alert.alert('삭제', '댓글을 삭제할까요?', [
+      { text: '취소', style: 'cancel' },
+      {
+        text: '삭제',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await api.delete(`/api/mails/school/comments/${commentId}`);
+            setDeletedCommentIds((prev) => [...prev, commentId]);
+          } catch (e) {
+            Alert.alert(
+              '오류',
+              e?.response?.data?.message ?? '삭제에 실패했습니다.',
+            );
+          }
         },
-      ]);
-    },
-    [],
-  );
+      },
+    ]);
+  }, []);
 
   const handlePinComment = useCallback(
     async (commentId, pin = true) => {
@@ -664,319 +647,105 @@ export default function SchoolMailDetail({ navigation, route }) {
     [mail?.id, mail?.school_id, mail?.user_id],
   );
 
-  const commentMenuItems = useMemo(() => {
+  const buildMenuItems = () => {
+    if (floatingMenuContext === 'post') {
+      if (isMailAuthor) {
+        return [
+          {
+            label: '삭제하기',
+            iconName: 'trash-outline',
+            onPress: handleDeleteMail,
+          },
+        ];
+      }
+      return [
+        {
+          label: '신고 / 차단',
+          iconName: 'flag-outline',
+          onPress: () => {
+            if (mail?.user_id) {
+              openReportModal('schoolMail', mail.id, mail.user_id);
+            }
+          },
+        },
+      ];
+    }
+    const commentId = floatingMenuContext;
     const comment =
-      floatingMenuContext != null
-        ? findCommentInTree(comments, floatingMenuContext)
-        : null;
+      commentId != null ? findCommentInTree(comments, commentId) : null;
     const items = [];
-    const isMailAuthor =
-      mail?.user_id != null &&
-      myUserId != null &&
-      Number(mail.user_id) === Number(myUserId);
     if (comment && isMailAuthor) {
       items.push({
         label: comment.isPinned ? '고정 해제' : '댓글 고정',
-        iconName: comment.isPinned ? 'pin-outline' : 'pin',
-        onPress: () =>
-          handlePinComment(floatingMenuContext, !comment.isPinned),
-      });
-    }
-    if (
-      comment &&
-      myUserId != null &&
-      Number(comment.userId) === Number(myUserId)
-    ) {
-      items.push({
-        label: '삭제하기',
-        iconName: 'trash-outline',
-        onPress: () => handleDeleteComment(floatingMenuContext),
+        iconName: comment.isPinned ? 'pin-off' : 'pin',
+        iconSet: 'material-community',
+        onPress: () => handlePinComment(commentId, !comment.isPinned),
       });
     }
     items.push({
-      label: '신고 / 차단',
-      iconName: 'flag-outline',
-      onPress: () => {
-        if (!comment?.userId) return;
-        openReportModal(
-          'schoolMailComment',
-          floatingMenuContext,
-          comment.userId,
-        );
-      },
+      label: '답글 달기',
+      iconName: 'chatbubble-outline',
+      onPress: () => focusReplyInput(commentId),
     });
-    return items;
-  }, [
-    floatingMenuContext,
-    comments,
-    myUserId,
-    mail?.user_id,
-    handleDeleteComment,
-    handlePinComment,
-  ]);
-
-  const showLikes = Number(mail?.like_count ?? 0);
-
-  const renderComment = (item, isReply, onFocusReply) => {
-    const isCommentLiked = Boolean(item.is_liked);
-    const AuthorLabel = item.isWriter ? (
-      <Text style={styles.smDetailCommentAuthorWriter}>{item.authorLabel}</Text>
-    ) : (
-      <Text style={styles.smDetailCommentAuthor}>{item.authorLabel}</Text>
-    );
-
-    const pinnedBadge = item.isPinned ? (
-      <Text style={[styles.smDetailCommentAuthorWriter, { marginLeft: 6 }]}>
-        고정
-      </Text>
-    ) : null;
-
-    const bodyHasTag = /@익명\d+/.test(item.content);
-    const contentEl = bodyHasTag ? (
-      <CommentBody content={item.content} styles={commentParseStyles} />
-    ) : (
-      <Text style={styles.smDetailCommentBody}>{item.content}</Text>
-    );
-
-    const block = (
-      <View style={isReply ? styles.smDetailCommentReplyBody : undefined}>
-        <View style={styles.smDetailCommentRow}>
-          <View style={styles.smDetailCommentAuthorRow}>
-            {AuthorLabel}
-            {pinnedBadge}
-            <Text style={styles.smDetailCommentDot}>•</Text>
-            <Text style={styles.smDetailCommentTime}>{item.time}</Text>
-          </View>
-        </View>
-        {contentEl}
-        <View style={styles.smDetailCommentFooter}>
-          <View style={styles.smDetailCommentFooterLeft}>
-            <TouchableOpacity
-              style={styles.smDetailCommentLikeRow}
-              onPress={() => handleCommentLike(item.id)}
-              activeOpacity={0.7}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <FontAwesome
-                name={isCommentLiked ? 'heart' : 'heart-o'}
-                size={normalize(12)}
-                color={colors.alert}
-              />
-              <Text style={styles.smDetailStatText}>{item.likes}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.smDetailCommentReplyButton}
-              activeOpacity={0.7}
-              onPress={() => onFocusReply?.()}
-            >
-              <Text style={styles.smDetailCommentReplyButtonText}>
-                댓글 달기
-              </Text>
-            </TouchableOpacity>
-          </View>
-          <View
-            ref={(r) => {
-              if (r) commentMenuRefs.current[item.id] = r;
-            }}
-            collapsable={false}
-          >
-            <TouchableOpacity
-              style={{ padding: normalize(4) }}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              onPress={() =>
-                openFloatingMenu(item.id, commentMenuRefs.current[item.id])
-              }
-            >
-              <Entypo
-                name="dots-three-vertical"
-                size={normalize(14)}
-                color={colors.textSecondary}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    );
-
-    const isReplyingToThis = replyToCommentId === item.id;
-    const bubble = (
-      <View
-        style={[
-          styles.smDetailCommentBubble,
-          isReply && styles.smDetailCommentBubbleReply,
-          isReplyingToThis && styles.smDetailCommentBubbleReplying,
-        ]}
-      >
-        {block}
-      </View>
-    );
-
-    const onLayoutComment = () => {
-      const r = commentWrapperRefs.current[item.id];
-      r?.measureLayout?.(
-        scrollViewRef.current,
-        (_x, y) => {
-          commentLayoutMap.current[item.id] = y;
+    const isMyComment =
+      comment != null &&
+      myUserId != null &&
+      Number(comment.userId) === Number(myUserId);
+    if (isMyComment) {
+      items.push({
+        label: '삭제하기',
+        iconName: 'trash-outline',
+        onPress: () => handleDeleteComment(commentId),
+      });
+    } else {
+      items.push({
+        label: '신고 / 차단',
+        iconName: 'flag-outline',
+        onPress: () => {
+          if (!comment?.userId) return;
+          openReportModal('schoolMailComment', commentId, comment.userId);
         },
-        () => {},
-      );
-    };
-
-    if (isReply) {
-      return (
-        <View
-          key={item.id}
-          style={styles.smDetailCommentItemReply}
-          ref={(r) => {
-            if (r) commentWrapperRefs.current[item.id] = r;
-          }}
-          collapsable={false}
-          onLayout={onLayoutComment}
-        >
-          <View style={styles.smDetailCommentReplyArrow}>
-            <Ionicons
-              name="return-down-forward"
-              size={normalize(16)}
-              color={colors.textSecondary}
-            />
-          </View>
-          {bubble}
-        </View>
-      );
+      });
     }
-    return (
-      <View
-        key={item.id}
-        style={styles.smDetailCommentItem}
-        ref={(r) => {
-          if (r) commentWrapperRefs.current[item.id] = r;
-        }}
-        collapsable={false}
-        onLayout={onLayoutComment}
-      >
-        {bubble}
-      </View>
-    );
+    return items;
   };
 
-  const renderCommentTree = (c) => {
-    const replies = c.replies || [];
-    const flattened = flattenReplies(replies, 0, c.authorLabel);
-    const showAllRepliesForThis = expandedReplies[c.id];
-    const repliesToShow = showAllRepliesForThis
-      ? flattened
-      : flattened.slice(0, INITIAL_REPLIES);
-    const hasMoreReplies =
-      flattened.length > INITIAL_REPLIES && !showAllRepliesForThis;
-
-    const nodes = [
-      renderComment(c, false, () => focusReplyInput(c.id, c.authorLabel)),
-    ];
-    repliesToShow.forEach(({ reply: r }) => {
-      nodes.push(
-        renderComment(r, true, () => focusReplyInput(r.id, r.authorLabel)),
-      );
-    });
-    if (hasMoreReplies) {
-      nodes.push(
-        <TouchableOpacity
-          key={`more-${c.id}`}
-          style={styles.smDetailLoadMoreRowReply}
-          onPress={() => toggleRepliesExpand(c.id)}
-          activeOpacity={0.7}
-        >
-          <Ionicons
-            name="chevron-down"
-            size={normalize(18)}
-            color={colors.textSecondary}
-          />
-          <Text style={styles.smDetailLoadMoreText}>댓글 더보기</Text>
-        </TouchableOpacity>,
-      );
-    }
-    if (showAllRepliesForThis && flattened.length > INITIAL_REPLIES) {
-      nodes.push(
-        <TouchableOpacity
-          key={`collapse-${c.id}`}
-          style={styles.smDetailLoadMoreRowReply}
-          onPress={() => toggleRepliesExpand(c.id)}
-          activeOpacity={0.7}
-        >
-          <Ionicons
-            name="chevron-up"
-            size={normalize(18)}
-            color={colors.textSecondary}
-          />
-          <Text style={styles.smDetailLoadMoreText}>댓글 접기</Text>
-        </TouchableOpacity>,
-      );
-    }
-    return <React.Fragment key={c.id}>{nodes}</React.Fragment>;
-  };
+  const commentTree = BoardCommentTree({
+    flatComments,
+    commentLikedState: {},
+    replyToCommentId,
+    onCommentLike: handleCommentLike,
+    onToggleReplies: toggleRepliesExpand,
+    onOpenMenu: openFloatingMenu,
+    commentMenuRefs,
+    styles,
+    normalize,
+  });
 
   if (!allowed) return <Gate />;
 
   return (
-    <View
-      style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}
-    >
+    <View style={{ flex: 1, backgroundColor: styles.container.backgroundColor }}>
       <SafeAreaView style={styles.container} edges={['top']}>
         <View
           style={{
             zIndex: 1,
             elevation: 0,
-            backgroundColor: colors.background,
+            backgroundColor: colors.white,
           }}
         >
-          <SubHeader title="받은 우편" onBack={() => navigation.goBack()} />
+          <SubHeader title={headerTitle} onBack={() => navigation.goBack()} />
         </View>
-
         <View
-          style={{ flex: 1, backgroundColor: colors.background }}
+          style={{
+            flex: 1,
+            backgroundColor: colors.white,
+            overflow: 'hidden',
+            zIndex: 0,
+          }}
           pointerEvents="box-none"
         >
-          {loading ? (
-            <View
-              style={{
-                flex: 1,
-                paddingHorizontal: normalize(16),
-                paddingTop: normalize(16),
-              }}
-            >
-              <View style={styles.smDetailLetterCard}>
-                <Skeleton
-                  width={normalize(90)}
-                  height={normalize(12)}
-                  borderRadius={normalize(6)}
-                  style={{ marginBottom: normalize(8) }}
-                />
-                <Skeleton
-                  width="100%"
-                  height={normalize(14)}
-                  borderRadius={normalize(6)}
-                  style={{ marginBottom: normalize(6) }}
-                />
-                <Skeleton
-                  width="86%"
-                  height={normalize(14)}
-                  borderRadius={normalize(6)}
-                  style={{ marginBottom: normalize(10) }}
-                />
-                <View style={{ flexDirection: 'row', gap: normalize(12) }}>
-                  <Skeleton
-                    width={normalize(30)}
-                    height={normalize(12)}
-                    borderRadius={normalize(6)}
-                  />
-                  <Skeleton
-                    width={normalize(30)}
-                    height={normalize(12)}
-                    borderRadius={normalize(6)}
-                  />
-                </View>
-              </View>
-            </View>
-          ) : error ? (
+          {error && !loading ? (
             <View
               style={{
                 flex: 1,
@@ -988,7 +757,7 @@ export default function SchoolMailDetail({ navigation, route }) {
               <Text
                 style={{
                   fontFamily: fonts.regular,
-                  color: colors.textSecondary,
+                  color: colors.textLight4,
                   textAlign: 'center',
                 }}
               >
@@ -997,271 +766,116 @@ export default function SchoolMailDetail({ navigation, route }) {
             </View>
           ) : (
             <View style={{ flex: 1, flexDirection: 'column' }}>
-              <ScrollView
-                ref={scrollViewRef}
-                style={{ flex: 1 }}
-                contentContainerStyle={styles.smDetailScrollContent}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                keyboardDismissMode="on-drag"
-                refreshControl={
-                  <RefreshControl
-                    refreshing={refreshing}
-                    onRefresh={onRefreshMail}
-                    tintColor={colors.primary}
-                    colors={[colors.primary]}
-                    progressBackgroundColor={colors.background}
-                  />
-                }
-              >
-                <View style={styles.smDetailLetterWrap}>
-                  <View style={styles.smDetailLetterCard}>
-                    <View style={styles.smDetailLetterTopRow}>
-                      <View style={styles.smDetailFromToCol}>
-                        <Text style={styles.smDetailFromToText}>
-                          From. {fromLine}
-                        </Text>
-                      </View>
-                      <Text style={styles.smDetailMailTime}>{timeLabel}</Text>
-                    </View>
-                    <View style={styles.smDetailDashedRule} />
-                    <Text style={styles.smDetailMailBody}>{mailBody}</Text>
-                    <View style={styles.smDetailMailFooter}>
-                      <View style={styles.smDetailMailStats}>
-                        <TouchableOpacity
-                          style={styles.smDetailStatItem}
-                          onPress={handlePostLike}
-                          activeOpacity={0.7}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                          <FontAwesome
-                            name={postLiked ? 'heart' : 'heart-o'}
-                            size={normalize(14)}
-                            color={colors.alert}
-                          />
-                          <Text style={styles.smDetailStatText}>
-                            {showLikes}
-                          </Text>
-                        </TouchableOpacity>
-                        <View style={styles.smDetailStatItem}>
-                          <Ionicons
-                            name="chatbubble-outline"
-                            size={normalize(15)}
-                            color={colors.primary}
-                          />
-                          <Text style={styles.smDetailStatText}>
-                            {displayCommentCount}
-                          </Text>
-                        </View>
-                      </View>
-                      <View ref={postMenuButtonRef} collapsable={false}>
-                        <TouchableOpacity
-                          style={{ padding: normalize(4) }}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          onPress={() =>
+              <Animated.View style={[{ flex: 1 }, listAnimStyle]}>
+                <FlatList
+                  ref={scrollViewRef}
+                  style={[{ flex: 1 }, loading && { opacity: 0 }]}
+                  pointerEvents={loading ? 'none' : 'auto'}
+                  data={flatComments}
+                  keyExtractor={commentTree.keyExtractor}
+                  renderItem={commentTree.renderItem}
+                  ListHeaderComponent={
+                    mail ? (
+                      <View>
+                        <BoardPostContent
+                          post={postForContent}
+                          postLiked={postLiked}
+                          onLike={handlePostLike}
+                          onMenu={() =>
                             openFloatingMenu('post', postMenuButtonRef.current)
                           }
-                        >
-                          <Entypo
-                            name="dots-three-vertical"
-                            size={normalize(14)}
-                            color={colors.textSecondary}
-                          />
-                        </TouchableOpacity>
+                          styles={styles}
+                          normalize={normalize}
+                          postMenuButtonRef={postMenuButtonRef}
+                          showDistanceBadge={false}
+                          hideScrap
+                          hidePoll
+                        />
+                        <TopAdBanner placement="board" />
+                        <View style={styles.commentGutter}>
+                          <View style={styles.commentListHeader}>
+                            <Text style={styles.commentListHeaderText}>
+                              댓글
+                            </Text>
+                            <Text style={styles.commentListHeaderText}>
+                              {displayCommentCount}
+                            </Text>
+                          </View>
+                        </View>
                       </View>
-                    </View>
-                  </View>
-                </View>
-
-                <View style={styles.smDetailCommentSection}>
-                  <Text style={styles.smDetailCommentCountTitle}>
-                    댓글 {displayCommentCount}개
-                  </Text>
-                  {visibleComments.map((c) => renderCommentTree(c))}
-                </View>
-              </ScrollView>
+                    ) : null
+                  }
+                  contentContainerStyle={[
+                    styles.scrollContent,
+                    { paddingBottom: overlayHeight },
+                  ]}
+                  onScrollToIndexFailed={(info) => {
+                    setTimeout(() => {
+                      scrollViewRef.current?.scrollToIndex({
+                        index: info.index,
+                        animated: true,
+                        viewOffset: normalize(80),
+                      });
+                    }, 100);
+                  }}
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  keyboardDismissMode="on-drag"
+                />
+              </Animated.View>
+              {loading ? (
+                <BoardDetailSkeleton
+                  styles={styles}
+                  normalize={normalize}
+                  width={width}
+                  showDistanceBadge={false}
+                  showImage={false}
+                  showScrap={false}
+                />
+              ) : null}
 
               <Animated.View
                 style={[
+                  INPUT_BAR_OVERLAY_STYLE,
                   {
-                    backgroundColor: colors.background,
-                    paddingBottom: Math.max(insets.bottom, normalize(12)),
+                    backgroundColor: INPUT_BAR_WRAPPER_BACKGROUND,
+                    paddingBottom: USES_NATIVE_INPUT_BAR
+                      ? insets.bottom
+                      : Math.max(insets.bottom, normalize(12)),
                   },
                   inputAnimStyle,
                 ]}
+                onLayout={onOverlayLayout}
               >
                 <CommentInput
                   bottomInputRef={inputRef}
                   bottomComment={bottomComment}
                   setBottomComment={setBottomComment}
+                  showImageAttach={false}
                   replyToCommentId={replyToCommentId}
                   replyToAuthorLabel={replyToAuthorLabel}
                   clearReplyTarget={clearReplyTarget}
                   handleSendComment={handleCommentSend}
+                  isSendingComment={isSendingComment}
                   styles={styles}
                   normalize={normalize}
-                  mainPlaceholder="댓글 남기기"
                 />
               </Animated.View>
             </View>
           )}
         </View>
 
-        <Modal
+        <BoardFloatingMenu
           visible={floatingMenuVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={closeFloatingMenu}
-        >
-          <TouchableWithoutFeedback onPress={closeFloatingMenu}>
-            <View
-              style={{
-                flex: 1,
-                backgroundColor: 'rgba(0,0,0,0.3)',
-                ...(floatingMenuAnchor
-                  ? {}
-                  : { justifyContent: 'center', alignItems: 'center' }),
-              }}
-            >
-              <TouchableWithoutFeedback>
-                <View
-                  style={{
-                    backgroundColor: colors.background,
-                    borderRadius: normalize(12),
-                    minWidth: width * 0.45,
-                    maxWidth: width * 0.7,
-                    paddingVertical: normalize(4),
-                    shadowColor: colors.shadow,
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.15,
-                    shadowRadius: 5,
-                    elevation: 5,
-                    ...(floatingMenuAnchor
-                      ? {
-                          position: 'absolute',
-                          right: width - floatingMenuAnchor.x,
-                          top: floatingMenuAnchor.y,
-                        }
-                      : {}),
-                  }}
-                >
-                  {floatingMenuContext === 'post' &&
-                    (() => {
-                      const isAuthor =
-                        myUserId != null &&
-                        mail?.user_id != null &&
-                        Number(mail.user_id) === Number(myUserId);
-                      const postItems = isAuthor
-                        ? [
-                            { label: '삭제하기', icon: 'trash-outline', onDelete: true },
-                            { label: '신고 / 차단', icon: 'flag-outline' },
-                          ]
-                        : [
-                            { label: '공유하기', icon: 'share-outline' },
-                            { label: '신고 / 차단', icon: 'flag-outline' },
-                          ];
-                      return postItems.map((item, index) => (
-                      <React.Fragment key={item.label}>
-                        <TouchableOpacity
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            paddingVertical: normalize(10),
-                            paddingHorizontal: normalize(14),
-                          }}
-                          activeOpacity={0.7}
-                          onPress={() => {
-                            if (item.onDelete) {
-                              handleDeleteMail();
-                            } else if (item.label === '신고 / 차단') {
-                              if (mail?.user_id) {
-                                openReportModal(
-                                  'schoolMail',
-                                  mail?.id,
-                                  mail.user_id,
-                                );
-                              }
-                            }
-                            closeFloatingMenu();
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: normalize(13),
-                              fontFamily: fonts.regular,
-                              color: colors.textPrimary,
-                            }}
-                          >
-                            {item.label}
-                          </Text>
-                          <Ionicons
-                            name={item.icon}
-                            size={normalize(17)}
-                            color={colors.textSecondary}
-                          />
-                        </TouchableOpacity>
-                        {index < postItems.length - 1 && (
-                          <View
-                            style={{
-                              height: 1,
-                              backgroundColor: colors.textLight10,
-                              marginHorizontal: normalize(8),
-                            }}
-                          />
-                        )}
-                      </React.Fragment>
-                      ));
-                    })()}
-                  {floatingMenuContext !== 'post' &&
-                    floatingMenuContext != null &&
-                    commentMenuItems.map((item, index) => (
-                      <React.Fragment key={item.label}>
-                        <TouchableOpacity
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            paddingVertical: normalize(10),
-                            paddingHorizontal: normalize(14),
-                          }}
-                          activeOpacity={0.7}
-                          onPress={() => {
-                            item.onPress?.();
-                            closeFloatingMenu();
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontSize: normalize(13),
-                              fontFamily: fonts.regular,
-                              color: colors.textPrimary,
-                            }}
-                          >
-                            {item.label}
-                          </Text>
-                          <Ionicons
-                            name={item.iconName}
-                            size={normalize(17)}
-                            color={colors.textSecondary}
-                          />
-                        </TouchableOpacity>
-                        {index < commentMenuItems.length - 1 && (
-                          <View
-                            style={{
-                              height: 1,
-                              backgroundColor: colors.textLight10,
-                              marginHorizontal: normalize(8),
-                            }}
-                          />
-                        )}
-                      </React.Fragment>
-                    ))}
-                </View>
-              </TouchableWithoutFeedback>
-            </View>
-          </TouchableWithoutFeedback>
-        </Modal>
+          anchor={floatingMenuAnchor}
+          context={floatingMenuContext}
+          items={floatingMenuVisible ? buildMenuItems() : []}
+          onClose={closeFloatingMenu}
+          styles={styles}
+          normalize={normalize}
+          width={width}
+        />
+
         <ReportModal
           visible={reportModalVisible}
           onClose={closeReportModal}

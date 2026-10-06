@@ -41,7 +41,7 @@ const SendMailScreen = ({ navigation, route }) => {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createMailStyles(normalize), [normalize]);
+  const styles = useMemo(() => createMailStyles(normalize, width), [normalize, width]);
   const [schoolQuery, setSchoolQuery] = useState('');
   const [schoolResults, setSchoolResults] = useState([]);
   const [schoolLoading, setSchoolLoading] = useState(false);
@@ -59,12 +59,9 @@ const SendMailScreen = ({ navigation, route }) => {
   const [subHeaderHeight, setSubHeaderHeight] = useState(0);
   const [schoolSectionHeight, setSchoolSectionHeight] = useState(0);
   const [recipientSectionHeight, setRecipientSectionHeight] = useState(0);
-  const [bottomCtaHeight, setBottomCtaHeight] = useState(0);
-  const bottomCtaHeightRef = useRef(0);
   const prefillAppliedRef = useRef(false);
 
-  const scrollBottomInset =
-    bottomCtaHeight > 0 ? bottomCtaHeight : normalize(72);
+  const scrollBottomInset = Math.max(normalize(16), insets.bottom);
 
   const recipientFilled =
     recipientGrade.trim().length > 0 &&
@@ -206,24 +203,39 @@ const SendMailScreen = ({ navigation, route }) => {
       subHeaderHeight -
       schoolSectionHeight -
       recipientSectionHeight -
-      bottomCtaHeight -
+      scrollBottomInset -
       scrollPadding -
       sectionGap,
   );
-
-  const handleBottomCtaLayout = (e) => {
-    const next = e.nativeEvent.layout.height;
-    if (Math.abs(next - bottomCtaHeightRef.current) < 1) return;
-    bottomCtaHeightRef.current = next;
-    setBottomCtaHeight(next);
-  };
 
   if (!allowed) return <Gate />;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View onLayout={(e) => setSubHeaderHeight(e.nativeEvent.layout.height)}>
-        <SubHeader title="우편 보내기" onBack={() => navigation?.goBack()} />
+        <SubHeader
+          title="우편 보내기"
+          onBack={() => navigation?.goBack()}
+          onRightPress={handleSend}
+          rightDisabled={!canSend || sending}
+          rightElement={
+            <View
+              style={[
+                styles.sendPill,
+                (!canSend || sending) && styles.sendPillDisabled,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.sendPillText,
+                  (!canSend || sending) && styles.sendPillTextDisabled,
+                ]}
+              >
+                {sending ? '•••' : showHomonymUI ? '재전송' : '전송'}
+              </Text>
+            </View>
+          }
+        />
       </View>
 
       <View style={styles.keyboardView}>
@@ -254,14 +266,14 @@ const SendMailScreen = ({ navigation, route }) => {
                     <MaterialCommunityIcons
                       name="school-outline"
                       size={normalize(18)}
-                      color={colors.textSecondary}
+                      color={colors.textLight4}
                     />
                     <TextInput
                       style={[styles.input, { marginLeft: normalize(6) }]}
                       placeholder="학교 검색하기"
                       value={schoolQuery}
                       onChangeText={setSchoolQuery}
-                      placeholderTextColor={colors.textSecondary}
+                      placeholderTextColor={colors.textLight4}
                     />
                   </View>
                   {schoolLoading && (
@@ -279,7 +291,7 @@ const SendMailScreen = ({ navigation, route }) => {
                         borderWidth: 1,
                         borderColor: '#EEE',
                         borderRadius: normalize(10),
-                        backgroundColor: '#FFF',
+                        backgroundColor: colors.white,
                       }}
                     >
                       {schoolResults.map((school, index) => (
@@ -300,7 +312,7 @@ const SendMailScreen = ({ navigation, route }) => {
                         >
                           <Text
                             style={{
-                              color: colors.textPrimary,
+                              color: colors.text,
                               fontFamily: fonts.bold,
                             }}
                           >
@@ -308,7 +320,7 @@ const SendMailScreen = ({ navigation, route }) => {
                           </Text>
                           <Text
                             style={{
-                              color: colors.textSecondary,
+                              color: colors.textLight4,
                               fontSize: normalize(12),
                               fontFamily: fonts.regular,
                             }}
@@ -329,11 +341,11 @@ const SendMailScreen = ({ navigation, route }) => {
                     )}
                 </View>
               ) : (
-                <View style={styles.inputWrapper}>
+                <View style={[styles.inputWrapper, styles.inputWrapperSelected]}>
                   <MaterialCommunityIcons
                     name="school-outline"
                     size={normalize(18)}
-                    color={colors.textSecondary}
+                    color={colors.textLight4}
                   />
                   <TextInput
                     style={[styles.input, { marginLeft: normalize(6) }]}
@@ -353,7 +365,7 @@ const SendMailScreen = ({ navigation, route }) => {
                     <Ionicons
                       name="close-circle"
                       size={normalize(18)}
-                      color={colors.textSecondary}
+                      color={colors.textLight4}
                     />
                   </TouchableOpacity>
                 </View>
@@ -373,7 +385,7 @@ const SendMailScreen = ({ navigation, route }) => {
                   <MaterialIcons
                     name="person-outline"
                     size={normalize(20)}
-                    color={colors.textSecondary}
+                    color={colors.textLight4}
                   />
                   <TextInput
                     style={[
@@ -382,7 +394,7 @@ const SendMailScreen = ({ navigation, route }) => {
                     ]}
                     placeholder="학교를 먼저 선택하세요"
                     editable={false}
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={colors.textLight4}
                   />
                 </View>
               ) : (
@@ -398,7 +410,7 @@ const SendMailScreen = ({ navigation, route }) => {
                             onChangeText={setRecipientGrade}
                             keyboardType="number-pad"
                             maxLength={2}
-                            placeholderTextColor={colors.textSecondary}
+                            placeholderTextColor={colors.textLight4}
                           />
                         </View>
                         <View style={styles.recipientSubField}>
@@ -409,7 +421,7 @@ const SendMailScreen = ({ navigation, route }) => {
                             onChangeText={setRecipientClass}
                             keyboardType="number-pad"
                             maxLength={3}
-                            placeholderTextColor={colors.textSecondary}
+                            placeholderTextColor={colors.textLight4}
                           />
                         </View>
                       </View>
@@ -421,7 +433,7 @@ const SendMailScreen = ({ navigation, route }) => {
                         value={recipientName}
                         onChangeText={setRecipientName}
                         maxLength={20}
-                        placeholderTextColor={colors.textSecondary}
+                        placeholderTextColor={colors.textLight4}
                       />
                     </View>
                   </View>
@@ -440,7 +452,7 @@ const SendMailScreen = ({ navigation, route }) => {
                         <MaterialIcons
                           name="alternate-email"
                           size={normalize(20)}
-                          color={colors.textSecondary}
+                          color={colors.textLight4}
                         />
                         <TextInput
                           style={[styles.input, { marginLeft: normalize(6) }]}
@@ -449,7 +461,7 @@ const SendMailScreen = ({ navigation, route }) => {
                           onChangeText={setRecipientUsername}
                           autoCapitalize="none"
                           autoCorrect={false}
-                          placeholderTextColor={colors.textSecondary}
+                          placeholderTextColor={colors.textLight4}
                         />
                       </View>
                     </>
@@ -474,7 +486,7 @@ const SendMailScreen = ({ navigation, route }) => {
                   onChangeText={handleMailContentChange}
                   multiline
                   textAlignVertical="top"
-                  placeholderTextColor={colors.textSecondary}
+                  placeholderTextColor={colors.textLight3}
                 />
                 <View style={styles.replyFormMetaRow}>
                   <View style={styles.sendMetaRight}>
@@ -487,7 +499,7 @@ const SendMailScreen = ({ navigation, route }) => {
                         <MaterialCommunityIcons
                           name="television-classic"
                           size={15}
-                          color={colors.textPrimary}
+                          color={colors.text}
                         />
                         <Text style={styles.replyFormChipText}>x 2</Text>
                       </TouchableOpacity>
@@ -502,32 +514,6 @@ const SendMailScreen = ({ navigation, route }) => {
             <Text style={styles.replyFormChipTextNotice}>받는 사람을 잘못 입력하면 반송될 수 있어요</Text>
           </View>
         </KeyboardAwareScrollView>
-
-        <View
-          style={[
-            styles.bottomCtaWrapper,
-            { paddingBottom: Math.max(normalize(16), insets.bottom) },
-          ]}
-          onLayout={handleBottomCtaLayout}
-        >
-          <TouchableOpacity
-            style={[
-              styles.bottomCtaButton,
-              (!canSend || sending) && styles.bottomCtaDisabled,
-            ]}
-            onPress={handleSend}
-            disabled={!canSend || sending}
-            activeOpacity={0.9}
-          >
-            {sending ? (
-              <Loading color={colors.background} />
-            ) : (
-              <Text style={styles.bottomCtaText}>
-                {showHomonymUI ? '재전송' : '전송하기'}
-              </Text>
-            )}
-          </TouchableOpacity>
-        </View>
       </View>
     </SafeAreaView>
   );

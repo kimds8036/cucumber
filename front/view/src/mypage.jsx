@@ -5,8 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  Share,
-  Platform,
   useWindowDimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -21,6 +19,7 @@ import { getDeviceId } from '../../utils/deviceId';
 import { getFCMToken } from '../../utils/fcmService';
 import { useFocusEffect } from '@react-navigation/native';
 import { useGuidePreview } from '../../context/GuidePreviewContext';
+import { useMainTabBarInset } from '../../context/MainTabBarInsetContext';
 import { GuideFocusTarget } from '../../components/guide/GuideFocusTarget';
 import { GUIDE_FOCUS_TARGETS as T } from '../../src/screens/UserGuide/guideFocusTargets';
 import {
@@ -33,7 +32,6 @@ import {
   maybeRefreshAutoTimetableOnAppOpen,
 } from '../../utils/timetableSync';
 import { hydratePeriodTimesFromServer } from '../../utils/widget/periodTimeSettings';
-import { buildInviteShareContent } from '../../utils/shareLinks';
 
 const isSameProfileInfo = (a, b) => {
   if (!a || !b) return false;
@@ -50,6 +48,7 @@ const isSameProfileInfo = (a, b) => {
     a.profileColorNumber === b.profileColorNumber &&
     a.friendCount === b.friendCount &&
     a.equippedBadge?.key === b.equippedBadge?.key &&
+    a.avatarUrl === b.avatarUrl &&
     a.postCount === b.postCount &&
     a.scrapCount === b.scrapCount
   );
@@ -59,7 +58,8 @@ const MyPage = ({ navigation }) => {
   const { isGuidePreview } = useGuidePreview();
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createMyPageStyles(normalize), [normalize]);
+  const styles = useMemo(() => createMyPageStyles(normalize, width), [normalize, width]);
+  const tabBarInset = useMainTabBarInset();
   const { logout, studentVerificationStatus } = useAuth();
   const TIMETABLE_CACHE_KEY = '@mypage_timetable_cache_v1';
   const TIMETABLE_CACHE_KEY_PREFIX = '@mypage_timetable_cache_v1:';
@@ -103,28 +103,6 @@ const MyPage = ({ navigation }) => {
       { text: '취소', style: 'cancel' },
       { text: '로그아웃', style: 'destructive', onPress: () => handleLogout() },
     ]);
-  };
-
-  const handleInviteFriends = async () => {
-    try {
-      const res = await api.get('/api/invite/me');
-      const landingUrl = res.data?.data?.landingUrl;
-      if (!landingUrl) {
-        Alert.alert('친구 초대', '초대 링크를 만들지 못했습니다.');
-        return;
-      }
-      const share = buildInviteShareContent(landingUrl);
-      await Share.share(
-        Platform.OS === 'ios'
-          ? { message: share.message, url: share.url }
-          : { message: share.message, title: share.title },
-      );
-    } catch (e) {
-      Alert.alert(
-        '친구 초대',
-        e.response?.data?.message || '초대 링크를 공유하지 못했습니다.',
-      );
-    }
   };
 
   const handleDeleteAccount = () => {
@@ -243,6 +221,7 @@ const MyPage = ({ navigation }) => {
           profileColorNumber: me.profileColor?.colorNumber ?? null,
           friendCount: me.friendCount ?? stats?.friendCount ?? 0,
           equippedBadge: me.equippedBadge ?? null,
+          avatarUrl: me.avatarUrl || null,
           postCount: Number(stats?.postCount ?? 0),
           scrapCount: Number(stats?.scrapCount ?? 0),
         };
@@ -420,7 +399,7 @@ const MyPage = ({ navigation }) => {
           <Ionicons
             name={icon}
             size={normalize(22)}
-            color={colors.textPrimary}
+            color={colors.text}
             style={styles.menuIcon}
           />
           <View>
@@ -434,7 +413,7 @@ const MyPage = ({ navigation }) => {
           <Ionicons
             name="chevron-forward"
             size={normalize(20)}
-            color={colors.textSecondary}
+            color={colors.textLight4}
           />
         )}
       </TouchableOpacity>
@@ -448,6 +427,7 @@ const MyPage = ({ navigation }) => {
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: tabBarInset }}
       >
         {showPageSkeleton ? (
           <>
@@ -466,7 +446,7 @@ const MyPage = ({ navigation }) => {
                 <View style={styles.profileSkeletonQuickCell} />
               </View>
             </View>
-            <View style={[styles.ttSkeletonCard, { marginHorizontal: normalize(16) }]}>
+            <View style={[styles.ttSkeletonCard, { marginHorizontal: width * 0.04 }]}>
               <View style={styles.ttSkeletonHeader} />
               {[...Array(7)].map((_, idx) => (
                 <View style={styles.ttSkeletonRow} key={`page-tt-sk-${idx}`}>
@@ -496,6 +476,9 @@ const MyPage = ({ navigation }) => {
             userInfo={userInfo}
             navigation={navigation}
             onNavigateToTimetableChoice={handleNavigateToTimetableEdit}
+            onAvatarChange={(avatarUrl) => {
+              setUserInfo((prev) => (prev ? { ...prev, avatarUrl } : prev));
+            }}
             timetableSection={
               timetableLoading ? (
                 <View style={styles.ttSkeletonCard}>
@@ -560,11 +543,6 @@ const MyPage = ({ navigation }) => {
             title="회초리"
             subtitle="버그·기능 제안·불편 사항을 개발팀에 전달해요"
             onPress={() => navigation.navigate('DeveloperWhack')}
-          />
-          <MenuItem
-            icon="person-add-outline"
-            title="친구 초대하기"
-            onPress={handleInviteFriends}
           />
           <MenuItem
             icon="ribbon-outline"

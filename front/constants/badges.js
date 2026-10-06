@@ -12,8 +12,8 @@ export const BADGE_CATALOG = [
   },
   {
     key: 'friends_invite_5',
-    title: '친구 초대',
-    description: '초대로 가입한 친구가 1명이 되면 열려요',
+    title: '하트',
+    description: '인앱 친구가 3명이 되면 열려요',
     icon: 'heart',
     iconOutline: 'heart-outline',
     color: '#E85D75',

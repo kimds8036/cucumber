@@ -14,7 +14,7 @@ const FALLBACK_MARKDOWN = require('./_terms_md.json');
 const ServiceTermsOfService = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const styles = useMemo(() => createServiceStyles(normalize), [normalize]);
+  const styles = useMemo(() => createServiceStyles(normalize, width), [normalize, width]);
   const { markdown, meta, loading } = useLegalDocument('terms_of_service', FALLBACK_MARKDOWN);
 
   return (

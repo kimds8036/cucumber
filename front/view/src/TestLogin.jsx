@@ -202,10 +202,10 @@ const TestLogin = ({ navigation }) => {
 const createStyles = (width, normalize) => ({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.white,
   },
   headerSection: {
-    paddingHorizontal: width * 0.05,
+    paddingHorizontal: width * 0.04,
     paddingTop: normalize(8),
     paddingBottom: normalize(12),
     flexDirection: 'row',
@@ -220,7 +220,7 @@ const createStyles = (width, normalize) => ({
     marginLeft: normalize(8),
     fontSize: normalize(fontSizes.xl),
     fontFamily: fonts.bold,
-    color: colors.textPrimary,
+    color: colors.text,
     letterSpacing: 0.4,
   },
   testBadge: {
@@ -229,7 +229,7 @@ const createStyles = (width, normalize) => ({
     paddingVertical: normalize(2),
     fontSize: normalize(fontSizes.sm),
     fontFamily: fonts.bold,
-    color: '#fff',
+    color: colors.white,
     backgroundColor: '#E53935',
     borderRadius: normalize(8),
     overflow: 'hidden',
@@ -240,7 +240,7 @@ const createStyles = (width, normalize) => ({
     paddingHorizontal: normalize(12),
     paddingVertical: normalize(8),
     borderRadius: normalize(20),
-    backgroundColor: colors.primaryLight20,
+    backgroundColor: colors.primaryLight3,
     borderWidth: 1,
     borderColor: colors.primary,
     gap: normalize(4),
@@ -254,19 +254,19 @@ const createStyles = (width, normalize) => ({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: width * 0.05,
+    paddingHorizontal: width * 0.04,
     paddingTop: normalize(12),
     paddingBottom: normalize(8),
   },
   sectionTitle: {
     fontSize: normalize(fontSizes.title),
     fontFamily: fonts.bold,
-    color: colors.textPrimary,
+    color: colors.text,
   },
   sectionSubtitle: {
     fontSize: normalize(fontSizes.lg),
     fontFamily: fonts.regular,
-    color: colors.textSecondary,
+    color: colors.textLight4,
   },
   autoLoginRow: {
     flexDirection: 'row',
@@ -290,7 +290,7 @@ const createStyles = (width, normalize) => ({
   autoLoginText: {
     fontSize: normalize(fontSizes.lg),
     fontFamily: fonts.bold,
-    color: colors.textSecondary,
+    color: colors.textLight4,
   },
   loadingWrap: {
     flex: 1,
@@ -298,12 +298,12 @@ const createStyles = (width, normalize) => ({
     alignItems: 'center',
   },
   listContent: {
-    paddingHorizontal: width * 0.05,
+    paddingHorizontal: width * 0.04,
     paddingBottom: normalize(40),
   },
   separator: {
     height: 1,
-    backgroundColor: colors.border,
+    backgroundColor: colors.textLight1,
     marginVertical: 0,
   },
   userRow: {
@@ -328,12 +328,12 @@ const createStyles = (width, normalize) => ({
   userName: {
     fontSize: normalize(fontSizes.xl),
     fontFamily: fonts.bold,
-    color: colors.textPrimary,
+    color: colors.text,
   },
   userHandle: {
     fontSize: normalize(fontSizes.lg),
     fontFamily: fonts.regular,
-    color: colors.textSecondary,
+    color: colors.textLight4,
   },
   statusWrap: {
     flexDirection: 'row',
@@ -355,7 +355,7 @@ const createStyles = (width, normalize) => ({
   emptyText: {
     textAlign: 'center',
     paddingTop: normalize(40),
-    color: colors.textSecondary,
+    color: colors.textLight4,
     fontFamily: fonts.regular,
     fontSize: normalize(fontSizes.lg),
   },

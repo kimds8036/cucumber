@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 import { colors, fonts, fontSizes } from './colors';
 
-export const COMMUTE_CHIP_BG = colors.primaryLight20;
+export const COMMUTE_CHIP_BG = colors.primaryLight3;
 
 export const createCommuteHeaderStyles = (normalize) =>
   StyleSheet.create({
@@ -30,7 +30,7 @@ export const createCommuteHeaderStyles = (normalize) =>
     label: {
       fontFamily: fonts.bold,
       fontSize: normalize(fontSizes.sm),
-      color: colors.textPrimary,
+      color: colors.text,
     },
     celebrateRow: {
       flexDirection: 'row',

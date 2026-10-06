@@ -6,13 +6,13 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   useWindowDimensions,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts } from '../../../styles/colors';
 import { api } from '../../../utils/api';
+import { appAlert } from '../../../utils/appAlert';
 import { normalizeBirthDateForCompare } from './signupBirthDatePolicy';
 import SubmittingLockModal from '../../../components/common/SubmittingLockModal';
 import SignupPrimaryFooter from './SignupPrimaryFooter';
@@ -35,7 +35,6 @@ const SignStepNeisPlusSubmit = ({
   schoolId,
   onVerified,
   onSubmitted,
-  insetBody = true,
 }) => {
   const { width } = useWindowDimensions();
   const [pickedUri, setPickedUri] = useState(null);
@@ -43,25 +42,13 @@ const SignStepNeisPlusSubmit = ({
   const [pickedAspect, setPickedAspect] = useState(1 / 1.4);
   const [busy, setBusy] = useState(false);
   const stable = layout === 'stable' || mode === 'resubmit';
-  const bodyStyle = useMemo(
-    () => ({
-      flex: 1,
-      minHeight: 0,
-      ...(insetBody
-        ? {
-            marginHorizontal: -width * 0.04,
-            paddingHorizontal: width * 0.07,
-          }
-        : {}),
-    }),
-    [width, insetBody],
-  );
+  const bodyStyle = { flex: 1, minHeight: 0 };
 
   const pickImage = async () => {
     if (busy) return;
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('권한 필요', '사진 첨부를 위해 앨범 접근 권한이 필요합니다.');
+      appAlert.alert('권한 필요', '사진 첨부를 위해 앨범 접근 권한이 필요합니다.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -73,7 +60,7 @@ const SignStepNeisPlusSubmit = ({
     if (result.canceled || !result.assets?.[0]) return;
     const asset = result.assets[0];
     if (!asset.base64) {
-      Alert.alert('첨부 실패', '이미지를 다시 선택해 주세요.');
+      appAlert.alert('첨부 실패', '이미지를 다시 선택해 주세요.');
       return;
     }
     setPickedUri(asset.uri);
@@ -104,7 +91,7 @@ const SignStepNeisPlusSubmit = ({
     }
 
     if (!pickedBase64) {
-      Alert.alert('알림', 'NEIS+ 학적 화면 사진을 첨부해 주세요.');
+      appAlert.alert('알림', 'NEIS+ 학적 화면 사진을 첨부해 주세요.');
       return;
     }
 
@@ -124,7 +111,7 @@ const SignStepNeisPlusSubmit = ({
       }
 
       if (!identity?.name?.trim() || !identity?.birthDate || !schoolId) {
-        Alert.alert('알림', '본인·학교 정보가 없습니다. 이전 단계를 확인해 주세요.');
+        appAlert.alert('알림', '본인·학교 정보가 없습니다. 이전 단계를 확인해 주세요.');
         return;
       }
 
@@ -146,7 +133,7 @@ const SignStepNeisPlusSubmit = ({
 
       const data = res.data?.data;
       if (!res.data?.success || !data?.passed) {
-        Alert.alert(
+        appAlert.alert(
           '제출 실패',
           res.data?.message || 'NEIS+ 사진을 다시 첨부해 주세요.',
         );
@@ -168,7 +155,7 @@ const SignStepNeisPlusSubmit = ({
       const timedOut = e?.code === 'ECONNABORTED';
       const networkLike =
         timedOut || !e?.response || e?.message === 'Network Error';
-      Alert.alert(
+      appAlert.alert(
         '제출 오류',
         e?.response?.status === 429
           ? e?.response?.data?.message ||
@@ -387,21 +374,21 @@ const localStyles = StyleSheet.create({
   stepNumber: {
     fontSize: 28,
     fontFamily: fonts.regular,
-    color: colors.background2,
+    color: colors.textLight2,
     lineHeight: 40,
   },
   stepTitle: {
     flex: 1,
     fontSize: 18,
     fontFamily: fonts.bold,
-    color: colors.textPrimary,
+    color: colors.text,
     lineHeight: 28,
   },
   stepDesc: {
     width: '100%',
     fontSize: 15,
     fontFamily: fonts.regular,
-    color: colors.textSecondary,
+    color: colors.textLight4,
     lineHeight: 22,
     marginBottom: 10,
   },
@@ -414,7 +401,7 @@ const localStyles = StyleSheet.create({
     alignSelf: 'center',
   },
   preview: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.textLight1,
   },
   attachBox: {
     borderWidth: 1.5,
@@ -430,7 +417,7 @@ const localStyles = StyleSheet.create({
   },
   changeText: {
     fontFamily: fonts.regular,
-    color: colors.textSecondary,
+    color: colors.textLight4,
     textDecorationLine: 'underline',
     textAlign: 'center',
   },
@@ -458,21 +445,21 @@ const localGuideFallback = StyleSheet.create({
   certificateGuideStepNumber: {
     fontSize: 28,
     fontFamily: fonts.regular,
-    color: colors.background2,
+    color: colors.textLight2,
     lineHeight: 40,
   },
   certificateGuideStepTitle: {
     flex: 1,
     fontSize: 18,
     fontFamily: fonts.bold,
-    color: colors.textPrimary,
+    color: colors.text,
     lineHeight: 28,
   },
   certificateGuideStepDescription: {
     width: '100%',
     fontSize: 15,
     fontFamily: fonts.regular,
-    color: colors.textSecondary,
+    color: colors.textLight4,
     lineHeight: 22,
     marginBottom: 10,
   },
@@ -501,7 +488,7 @@ const localGuideFallback = StyleSheet.create({
   nextButtonDisabled: { opacity: 0.45 },
   nextButtonText: {
     fontFamily: fonts.bold,
-    color: colors.background,
+    color: colors.white,
     fontSize: 16,
   },
 });

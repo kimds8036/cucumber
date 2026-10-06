@@ -31,7 +31,7 @@ function createStyles(n, width, height) {
       flex: 1,
       width,
       height,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     // TODO: centerBlock / brandBlock / adFooter / progress / skip 스타일 복원
   });

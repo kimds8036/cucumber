@@ -14,19 +14,19 @@ import {
   TouchableWithoutFeedback,
   Alert,
   Share,
-  FlatList,
+  SectionList,
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import MainHeader from '../frame/mainHeader';
-import MainFooter from '../frame/mainFooter';
-import { getMainTabTitle, useMainShellOptional } from '../../context/MainShellContext';
+import MainFooter, { MAIN_FOOTER_SAFE_AREA_EDGES } from '../frame/mainFooter';
+import { useMainShellOptional } from '../../context/MainShellContext';
 import { colors, fonts } from '../../styles/colors';
 import { useAuth } from '../../context/AuthContext';
 import StudentVerificationCtaModal from '../../components/auth/StudentVerificationCtaModal';
 import { createBoardStyles, getNormalize } from '../../styles/board.style';
-import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
+import FloatingButton from '../../components/common/FloatingButton';
 import { api } from '../../utils/api';
 import { loadTips } from '../../utils/tipsApi';
 import { normalizeTagsFromApi } from '../../utils/normalizePostTags';
@@ -34,11 +34,11 @@ import { equippedBadgeFromApiRow } from '../../constants/badges';
 import BoardPostCard from '../../components/Boardpostcard';
 import AdPlaceholder from '../../src/screens/ad/AdPlaceholder';
 import TopAdBanner from '../../components/ads/TopAdBanner';
+import SortChips from '../../components/common/SortChips';
 import Skeleton from '../../components/common/Skeleton';
 import { useLocationContext } from '../../context/LocationContext';
 import { useGuidePreview } from '../../context/GuidePreviewContext';
-import { GuideFocusTarget } from '../../components/guide/GuideFocusTarget';
-import { GUIDE_FOCUS_TARGETS as T } from '../../src/screens/UserGuide/guideFocusTargets';
+import { useMainTabBarInset } from '../../context/MainTabBarInsetContext';
 import { getGuideBoardPosts } from '../../src/screens/UserGuide/guidePreviewData';
 import { filterPostsExcludingUser } from '../../utils/blockUser';
 import { invalidateProfileCountsCache } from '../../utils/profileCountsCache';
@@ -80,20 +80,45 @@ function formatTimeAgo(createdAt) {
   return date.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' });
 }
 
+function mapApiPost(p) {
+  const thumb =
+    typeof p.thumbnail === 'string' && p.thumbnail.trim()
+      ? p.thumbnail.trim()
+      : null;
+  return {
+    id: p.id,
+    author: '익명',
+    equippedBadge: equippedBadgeFromApiRow(p),
+    time: formatTimeAgo(p.created_at),
+    location: '',
+    content: p.content,
+    likes: p.like_count,
+    comments: p.comment_count,
+    liked: Boolean(p.isLiked ?? false),
+    scrapped: Boolean(p.isScrapped ?? p.is_scrapped ?? false),
+    scrapCount: p.scrapCount ?? 0,
+    isMyPost: !!p.is_author,
+    authorUserId: p.author_user_id,
+    thumbnail: thumb,
+    images: Array.isArray(p.images) ? p.images : [],
+    tags: normalizeTagsFromApi(p.tags),
+    distanceKm:
+      typeof p.distanceKm === 'number' && !Number.isNaN(p.distanceKm)
+        ? p.distanceKm
+        : null,
+  };
+}
+
 // 메인 화면(MainScreen)에서 헤더/푸터 없이 메인 영역만 렌더할 때 사용
 // posts: 외부에서 주입하는 게시글 배열 (없으면 defaultPosts 사용)
 export function BoardAllContent({ navigation, posts }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
+  const tabBarInset = useMainTabBarInset();
   const styles = useMemo(() => createBoardStyles(width, normalize), [width]);
   const { isGuidePreview } = useGuidePreview();
   const shell = useMainShellOptional();
-  const boardFeedMode = shell?.boardFeedMode ?? 'national';
   const { studentVerificationStatus } = useAuth();
-  const studentFeedLocked =
-    boardFeedMode === 'student' &&
-    studentVerificationStatus !== 'APPROVED' &&
-    !isGuidePreview;
   const [studentCtaVisible, setStudentCtaVisible] = useState(false);
   const [studentCtaClosingForVerify, setStudentCtaClosingForVerify] =
     useState(false);
@@ -104,11 +129,17 @@ export function BoardAllContent({ navigation, posts }) {
   const distanceStale = permissionGranted && !coords;
 
   const [sortType, setSortType] = useState('latest'); // latest, popular, nearby
+  const [boardScope, setBoardScope] = useState('national'); // national | student | school
+  const studentBoardSelected = boardScope !== 'national';
+  const studentFeedLocked =
+    studentBoardSelected &&
+    studentVerificationStatus !== 'APPROVED' &&
+    !isGuidePreview;
   const [serverPosts, setServerPosts] = useState([]);
+  const [pinnedPost, setPinnedPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [tipRefreshKey, setTipRefreshKey] = useState(0);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [floatingMenuVisible, setFloatingMenuVisible] = useState(false);
@@ -120,6 +151,7 @@ export function BoardAllContent({ navigation, posts }) {
   const [reportReportedUserId, setReportReportedUserId] = useState(null);
 
   const fetchPostsRef = useRef(null);
+  const fetchPinnedRef = useRef(null);
   const didMountSortEffectRef = useRef(false);
   const serverPostsRef = useRef(serverPosts);
   const skipNextFocusFetchRef = useRef(true);
@@ -157,6 +189,10 @@ export function BoardAllContent({ navigation, posts }) {
                   setServerPosts((prev) =>
                     prev.filter((p) => p.id !== postToDelete.id),
                   );
+                  setPinnedPost((prev) =>
+                    prev?.id === postToDelete.id ? null : prev,
+                  );
+                  fetchPinnedRef.current?.();
                   Alert.alert('삭제됨', '게시글이 삭제되었습니다.');
                 } catch (error) {
                   console.error('게시글 삭제 오류:', error);
@@ -251,7 +287,11 @@ export function BoardAllContent({ navigation, posts }) {
   const fetchPosts = useCallback(
     async (nextPage = 1, append = false, opts = {}) => {
       const options =
-        opts === true ? { silent: true } : opts === false || opts == null ? {} : opts;
+        opts === true
+          ? { silent: true }
+          : opts === false || opts == null
+            ? {}
+            : opts;
       const silent = Boolean(options.silent);
       /** 목록은 교체하되 전체 스켈레톤 대신 RefreshControl만 표시 */
       const soft = Boolean(options.soft);
@@ -270,10 +310,7 @@ export function BoardAllContent({ navigation, posts }) {
         setRefreshing(false);
         return;
       }
-      if (
-        boardFeedMode === 'student' &&
-        studentVerificationStatus !== 'APPROVED'
-      ) {
+      if (studentBoardSelected && studentVerificationStatus !== 'APPROVED') {
         if (nextPage === 1 && !append) {
           setServerPosts([]);
           setHasMore(false);
@@ -313,46 +350,34 @@ export function BoardAllContent({ navigation, posts }) {
             : sortType === 'nearby'
               ? 'nearby'
               : 'latest';
+        let schoolId;
+        if (boardScope === 'school') {
+          const schoolRes = await api.get('/api/schools/me');
+          schoolId = schoolRes.data?.data?.id;
+          if (!schoolId) {
+            setServerPosts([]);
+            setHasMore(false);
+            setPage(1);
+            setLoading(false);
+            setLoadingMore(false);
+            setRefreshing(false);
+            return;
+          }
+        }
         const params = {
-          boardType: boardFeedMode === 'student' ? 'student' : 'national',
+          boardType: boardScope,
           sort: sortParam,
           page: nextPage,
           limit: 20,
         };
+        if (schoolId) params.schoolId = schoolId;
         if (coords) {
           params.viewerLat = coords.latitude;
           params.viewerLng = coords.longitude;
         }
         const response = await api.get('/api/posts', { params });
         const apiPosts = response.data?.data?.posts || [];
-        const mapped = apiPosts.map((p) => {
-          const thumb =
-            typeof p.thumbnail === 'string' && p.thumbnail.trim()
-              ? p.thumbnail.trim()
-              : null;
-          const tags = normalizeTagsFromApi(p.tags);
-          return {
-            id: p.id,
-            author: '익명',
-            equippedBadge: equippedBadgeFromApiRow(p),
-            time: formatTimeAgo(p.created_at),
-            location: '',
-            content: p.content,
-            likes: p.like_count,
-            comments: p.comment_count,
-            liked: Boolean(p.isLiked ?? false),
-            scrapped: Boolean(p.isScrapped ?? p.is_scrapped ?? false),
-            scrapCount: p.scrapCount ?? 0,
-            isMyPost: !!p.is_author,
-            authorUserId: p.author_user_id,
-            thumbnail: thumb,
-            tags,
-            distanceKm:
-              typeof p.distanceKm === 'number' && !Number.isNaN(p.distanceKm)
-                ? p.distanceKm
-                : null,
-          };
-        });
+        const mapped = apiPosts.map(mapApiPost);
         if (append) {
           setServerPosts((prev) => {
             const existingIds = new Set(prev.map((p) => p.id));
@@ -378,10 +403,6 @@ export function BoardAllContent({ navigation, posts }) {
         } else {
           setServerPosts(mapped);
           lastFullFetchAtRef.current = Date.now();
-          // Pull to Refresh / Focus soft 갱신 시에만 Tip 문구 교체
-          if (soft) {
-            setTipRefreshKey((k) => k + 1);
-          }
         }
         setHasMore(apiPosts.length > 0);
         setPage(nextPage);
@@ -406,17 +427,62 @@ export function BoardAllContent({ navigation, posts }) {
     },
     [
       sortType,
+      boardScope,
       coords,
       posts,
       isGuidePreview,
-      boardFeedMode,
+      studentBoardSelected,
       studentVerificationStatus,
     ],
   );
 
+  const pinnedRequestRef = useRef(0);
+
+  const fetchPinnedPost = useCallback(async () => {
+    const requestId = ++pinnedRequestRef.current;
+    if (isGuidePreview || studentFeedLocked || (posts && posts.length > 0)) {
+      setPinnedPost(null);
+      return;
+    }
+    try {
+      let schoolId;
+      if (boardScope === 'school') {
+        const schoolRes = await api.get('/api/schools/me');
+        schoolId = schoolRes.data?.data?.id;
+        if (!schoolId) {
+          if (requestId === pinnedRequestRef.current) setPinnedPost(null);
+          return;
+        }
+      }
+      const params = {
+        boardType: boardScope,
+        sort: 'popular',
+        page: 1,
+        limit: 1,
+      };
+      if (schoolId) params.schoolId = schoolId;
+      if (coords) {
+        params.viewerLat = coords.latitude;
+        params.viewerLng = coords.longitude;
+      }
+      const response = await api.get('/api/posts', { params });
+      if (requestId !== pinnedRequestRef.current) return;
+      const first = response.data?.data?.posts?.[0];
+      setPinnedPost(first ? mapApiPost(first) : null);
+    } catch (error) {
+      console.error('인기 게시글 로드 실패:', error);
+      if (requestId !== pinnedRequestRef.current) return;
+      setPinnedPost(null);
+    }
+  }, [boardScope, coords, posts, isGuidePreview, studentFeedLocked]);
+
   useEffect(() => {
     fetchPostsRef.current = fetchPosts;
   }, [fetchPosts]);
+
+  useEffect(() => {
+    fetchPinnedRef.current = fetchPinnedPost;
+  }, [fetchPinnedPost]);
 
   useEffect(() => {
     if (studentFeedLocked) {
@@ -431,7 +497,7 @@ export function BoardAllContent({ navigation, posts }) {
     }
     refreshLocation();
     fetchPostsRef.current?.(1, false);
-  }, [isGuidePreview, boardFeedMode]);
+  }, [isGuidePreview]);
 
   useEffect(() => {
     if (isGuidePreview) return;
@@ -453,6 +519,7 @@ export function BoardAllContent({ navigation, posts }) {
       if (elapsed < BOARD_FOCUS_REFRESH_COOLDOWN_MS) return;
       // 쿨다운 경과 시 1페이지 교체(스피너/스켈레톤 없이)
       fetchPostsRef.current?.(1, false, { soft: true, quiet: true });
+      fetchPinnedRef.current?.();
     }, [posts, isGuidePreview]),
   );
 
@@ -463,13 +530,18 @@ export function BoardAllContent({ navigation, posts }) {
       return;
     }
     fetchPosts(1, false);
-  }, [sortType, isGuidePreview, boardFeedMode]);
+  }, [sortType, boardScope, isGuidePreview]);
+
+  useEffect(() => {
+    fetchPinnedRef.current?.();
+  }, [boardScope, isGuidePreview, studentFeedLocked, coords]);
 
   const handlePullToRefresh = useCallback(() => {
     if (isGuidePreview) return;
     if (posts && posts.length > 0) return;
     refreshLocation();
     fetchPostsRef.current?.(1, false, { soft: true });
+    fetchPinnedRef.current?.();
   }, [isGuidePreview, posts, refreshLocation]);
 
   const data = studentFeedLocked
@@ -477,6 +549,17 @@ export function BoardAllContent({ navigation, posts }) {
     : posts && posts.length > 0
       ? posts
       : serverPosts;
+
+  const showPinned =
+    Boolean(pinnedPost) &&
+    !studentFeedLocked &&
+    !(posts && posts.length > 0) &&
+    !isGuidePreview;
+
+  const feedPosts = useMemo(() => {
+    if (!showPinned) return data;
+    return data.filter((post) => post.id !== pinnedPost.id);
+  }, [data, showPinned, pinnedPost]);
 
   const handleLoadMore = () => {
     if (sortType === 'nearby' && !coords) return;
@@ -506,19 +589,18 @@ export function BoardAllContent({ navigation, posts }) {
   }, []);
 
   const postsInjected = Boolean(posts && posts.length > 0);
-  const hideListBehindLoader =
-    !studentFeedLocked && loading && !postsInjected;
+  const hideListBehindLoader = !studentFeedLocked && loading && !postsInjected;
 
   const dataWithAds = useMemo(
     () =>
-      injectAdSlots(data, adSlots, {
+      injectAdSlots(feedPosts, adSlots, {
         placement: AD_PLACEMENTS.FEED_BOARD,
         adType: 'ad',
         idPrefix: 'ad',
         skipFirstIndex: true,
         wrapItem: (post) => ({ ...post, type: 'post' }),
       }),
-    [data, adSlots],
+    [feedPosts, adSlots],
   );
 
   const skeletonListData = useMemo(
@@ -532,8 +614,17 @@ export function BoardAllContent({ navigation, posts }) {
 
   const flatListData = useMemo(() => {
     if (hideListBehindLoader) return skeletonListData;
-    return dataWithAds;
-  }, [hideListBehindLoader, dataWithAds, skeletonListData]);
+    if (!showPinned) return dataWithAds;
+    return [{ ...pinnedPost, type: 'post', featured: true }, ...dataWithAds];
+  }, [
+    hideListBehindLoader,
+    dataWithAds,
+    skeletonListData,
+    showPinned,
+    pinnedPost,
+  ]);
+
+  const boardSections = useMemo(() => [{ data: flatListData }], [flatListData]);
 
   const renderBoardSkeletonCard = () => (
     <View style={styles.postItem}>
@@ -600,6 +691,7 @@ export function BoardAllContent({ navigation, posts }) {
         showDistanceBadge={permissionGranted}
         distanceStale={distanceStale}
         distanceLoading={permissionGranted && !postHasKm && distanceStale}
+        featured={Boolean(post.featured)}
         onPress={() =>
           navigation.navigate('BoardDetail', {
             post: { ...post, author: post.author },
@@ -611,82 +703,58 @@ export function BoardAllContent({ navigation, posts }) {
     );
   };
   const renderItem = ({ item }) => {
+    let body;
     if (item.type === 'skeleton') {
-      return renderBoardSkeletonCard();
-    }
-    if (item.type === 'ad') {
-      return (
+      body = renderBoardSkeletonCard();
+    } else if (item.type === 'ad') {
+      body = (
         <AdPlaceholder
           normalize={normalize}
           styles={styles}
           adData={item.adData}
         />
       );
+    } else {
+      body = renderPostItem({ item });
     }
-    return renderPostItem({ item });
+    return <View style={{ paddingHorizontal: width * 0.04 }}>{body}</View>;
   };
+
+  const renderSectionHeader = useCallback(
+    () => (
+      <View style={{ backgroundColor: colors.white }} collapsable={false}>
+        <SortChips
+          value={boardScope}
+          onChange={setBoardScope}
+          options={[
+            { value: 'national', label: '전체' },
+            { value: 'student', label: '학생' },
+          ]}
+          sortValue={sortType}
+          onSortChange={setSortType}
+        />
+      </View>
+    ),
+    [boardScope, sortType],
+  );
 
   return (
     <>
-      {/* 정렬 버튼 영역 */}
-      <View style={styles.sortContainer}>
-        <TouchableOpacity
-          style={[
-            styles.sortButton,
-            sortType === 'latest' && styles.sortButtonActive,
-          ]}
-          onPress={() => setSortType('latest')}
-        >
-          <Text
-            style={[
-              styles.sortButtonText,
-              sortType === 'latest' && styles.sortButtonTextActive,
-            ]}
-          >
-            최신
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.sortButton,
-            sortType === 'popular' && styles.sortButtonActive,
-          ]}
-          onPress={() => setSortType('popular')}
-        >
-          <Text
-            style={[
-              styles.sortButtonText,
-              sortType === 'popular' && styles.sortButtonTextActive,
-            ]}
-          >
-            인기
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.sortButton,
-            sortType === 'nearby' && styles.sortButtonActive,
-          ]}
-          onPress={() => setSortType('nearby')}
-        >
-          <Text
-            style={[
-              styles.sortButtonText,
-              sortType === 'nearby' && styles.sortButtonTextActive,
-            ]}
-          >
-            근처
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* 게시글 목록 — 초기 로딩 시 스켈레톤 행을 리스트 데이터로 렌더(측정 방해 방지) */}
+      {/* 배너는 스크롤되며 사라지고, 전체/학생 줄은 섹션 헤더로 고정된다 */}
       <View style={{ flex: 1 }}>
-        <FlatList
-          style={styles.postList}
-          data={flatListData}
+        <SectionList
+          style={{ flex: 1 }}
+          sections={boardSections}
           keyExtractor={(item) => String(item.id)}
           renderItem={renderItem}
+          renderSectionHeader={renderSectionHeader}
+          stickySectionHeadersEnabled
+          ListHeaderComponent={
+            <View>
+              <MainHeader />
+              <TopAdBanner placement="board" />
+            </View>
+          }
           showsVerticalScrollIndicator={false}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
@@ -700,16 +768,6 @@ export function BoardAllContent({ navigation, posts }) {
               />
             )
           }
-          ListHeaderComponent={
-            <View
-              style={{
-                marginHorizontal: -(width * 0.04),
-                width,
-              }}
-            >
-              <TopAdBanner tipRefreshKey={tipRefreshKey} />
-            </View>
-          }
           ListEmptyComponent={
             !loading ? (
               <View
@@ -718,7 +776,7 @@ export function BoardAllContent({ navigation, posts }) {
                 <Text
                   style={{
                     fontFamily: fonts.regular,
-                    color: colors.textSecondary,
+                    color: colors.textLight4,
                   }}
                 >
                   {sortType === 'nearby' && !permissionGranted
@@ -742,7 +800,7 @@ export function BoardAllContent({ navigation, posts }) {
                   style={{
                     marginTop: normalize(8),
                     fontFamily: fonts.regular,
-                    color: colors.textSecondary,
+                    color: colors.textLight4,
                     fontSize: normalize(12),
                   }}
                 >
@@ -751,37 +809,26 @@ export function BoardAllContent({ navigation, posts }) {
               </View>
             ) : null
           }
-          contentContainerStyle={{ paddingBottom: normalize(80) }}
+          contentContainerStyle={{ paddingBottom: normalize(80) + tabBarInset }}
+          scrollIndicatorInsets={{ bottom: tabBarInset }}
         />
       </View>
 
-      {/* 글쓰기 플로팅 버튼 */}
-      <GuideFocusTarget name={T.BOARD_WRITE_FAB}>
-        <TouchableOpacity
-          style={styles.floatingButton}
-          activeOpacity={0.8}
-          onPress={() => {
-            if (
-              boardFeedMode === 'student' &&
-              studentVerificationStatus !== 'APPROVED'
-            ) {
-              setStudentCtaVisible(true);
-              return;
-            }
-            navigation.navigate('BoardWrite', {
-              from: 'Main',
-              boardContext:
-                boardFeedMode === 'student' ? 'student' : 'national',
-            });
-          }}
-        >
-          <FontAwesome5
-            name="plus"
-            size={normalize(24)}
-            color={colors.background}
-          />
-        </TouchableOpacity>
-      </GuideFocusTarget>
+      <FloatingButton
+        onPress={() => {
+          if (
+            studentBoardSelected &&
+            studentVerificationStatus !== 'APPROVED'
+          ) {
+            setStudentCtaVisible(true);
+            return;
+          }
+          navigation.navigate('BoardWrite', {
+            from: 'Main',
+            boardContext: boardScope,
+          });
+        }}
+      />
 
       {/* 플로팅 메뉴 (boardAll 인라인 - boardDetail과 동일한 UI) */}
       <Modal
@@ -803,12 +850,12 @@ export function BoardAllContent({ navigation, posts }) {
             <TouchableWithoutFeedback>
               <View
                 style={{
-                  backgroundColor: colors.background,
+                  backgroundColor: colors.white,
                   borderRadius: normalize(12),
                   minWidth: width * 0.45,
                   maxWidth: width * 0.7,
                   paddingVertical: normalize(4),
-                  shadowColor: colors.shadow,
+                  shadowColor: colors.text,
                   shadowOffset: { width: 0, height: 2 },
                   shadowOpacity: 0.15,
                   shadowRadius: 5,
@@ -860,7 +907,7 @@ export function BoardAllContent({ navigation, posts }) {
                         style={{
                           fontSize: normalize(13),
                           fontFamily: fonts.regular,
-                          color: colors.textPrimary,
+                          color: colors.text,
                         }}
                       >
                         {item.label}
@@ -868,7 +915,7 @@ export function BoardAllContent({ navigation, posts }) {
                       <Ionicons
                         name={item.iconName}
                         size={normalize(17)}
-                        color={colors.textSecondary}
+                        color={colors.textLight4}
                       />
                     </TouchableOpacity>
                     {index <
@@ -880,7 +927,7 @@ export function BoardAllContent({ navigation, posts }) {
                       <View
                         style={{
                           height: 1,
-                          backgroundColor: colors.textLight10,
+                          backgroundColor: colors.textLight1,
                           marginHorizontal: normalize(8),
                         }}
                       />
@@ -916,10 +963,10 @@ export function BoardAllContent({ navigation, posts }) {
           setStudentCtaClosingForVerify(false);
           setStudentCtaVisible(false);
           if (
-            boardFeedMode === 'student' &&
+            studentBoardSelected &&
             studentVerificationStatus !== 'APPROVED'
           ) {
-            shell?.setBoardFeedMode?.('national');
+            setBoardScope('national');
           }
         }}
         onPressVerify={() => {
@@ -927,10 +974,10 @@ export function BoardAllContent({ navigation, posts }) {
           setStudentCtaClosingForVerify(true);
           setStudentCtaVisible(false);
           if (
-            boardFeedMode === 'student' &&
+            studentBoardSelected &&
             studentVerificationStatus !== 'APPROVED'
           ) {
-            shell?.setBoardFeedMode?.('national');
+            setBoardScope('national');
           }
         }}
         onDismissed={() => {
@@ -953,8 +1000,7 @@ const BoardAll = ({ navigation }) => {
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(() => createBoardStyles(width, normalize), [width]);
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <MainHeader headerTitle={getMainTabTitle('board')} />
+    <SafeAreaView style={styles.container} edges={MAIN_FOOTER_SAFE_AREA_EDGES}>
       <BoardAllContent navigation={navigation} />
       <MainFooter
         activeTab="board"

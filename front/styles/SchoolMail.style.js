@@ -7,11 +7,11 @@ export const createSchoolMailStyles = (width, normalize) => {
   return StyleSheet.create({
     safe: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       paddingTop: normalize(8),
     },
     list: {
@@ -26,7 +26,7 @@ export const createSchoolMailStyles = (width, normalize) => {
       width: cardWidth,
       minHeight: normalize(150),
       flexDirection: 'column',
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(14),
       padding: normalize(12),
       marginBottom: normalize(10),
@@ -47,13 +47,13 @@ export const createSchoolMailStyles = (width, normalize) => {
     cardFromLabel: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       flexShrink: 1,
     },
     cardMetaDot: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginHorizontal: normalize(4),
     },
     cardIconWrap: {
@@ -71,7 +71,7 @@ export const createSchoolMailStyles = (width, normalize) => {
       paddingHorizontal: normalize(6),
       paddingVertical: normalize(2),
       borderRadius: normalize(10),
-      backgroundColor: colors.primaryLight30,
+      backgroundColor: colors.primaryLight4,
     },
     newBadgeText: {
       fontSize: normalize(fontSizes.md),
@@ -82,7 +82,7 @@ export const createSchoolMailStyles = (width, normalize) => {
       flexGrow: 1,
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       lineHeight: normalize(fontSizes.title),
       marginBottom: normalize(10),
     },
@@ -95,7 +95,7 @@ export const createSchoolMailStyles = (width, normalize) => {
     cardTime: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
     },
     statRow: {
       flexDirection: 'row',
@@ -110,323 +110,7 @@ export const createSchoolMailStyles = (width, normalize) => {
     statText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
-    },
-    floatingButton: {
-      position: 'absolute',
-      right: normalize(20),
-      bottom: normalize(50),
-      width: normalize(50),
-      height: normalize(50),
-      borderRadius: normalize(28),
-      backgroundColor: colors.primary,
-      justifyContent: 'center',
-      alignItems: 'center',
-      ...shadow.lg,
-    },
-  });
-};
-
-/** 학교 우편 상세 — schoolMailDetail.jsx (detailLetterCard 톤 + boardDetail형 댓글/입력) */
-export const createSchoolMailDetailStyles = (width, normalize) => {
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
-    smDetailScrollContent: {
-      paddingBottom: normalize(100),
-    },
-    smDetailLetterWrap: {
-      paddingHorizontal: width * 0.05,
-      paddingBottom: normalize(8),
-      paddingVertical: normalize(16),
-    },
-    /** mail.style detailLetterCard와 유사 + 크림 톤·테두리 */
-    smDetailLetterCard: {
-      backgroundColor: colors.background,
-      borderRadius: normalize(12),
-      paddingHorizontal: normalize(16),
-      paddingBottom: normalize(18),
-      ...shadow.md,
-    },
-    smDetailLetterTopRow: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      justifyContent: 'space-between',
-      marginVertical: normalize(14),
-    },
-    smDetailFromToCol: {
-      flex: 1,
-      paddingRight: normalize(8),
-    },
-    smDetailFromToText: {
-      fontSize: normalize(fontSizes.lg),
-      fontFamily: fonts.regular,
-      color: colors.textSecondary,
-      lineHeight: normalize(fontSizes.heading),
-      marginBottom: normalize(2),
-    },
-    smDetailPostBadge: {
-      width: normalize(52),
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingVertical: normalize(6),
-      paddingHorizontal: normalize(4),
-      borderRadius: normalize(8),
-      backgroundColor: colors.blue,
-      borderColor: colors.subcolor,
-    },
-    smDetailPostBadgeLabel: {
-      fontSize: normalize(fontSizes.md),
-      fontFamily: fonts.bold,
-      color: colors.textSecondary,
-      marginTop: normalize(2),
-    },
-    /** iOS: 점선. Android는 dashed가 실선으로 굵게 렌더링되므로 높이 0으로 구분선 제거(iOS와 동일한 인상) */
-    smDetailDashedRule: Platform.select({
-      ios: {
-        borderBottomWidth: 1,
-        borderStyle: 'dashed',
-        borderBottomColor: colors.textLight5,
-        width: '100%',
-      },
-      android: {
-        height: 0,
-        width: '100%',
-      },
-      default: {
-        height: StyleSheet.hairlineWidth,
-        backgroundColor: colors.textLight5,
-        width: '100%',
-      },
-    }),
-    smDetailMailBody: {
-      fontSize: normalize(fontSizes.xxl),
-      fontFamily: fonts.regular,
-      color: colors.textPrimary,
-      lineHeight: normalize(fontSizes.xxl + 6),
-      marginBottom: normalize(16),
-    },
-    smDetailMailFooter: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    },
-    smDetailMailTime: {
-      fontSize: normalize(fontSizes.lg),
-      fontFamily: fonts.regular,
-      color: colors.textSecondary,
-    },
-    smDetailMailStats: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: normalize(14),
-    },
-    smDetailStatItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: normalize(4),
-    },
-    smDetailStatText: {
-      fontSize: normalize(fontSizes.lg),
-      fontFamily: fonts.regular,
-      color: colors.textSecondary,
-    },
-
-    // 댓글 영역
-    smDetailCommentSection: {
-      paddingHorizontal: width * 0.06,
-      paddingTop: normalize(8),
-      paddingBottom: normalize(10),
-    },
-    smDetailCommentCountTitle: {
-      fontSize: normalize(fontSizes.xl),
-      fontFamily: fonts.bold,
-      color: colors.textPrimary,
-      marginBottom: normalize(12),
-    },
-    smDetailCommentBubble: {
-      backgroundColor: colors.background,
-      borderRadius: normalize(12),
-      paddingHorizontal: normalize(14),
-      paddingVertical: normalize(12),
-      marginBottom: normalize(10),
-      ...shadow.md,
-    },
-    /** 대댓글: 왼쪽 들여쓰기(행의 marginLeft) 유지, 오른쪽은 부모 댓글과 동일 선상까지 채움 */
-    smDetailCommentBubbleReply: {
-      flex: 1,
-      minWidth: 0,
-      marginRight: 0,
-    },
-    /** 댓글 달기 포커스 시 말풍선만 강조 */
-    smDetailCommentBubbleReplying: {
-      backgroundColor: colors.primaryLight20,
-      ...Platform.select({
-        ios: {
-          shadowColor: 'transparent',
-          shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: 0,
-          shadowRadius: 0,
-        },
-        android: {
-          elevation: 0,
-          shadowColor: 'transparent',
-        },
-      }),
-    },
-    smDetailCommentItem: {
-      marginBottom: normalize(6),
-    },
-    smDetailCommentItemReply: {
-      marginBottom: normalize(12),
-      marginLeft: normalize(12),
-      marginRight: 0,
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-    },
-    smDetailCommentReplyArrow: {
-      marginRight: normalize(6),
-      marginTop: normalize(2),
-    },
-    smDetailCommentReplyBody: {
-      flex: 1,
-    },
-    smDetailCommentRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'flex-start',
-      marginBottom: normalize(6),
-    },
-    smDetailCommentAuthorRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      flexWrap: 'wrap',
-    },
-    smDetailCommentAuthor: {
-      fontSize: normalize(fontSizes.lg),
-      fontFamily: fonts.regular,
-      color: colors.textSecondary,
-    },
-    smDetailCommentAuthorWriter: {
-      fontSize: normalize(fontSizes.lg),
-      fontFamily: fonts.bold,
-      color: colors.alert,
-    },
-    smDetailCommentDot: {
-      fontSize: normalize(fontSizes.xl),
-      fontFamily: fonts.regular,
-      color: colors.textSecondary,
-      marginHorizontal: normalize(4),
-    },
-    smDetailCommentTime: {
-      fontSize: normalize(fontSizes.lg),
-      fontFamily: fonts.regular,
-      color: colors.textSecondary,
-    },
-    smDetailCommentBody: {
-      fontSize: normalize(fontSizes.xl),
-      fontFamily: fonts.regular,
-      color: colors.textPrimary,
-      lineHeight: normalize(fontSizes.heading),
-      marginBottom: normalize(6),
-    },
-    smDetailCommentTag: {
-      color: colors.primary,
-      fontFamily: fonts.bold,
-    },
-    smDetailCommentFooter: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    },
-    smDetailCommentFooterLeft: {
-      flexDirection: 'row',
-      alignItems: 'baseline',
-      gap: normalize(12),
-      flex: 1,
-    },
-    smDetailCommentLikeRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: normalize(4),
-    },
-    smDetailCommentReplyButton: {
-      paddingHorizontal: normalize(6),
-    },
-    smDetailCommentReplyButtonText: {
-      fontSize: normalize(fontSizes.lg),
-      fontFamily: fonts.regular,
-      color: colors.textSecondary,
-      marginTop: -normalize(2),
-    },
-    smDetailLoadMoreRowReply: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      alignSelf: 'flex-start',
-      paddingTop: normalize(2),
-      paddingBottom: normalize(10),
-      paddingRight: normalize(4),
-      gap: normalize(4),
-      marginLeft: normalize(18),
-      marginTop: -normalize(4),
-    },
-    smDetailLoadMoreText: {
-      fontSize: normalize(fontSizes.xl),
-      fontFamily: fonts.regular,
-      color: colors.textSecondary,
-    },
-
-    // CommentInput 호환 키 (boardDetail과 동일 이름)
-    bottomInputRow: {
-      flexDirection: 'column',
-      backgroundColor: colors.background,
-      borderTopWidth: 1,
-      borderTopColor: colors.textLight10,
-      paddingHorizontal: width * 0.03,
-      paddingVertical: normalize(12),
-      paddingBottom: Platform.OS === 'ios' ? normalize(34) : normalize(12),
-    },
-    replyTargetRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: normalize(6),
-      paddingHorizontal: normalize(4),
-    },
-    replyTargetText: {
-      fontSize: normalize(fontSizes.lg),
-      fontFamily: fonts.regular,
-      color: colors.primary,
-      flex: 1,
-    },
-    replyTargetCancel: {
-      padding: normalize(4),
-    },
-    bottomInputInner: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: normalize(10),
-    },
-    bottomInput: {
-      flex: 1,
-      paddingVertical: normalize(12),
-      paddingHorizontal: normalize(16),
-      borderRadius: normalize(24),
-      backgroundColor: colors.textLight5,
-      fontSize: normalize(fontSizes.xl),
-      fontFamily: fonts.regular,
-      color: colors.textPrimary,
-      maxHeight: normalize(80),
-    },
-    sendButton: {
-      width: normalize(44),
-      height: normalize(44),
-      borderRadius: normalize(22),
-      backgroundColor: colors.primary,
-      justifyContent: 'center',
-      alignItems: 'center',
+      color: colors.textLight4,
     },
   });
 };
@@ -436,15 +120,15 @@ export const createSendSchoolMailStyles = (normalize) =>
   StyleSheet.create({
     schoolSendOuter: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     schoolSendSafe: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     schoolSendKeyboard: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
     },
     schoolSendScroll: {
       flex: 1,
@@ -460,13 +144,13 @@ export const createSendSchoolMailStyles = (normalize) =>
     schoolSendFieldLabel: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
       marginBottom: normalize(8),
     },
     schoolSendFixedSchoolBox: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.textLight5,
+      backgroundColor: colors.textLight1,
       borderRadius: normalize(12),
       paddingHorizontal: normalize(12),
       paddingVertical: normalize(12),
@@ -478,15 +162,15 @@ export const createSendSchoolMailStyles = (normalize) =>
     schoolSendFixedSchoolName: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     schoolSendBodyWrap: {
       flex: 1,
       minHeight: normalize(220),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderRadius: normalize(12),
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: colors.textLight10,
+      borderColor: colors.textLight1,
       paddingHorizontal: normalize(12),
       paddingVertical: normalize(12),
     },
@@ -495,7 +179,7 @@ export const createSendSchoolMailStyles = (normalize) =>
       minHeight: normalize(150),
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
       textAlignVertical: 'top',
     },
     schoolSendMetaRow: {
@@ -506,14 +190,14 @@ export const createSendSchoolMailStyles = (normalize) =>
     schoolSendCharCount: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textSecondary,
+      color: colors.textLight4,
       marginBottom: normalize(6),
     },
     schoolSendAdChip: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: normalize(4),
-      backgroundColor: colors.textLight5,
+      backgroundColor: colors.textLight1,
       borderRadius: normalize(10),
       paddingHorizontal: normalize(8),
       paddingVertical: normalize(4),
@@ -521,14 +205,14 @@ export const createSendSchoolMailStyles = (normalize) =>
     schoolSendAdChipText: {
       fontSize: normalize(fontSizes.lg),
       fontFamily: fonts.regular,
-      color: colors.textPrimary,
+      color: colors.text,
     },
     schoolSendCtaBar: {
       paddingHorizontal: normalize(16),
       paddingBottom: Platform.OS === 'ios' ? normalize(22) : normalize(12),
-      backgroundColor: colors.background,
+      backgroundColor: colors.white,
       borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: colors.textLight10,
+      borderTopColor: colors.textLight1,
     },
     schoolSendCtaBtn: {
       height: normalize(48),
@@ -538,11 +222,11 @@ export const createSendSchoolMailStyles = (normalize) =>
       justifyContent: 'center',
     },
     schoolSendCtaBtnDisabled: {
-      backgroundColor: colors.disabled,
+      backgroundColor: colors.textLight1,
     },
     schoolSendCtaLabel: {
       fontSize: normalize(fontSizes.xxl),
       fontFamily: fonts.bold,
-      color: colors.textPrimary,
+      color: colors.text,
     },
   });

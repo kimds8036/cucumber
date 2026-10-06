@@ -100,8 +100,8 @@ const Settings = ({ navigation, route }) => {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const styles = useMemo(
-    () => createNotificationSettingsStyles(normalize),
-    [normalize],
+    () => createNotificationSettingsStyles(normalize, width),
+    [normalize, width],
   );
 
   /** 마이페이지에서 분리 진입: 'prefs' 알림·거리만, 'profile' 아이디·비밀번호·학교만, 없으면 전체 */
@@ -688,8 +688,8 @@ const Settings = ({ navigation, route }) => {
             onValueChange={onToggle}
             disabled={disabled}
             pointerEvents={disabled ? 'none' : 'auto'}
-            trackColor={{ false: colors.border, true: colors.primary }}
-            thumbColor={colors.textWhite}
+            trackColor={{ false: colors.textLight1, true: colors.primary }}
+            thumbColor={colors.white}
           />
         </TouchableOpacity>
       </View>
@@ -716,7 +716,7 @@ const Settings = ({ navigation, route }) => {
       <Ionicons
         name="chevron-forward"
         size={normalize(20)}
-        color={disabled ? colors.textLight20 : colors.textSecondary}
+        color={disabled ? colors.textLight2 : colors.textLight4}
       />
     </TouchableOpacity>
   );
@@ -754,7 +754,7 @@ const Settings = ({ navigation, route }) => {
           <Ionicons
             name={showPw[fieldKey] ? 'eye-off-outline' : 'eye-outline'}
             size={normalize(20)}
-            color={colors.textSecondary}
+            color={colors.textLight4}
           />
         </TouchableOpacity>
       </View>
@@ -952,7 +952,7 @@ const Settings = ({ navigation, route }) => {
                 <Text style={styles.pwLabel}>현재 아이디</Text>
                 <View style={styles.pwInputWrap}>
                   <Text
-                    style={[styles.pwInput, { color: colors.textSecondary }]}
+                    style={[styles.pwInput, { color: colors.textLight4 }]}
                     numberOfLines={1}
                   >
                     {currentUsername}
@@ -969,8 +969,8 @@ const Settings = ({ navigation, route }) => {
                       {
                         color:
                           newUsername.trim().length > 0
-                            ? colors.textPrimary
-                            : colors.textLight20,
+                            ? colors.text
+                            : colors.textLight2,
                       },
                     ]}
                   >
@@ -1046,7 +1046,7 @@ const Settings = ({ navigation, route }) => {
                       <Text
                         style={[
                           styles.pwInput,
-                          { color: colors.textSecondary },
+                          { color: colors.textLight4 },
                         ]}
                         numberOfLines={2}
                       >

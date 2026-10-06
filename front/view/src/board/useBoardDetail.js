@@ -81,7 +81,9 @@ function buildTree(comments, postAuthorId, currentUserId) {
     nodes.set(id, {
       id,
       userId: c.user_id,
-      authorLabel: isPostAuthor ? '작성자' : `익명 ${c.anonymous_index}`,
+      authorLabel: isPostAuthor
+        ? '작성자'
+        : `익명 ${c.anonymous_index ?? c.anon_no ?? ''}`,
       equippedBadge: equippedBadgeFromApiRow(c),
       isWriter: isPostAuthor,
       isMyComment:
@@ -165,6 +167,8 @@ export function useBoardDetail({
       ...base,
       id: routePostId ?? routePost?.id ?? base.id ?? null,
       author: '익명',
+      boardType: base.boardType ?? base.board_type ?? null,
+      schoolName: base.schoolName ?? base.school_name ?? '',
       images: Array.isArray(base.images) ? base.images : [],
       tags: normalizeTagsFromApi(base.tags),
       distanceKm:
@@ -219,6 +223,8 @@ export function useBoardDetail({
         setPost({
           id: data.id,
           author: '익명',
+          boardType: data.board_type ?? null,
+          schoolName: data.school_name ?? '',
           equippedBadge: equippedBadgeFromApiRow(data),
           time: formatTimeAgo(data.created_at),
           location: data.location ?? '',
@@ -228,6 +234,7 @@ export function useBoardDetail({
           scraps: data.scrapCount ?? 0,
           images: imageUrls,
           tags: normalizeTagsFromApi(data.tags),
+          poll: data.poll ?? null,
           distanceKm:
             typeof data.distanceKm === 'number' &&
             !Number.isNaN(data.distanceKm)

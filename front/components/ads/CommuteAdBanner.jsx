@@ -20,14 +20,14 @@ export default function CommuteAdBanner({ adData }) {
           paddingHorizontal: 4,
           paddingVertical: 2,
           borderRadius: 4,
-          backgroundColor: colors.primaryLight20,
+          backgroundColor: colors.primaryLight3,
         }}
       >
         <Text
           style={{
             fontSize: 9,
             fontFamily: fonts.regular,
-            color: colors.textSecondary,
+            color: colors.textLight4,
           }}
         >
           ad

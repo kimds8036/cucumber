@@ -23,6 +23,27 @@ import {
   normalizeStudySummaryWatchers,
 } from '../utils/studySummaryNotification';
 
+function isImageRef(value) {
+  const text = String(value ?? '').trim();
+  if (!text) return false;
+  if (text.startsWith('file://') || text.startsWith('content://') || text.startsWith('data:image/')) {
+    return true;
+  }
+  return /^https?:\/\//i.test(text) && /cloudinary\.com|\/image\/upload\/|\.(png|jpe?g|gif|webp|heic)(\?|$)/i.test(text);
+}
+
+/** 사진 파일·주소는 토스트에 넣지 않고 글자 "사진"만 쓴다. */
+function messageToastText(message) {
+  const images = Array.isArray(message?.images)
+    ? message.images.filter((item) => item != null && String(item).trim() !== '')
+    : [];
+  const text = String(message?.content ?? '').trim();
+  if (!text || isImageRef(text)) {
+    return images.length > 0 || isImageRef(text) ? '사진' : '새 메시지가 도착했어요';
+  }
+  return text;
+}
+
 const NotificationContext = createContext(null);
 
 export function NotificationProvider({ children }) {
@@ -336,7 +357,10 @@ export function NotificationProvider({ children }) {
         const chatTitle = isAnonymousMessageRoom
           ? '익명'
           : dmSenderName || '새 메시지';
-        const chatMessage = bodyText || '새 메시지가 도착했어요';
+        const chatMessage = messageToastText({
+          content: bodyText,
+          images: payload?.images,
+        });
 
         showToast({
           title: chatTitle,
@@ -428,7 +452,7 @@ export function NotificationProvider({ children }) {
       const senderName = isDm
         ? senderNameRaw || '새 메시지'
         : ANONYMOUS_MAIL_LABEL;
-      const content = payload?.message?.content || '사진';
+      const content = messageToastText(payload?.message);
       const isActiveRoom =
         roomId != null &&
         activeChatRoomId != null &&

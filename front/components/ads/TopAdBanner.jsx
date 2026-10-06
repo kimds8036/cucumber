@@ -1,72 +1,101 @@
-import React, { useMemo } from 'react';
-import { Image, Text, View, useWindowDimensions } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import {
+  ImageBackground,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { getNormalize } from '../../styles/frame.style';
-import { createAdStyles } from '../../styles/ad.style';
-import TipPlaceholder from './TipPlaceholder';
-import { AdPill } from './PillBadge';
+import { colors, fonts, fontSizes } from '../../styles/colors';
+import { pickBanner } from '../../constants/bannerAssets';
 
 /**
- * 상단 고정 배너 — 검색창(searchscreen) 배너와 동일 디자인.
- * boardAll / searchscreen / SearchResult / boardDetail 에서 재사용.
+ * 헤더 아래(또는 게시글과 댓글 사이) 배너.
+ * 배경 이미지 위에 왼쪽 두 줄 문구를 올린다.
  *
- * TODO: /api/ads 연동 후 useAdSlots + pickAdForPlacement로 adData 공급
+ * picked 를 넘기면 마운트마다 다시 뽑지 않는다.
+ * @param {{ inset?: boolean, placement?: 'board' | 'message' | 'school' | 'timer', picked?: { source: number, copy: { line1: string, line2: string } }, onPress?: () => void }} props
  */
-export default function TopAdBanner({
-  styles: externalStyles,
-  adData: adDataProp,
-  tipRefreshKey = 0,
-}) {
+export default function TopAdBanner({ inset = true, placement, picked: pickedProp, onPress }) {
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
-  const adStyles = useMemo(
-    () => createAdStyles(normalize, width),
-    [normalize, width],
+  const [pickedState] = useState(() => pickedProp ?? pickBanner(placement));
+  const picked = pickedProp ?? pickedState;
+  const styles = useMemo(() => createStyles(normalize), [normalize]);
+
+  const banner = (
+    <ImageBackground
+      source={picked.source}
+      style={[
+        styles.wrap,
+        {
+          marginHorizontal: inset ? width * 0.04 : 0,
+        },
+      ]}
+      imageStyle={styles.image}
+      resizeMode="stretch"
+      accessibilityIgnoresInvertColors
+    >
+      <View style={styles.copyCol} pointerEvents="none">
+        <Text style={styles.line1} numberOfLines={1}>
+          {picked.copy.line1}
+        </Text>
+        <Text style={styles.line2} numberOfLines={2}>
+          {picked.copy.line2}
+        </Text>
+      </View>
+    </ImageBackground>
   );
-  const s = externalStyles || adStyles;
-  const titleStyle = adStyles.adSectionTitle;
-  const bodyStyle = adStyles.adSectionBody;
 
-  // API 연동 전: prop 없으면 null → tip 폴백
-  const ad = adDataProp !== undefined ? adDataProp : null;
-
-  if (ad == null) {
-    return (
-      <TipPlaceholder
-        variant="topBanner"
-        styles={s}
-        normalize={normalize}
-        badgeOnLeft
-        refreshKey={tipRefreshKey}
-      />
-    );
-  }
-
-  const title = ad.title || ad.label || '광고';
-  const body = ad.body || ad.content || '';
+  if (!onPress) return banner;
 
   return (
-    <View style={s.adSection}>
-      <View style={s.adSectionRow}>
-        <View style={s.adSectionBadge}>
-          <AdPill />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={titleStyle} numberOfLines={1}>
-            {title}
-          </Text>
-          {body ? (
-            <Text style={bodyStyle} numberOfLines={1}>
-              {body}
-            </Text>
-          ) : null}
-        </View>
-        {ad.imageUrl ? (
-          <Image
-            source={{ uri: ad.imageUrl }}
-            style={{ width: normalize(40), height: normalize(40), borderRadius: 6 }}
-          />
-        ) : null}
-      </View>
-    </View>
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${picked.copy.line1} ${picked.copy.line2}`}
+    >
+      {banner}
+    </Pressable>
   );
+}
+
+function createStyles(normalize) {
+  return StyleSheet.create({
+    wrap: {
+      height: normalize(80),
+      borderRadius: normalize(20),
+      overflow: 'hidden',
+      backgroundColor: colors.white,
+      marginVertical: normalize(10),
+      justifyContent: 'center',
+    },
+    image: {
+      borderRadius: normalize(20),
+    },
+    copyCol: {
+      maxWidth: '58%',
+      marginLeft: normalize(14),
+      paddingVertical: normalize(8),
+      paddingHorizontal: normalize(10),
+      backgroundColor: 'transparent',
+      zIndex: 2,
+      elevation: 2,
+    },
+    line1: {
+      fontFamily: fonts.bold,
+      fontSize: normalize(14),
+      lineHeight: normalize(19),
+      color: '#1C1C1C',
+    },
+    line2: {
+      marginTop: normalize(2),
+      fontFamily: fonts.regular,
+      fontSize: normalize(11),
+      lineHeight: normalize(15),
+      color: '#555555',
+    },
+  });
 }
