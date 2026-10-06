@@ -135,7 +135,7 @@ export const createSubHeaderStyles = (width, height) => {
     },
     backButton: {
       position: 'absolute',
-      left: -5,
+      left: 0,
     },
     headerTitle: {
       fontSize: normalize(fontSizes.xxl),
@@ -149,7 +149,7 @@ export const createSubHeaderStyles = (width, height) => {
     },
     rightButton: {
       position: 'absolute',
-      right: -5,
+      right: 0,
     },
     rightButtonText: {
       fontSize: normalize(fontSizes.xl),
@@ -171,7 +171,7 @@ export const createSubFooterStyles = (width, height) => {
   return StyleSheet.create({
     container: {
       backgroundColor: colors.white,
-      paddingHorizontal: normalize(16),
+      paddingHorizontal: width * 0.04,
       paddingVertical: normalize(12),
     },
     button: {

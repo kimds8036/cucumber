@@ -16,7 +16,7 @@ export const createLoginStyles = (width, normalize) => {
     bodyScroll: {
       flexGrow: 1,
       justifyContent: 'center',
-      paddingHorizontal: Math.max(normalize(20), Math.round(width * 0.055)),
+      paddingHorizontal: width * 0.04,
       paddingTop: normalize(16),
       paddingBottom: normalize(20),
     },

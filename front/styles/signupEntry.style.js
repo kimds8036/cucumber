@@ -8,7 +8,7 @@ export function createSignupEntryStyles(width, normalize) {
       flex: 1,
       justifyContent: 'center',
       paddingVertical: normalize(12),
-      paddingHorizontal: Math.max(normalize(20), Math.round(width * 0.055)),
+      paddingHorizontal: width * 0.04,
     },
     brand: {
       alignItems: 'center',
