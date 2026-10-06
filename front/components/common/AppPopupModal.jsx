@@ -11,13 +11,16 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { initialWindowMetrics } from 'react-native-safe-area-context';
+import {
+  initialWindowMetrics,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import { colors } from '../../styles/colors';
 
 /**
  * 모달 창이 뜨는 첫 프레임에 useSafeAreaInsets()가 0이었다가
  * 바로 상태바·내비게이션 값으로 바뀌면, 회색 배경 여백과 카드가 한 번 튀고 제자리로 돌아온다.
- * 앱이 켜질 때 잡힌 값으로 고정한다.
+ * 앱이 켜질 때 잡힌 값으로 고정한다. (iOS는 이 틀을 쓰지 않음)
  */
 const frameInsets = initialWindowMetrics?.insets ?? {
   top: 0,
@@ -27,6 +30,8 @@ const frameInsets = initialWindowMetrics?.insets ?? {
 };
 const FRAME_PAD_TOP = Math.max(frameInsets.top, 16);
 const FRAME_PAD_BOTTOM = Math.max(frameInsets.bottom, 16);
+
+const IS_IOS = Platform.OS === 'ios';
 
 /** 등장·퇴장 페이드 (시간표·타이머 「저장 완료」와 동일 톤) */
 const FADE_MS = 220;
@@ -52,6 +57,7 @@ export default function AppPopupModal({
   useDefaultContainerWidth = true,
   onDismissed,
 }) {
+  const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
   const [shown, setShown] = useState(Boolean(visible));
   const opacity = useRef(new Animated.Value(visible ? 1 : 0)).current;
@@ -110,6 +116,46 @@ export default function AppPopupModal({
 
   const screen = Dimensions.get('screen');
 
+  const overlay = (
+    <Animated.View
+      pointerEvents={IS_IOS ? (visible ? 'auto' : 'none') : undefined}
+      style={[
+        IS_IOS ? styles.overlayIOS : styles.overlay,
+        IS_IOS ? { backgroundColor: overlayColor } : null,
+        {
+          opacity,
+          paddingTop: IS_IOS ? Math.max(insets.top, 16) : FRAME_PAD_TOP,
+          paddingBottom: IS_IOS ? Math.max(insets.bottom, 16) : FRAME_PAD_BOTTOM,
+        },
+      ]}
+    >
+      <Pressable
+        style={StyleSheet.absoluteFill}
+        onPress={dismissOnBackdrop ? onClose : undefined}
+      />
+      <View
+        style={[
+          useDefaultContainerWidth ? styles.container : null,
+          // Android Modal은 처음에 내용 영역 크기를 0×0으로 시작해서 퍼센트 너비가 내용 폭으로 줄어든다.
+          useDefaultContainerWidth && Platform.OS === 'android'
+            ? { width: Math.min(windowWidth * 0.86, 420) }
+            : null,
+          containerStyle,
+        ]}
+      >
+        <View
+          style={[
+            styles.card,
+            useDefaultContainerWidth ? styles.cardStretch : styles.cardCenter,
+            cardStyle,
+          ]}
+        >
+          {children}
+        </View>
+      </View>
+    </Animated.View>
+  );
+
   return (
     <Modal
       visible={shown}
@@ -120,53 +166,23 @@ export default function AppPopupModal({
       navigationBarTranslucent
       onRequestClose={dismissOnBackPress ? onClose : () => {}}
     >
-      <View
-        pointerEvents={visible ? 'auto' : 'none'}
-        style={[styles.frame, { width: screen.width, height: screen.height }]}
-      >
-        <Animated.View
-          pointerEvents="none"
-          style={[
-            StyleSheet.absoluteFill,
-            { backgroundColor: overlayColor, opacity },
-          ]}
-        />
-        <Animated.View
-          style={[
-            styles.overlay,
-            {
-              opacity,
-              paddingTop: FRAME_PAD_TOP,
-              paddingBottom: FRAME_PAD_BOTTOM,
-            },
-          ]}
+      {IS_IOS ? (
+        overlay
+      ) : (
+        <View
+          pointerEvents={visible ? 'auto' : 'none'}
+          style={[styles.frame, { width: screen.width, height: screen.height }]}
         >
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={dismissOnBackdrop ? onClose : undefined}
-          />
-          <View
+          <Animated.View
+            pointerEvents="none"
             style={[
-              useDefaultContainerWidth ? styles.container : null,
-              // Android Modal은 처음에 내용 영역 크기를 0×0으로 시작해서 퍼센트 너비가 내용 폭으로 줄어든다.
-              useDefaultContainerWidth && Platform.OS === 'android'
-                ? { width: Math.min(windowWidth * 0.86, 420) }
-                : null,
-              containerStyle,
+              StyleSheet.absoluteFill,
+              { backgroundColor: overlayColor, opacity },
             ]}
-          >
-            <View
-              style={[
-                styles.card,
-                useDefaultContainerWidth ? styles.cardStretch : styles.cardCenter,
-                cardStyle,
-              ]}
-            >
-              {children}
-            </View>
-          </View>
-        </Animated.View>
-      </View>
+          />
+          {overlay}
+        </View>
+      )}
     </Modal>
   );
 }
@@ -178,6 +194,12 @@ const styles = StyleSheet.create({
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  overlayIOS: {
+    flex: 1,
+    width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
   },
