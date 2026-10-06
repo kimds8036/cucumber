@@ -27,7 +27,7 @@ export const createMyPageStyles = (normalize, width) => {
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingVertical: normalize(14),
-      paddingHorizontal: normalize(18),
+      paddingHorizontal: normalize(16),
       backgroundColor: colors.white,
       borderRadius: normalize(999),
       marginBottom: normalize(10),
@@ -465,6 +465,7 @@ export const createProfileCardStyles = (normalize, width) =>
     timetableActionRow: {
       flexDirection: 'row',
       marginTop: normalize(16),
+      marginHorizontal: width * 0.04,
     },
     timetableActionCard: {
       flex: 1,
@@ -472,8 +473,7 @@ export const createProfileCardStyles = (normalize, width) =>
       justifyContent: 'center',
       position: 'relative',
       paddingVertical: normalize(6),
-      marginHorizontal: normalize(50),
-      borderwidth: 2,
+      borderWidth: 2,
       borderColor: colors.primary,
       borderRadius: normalize(999),
       backgroundColor: colors.primary,
