@@ -51,7 +51,7 @@ const debugFriendStoryBorder = (color) =>
   DEBUG_FRIEND_STORY_BORDER ? { borderWidth: 1, borderColor: color } : null;
 
 /** 가로 스크롤 확인용 더미 친구. 테스트가 끝나면 false로 끈다 */
-const DEBUG_FRIEND_STORY_DUMMY = __DEV__ && true;
+const DEBUG_FRIEND_STORY_DUMMY = __DEV__ && false;
 const DUMMY_FRIEND_NAMES = [
   '김민준', '이서연', '박도윤', '최하은', '정시우',
   '강지아', '조하준', '윤수아', '장은우', '임지호',
