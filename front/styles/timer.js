@@ -129,7 +129,7 @@ export const createTimerStyles = (width, normalize) => {
       friendStoryScroll: {
         flexDirection: 'row',
         alignItems: 'flex-start',
-        paddingRight: normalize(16),
+        marginLeft: normalize(16),
       },
       friendStoryAddCircleWrap: {
         alignItems: 'center',
@@ -1575,7 +1575,7 @@ export const createTimerFriendModalStyles = (normalize) =>
   StyleSheet.create({
     pokeOverlay: {
       flex: 1,
-      backgroundColor: colors.transparent,
+      backgroundColor: 'rgba(0,0,0,0.5)',
     },
     pokeWrapper: {
       position: 'absolute',
@@ -1911,7 +1911,7 @@ export const createTimerFriendModalStyles = (normalize) =>
 
     addFriendOverlay: {
       flex: 1,
-      backgroundColor: colors.transparent,
+      backgroundColor: 'rgba(0,0,0,0.5)',
     },
     addFriendWrapper: {
       position: 'absolute',

@@ -50,6 +50,19 @@ const DEBUG_FRIEND_STORY_BORDER = false;
 const debugFriendStoryBorder = (color) =>
   DEBUG_FRIEND_STORY_BORDER ? { borderWidth: 1, borderColor: color } : null;
 
+/** 가로 스크롤 확인용 더미 친구. 테스트가 끝나면 false로 끈다 */
+const DEBUG_FRIEND_STORY_DUMMY = __DEV__ && true;
+const DUMMY_FRIEND_NAMES = [
+  '김민준', '이서연', '박도윤', '최하은', '정시우',
+  '강지아', '조하준', '윤수아', '장은우', '임지호',
+];
+const DUMMY_FRIENDS = DUMMY_FRIEND_NAMES.map((name, index) => ({
+  id: `dummy-${index}`,
+  name,
+  colorId: index,
+  isDummy: true,
+}));
+
 // 백엔드 친구 목록과 연동하므로 더미 데이터는 사용하지 않는다.
 export const INITIAL_FRIENDS = [];
 
@@ -485,7 +498,10 @@ export const FriendStoryBar = memo(function FriendStoryBar({
 }) {
   const orderedFriends = useMemo(() => {
     const suggestions = friends.filter((f) => f.isSuggestion);
-    const realFriends = friends.filter((f) => !f.isSuggestion);
+    const realFriends = [
+      ...friends.filter((f) => !f.isSuggestion),
+      ...(DEBUG_FRIEND_STORY_DUMMY ? DUMMY_FRIENDS : []),
+    ];
     const activeFriends = realFriends.filter(
       (f) => studyingFriends[f.id] === true,
     );
@@ -509,32 +525,6 @@ export const FriendStoryBar = memo(function FriendStoryBar({
       name={T.TIMER_FRIEND_BAR}
       style={[styles.friendStoryRow, debugFriendStoryBorder('#FF3B30')]}
     >
-      <TouchableOpacity
-        style={[
-          styles.friendStoryAddCircleWrap,
-          debugFriendStoryBorder('#FFCC00'),
-        ]}
-        onPress={onAddFriendPress}
-        activeOpacity={0.8}
-        disabled={loading}
-      >
-        <View
-          style={[
-            styles.friendStoryAddCircle,
-            debugFriendStoryBorder('#34C759'),
-          ]}
-        >
-          <Ionicons name="add" size={normalize(25)} color={colors.primary} />
-        </View>
-        <Text
-          style={[
-            styles.friendStoryAddLabel,
-            debugFriendStoryBorder('#30B0C7'),
-          ]}
-        >
-          친구 추가
-        </Text>
-      </TouchableOpacity>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -544,7 +534,32 @@ export const FriendStoryBar = memo(function FriendStoryBar({
           debugFriendStoryBorder('#FF9500'),
         ]}
       >
-
+        <TouchableOpacity
+          style={[
+            styles.friendStoryAddCircleWrap,
+            debugFriendStoryBorder('#FFCC00'),
+          ]}
+          onPress={onAddFriendPress}
+          activeOpacity={0.8}
+          disabled={loading}
+        >
+          <View
+            style={[
+              styles.friendStoryAddCircle,
+              debugFriendStoryBorder('#34C759'),
+            ]}
+          >
+            <Ionicons name="add" size={normalize(25)} color={colors.primary} />
+          </View>
+          <Text
+            style={[
+              styles.friendStoryAddLabel,
+              debugFriendStoryBorder('#30B0C7'),
+            ]}
+          >
+            친구 추가
+          </Text>
+        </TouchableOpacity>
         {loading
           ? [0, 1, 2].map((i) => (
               <View
@@ -579,7 +594,10 @@ export const FriendStoryBar = memo(function FriendStoryBar({
                 styles.friendStoryCircleWrap,
                 debugFriendStoryBorder('#0A84FF'),
               ]}
-              onPress={() => onFriendPress(friend)}
+              onPress={() => {
+                if (friend.isDummy) return;
+                onFriendPress(friend);
+              }}
               activeOpacity={0.8}
             >
               <View
