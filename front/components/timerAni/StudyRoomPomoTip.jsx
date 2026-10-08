@@ -1,6 +1,7 @@
 import React from 'react';
 import { Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { colors, fonts } from '../../styles/colors';
 import { usePomodoro } from '../../hooks/usePomodoro';
 import {
@@ -91,7 +92,7 @@ export default function StudyRoomPomoTip({ visible, seat, stageW }) {
             activeOpacity={0.85}
             accessibilityLabel="건너뛰기"
           >
-            <Ionicons name="play-skip-forward" size={16} color={colors.textLight5} />
+            <FontAwesome6 name="arrows-rotate" size={16} color={colors.textLight5} />
           </TouchableOpacity>
         </View>
       </View>

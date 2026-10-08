@@ -27,6 +27,22 @@ function parseDayKey(dayKey) {
   return { year: y, month: m - 1 };
 }
 
+/** 화면 확인용 더미 잔디. 서버 결과 위에 덧붙이며, 테스트가 끝나면 false로 끈다 */
+const DEBUG_STUDY_GRASS_DUMMY = __DEV__ && false로;
+const DUMMY_GRASS_MINUTES = [0, 150, 290, 485, 640, 760, 35, 0, 265, 455, 610, 800, 95];
+
+function buildDummyMonth(year, month, todayKey) {
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const secondsByDay = {};
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const dayKey = toDayKey(year, month, day);
+    if (dayKey > todayKey) break;
+    const minutes = DUMMY_GRASS_MINUTES[(day * 7 + month) % DUMMY_GRASS_MINUTES.length];
+    if (minutes > 0) secondsByDay[dayKey] = minutes * 60;
+  }
+  return secondsByDay;
+}
+
 /** 일요일 시작 · 앞뒤 달 날짜로 줄을 채운 칸 목록 */
 function buildMonthCells(year, month) {
   const startPad = new Date(year, month, 1).getDay();
@@ -74,7 +90,12 @@ export default function TimerStudyGrass({
     fetchStudyGrassMonth(view.year, view.month)
       .then((data) => {
         if (!alive) return;
-        setSecondsByDay(data || {});
+        const real = data || {};
+        setSecondsByDay(
+          DEBUG_STUDY_GRASS_DUMMY
+            ? { ...buildDummyMonth(view.year, view.month, todayKey), ...real }
+            : real,
+        );
       })
       .catch(() => {
         if (alive) setSecondsByDay({});
