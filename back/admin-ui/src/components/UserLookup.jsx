@@ -8,6 +8,7 @@ import {
   Smartphone,
   Table2,
   UserRound,
+  X,
 } from 'lucide-react';
 import StatCard from './StatCard.jsx';
 import Tag from './Tag.jsx';
@@ -46,9 +47,18 @@ function formatWhen(value) {
   return date.toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
-function Avatar({ url, name, color }) {
+function Avatar({ url, name, color, onZoom }) {
   const letter = String(name || '?').slice(0, 1).toUpperCase();
-  if (url) return <img className="lookup-avatar" src={url} alt="" />;
+  if (url) {
+    return (
+      <img
+        className={`lookup-avatar ${onZoom ? 'is-zoomable' : ''}`}
+        src={url}
+        alt=""
+        onClick={onZoom ? (event) => { event.stopPropagation(); onZoom(url); } : undefined}
+      />
+    );
+  }
   return (
     <span className="lookup-avatar lookup-avatar-fallback" style={{ background: color || '#1f2833' }}>
       {letter}
@@ -96,6 +106,7 @@ export default function UserLookup() {
   const [section, setSection] = useState('overview');
   const [narrowDetail, setNarrowDetail] = useState(false);
   const [error, setError] = useState('');
+  const [photoUrl, setPhotoUrl] = useState('');
   const listRef = useRef(null);
   const scrollRef = useRef(0);
 
@@ -142,7 +153,14 @@ export default function UserLookup() {
     };
     window.addEventListener('admin:user-lookup-open', open);
     if (window.__adminOpsView === 'user') open();
-    return () => window.removeEventListener('admin:user-lookup-open', open);
+    const onKey = (event) => {
+      if (event.key === 'Escape') setPhotoUrl('');
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('admin:user-lookup-open', open);
+      window.removeEventListener('keydown', onKey);
+    };
   }, []);
 
   const user = detail?.user;
@@ -213,10 +231,17 @@ export default function UserLookup() {
               className={`lookup-row ${selectedId === item.id ? 'is-active' : ''}`}
               onClick={() => loadDetail(item.id, item)}
             >
-              <Avatar url={item.avatarUrl} name={item.username} />
+              <Avatar url={item.avatarUrl} name={item.username} onZoom={setPhotoUrl} />
               <span className="lookup-row-body">
                 <strong>@{item.username || '-'} <em>#{item.id}</em></strong>
                 <small>{item.schoolName} · {osLabel(item.os)}</small>
+                <span className={`lookup-ver ${item.isLatestAppVersion ? 'is-latest' : (item.appVersion && item.appVersion !== '—' ? 'is-old' : 'is-unknown')}`}>
+                  {item.isLatestAppVersion
+                    ? `v${String(item.appVersion).replace(/^v/i, '')} 최신`
+                    : (item.appVersion && item.appVersion !== '—'
+                      ? `v${String(item.appVersion).replace(/^v/i, '')} 구버전`
+                      : '버전 없음')}
+                </span>
               </span>
               <span className={`lookup-dot ${item.checkedInToday ? 'is-on' : ''}`} title={item.checkedInToday ? '오늘 등교' : '오늘 미등교'} />
             </button>
@@ -236,7 +261,7 @@ export default function UserLookup() {
         {!user ? <p className="lookup-muted">{error || '왼쪽 목록에서 사용자를 선택하세요.'}</p> : (
           <>
             <article className="lookup-header">
-              <Avatar url={user.avatarUrl} name={user.username} color={user.profileColorHex} />
+              <Avatar url={user.avatarUrl} name={user.username} color={user.profileColorHex} onZoom={setPhotoUrl} />
               <div className="lookup-header-main">
                 <h2>@{user.username} <span>#{user.id}</span></h2>
                 <p>{schoolLine}</p>
@@ -311,7 +336,7 @@ export default function UserLookup() {
             {section === 'profile' ? (
               <article className="lookup-card">
                 <h3>앱에 보이는 프로필</h3>
-                <Avatar url={user.avatarUrl} name={user.username} color={user.profileColorHex} />
+                <Avatar url={user.avatarUrl} name={user.username} color={user.profileColorHex} onZoom={setPhotoUrl} />
                 <p>아이디 @{user.username}</p>
                 <p>이름 {user.displayName || '-'}</p>
                 <p>학교 {schoolLine}</p>
@@ -396,6 +421,14 @@ export default function UserLookup() {
           </>
         )}
       </section>
+      {photoUrl ? (
+        <div className="lookup-photo-backdrop" onClick={() => setPhotoUrl('')}>
+          <button type="button" className="lookup-photo-close" onClick={() => setPhotoUrl('')} aria-label="닫기">
+            <X size={18} />
+          </button>
+          <img className="lookup-photo-full" src={photoUrl} alt="" onClick={(event) => event.stopPropagation()} />
+        </div>
+      ) : null}
     </div>
   );
 }

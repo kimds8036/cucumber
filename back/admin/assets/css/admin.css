@@ -2687,10 +2687,19 @@
     .lookup-row { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; border: 0; background: transparent; color: #e6edf3; border-radius: 8px; padding: 8px; cursor: pointer; }
     .lookup-row.is-active { background: #0b0f14; }
     .lookup-row small, .lookup-row em { color: #7d8b99; font-style: normal; font-weight: 400; }
+    .lookup-ver { display: inline-flex; margin-top: 4px; height: 18px; padding: 0 6px; border-radius: 999px; font-size: 11px; line-height: 18px; width: fit-content; }
+    .lookup-ver.is-latest { color: #3fb950; background: rgba(63, 185, 80, 0.14); }
+    .lookup-ver.is-old { color: #d29922; background: rgba(210, 153, 34, 0.16); }
+    .lookup-ver.is-unknown { color: #7d8b99; background: #1f2833; }
     .lookup-row-body { display: flex; flex-direction: column; min-width: 0; flex: 1; }
     .lookup-dot { width: 8px; height: 8px; border-radius: 50%; background: #7d8b99; }
     .lookup-dot.is-on { background: #3fb950; }
     .lookup-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; display: grid; place-items: center; color: #e6edf3; flex: none; }
+    .lookup-avatar.is-zoomable { cursor: zoom-in; }
+    .lookup-header .lookup-avatar { width: 64px; height: 64px; }
+    .lookup-photo-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.72); display: grid; place-items: center; z-index: 50; padding: 24px; }
+    .lookup-photo-full { max-width: min(920px, 100%); max-height: calc(100vh - 80px); border-radius: 10px; object-fit: contain; background: #11161d; }
+    .lookup-photo-close { position: fixed; top: 16px; right: 16px; width: 36px; height: 36px; border-radius: 8px; border: 1px solid #1f2833; background: #11161d; color: #e6edf3; display: grid; place-items: center; cursor: pointer; }
     .lookup-header { display: flex; gap: 12px; padding: 16px; align-items: flex-start; }
     .lookup-header h2 { font-size: 18px; color: #e6edf3; }
     .lookup-header h2 span, .lookup-header p { color: #9aa7b5; font-size: 13px; }
