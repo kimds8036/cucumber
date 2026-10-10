@@ -20,6 +20,9 @@ async function loadDashboard() {
     if (data.pendingStudentIdReviews != null) {
       setNavBadge('badge-student-ids', data.pendingStudentIdReviews || 0);
     }
+    window.dispatchEvent(new CustomEvent('admin:health', {
+      detail: { api: 'ok', db: 'ok', socket: 'unknown', cron: 'unknown', push: 'unknown' },
+    }));
   }
 
   async function loadOpsPanel() {
@@ -309,13 +312,16 @@ async function loadDashboard() {
       await loadInstallLandingStats();
       }
       if (view === 'funnel') await loadAppInstallFunnelStats();
-      if (view === 'user') await loadOpsUsersPreview(1);
+      if (view === 'user') {
+        window.dispatchEvent(new CustomEvent('admin:user-lookup-open'));
+      }
     } catch (error) {
       alert(error?.message || '모니터링 데이터를 불러오지 못했습니다.');
     }
   }
 
   window.showOpsHub = showOpsHub;
+  window.openOpsView = openOpsView;
 
   async function loadOpsSchoolTerms() {
     const { data } = await api('/analytics/school-terms');

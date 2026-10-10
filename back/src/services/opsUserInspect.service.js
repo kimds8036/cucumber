@@ -272,7 +272,9 @@ export async function inspectOpsUser(queryRaw) {
     const [[byId]] = await pool.execute(
       `SELECT
          u.id, u.username, u.name_enc, u.school_id, u.grade, u.class_number,
-         u.student_verified, u.last_seen_at,
+         u.student_verified, u.last_seen_at, u.avatar_url, u.created_at,
+         u.equipped_badge_key, u.color_id,
+         c.hex_code AS profile_color_hex,
          sch.name AS school_name,
          EXISTS(
            SELECT 1 FROM identity_verifications iv
@@ -282,6 +284,7 @@ export async function inspectOpsUser(queryRaw) {
          ) AS has_guardian_consent
        FROM users u
        LEFT JOIN schools sch ON sch.school_id = u.school_id
+       LEFT JOIN colors c ON c.id = u.color_id
        WHERE u.id = ? AND u.is_deleted = FALSE
        LIMIT 1`,
       [numericId],
@@ -292,7 +295,9 @@ export async function inspectOpsUser(queryRaw) {
     const [[byName]] = await pool.execute(
       `SELECT
          u.id, u.username, u.name_enc, u.school_id, u.grade, u.class_number,
-         u.student_verified, u.last_seen_at,
+         u.student_verified, u.last_seen_at, u.avatar_url, u.created_at,
+         u.equipped_badge_key, u.color_id,
+         c.hex_code AS profile_color_hex,
          sch.name AS school_name,
          EXISTS(
            SELECT 1 FROM identity_verifications iv
@@ -302,6 +307,7 @@ export async function inspectOpsUser(queryRaw) {
          ) AS has_guardian_consent
        FROM users u
        LEFT JOIN schools sch ON sch.school_id = u.school_id
+       LEFT JOIN colors c ON c.id = u.color_id
        WHERE u.username = ? AND u.is_deleted = FALSE
        LIMIT 1`,
       [q],
@@ -347,6 +353,10 @@ export async function inspectOpsUser(queryRaw) {
       classNumber: row.class_number,
       studentVerified: Boolean(row.student_verified),
       hasGuardianConsent: Boolean(row.has_guardian_consent),
+      avatarUrl: row.avatar_url || null,
+      profileColorHex: row.profile_color_hex || null,
+      equippedBadgeKey: row.equipped_badge_key || null,
+      createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
       lastSeenAt: row.last_seen_at
         ? new Date(row.last_seen_at).toISOString()
         : null,
