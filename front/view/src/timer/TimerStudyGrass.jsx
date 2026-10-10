@@ -28,7 +28,7 @@ function parseDayKey(dayKey) {
 }
 
 /** 화면 확인용 더미 잔디. 서버 결과 위에 덧붙이며, 테스트가 끝나면 false로 끈다 */
-const DEBUG_STUDY_GRASS_DUMMY = __DEV__ && false로;
+const DEBUG_STUDY_GRASS_DUMMY = __DEV__ && false;
 const DUMMY_GRASS_MINUTES = [0, 150, 290, 485, 640, 760, 35, 0, 265, 455, 610, 800, 95];
 
 function buildDummyMonth(year, month, todayKey) {

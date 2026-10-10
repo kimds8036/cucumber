@@ -1,5 +1,11 @@
-import React, { useEffect, useRef } from 'react';
-import { Text, TouchableOpacity, View, StyleSheet } from 'react-native';
+import React, { useEffect, useMemo, useRef } from 'react';
+import {
+  Text,
+  TouchableOpacity,
+  View,
+  StyleSheet,
+  useWindowDimensions,
+} from 'react-native';
 import Animated, {
   Easing,
   runOnJS,
@@ -8,7 +14,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import UserAvatar from '../UserAvatar';
-import { colors, fonts } from '../../styles/colors';
+import { colors, fonts, fontSizes } from '../../styles/colors';
+import { getNormalize } from '../../styles/timer';
 
 const TIP_W = 128;
 const TIP_H = 88;
@@ -31,6 +38,11 @@ export default function StudyRoomProfileTip({
   onAddFriend,
   onDismissed,
 }) {
+  const { width } = useWindowDimensions();
+  const normalize = useMemo(() => getNormalize(width), [width]);
+  const tipStyles = useMemo(() => createTipStyles(normalize), [normalize]);
+  const tipW = normalize(TIP_W);
+  const tipH = normalize(TIP_H);
   const progress = useSharedValue(0);
   const shownRef = useRef(false);
   const onDismissedRef = useRef(onDismissed);
@@ -71,19 +83,19 @@ export default function StudyRoomProfileTip({
   if (!seat) return null;
 
   const left = Math.min(
-    Math.max(4, seat.seatX + seat.studyW / 2 - TIP_W / 2),
-    Math.max(4, (Number(stageW) || TIP_W + 8) - TIP_W - 4),
+    Math.max(4, seat.seatX + seat.studyW / 2 - tipW / 2),
+    Math.max(4, (Number(stageW) || tipW + 8) - tipW - 4),
   );
-  const top = Math.max(4, seat.seatY - TIP_H + 2);
+  const top = Math.max(4, seat.seatY - tipH + 2);
   const addDisabled = isFriend || requestSent;
-  const addLabel = isFriend ? '이미 친구' : requestSent ? '요청함' : '친구추가하기';
+  const addLabel = isFriend ? '이미 친구입니다' : requestSent ? '요청 완료' : '친구 추가하기';
 
   return (
     <Animated.View
       pointerEvents={visible ? 'auto' : 'none'}
       style={[
         tipStyles.wrap,
-        { left, top, width: TIP_W, zIndex: 220 },
+        { left, top, width: tipW, zIndex: 220 },
         animStyle,
       ]}
     >
@@ -92,7 +104,7 @@ export default function StudyRoomProfileTip({
           <View style={tipStyles.avatar}>
             <UserAvatar
               uri={avatarUrl}
-              size={32}
+              size={normalize(32)}
               colorId={profileColorId}
               seed={userId}
             />
@@ -119,68 +131,69 @@ export default function StudyRoomProfileTip({
   );
 }
 
-const tipStyles = StyleSheet.create({
-  wrap: {
-    position: 'absolute',
-    alignItems: 'center',
-    transformOrigin: '50% 100%',
-  },
-  card: {
-    width: '100%',
-    backgroundColor: colors.white,
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 6,
-    elevation: 6,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
-  },
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  id: {
-    flex: 1,
-    fontFamily: fonts.bold,
-    fontSize: 13,
-    color: colors.text,
-  },
-  addBtn: {
-    height: 30,
-    borderRadius: 10,
-    backgroundColor: colors.primaryDark,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addBtnOff: {
-    backgroundColor: colors.textLight1,
-  },
-  addText: {
-    fontFamily: fonts.bold,
-    fontSize: 12,
-    color: colors.white,
-  },
-  addTextOff: {
-    color: colors.textLight4,
-  },
-  caret: {
-    width: 10,
-    height: 10,
-    marginTop: -5,
-    backgroundColor: colors.white,
-    transform: [{ rotate: '45deg' }],
-  },
-});
+const createTipStyles = (normalize) =>
+  StyleSheet.create({
+    wrap: {
+      position: 'absolute',
+      alignItems: 'center',
+      transformOrigin: '50% 100%',
+    },
+    card: {
+      width: '100%',
+      backgroundColor: colors.white,
+      borderRadius: normalize(14),
+      paddingHorizontal: normalize(10),
+      paddingVertical: normalize(8),
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.18,
+      shadowRadius: 6,
+      elevation: 6,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(8),
+      marginBottom: normalize(8),
+    },
+    avatar: {
+      width: normalize(32),
+      height: normalize(32),
+      borderRadius: normalize(16),
+      backgroundColor: colors.white,
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden',
+    },
+    id: {
+      flex: 1,
+      fontFamily: fonts.bold,
+      fontSize: normalize(fontSizes.lg),
+      color: colors.text,
+    },
+    addBtn: {
+      height: normalize(30),
+      borderRadius: normalize(10),
+      backgroundColor: colors.primaryDark,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    addBtnOff: {
+      backgroundColor: colors.textLight1,
+    },
+    addText: {
+      fontFamily: fonts.bold,
+      fontSize: normalize(fontSizes.md),
+      color: colors.white,
+    },
+    addTextOff: {
+      color: colors.textLight4,
+    },
+    caret: {
+      width: normalize(10),
+      height: normalize(10),
+      marginTop: -normalize(5),
+      backgroundColor: colors.white,
+      transform: [{ rotate: '45deg' }],
+    },
+  });
