@@ -40,6 +40,13 @@ function osLabel(os) {
   return os;
 }
 
+function seenWithin12h(value) {
+  if (!value) return false;
+  const time = new Date(value).getTime();
+  if (Number.isNaN(time)) return false;
+  return Date.now() - time <= 12 * 60 * 60 * 1000;
+}
+
 function formatWhen(value) {
   if (!value) return '-';
   const date = new Date(value);
@@ -243,7 +250,7 @@ export default function UserLookup() {
                       : '버전 없음')}
                 </span>
               </span>
-              <span className={`lookup-dot ${item.checkedInToday ? 'is-on' : ''}`} title={item.checkedInToday ? '오늘 등교' : '오늘 미등교'} />
+              <span className={`lookup-dot ${seenWithin12h(item.lastActivityAt) ? 'is-on' : ''}`} title={seenWithin12h(item.lastActivityAt) ? '12시간 이내 접속' : '12시간 이내 접속 없음'} />
             </button>
           ))}
         </div>
