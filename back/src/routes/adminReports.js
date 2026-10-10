@@ -390,6 +390,7 @@ router.get('/analytics/users-preview', requireAdminApi, async (req, res) => {
       page: req.query.page,
       limit: req.query.limit,
       q: req.query.q,
+      filter: req.query.filter,
     });
     return res.json({ success: true, data });
   } catch (error) {

@@ -1,0 +1,16 @@
+{
+  "name": "admin-console",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/main.jsx --bundle --outfile=../admin/assets/console/console.js --format=iife --jsx=automatic --minify --target=es2020 --define:process.env.NODE_ENV=\\\"production\\\""
+  },
+  "dependencies": {
+    "lucide-react": "^0.544.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.10"
+  }
+}
