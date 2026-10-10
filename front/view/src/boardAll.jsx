@@ -18,6 +18,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import MainHeader from '../frame/mainHeader';
 import MainFooter, { MAIN_FOOTER_SAFE_AREA_EDGES } from '../frame/mainFooter';
@@ -112,6 +113,7 @@ function mapApiPost(p) {
 // 메인 화면(MainScreen)에서 헤더/푸터 없이 메인 영역만 렌더할 때 사용
 // posts: 외부에서 주입하는 게시글 배열 (없으면 defaultPosts 사용)
 export function BoardAllContent({ navigation, posts }) {
+  const tabNavigation = useNavigation();
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const tabBarInset = useMainTabBarInset();
@@ -967,6 +969,7 @@ export function BoardAllContent({ navigation, posts }) {
             studentVerificationStatus !== 'APPROVED'
           ) {
             setBoardScope('national');
+            if (!isGuidePreview) tabNavigation.navigate('timer');
           }
         }}
         onPressVerify={() => {

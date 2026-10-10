@@ -58,6 +58,22 @@ const popToMainRoot = (navigation) => {
   navigation?.dispatch?.(StackActions.popToTop());
 };
 
+/** 목록에서 눌러 다른 화면으로 이어지는 알림만 true. */
+function notificationOpensScreen(n) {
+  if (isStudySummaryNotification(n)) return true;
+  if (n.type === 'friend_request') return true;
+  if ((n.category === 'post' || n.relatedType === 'post') && n.relatedId) {
+    return true;
+  }
+  if (n.category === 'mail' || n.type === 'mail') return true;
+  if (n.category === 'system') {
+    if (n.relatedType === 'inquiry' && n.relatedId) return true;
+    if (n.relatedType === 'post' && n.relatedId) return true;
+    return false;
+  }
+  return false;
+}
+
 const mapTypeToIcon = (type, category) => {
   if (category === 'mail')
     return { name: 'mail', color: colors.scrap, bg: colors.blue };
@@ -859,9 +875,6 @@ const NotificationScreen = ({ navigation }) => {
         return;
       }
 
-      // 그 외 시스템 알림은 일단 메인으로 이동 (원하면 마이페이지 등으로 변경 가능)
-      preserveListOnNextFocusRef.current = false;
-      popToMainRoot(navigation);
       return;
     }
 
@@ -942,6 +955,7 @@ const NotificationScreen = ({ navigation }) => {
             const isExpanded = Boolean(expandedSummaryById[notification.id]);
             // 서버 기준으로 아직 안 읽은 알림 + 실제로 눌러서 확인하지 않은 것만 연한 초록 배경 + 점 표시
             const showUnreadStyle = isUnreadFromServer && !isTapped;
+            const opensScreen = notificationOpensScreen(notification);
             return (
               <TouchableOpacity
                 style={[
@@ -949,8 +963,13 @@ const NotificationScreen = ({ navigation }) => {
                   showUnreadStyle && styles.notificationItemUnread,
                   getDebugBorderStyle('#AF52DE'),
                 ]}
-                onPress={() => handlePressNotification(notification)}
-                activeOpacity={0.7}
+                disabled={!opensScreen}
+                onPress={
+                  opensScreen
+                    ? () => handlePressNotification(notification)
+                    : undefined
+                }
+                activeOpacity={opensScreen ? 0.7 : 1}
               >
                 <View
                   style={[

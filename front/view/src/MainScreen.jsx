@@ -24,6 +24,7 @@ import { MAIN_FOOTER_SAFE_AREA_EDGES } from '../frame/mainFooter';
 import StudentIdResubmit from './signup/StudentIdResubmit';
 import SignupPrepMaterialsModal from './signup/SignupPrepMaterialsModal';
 import { useAuth } from '../../context/AuthContext';
+import { useStableChrome } from '../../utils/mainShellReady';
 
 const MAIN_TABS = new Set(['board', 'message', 'school', 'timer', 'mypage']);
 
@@ -124,6 +125,7 @@ const MainScreen = ({ navigation, route }) => {
     deepLinkReady ? route.params.screen || route.params.initialTab : 'timer',
   );
   const [lastBackPressedAt, setLastBackPressedAt] = useState(0);
+  const chromeReady = useStableChrome();
 
   useEffect(() => {
     const screen = MAIN_TAB_TO_ANALYTICS_SCREEN[activeTab];
@@ -158,7 +160,12 @@ const MainScreen = ({ navigation, route }) => {
     >
       <StudentVerifyRequestBridge>
         <SafeAreaView
-          style={{ flex: 1, backgroundColor: colors.white }}
+          style={{
+            flex: 1,
+            backgroundColor: colors.white,
+            opacity: chromeReady ? 1 : 0,
+          }}
+          pointerEvents={chromeReady ? 'auto' : 'none'}
           edges={MAIN_FOOTER_SAFE_AREA_EDGES}
         >
           {TABS_WITH_SCROLLING_MAIN_HEADER.includes(activeTab) ? null : (

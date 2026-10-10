@@ -16,6 +16,7 @@ import OurSchoolScreen from '../../../view/src/ourschoolscreen';
 import { TimerContent } from '../../../view/src/timer';
 import MyPage from '../../../view/src/mypage';
 import { GUIDE_FOCUS_TARGETS as T } from './guideFocusTargets';
+import { useStableChrome } from '../../../utils/mainShellReady';
 
 const ONBOARDING_KEY = '@cucumber/onboarding_completed_v1';
 
@@ -326,8 +327,13 @@ export default function GuideOverlayScreen({ navigation, route }) {
     navigation.goBack();
   };
 
+  const chromeReady = useStableChrome();
+
   return (
-    <View style={{ flex: 1, backgroundColor: colors.white }}>
+    <View
+      style={{ flex: 1, backgroundColor: colors.white, opacity: chromeReady ? 1 : 0 }}
+      pointerEvents={chromeReady ? 'auto' : 'none'}
+    >
       <GuidePreviewProvider
         messageTab={step.guideMessageTab || 'note'}
         schoolScrollTo={step.guideSchoolScrollTo}

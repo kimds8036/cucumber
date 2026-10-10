@@ -58,7 +58,7 @@ const SchoolTab = ({ navigation }) => {
         onClose={() => {
           pendingVerifyRef.current = false;
           setCtaVisible(false);
-          tabNavigation.navigate('board');
+          tabNavigation.navigate('timer');
         }}
         onPressVerify={() => {
           // iOS: CTA Modal이 완전히 내려간 뒤에만 준비물 Modal을 연다

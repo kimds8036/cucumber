@@ -122,17 +122,19 @@ export const createNotificationStyles = (normalize, width) =>
       backgroundColor: colors.primaryLight2,
     },
     iconContainer: {
-      borderRadius: normalize(24),
+      width: normalize(22),
+      height: normalize(22),
+      marginRight: normalize(12),
       alignItems: 'center',
       justifyContent: 'center',
-      marginRight: normalize(12),
     },
     notificationContent: {
       flex: 1,
-      paddingVertical: normalize(6),
     },
     notificationTitle: {
       fontSize: normalize(fontSizes.xl),
+      lineHeight: normalize(22),
+      includeFontPadding: false,
       fontFamily: fonts.regular,
       color: colors.text,
       marginBottom: normalize(2),

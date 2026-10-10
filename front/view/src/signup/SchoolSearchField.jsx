@@ -480,7 +480,6 @@ export function createSchoolSearchRowStyles(
     },
     rowWrapSelected: {
       borderColor: colors.primary,
-      backgroundColor: colors.primaryLight3,
     },
     row: {
       flexDirection: 'row',
