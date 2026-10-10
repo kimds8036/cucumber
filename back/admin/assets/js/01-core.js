@@ -25,8 +25,22 @@ function adminUrl(subpath) {
 
   function setNavBadge(elementId, count) {
     const el = document.getElementById(elementId);
-    if (!el) return;
     const n = Number(count) || 0;
+    const badgeKey = {
+      'badge-reports': 'reports',
+      'badge-appeals': 'appeals',
+      'badge-inquiries': 'inquiries',
+      'badge-student-ids': 'studentIds',
+      'badge-certificates': 'certificates',
+      'badge-reverification-ids': 'reverificationIds',
+      'badge-attendance-suspicious': 'attendance',
+    }[elementId];
+    if (badgeKey) {
+      window.__adminBadges = window.__adminBadges || {};
+      window.__adminBadges[badgeKey] = n;
+      window.dispatchEvent(new CustomEvent('admin:badge', { detail: { key: badgeKey, count: n } }));
+    }
+    if (!el) return;
     if (n <= 0) {
       el.textContent = '';
       el.classList.add('nav-badge-hidden');
@@ -445,12 +459,20 @@ function adminUrl(subpath) {
     const { data } = await api('/accounts/me');
     state.adminProfile = data;
     window.__ADMIN_ROLE__ = data.role;
+    window.__ADMIN_PROFILE_NAME__ = data.name || data.username || '';
     applyRoleNavVisibility();
     const roleEl = document.getElementById('topbar-admin-role');
     if (roleEl) {
-      const labels = { super: '최고관리자', moderator: '운영', support: '문의', verifier: '인증' };
+      const labels = { super: '최고관리자', moderator: '운영관리자', support: '고객지원', verifier: '검수자' };
       roleEl.textContent = labels[data.role] || data.role;
     }
+    window.dispatchEvent(new CustomEvent('admin:profile', {
+      detail: {
+        role: data.role,
+        name: data.name || data.username || '',
+        username: data.username || '',
+      },
+    }));
     return data;
   }
 
@@ -485,24 +507,35 @@ function adminUrl(subpath) {
     }
   }
 
-  function go(page) {
+  function go(page, opsView) {
     if (!canAccessPanel(page)) {
       alert('이 메뉴에 접근할 권한이 없습니다.');
       return;
     }
+    const itemId = window.__adminNavItem || '';
+    window.__adminNavItem = '';
+    if (page === 'ops') {
+      window.__adminOpsView = opsView || window.__adminOpsView || 'timer';
+    } else {
+      window.__adminOpsView = null;
+    }
     closeAdminSidebar();
-    document.querySelectorAll('.nav-item').forEach((n) => n.classList.remove('active'));
     document.querySelectorAll('.panel').forEach((p) => p.classList.remove('active'));
-    document.querySelectorAll('.nav-item').forEach((n) => {
-      if (n.getAttribute('onclick') === `go('${page}')`) n.classList.add('active');
-    });
     const panel = document.getElementById(`panel-${page}`);
     if (panel) panel.classList.add('active');
     const m = PAGE_META[page];
-    document.getElementById('topbar-title').textContent = m.title;
-    document.getElementById('topbar-sub').textContent = m.sub;
+    const titleEl = document.getElementById('topbar-title');
+    const subEl = document.getElementById('topbar-sub');
+    if (titleEl) titleEl.textContent = m.title;
+    if (subEl) subEl.textContent = m.sub;
+    window.dispatchEvent(new CustomEvent('admin:page', {
+      detail: { page, opsView: window.__adminOpsView, itemId },
+    }));
     ensurePanelLoaded(page).then(() => {
-      if (page === 'ops' && typeof window.showOpsHub === 'function') window.showOpsHub();
+      if (page === 'ops' && typeof window.openOpsView === 'function') {
+        return window.openOpsView(window.__adminOpsView || 'timer');
+      }
+      return undefined;
     }).catch((e) => alert(e.message));
   }
 

@@ -57,13 +57,14 @@ function resolveReferenceAppVersion(distinctVersions) {
 /**
  * @param {{ page?: number, limit?: number, q?: string }} opts
  */
-export async function listOpsUsersPreview({ page = 1, limit = 20, q = '' } = {}) {
+export async function listOpsUsersPreview({ page = 1, limit = 20, q = '', filter = 'all' } = {}) {
   const pageNum = Math.max(1, Number(page) || 1);
   const limitNum = Math.max(1, Math.min(50, Number(limit) || 20));
   const offset = (pageNum - 1) * limitNum;
   const todayYmd = formatKstDateYmd(new Date());
 
   const trimmedQ = String(q || '').trim();
+  const filterKey = String(filter || 'all');
   let whereSql = 'u.is_deleted = FALSE';
   const params = [];
 
@@ -77,6 +78,22 @@ export async function listOpsUsersPreview({ page = 1, limit = 20, q = '' } = {})
       whereSql += ' AND (u.username LIKE ? OR s.name LIKE ?)';
       params.push(like, like);
     }
+  }
+
+  if (filterKey === 'checkedIn') {
+    whereSql += ' AND EXISTS (SELECT 1 FROM attendances a WHERE a.user_id = u.id AND a.attendance_date = ?)';
+    params.push(todayYmd);
+  } else if (filterKey === 'absent') {
+    whereSql += ' AND NOT EXISTS (SELECT 1 FROM attendances a WHERE a.user_id = u.id AND a.attendance_date = ?)';
+    params.push(todayYmd);
+  } else if (filterKey === 'unverified') {
+    whereSql += ' AND u.student_verified = FALSE';
+  } else if (filterKey === 'ios' || filterKey === 'android') {
+    whereSql += ` AND LOWER((SELECT ft.device_type FROM fcm_tokens ft
+      WHERE ft.user_id = u.id
+      ORDER BY COALESCE(ft.last_used_at, ft.updated_at) DESC, ft.id DESC
+      LIMIT 1)) = ?`;
+    params.push(filterKey);
   }
 
   const [[countRow]] = await pool.execute(
@@ -95,6 +112,8 @@ export async function listOpsUsersPreview({ page = 1, limit = 20, q = '' } = {})
        u.grade,
        u.class_number,
        u.last_seen_at,
+       u.avatar_url,
+       u.student_verified,
        s.name AS school_name,
        (SELECT MAX(COALESCE(ud.last_login_at, ud.created_at))
         FROM user_devices ud WHERE ud.user_id = u.id) AS last_login_at,
@@ -119,7 +138,7 @@ export async function listOpsUsersPreview({ page = 1, limit = 20, q = '' } = {})
      WHERE ${whereSql}
      ORDER BY u.id DESC
      LIMIT ${limitNum} OFFSET ${offset}`,
-    [...params, todayYmd],
+    [todayYmd, ...params],
   );
 
   const [verRows] = await pool.execute(
@@ -147,6 +166,8 @@ export async function listOpsUsersPreview({ page = 1, limit = 20, q = '' } = {})
     return {
       id: row.id,
       username: row.username,
+      avatarUrl: row.avatar_url || null,
+      studentVerified: Boolean(row.student_verified),
       schoolName: row.school_name || '—',
       grade: row.grade,
       classNumber: row.class_number,
