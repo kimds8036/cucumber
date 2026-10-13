@@ -71,7 +71,6 @@ import Constants from 'expo-constants';
 import { SafeAreaProvider, SafeAreaView, initialWindowMetrics } from 'react-native-safe-area-context';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { subscribeMainShellReady } from './utils/mainShellReady';
 import { AppLockProvider } from './context/AppLockContext';
 import { LocationProvider, LocationGate } from './context/LocationContext';
 import StudentVerificationRejected from './components/auth/StudentVerificationRejected';
@@ -179,29 +178,19 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
  * 강제업데이트/버전확인 실패 화면은 스플래시를 먼저 내린 뒤 표시.
  */
 function SplashHideWhenReady({ fontsLoaded, versionPhase }) {
-  const { authHydrated, isLoggedIn } = useAuth();
+  const { authHydrated } = useAuth();
   const hiddenRef = useRef(false);
-  const [shellReady, setShellReady] = useState(false);
-
-  useEffect(() => subscribeMainShellReady(() => setShellReady(true)), []);
 
   useEffect(() => {
     if (hiddenRef.current) return;
     if (!fontsLoaded) return;
     if (versionPhase === 'checking') return;
 
-    if (versionPhase === 'force' || versionPhase === 'error') {
-      hiddenRef.current = true;
-      SplashScreen.hideAsync().catch(() => {});
-      return;
-    }
+    if (versionPhase === 'ok' && !authHydrated) return;
 
-    // 로그인 상태면 헤더·푸터가 자리 잡은 뒤에 스플래시를 내린다.
-    if (versionPhase === 'ok' && authHydrated && (!isLoggedIn || shellReady)) {
-      hiddenRef.current = true;
-      SplashScreen.hideAsync().catch(() => {});
-    }
-  }, [fontsLoaded, versionPhase, authHydrated, isLoggedIn, shellReady]);
+    hiddenRef.current = true;
+    SplashScreen.hideAsync().catch(() => {});
+  }, [fontsLoaded, versionPhase, authHydrated]);
 
   return null;
 }
