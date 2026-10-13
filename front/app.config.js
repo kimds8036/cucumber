@@ -20,7 +20,7 @@ export default ({ config }) => ({
     name: 'Youth Paper',
     slug: 'youth-paper',
     scheme: 'youthpaper',
-    version: '2.0.2',
+    version: '2.0.3',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
@@ -34,7 +34,7 @@ export default ({ config }) => ({
 
     ios: {
       supportsTablet: true,
-      buildNumber: '51',
+      buildNumber: '52',
       usesAppleSignIn: true,
       // iOS 전용 아이콘 (안드로이드·공통 icon.png 와 분리)
       icon: './assets/icon-ios.png',
@@ -61,7 +61,7 @@ export default ({ config }) => ({
     },
 
     android: {
-      versionCode: 39,
+      versionCode: 40,
       usesCleartextTraffic: !isProduction,
       // (선택) 안드로이드도 같은 방식으로 secret 적용 가능
       googleServicesFile:

@@ -6,7 +6,7 @@
   "expo": {
     "name": "Youth Paper",
     "slug": "youth-paper",
-    "version": "2.0.2",
+    "version": "2.0.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -18,7 +18,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "buildNumber": "51",
+      "buildNumber": "52",
       "icon": "./assets/icon-ios.png",
       "googleServicesFile": "./GoogleService-Info.plist",
       "infoPlist": {
@@ -66,7 +66,7 @@
         "android.permission.READ_MEDIA_IMAGES"
       ],
       "package": "com.ucost.YouthPaper",
-      "versionCode": 39,
+      "versionCode": 40,
       "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
