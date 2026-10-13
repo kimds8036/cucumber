@@ -18,8 +18,8 @@ export function subscribeMainShellReady(listener) {
 }
 
 /**
- * 상·하단 안전 영역이 같은 값으로 두 프레임 유지되기 전에는 false.
- * 그 전에 헤더와 푸터를 그리면 자리 잡는 과정이 보인다.
+ * 상·하단 안전 영역이 같은 값으로 두 프레임 유지되면 스플래시를 내리도록 알린다.
+ * 화면을 투명하게 숨기면 iOS 26 유리 탭 바가 배경 없이 그려지므로 스플래시로만 가린다.
  */
 export function useStableChrome() {
   const insets = useSafeAreaInsets();

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { initialWindowMetrics } from 'react-native-safe-area-context';
 import { NativeTabBarView } from 'youth-paper-tab-bar';
 import { useMainShellOptional } from '../../context/MainShellContext';
 import { colors } from '../../styles/colors';
@@ -20,13 +21,15 @@ const NATIVE_ICONS = TABS.map(({ family, Icon, inactive, active }) => {
   return { family, inactive: glyphMap[inactive], active: glyphMap[active] };
 });
 
-const INITIAL_HEIGHT = 49;
+// 탭 바가 하단 safe area까지 채우므로 첫 프레임부터 그 높이로 잡아 두고, 실제 높이는 네이티브가 알려 준다.
+const ESTIMATED_HEIGHT = 49 + (initialWindowMetrics?.insets?.bottom ?? 0);
+let lastNativeHeight = null;
 
 const MainFooterIOS = ({ activeTab: activeTabProp, onTabPress: onTabPressProp }) => {
   const shell = useMainShellOptional();
   const activeTab = activeTabProp ?? shell?.activeTab ?? 'board';
   const onTabPress = onTabPressProp ?? shell?.setActiveTab;
-  const [height, setHeight] = useState(INITIAL_HEIGHT);
+  const [height, setHeight] = useState(lastNativeHeight ?? ESTIMATED_HEIGHT);
 
   const tabIndex = TAB_KEYS.indexOf(activeTab);
   const selectedIndex = tabIndex >= 0 ? tabIndex : TAB_KEYS.indexOf('board');
@@ -42,7 +45,10 @@ const MainFooterIOS = ({ activeTab: activeTabProp, onTabPress: onTabPressProp })
         const tab = TAB_KEYS[nativeEvent.index];
         if (tab) onTabPress?.(tab);
       }}
-      onPreferredHeightChange={({ nativeEvent }) => setHeight(nativeEvent.height)}
+      onPreferredHeightChange={({ nativeEvent }) => {
+        lastNativeHeight = nativeEvent.height;
+        setHeight(nativeEvent.height);
+      }}
     />
   );
 };
