@@ -125,7 +125,7 @@ const MainScreen = ({ navigation, route }) => {
     deepLinkReady ? route.params.screen || route.params.initialTab : 'timer',
   );
   const [lastBackPressedAt, setLastBackPressedAt] = useState(0);
-  const chromeReady = useStableChrome();
+  useStableChrome();
 
   useEffect(() => {
     const screen = MAIN_TAB_TO_ANALYTICS_SCREEN[activeTab];
@@ -160,12 +160,7 @@ const MainScreen = ({ navigation, route }) => {
     >
       <StudentVerifyRequestBridge>
         <SafeAreaView
-          style={{
-            flex: 1,
-            backgroundColor: colors.white,
-            opacity: chromeReady ? 1 : 0,
-          }}
-          pointerEvents={chromeReady ? 'auto' : 'none'}
+          style={{ flex: 1, backgroundColor: colors.white }}
           edges={MAIN_FOOTER_SAFE_AREA_EDGES}
         >
           {TABS_WITH_SCROLLING_MAIN_HEADER.includes(activeTab) ? null : (
