@@ -38,10 +38,13 @@ export function LiveElapsedTicker({
   const [liveExtraMs, setLiveExtraMs] = useState(0);
 
   const syncLiveExtra = useCallback(() => {
-    if (!isActive || !isRunning || sessionStartedAtMs == null) {
+    if (!isRunning || sessionStartedAtMs == null) {
       setLiveExtraMs(0);
       return;
     }
+    // 스터디룸으로 넘어가면 포커스만 빠진다. 여기서 0으로 만들면
+    // 전환 동안 타이머 숫자가 누적 시간만 남고 잠깐 줄어 보인다.
+    if (!isActive) return;
     setLiveExtraMs(Math.max(0, Date.now() - sessionStartedAtMs));
   }, [isActive, isRunning, sessionStartedAtMs]);
 
