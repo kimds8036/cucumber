@@ -44,7 +44,7 @@ export const CRON_JOB_CATALOG = [
     whenDefault: '예약·매시 안전망',
     envKey: 'CRON_TIMER_GUARD',
     defaultCron: 'via-manager',
-    blurb: '타이머가 켜지면 예약돼요. 너무 오래 켜진 세션을 정리해요.',
+    blurb: '타이머가 켜지면 예약돼요. 하트비트가 끊긴 세션만 정리하고, 15시간을 넘긴 세션은 상한으로 닫아요.',
   },
   {
     key: 'personal-mail-return',

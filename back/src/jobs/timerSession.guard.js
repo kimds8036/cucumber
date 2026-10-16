@@ -2,23 +2,17 @@ import pool from '../config/database.js';
 import { broadcastTimerStatus } from '../socket/socketService.js';
 import { rebuildStudyDayTotalsForSessionPairs } from '../utils/studyDayTotal.js';
 import {
+  KST_NOW_SQL,
+  STUDY_PRESENCE_STALE_MINUTES,
+} from '../services/studyPresence.service.js';
+import {
   createBatchExecutionContext,
   logBatchFailure,
   logBatchSuccess,
 } from '../services/batchMetric.service.js';
 
-const DEFAULT_STALE_MINUTES = 60;
-
 /** 앱을 켜 둔 채 너무 길게 진행중으로 남는 세션: 시작 시각 기준 최대 인정 시간(기본 15h) */
 const DEFAULT_MAX_OPEN_HOURS = 15;
-
-const KST_NOW_SQL = `CONVERT_TZ(UTC_TIMESTAMP(3), '+00:00', '+09:00')`;
-
-function getStaleMinutes() {
-  const raw = Number(process.env.CRON_TIMER_STALE_MINUTES);
-  if (!Number.isFinite(raw) || raw <= 0) return DEFAULT_STALE_MINUTES;
-  return Math.floor(raw);
-}
 
 function getMaxOpenHours() {
   const raw = Number(process.env.CRON_TIMER_MAX_OPEN_HOURS);
@@ -33,7 +27,7 @@ function isCronEnabled(flagName) {
 
 export async function runTimerSessionGuardJob() {
   const context = createBatchExecutionContext('timer-session-guard');
-  const staleMinutes = getStaleMinutes();
+  const staleMinutes = STUDY_PRESENCE_STALE_MINUTES;
   const maxOpenHours = getMaxOpenHours();
   const maxOpenSeconds = maxOpenHours * 3600;
 
@@ -81,8 +75,10 @@ export async function runTimerSessionGuardJob() {
         `SELECT id, user_id, DATE_FORMAT(day_key, '%Y-%m-%d') AS day_key
          FROM study_sessions
          WHERE ended_at IS NULL
-           AND created_at < DATE_SUB(NOW(), INTERVAL ? MINUTE)`,
-        [staleMinutes],
+           AND (
+             (last_seen_at IS NOT NULL AND last_seen_at < DATE_SUB(${KST_NOW_SQL}, INTERVAL ${staleMinutes} MINUTE))
+             OR (last_seen_at IS NULL AND started_at < DATE_SUB(${KST_NOW_SQL}, INTERVAL ${staleMinutes} MINUTE))
+           )`,
       );
 
       if (staleRows.length > 0) {
@@ -90,7 +86,7 @@ export async function runTimerSessionGuardJob() {
         const placeholders = ids.map(() => '?').join(',');
         const [closeResult] = await pool.execute(
           `UPDATE study_sessions
-           SET ended_at = ${KST_NOW_SQL}
+           SET ended_at = COALESCE(last_seen_at, started_at)
            WHERE id IN (${placeholders})
              AND ended_at IS NULL`,
           ids,
