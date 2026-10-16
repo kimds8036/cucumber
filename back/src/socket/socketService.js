@@ -228,14 +228,8 @@ export async function broadcastTimerStatus({ userId, status }) {
         [userId],
       );
       startedAt = isoFromMysqlKstNaiveString(sessionRows[0]?.started_at_fmt) || updatedAt;
-      const [dayRows] = await pool.execute(
-        `SELECT total_elapsed_ms
-         FROM study_days
-         WHERE user_id = ? AND day_key = ?
-         LIMIT 1`,
-        [userId, todayTimerDayKey],
-      );
-      closedTotalMs = Number(dayRows[0]?.total_elapsed_ms) || 0;
+      const { sumClosedStudyMs } = await import('../utils/studyDayTotal.js');
+      closedTotalMs = await sumClosedStudyMs(pool, userId, todayTimerDayKey);
     }
   } catch (err) {
     console.warn('[FriendSocket] study_room 페이로드 보강 실패', err?.message);

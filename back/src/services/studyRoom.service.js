@@ -6,6 +6,7 @@ import {
   freshSeenSql,
   sweepStaleStudySessions,
 } from './studyPresence.service.js';
+import { sumClosedStudyMsByUser } from '../utils/studyDayTotal.js';
 
 export const STUDY_ROOM_CAPACITY = 16;
 
@@ -454,10 +455,19 @@ export async function getStudyRoomSnapshotForUser(userId) {
       avatarUrl: r.avatarUrl || r.avatar_url || null,
       profileColorId: r.profileColorId ?? r.profile_color_id ?? null,
       startedAt: isoFromMysqlKstNaiveString(r.started_at_fmt),
-      closedTotalMs: Number(r.closed_total_ms) || 0,
+      closedTotalMs: 0,
       isStudying: true,
       presence: r.session_kind === 'break' ? 'break' : 'study',
     }));
+
+  const closedTotals = await sumClosedStudyMsByUser(
+    pool,
+    members.map((member) => member.userId),
+    todayTimerDayKey,
+  );
+  for (const member of members) {
+    member.closedTotalMs = closedTotals.get(String(member.userId)) || 0;
+  }
 
   // Redis/메모리에만 남은 유령 멤버 정리 (세션 없이 남아 정원 잠식 방지)
   const activeIds = new Set(members.map((m) => String(m.userId)));

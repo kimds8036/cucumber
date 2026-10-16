@@ -19,7 +19,10 @@ import {
   utcMsToKstMysqlDatetime3,
 } from '../utils/timerSessionTimes.js';
 import { getTimerDayKey } from '../utils/timerDayKey.js';
-import { upsertStudyDayTotalForUserKey } from '../utils/studyDayTotal.js';
+import {
+  sumClosedStudyMs,
+  upsertStudyDayTotalForUserKey,
+} from '../utils/studyDayTotal.js';
 import { evaluateAndUnlockBadges } from '../services/badge.service.js';
 import { loadSchoolPeriodsForDay } from '../services/attendance.service.js';
 
@@ -294,21 +297,34 @@ async function persistStudySessionsForDayKey(
       continue;
     }
 
-    const [existingRows] = await connection.execute(
+    const [sameStartRows] = await connection.execute(
       `SELECT id
        FROM study_sessions
-       WHERE user_id = ? AND day_key = ? AND subject_id <=> ? AND started_at = ? AND ended_at <=> ?
+       WHERE user_id = ? AND day_key = ? AND started_at = ?
        ORDER BY id DESC
        LIMIT 1`,
-      [
-        userId,
-        dayKey,
-        resolvedSubjectId != null ? Number(resolvedSubjectId) : null,
-        startedSql,
-        endedSql,
-      ],
+      [userId, dayKey, startedSql],
     );
-    if (existingRows.length > 0) {
+    if (sameStartRows.length > 0) {
+      await connection.execute(
+        `UPDATE study_sessions
+         SET ended_at = ?,
+             subject_name = COALESCE(?, subject_name),
+             subject_color = COALESCE(?, subject_color),
+             subject_id = COALESCE(?, subject_id),
+             session_kind = ?,
+             last_seen_at = IF(? IS NULL, ${KST_NOW_SQL}, last_seen_at)
+         WHERE id = ?`,
+        [
+          endedSql,
+          snapshotName,
+          snapshotColor,
+          resolvedSubjectId != null ? Number(resolvedSubjectId) : null,
+          sessionKind,
+          endedSql,
+          Number(sameStartRows[0].id),
+        ],
+      );
       continue;
     }
 
@@ -696,6 +712,10 @@ router.get('/day', authenticate, async (req, res) => {
     );
 
     const day = days[0] || null;
+    const closedTotalMs = await sumClosedStudyMs(pool, userId, dayKey);
+    if (!day || Number(day.total_elapsed_ms) !== closedTotalMs) {
+      await upsertStudyDayTotalForUserKey(pool, userId, dayKey);
+    }
     const anchorMs = timerDayAnchorUtcMs(dayKey);
     const sessionsDataRaw = sessionsRows.map((s) => {
       const startedAt = isoFromMysqlKstNaiveString(s.started_at_s);
@@ -749,7 +769,7 @@ router.get('/day', authenticate, async (req, res) => {
 
     const responseData = {
       sessions: sessionsData,
-      totalElapsedMs: day ? Number(day.total_elapsed_ms) : 0,
+      totalElapsedMs: closedTotalMs,
       subjects: effectiveSubjectsData,
       tasks: tasksData,
       schoolPeriods,

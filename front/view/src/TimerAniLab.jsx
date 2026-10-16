@@ -843,7 +843,7 @@ export default function TimerAniLab({ navigation }) {
         Object.keys(metaPatch).forEach((uid) => {
           const key = `u:${uid}`;
           const startedAtMs = metaPatch[uid]?.startedAtMs;
-          if (startedAtMs != null && !next[key]) {
+          if (startedAtMs != null && next[key] !== startedAtMs) {
             next[key] = startedAtMs;
           }
         });
@@ -1278,14 +1278,24 @@ export default function TimerAniLab({ navigation }) {
 
     setOtherStartedAt((prev) => {
       const next = { ...prev };
+      let changed = false;
       roomOtherKeys.forEach((key) => {
         const uid = key.replace(/^u:/, '');
         if (roomPresence?.[uid] !== true) return;
-        if (next[key]) return;
         const fromMeta = othersMeta[uid]?.startedAtMs;
-        next[key] = fromMeta != null ? fromMeta : Date.now();
+        if (fromMeta != null) {
+          if (next[key] !== fromMeta) {
+            next[key] = fromMeta;
+            changed = true;
+          }
+          return;
+        }
+        if (!next[key]) {
+          next[key] = Date.now();
+          changed = true;
+        }
       });
-      return next;
+      return changed ? next : prev;
     });
   }, [
     roomReady,
