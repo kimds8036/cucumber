@@ -288,18 +288,24 @@ async function loadStudentIds() {
   document.getElementById('student-id-reject-reason')?.addEventListener('change', syncStudentIdRejectFields);
   document.getElementById('student-id-reject-id-name')?.addEventListener('input', updateStudentIdRejectPreview);
 
-  async function submitStudentIdReject() {
-    if (!pendingStudentIdRejectId) return;
-    const sel = document.getElementById('student-id-reject-reason').value;
+  async function submitStudentIdReject(values) {
+    const fromCaller = values != null && typeof values === 'object';
+    const targetId = fromCaller && values.id != null ? values.id : pendingStudentIdRejectId;
+    if (!targetId) return false;
+    const sel = fromCaller ? values.reason : document.getElementById('student-id-reject-reason').value;
     let note = '';
     if (sel === 'custom') {
-      note = document.getElementById('student-id-reject-custom').value.trim();
+      note = fromCaller
+        ? String(values.custom || '').trim()
+        : document.getElementById('student-id-reject-custom').value.trim();
       if (!note) {
         alert('거절 사유를 입력해 주세요.');
         return;
       }
     } else if (sel === 'name_mismatch') {
-      const idName = document.getElementById('student-id-reject-id-name')?.value.trim() || '';
+      const idName = fromCaller
+        ? String(values.idName || '').trim()
+        : (document.getElementById('student-id-reject-id-name')?.value.trim() || '');
       if (!idName) {
         alert('학생증에 적힌 이름을 입력해 주세요.');
         return;
@@ -313,7 +319,7 @@ async function loadStudentIds() {
       }
     }
     try {
-      await api(`/signup-student-ids/${pendingStudentIdRejectId}`, {
+      await api(`/signup-student-ids/${targetId}`, {
         method: 'PATCH',
         body: JSON.stringify({ status: 'rejected', reviewNote: note }),
       });

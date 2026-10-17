@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import BottomSheet from './BottomSheet.jsx';
 
 const SEGMENTS = [
   { id: 'reports', label: '신고 관리' },
@@ -23,7 +24,7 @@ function groupReports(rows) {
   });
   return [...groups.values()].map((items) => {
     const sorted = [...items].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    return { latest: sorted[0], count: sorted.length };
+    return { latest: sorted[0], count: sorted.length, ids: sorted.map((row) => row.id) };
   });
 }
 
@@ -31,6 +32,11 @@ export default function ReportsScreen() {
   const [segment, setSegment] = useState('reports');
   const [rows, setRows] = useState(null);
   const [error, setError] = useState('');
+  const [reloadKey, setReloadKey] = useState(0);
+  const [sheet, setSheet] = useState(null);
+  const [note, setNote] = useState('');
+  const [malicious, setMalicious] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (segment !== 'reports') return undefined;
@@ -47,7 +53,36 @@ export default function ReportsScreen() {
     return () => {
       alive = false;
     };
-  }, [segment]);
+  }, [segment, reloadKey]);
+
+  const openSheet = (action, ids) => {
+    setNote('');
+    setMalicious(false);
+    setSheet({ action, ids });
+  };
+
+  const closeSheet = () => {
+    if (saving) return;
+    setSheet(null);
+  };
+
+  const submitSheet = async () => {
+    if (!sheet || saving) return;
+    setSaving(true);
+    const payload = { note, malicious: sheet.action === 'reject' && malicious };
+    const ok = sheet.ids.length === 1
+      ? await window.doAction?.(sheet.ids[0], sheet.action, payload)
+      : await window.submitBulkActionDialog?.({
+        action: sheet.action,
+        ids: sheet.ids,
+        note,
+        malicious: payload.malicious,
+      });
+    setSaving(false);
+    if (!ok) return;
+    setSheet(null);
+    setReloadKey((key) => key + 1);
+  };
 
   const groups = rows ? groupReports(rows) : [];
 
@@ -92,11 +127,36 @@ export default function ReportsScreen() {
                   <span>{group.count}건</span>
                   <span>{when}</span>
                 </div>
+                <div className="m-card-actions">
+                  <button type="button" className="is-confirm" onClick={() => openSheet('confirm', group.ids)}>확정</button>
+                  <button type="button" className="is-reject" onClick={() => openSheet('reject', group.ids)}>기각</button>
+                </div>
               </article>
             );
           })}
         </div>
       ) : null}
+      <BottomSheet
+        open={Boolean(sheet)}
+        title={sheet?.action === 'reject' ? '신고 기각' : '신고 확정'}
+        onClose={closeSheet}
+        footer={(
+          <button type="button" className="m-sheet-submit" disabled={saving} onClick={submitSheet}>
+            {saving ? '처리 중…' : `${sheet?.ids?.length || 0}건 처리`}
+          </button>
+        )}
+      >
+        <label className="m-field">
+          <span>판정 메모</span>
+          <textarea value={note} onChange={(event) => setNote(event.target.value)} placeholder="판정 메모를 입력하세요" />
+        </label>
+        {sheet?.action === 'reject' ? (
+          <label className="m-check">
+            <input type="checkbox" checked={malicious} onChange={(event) => setMalicious(event.target.checked)} />
+            악의적 허위 신고로 판정
+          </label>
+        ) : null}
+      </BottomSheet>
     </div>
   );
 }

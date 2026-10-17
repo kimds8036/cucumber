@@ -2968,6 +2968,79 @@
       overflow: hidden;
     }
     .m-card-meta { margin-top: 8px; }
+    .m-card-actions { display: flex; gap: 8px; margin-top: 10px; }
+    .m-card-actions button {
+      flex: 1;
+      min-height: 36px;
+      border-radius: 8px;
+      border: 1px solid #1f2833;
+      background: #0b0f14;
+      color: #e6edf3;
+    }
+    .m-card-actions .is-confirm { background: #3fb950; border-color: #3fb950; color: #0b0f14; }
+    .m-card-actions .is-reject { background: #f85149; border-color: #f85149; color: #fff; }
+    .m-tabs button { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .m-tab-badge {
+      position: absolute;
+      top: 2px;
+      right: 18%;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 4px;
+      border-radius: 999px;
+      background: #f85149;
+      color: #fff;
+      font-size: 10px;
+      font-style: normal;
+      line-height: 16px;
+    }
+    .m-sheet-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      background: rgba(0, 0, 0, 0.55);
+      display: flex;
+      align-items: flex-end;
+    }
+    .m-sheet {
+      width: 100%;
+      max-height: min(80dvh, 560px);
+      overflow: auto;
+      background: #11161d;
+      color: #e6edf3;
+      border-radius: 16px 16px 0 0;
+      padding: 8px 16px calc(16px + env(safe-area-inset-bottom));
+    }
+    .m-sheet-handle {
+      width: 36px;
+      height: 4px;
+      margin: 4px auto 10px;
+      border-radius: 99px;
+      background: #1f2833;
+    }
+    .m-sheet-head, .m-sheet-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .m-sheet-head button, .m-field span { color: #9aa7b5; background: transparent; border: 0; }
+    .m-sheet-body { display: flex; flex-direction: column; gap: 12px; margin: 12px 0; }
+    .m-field { display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+    .m-field textarea {
+      min-height: 96px;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #1f2833;
+      background: #0b0f14;
+      color: #e6edf3;
+      resize: vertical;
+    }
+    .m-check { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+    .m-sheet-submit {
+      width: 100%;
+      min-height: 44px;
+      border: 0;
+      border-radius: 10px;
+      background: #4c8dff;
+      color: #fff;
+    }
+    .m-sheet-submit:disabled { opacity: 0.6; }
     .m-empty { color: #9aa7b5; padding: 24px 8px; text-align: center; line-height: 1.5; }
     .m-more section { margin-bottom: 16px; }
     .m-more h2 { font-size: 12px; color: #7d8b99; margin: 0 0 6px; font-weight: 500; }

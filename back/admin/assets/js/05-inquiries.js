@@ -568,10 +568,13 @@ async function loadInquiries() {
   function closeInquiryReopenDialogByBackdrop(e) {
     if (e.target === e.currentTarget) closeInquiryReopenDialog();
   }
-  async function submitInquiryReopenDialog() {
-    const id = state.inquiryReopenId;
-    if (!id) return;
-    const note = document.getElementById('inquiry-reopen-note-input')?.value?.trim();
+  async function submitInquiryReopenDialog(values) {
+    const fromCaller = values != null && typeof values === 'object';
+    const id = fromCaller && values.id != null ? values.id : state.inquiryReopenId;
+    if (!id) return false;
+    const note = fromCaller
+      ? String(values.note || '').trim()
+      : document.getElementById('inquiry-reopen-note-input')?.value?.trim();
     if (!note) {
       alert('재오픈 사유를 입력해주세요.');
       return;
@@ -602,14 +605,19 @@ async function loadInquiries() {
   function closeInquiryBulkCloseDialogByBackdrop(e) {
     if (e.target === e.currentTarget) closeInquiryBulkCloseDialog();
   }
-  async function submitInquiryBulkCloseDialog() {
+  async function submitInquiryBulkCloseDialog(values) {
+    const fromCaller = values != null && typeof values === 'object';
     const loadedIds = new Set(state.inquiries.map((i) => String(i.id)));
-    const ids = [...state.inquirySelected].filter((id) => loadedIds.has(id)).map((v) => Number(v));
+    const ids = fromCaller && Array.isArray(values.ids)
+      ? values.ids.map((id) => Number(id)).filter((id) => Number.isFinite(id))
+      : [...state.inquirySelected].filter((id) => loadedIds.has(id)).map((v) => Number(v));
     if (!ids.length) {
       closeInquiryBulkCloseDialog();
-      return;
+      return false;
     }
-    const note = document.getElementById('inquiry-bulk-close-note-input')?.value?.trim() || null;
+    const note = fromCaller
+      ? (String(values.note || '').trim() || null)
+      : (document.getElementById('inquiry-bulk-close-note-input')?.value?.trim() || null);
     try {
       const { data } = await api(`/inquiries/bulk-close`, {
         method: 'POST',

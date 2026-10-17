@@ -114,15 +114,19 @@ function closeCertificateRejectByBackdrop(e) {
   if (e.target.id === 'certificate-reject-dialog') closeCertificateRejectDialog();
 }
 
-async function submitCertificateReject() {
-  if (!pendingCertificateRejectId) return;
-  const note = document.getElementById('certificate-reject-note').value.trim();
+async function submitCertificateReject(values) {
+  const fromCaller = values != null && typeof values === 'object';
+  const targetId = fromCaller && values.id != null ? values.id : pendingCertificateRejectId;
+  if (!targetId) return false;
+  const note = fromCaller
+    ? String(values.note || '').trim()
+    : document.getElementById('certificate-reject-note').value.trim();
   if (!note) {
     alert('거절 사유를 입력해 주세요.');
     return;
   }
   try {
-    await api(`/signup-certificates/${pendingCertificateRejectId}`, {
+    await api(`/signup-certificates/${targetId}`, {
       method: 'PATCH',
       body: JSON.stringify({ status: 'rejected', reviewNote: note }),
     });

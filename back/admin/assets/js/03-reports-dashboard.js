@@ -2001,9 +2001,14 @@ async function fetchDashboardStats() {
     renderReports();
   }
 
-  async function doAction(id, action) {
-    const note = document.getElementById(`note-${id}`)?.value?.trim() || null;
-    const malicious = !!document.getElementById(`malicious-${id}`)?.checked;
+  async function doAction(id, action, values) {
+    const fromCaller = values != null && typeof values === 'object';
+    const note = fromCaller
+      ? (String(values.note || '').trim() || null)
+      : (document.getElementById(`note-${id}`)?.value?.trim() || null);
+    const malicious = fromCaller
+      ? !!values.malicious
+      : !!document.getElementById(`malicious-${id}`)?.checked;
     try {
       await api(`/reports/${id}`, {
         method: 'PATCH',
@@ -2015,8 +2020,10 @@ async function fetchDashboardStats() {
       });
       await Promise.all([loadDashboard(), loadReports(), loadLogs()]);
       alert('처리되었습니다.');
+      return true;
     } catch (error) {
       alert(error.message);
+      return false;
     }
   }
 
@@ -2080,21 +2087,28 @@ async function fetchDashboardStats() {
     if (event.target?.id === 'bulk-action-dialog-backdrop') closeBulkActionDialog();
   }
 
-  async function submitBulkActionDialog() {
-    const action = state.bulkActionMode;
-    if (!action) return;
+  async function submitBulkActionDialog(values) {
+    const fromCaller = values != null && typeof values === 'object';
+    const action = fromCaller && values.action ? values.action : state.bulkActionMode;
+    if (!action) return false;
     const loadedIds = new Set(state.reports.map((r) => String(r.id)));
-    const ids = [...state.selected].filter((id) => loadedIds.has(id)).map((v) => Number(v));
+    const ids = fromCaller && Array.isArray(values.ids)
+      ? values.ids.map((id) => Number(id)).filter((id) => Number.isFinite(id))
+      : [...state.selected].filter((id) => loadedIds.has(id)).map((v) => Number(v));
     if (!ids.length) {
       alert('선택된 신고가 없습니다.');
-      return;
+      return false;
     }
-    const note = String(document.getElementById('bulk-action-note-input')?.value || '').trim();
+    const note = fromCaller
+      ? String(values.note || '').trim()
+      : String(document.getElementById('bulk-action-note-input')?.value || '').trim();
     if (!note) {
       alert('처리 메모는 필수입니다.');
-      return;
+      return false;
     }
-    const malicious = !!document.getElementById('bulk-action-malicious-check')?.checked;
+    const malicious = fromCaller
+      ? !!values.malicious
+      : !!document.getElementById('bulk-action-malicious-check')?.checked;
     if (!confirm(`${ids.length}건을 일괄 ${action === 'confirm' ? '확정' : '기각'} 처리할까요?`)) return;
     try {
       await api(`/reports/bulk-${action}`, {
@@ -2105,8 +2119,10 @@ async function fetchDashboardStats() {
       closeBulkActionDialog();
       await Promise.all([loadDashboard(), loadReports(), loadLogs()]);
       alert('일괄 처리되었습니다.');
+      return true;
     } catch (error) {
       alert(error.message);
+      return false;
     }
   }
 
@@ -2285,14 +2301,18 @@ async function fetchDashboardStats() {
     }
   }
 
-  async function submitReopenDialog() {
-    const reportId = state.reopenReportId;
+  async function submitReopenDialog(values) {
+    const fromCaller = values != null && typeof values === 'object';
+    const reportId = fromCaller && values.reportId != null ? values.reportId : state.reopenReportId;
     const loadedIds = new Set(state.processedReports.map((r) => String(r.id)));
-    const selectedIds = [...state.processedSelected].filter((id) => loadedIds.has(id)).map((id) => Number(id));
-    const isBulk = state.reopenBulkMode === true;
-    if (!reportId && !isBulk) return;
-    const input = document.getElementById('reopen-note-input');
-    const trimmed = String(input?.value || '').trim();
+    const selectedIds = fromCaller && Array.isArray(values.ids)
+      ? values.ids.map((id) => Number(id)).filter((id) => Number.isFinite(id))
+      : [...state.processedSelected].filter((id) => loadedIds.has(id)).map((id) => Number(id));
+    const isBulk = fromCaller ? Array.isArray(values.ids) : state.reopenBulkMode === true;
+    if (!reportId && !isBulk) return false;
+    const trimmed = fromCaller
+      ? String(values.note || '').trim()
+      : String(document.getElementById('reopen-note-input')?.value || '').trim();
     if (!trimmed) {
       alert('재판정 메모는 필수입니다.');
       return;

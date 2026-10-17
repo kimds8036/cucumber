@@ -40,7 +40,18 @@ const IN_TABS = new Set([
   'manualSignup',
 ]);
 
-export default function MobileShell({ role, name, sessionLabel, onLogout, onExtend }) {
+function tabCount(id, badges) {
+  if (id === 'reports') return Number(badges.reports) || 0;
+  if (id === 'inquiries') return Number(badges.inquiries) || 0;
+  if (id === 'verify') {
+    return (Number(badges.studentIds) || 0)
+      + (Number(badges.certificates) || 0)
+      + (Number(badges.reverificationIds) || 0);
+  }
+  return 0;
+}
+
+export default function MobileShell({ role, name, sessionLabel, badges = {}, onLogout, onExtend }) {
   const [tab, setTab] = useState('home');
   const [notice, setNotice] = useState(null);
 
@@ -118,7 +129,10 @@ export default function MobileShell({ role, name, sessionLabel, onLogout, onExte
               setTab(item.id);
             }}
           >
-            {item.label}
+            <span>{item.label}</span>
+            {tabCount(item.id, badges) > 0 ? (
+              <em className="m-tab-badge">{tabCount(item.id, badges)}</em>
+            ) : null}
           </button>
         ))}
       </nav>

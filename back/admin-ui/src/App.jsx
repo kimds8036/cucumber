@@ -108,6 +108,7 @@ export default function App() {
       <MobileShell
         role={role}
         name={name}
+        badges={badges}
         sessionLabel={sessionLabel ? `세션 ${sessionLabel}` : '세션'}
         onLogout={() => window.adminLogout?.()}
         onExtend={() => window.extendAdminSession?.()}
