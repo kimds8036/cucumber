@@ -1,5 +1,10 @@
-async function loadDashboard() {
+async function fetchDashboardStats() {
     const { data } = await api('/stats');
+    return data || {};
+  }
+
+  async function loadDashboard() {
+    const data = await fetchDashboardStats();
     document.getElementById('stat-today-new').textContent = String(data.todayNewReports || 0);
     document.getElementById('stat-pending-reports').textContent = String(data.pendingReports || 0);
     document.getElementById('stat-pending-appeals').textContent = String(data.pendingAppeals || 0);
@@ -2109,21 +2114,25 @@ async function loadDashboard() {
     await loadReports();
   }
 
+  async function fetchPendingReports(filters = {}) {
+    const q = new URLSearchParams();
+    q.set('view', 'pending');
+    if (filters.reporter) q.set('reporter', filters.reporter);
+    if (filters.type) q.set('type', filters.type);
+    if (filters.reason) q.set('reason', filters.reason);
+    if (filters.fromDate) q.set('fromDate', filters.fromDate);
+    if (filters.toDate) q.set('toDate', filters.toDate);
+    const { data } = await api(`/reports?${q.toString()}`);
+    return data.reports || [];
+  }
+
   async function loadReports() {
     const reporter = document.getElementById('search-reporter')?.value?.trim() || '';
     const type = document.getElementById('filter-type')?.value || '';
     const reason = document.getElementById('filter-reason')?.value || '';
     const fromDate = document.getElementById('filter-from-date')?.value || '';
     const toDate = document.getElementById('filter-to-date')?.value || '';
-    const q = new URLSearchParams();
-    q.set('view', 'pending');
-    if (reporter) q.set('reporter', reporter);
-    if (type) q.set('type', type);
-    if (reason) q.set('reason', reason);
-    if (fromDate) q.set('fromDate', fromDate);
-    if (toDate) q.set('toDate', toDate);
-    const { data } = await api(`/reports?${q.toString()}`);
-    state.reports = data.reports || [];
+    state.reports = await fetchPendingReports({ reporter, type, reason, fromDate, toDate });
     if (!state.reports.some((r) => r.id === state.selectedReportId)) state.selectedReportId = null;
     renderReports();
   }

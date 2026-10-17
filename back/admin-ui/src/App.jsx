@@ -5,6 +5,8 @@ import Sidebar from './components/Sidebar.jsx';
 import StatusPill from './components/StatusPill.jsx';
 import Topbar from './components/Topbar.jsx';
 import { NAV_GROUPS, findItem, visibleItems } from './nav.js';
+import MobileShell from './mobile/MobileShell.jsx';
+import { useNarrow } from './mobile/useNarrow.js';
 
 function readSession() {
   const el = document.getElementById('session-countdown');
@@ -22,7 +24,8 @@ export default function App() {
   const [updatedAt, setUpdatedAt] = useState(null);
   const [palette, setPalette] = useState(false);
   const [sessionLabel, setSessionLabel] = useState('');
-  const [collapsed, setCollapsed] = useState(() => window.matchMedia('(max-width: 960px)').matches);
+  const collapsed = false;
+  const isMobile = useNarrow(768);
 
   useEffect(() => {
     const onPage = (event) => {
@@ -51,9 +54,6 @@ export default function App() {
     window.addEventListener('admin:profile', onProfile);
     window.addEventListener('admin:health', onHealth);
     const sessionTimer = setInterval(() => setSessionLabel(readSession()), 1000);
-    const media = window.matchMedia('(max-width: 960px)');
-    const onMedia = () => setCollapsed(media.matches);
-    media.addEventListener('change', onMedia);
     const onKey = (event) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
@@ -68,14 +68,15 @@ export default function App() {
       window.removeEventListener('admin:profile', onProfile);
       window.removeEventListener('admin:health', onHealth);
       window.removeEventListener('keydown', onKey);
-      media.removeEventListener('change', onMedia);
       clearInterval(sessionTimer);
     };
   }, []);
 
   useEffect(() => {
-    document.querySelector('.layout')?.classList.toggle('sidebar-collapsed', collapsed);
-  }, [collapsed]);
+    document.body.classList.toggle('admin-is-mobile', isMobile);
+    if (isMobile) document.body.classList.remove('sidebar-open');
+    return () => document.body.classList.remove('admin-is-mobile');
+  }, [isMobile]);
 
   const located = itemId
     ? (NAV_GROUPS.map((group) => {
@@ -101,6 +102,19 @@ export default function App() {
   const sidebarHost = document.getElementById('admin-sidebar-root');
   const chromeHost = document.getElementById('admin-chrome-root');
   if (!sidebarHost || !chromeHost) return null;
+
+  if (isMobile) {
+    return createPortal(
+      <MobileShell
+        role={role}
+        name={name}
+        sessionLabel={sessionLabel ? `세션 ${sessionLabel}` : '세션'}
+        onLogout={() => window.adminLogout?.()}
+        onExtend={() => window.extendAdminSession?.()}
+      />,
+      document.body,
+    );
+  }
 
   return (
     <>

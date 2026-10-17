@@ -71,7 +71,7 @@ function adminUrl(subpath) {
   }
 
   function openAdminSidebar() {
-    const mq = window.matchMedia('(max-width: 768px)');
+    const mq = window.matchMedia('(max-width: 960px)');
     if (!mq.matches) return;
     const toggle = document.getElementById('sidebar-toggle');
     const overlay = document.getElementById('sidebar-overlay');
@@ -83,19 +83,22 @@ function adminUrl(subpath) {
     if (overlay) overlay.setAttribute('aria-hidden', 'false');
   }
 
+  function toggleAdminSidebar() {
+    if (document.body.classList.contains('sidebar-open')) closeAdminSidebar();
+    else openAdminSidebar();
+  }
+
   function initSidebarDrawer() {
     const toggle = document.getElementById('sidebar-toggle');
     const overlay = document.getElementById('sidebar-overlay');
-    if (!toggle || !overlay) return;
+    const mq = window.matchMedia('(max-width: 960px)');
 
-    const mq = window.matchMedia('(max-width: 768px)');
-
-    toggle.addEventListener('click', () => {
+    toggle?.addEventListener('click', () => {
       if (document.body.classList.contains('sidebar-open')) closeAdminSidebar();
       else openAdminSidebar();
     });
 
-    overlay.addEventListener('click', closeAdminSidebar);
+    overlay?.addEventListener('click', closeAdminSidebar);
 
     mq.addEventListener('change', (e) => {
       if (!e.matches) closeAdminSidebar();
