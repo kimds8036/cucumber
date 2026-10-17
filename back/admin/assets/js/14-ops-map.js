@@ -50,6 +50,11 @@ function destroyOpsSchoolMap() {
   }
 }
 
+async function fetchOpsSchoolGeo() {
+  const { data } = await api('/analytics/school-geo');
+  return data || {};
+}
+
 async function loadOpsSchoolGeo() {
   const status = document.getElementById('ops-map-status');
   const kpis = document.getElementById('ops-map-kpis');
@@ -58,7 +63,7 @@ async function loadOpsSchoolGeo() {
 
   try {
     const Leaflet = await ensureLeafletLoaded();
-    const { data } = await api('/analytics/school-geo');
+    const data = await fetchOpsSchoolGeo();
     opsSchoolGeoCache = data;
     renderOpsSchoolGeoKpis(data);
     renderOpsSchoolGeoRegions(data);

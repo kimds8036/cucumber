@@ -3108,6 +3108,8 @@
     .m-chart-track span { display: block; width: 100%; border-radius: 6px 6px 0 0; }
     .m-chart-col strong { margin-top: 6px; font-size: 13px; }
     .m-chart-col em { color: #9aa7b5; font-size: 11px; font-style: normal; }
+    .m-bar { height: 8px; border-radius: 99px; background: #1c2430; overflow: hidden; }
+    .m-bar span { display: block; height: 100%; background: #7c3aed; }
     .m-more-btn {
       width: 100%;
       min-height: 40px;

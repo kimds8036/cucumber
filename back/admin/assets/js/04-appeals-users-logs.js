@@ -405,19 +405,24 @@ async function fetchAppeals() {
     }
   }
 
+  async function fetchLogs(filters = {}) {
+    const qs = new URLSearchParams();
+    if (filters.q) qs.set('q', filters.q);
+    if (filters.action) qs.set('action', filters.action);
+    if (filters.fromDate) qs.set('fromDate', filters.fromDate);
+    if (filters.toDate) qs.set('toDate', filters.toDate);
+    qs.set('page', String(filters.page || 1));
+    qs.set('limit', String(filters.limit || 50));
+    const { data } = await api(`/logs?${qs.toString()}`);
+    return data;
+  }
+
   async function loadLogs(page = 1) {
     const qInput = document.getElementById('logs-search-q')?.value?.trim() || '';
     const action = document.getElementById('logs-action')?.value || '';
     const fromDate = document.getElementById('logs-from-date')?.value || '';
     const toDate = document.getElementById('logs-to-date')?.value || '';
-    const qs = new URLSearchParams();
-    if (qInput) qs.set('q', qInput);
-    if (action) qs.set('action', action);
-    if (fromDate) qs.set('fromDate', fromDate);
-    if (toDate) qs.set('toDate', toDate);
-    qs.set('page', String(page));
-    qs.set('limit', '50');
-    const { data } = await api(`/logs?${qs.toString()}`);
+    const data = await fetchLogs({ q: qInput, action, fromDate, toDate, page, limit: 50 });
     const list = data.logs || [];
     state.logsPagination = data.pagination || { page, limit: 50, total: list.length };
     const tbody = document.getElementById('logs-tbody');

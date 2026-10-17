@@ -7,11 +7,16 @@ const FLAG_LABELS = {
   rate_limit_strict_mode: 'API 제한 강화',
 };
 
+async function fetchEmergencyFlags() {
+  const { data } = await api('/system/flags');
+  return data || {};
+}
+
 async function loadEmergencyFlags() {
   const host = document.getElementById('emergency-flags-host');
   if (!host) return;
   host.innerHTML = '<p class="txt-muted">불러오는 중…</p>';
-  const { data } = await api('/system/flags');
+  const data = await fetchEmergencyFlags();
   state.emergencyFlags = data;
 
   const toggles = Object.keys(FLAG_LABELS)
@@ -43,30 +48,38 @@ async function loadEmergencyFlags() {
   `;
 }
 
-async function saveEmergencyFlags() {
-  const note = document.getElementById('emergency-change-note')?.value?.trim();
-  const confirmOtp = document.getElementById('emergency-confirm-otp')?.value?.trim();
+async function saveEmergencyFlags(values) {
+  const fromCaller = values != null && typeof values === 'object';
+  const note = fromCaller
+    ? String(values.note || '').trim()
+    : document.getElementById('emergency-change-note')?.value?.trim();
+  const confirmOtp = fromCaller
+    ? String(values.confirmOtp || '').trim()
+    : document.getElementById('emergency-confirm-otp')?.value?.trim();
   if (!note) {
     alert('변경 사유를 입력해 주세요.');
-    return;
+    return false;
   }
   if (!confirmOtp || confirmOtp.length !== 6) {
     alert('OTP 6자리를 입력해 주세요.');
-    return;
+    return false;
   }
 
   const flags = {};
-  document.querySelectorAll('[data-flag-key]').forEach((el) => {
-    flags[el.getAttribute('data-flag-key')] = el.checked;
-  });
-
-  const lockedRaw = document.getElementById('emergency-locked-schools')?.value || '';
-  flags.locked_school_ids = lockedRaw
-    .split(/[,\s]+/)
-    .map((v) => Number(v))
-    .filter((n) => Number.isFinite(n) && n > 0);
-  flags.maintenance_message =
-    document.getElementById('emergency-maintenance-message')?.value?.trim() || '';
+  if (fromCaller && values.flags) {
+    Object.assign(flags, values.flags);
+  } else {
+    document.querySelectorAll('[data-flag-key]').forEach((el) => {
+      flags[el.getAttribute('data-flag-key')] = el.checked;
+    });
+    const lockedRaw = document.getElementById('emergency-locked-schools')?.value || '';
+    flags.locked_school_ids = lockedRaw
+      .split(/[,\s]+/)
+      .map((v) => Number(v))
+      .filter((n) => Number.isFinite(n) && n > 0);
+    flags.maintenance_message =
+      document.getElementById('emergency-maintenance-message')?.value?.trim() || '';
+  }
 
   try {
     await api('/system/flags', {
@@ -75,7 +88,9 @@ async function saveEmergencyFlags() {
     });
     alert('비상 스위치가 적용되었습니다.');
     await loadEmergencyFlags();
+    return true;
   } catch (e) {
     alert(e.message);
+    return false;
   }
 }

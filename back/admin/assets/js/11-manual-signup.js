@@ -29,9 +29,18 @@ function resetManualSignupForm() {
   if (result) result.innerHTML = '';
 }
 
-async function searchManualSignupSchools() {
-  const q = document.getElementById('manual-signup-school-q')?.value?.trim() || '';
+async function searchManualSignupSchools(query) {
+  const fromCaller = arguments.length > 0;
+  const q = fromCaller
+    ? String(query || '').trim()
+    : (document.getElementById('manual-signup-school-q')?.value?.trim() || '');
   const host = document.getElementById('manual-signup-school-results');
+  if (fromCaller) {
+    if (q.length < 2) return [];
+    const res = await fetch(`${getAdminHost()}/api/schools/search?query=${encodeURIComponent(q)}&limit=8`);
+    const data = await res.json();
+    return data?.data?.schools || [];
+  }
   if (!host) return;
   if (q.length < 2) {
     host.innerHTML = '<p class="txt-muted">2글자 이상 입력하세요.</p>';
@@ -85,27 +94,45 @@ function clearManualSignupSchool() {
   if (host) host.innerHTML = '<span class="txt-muted">선택 사항 — 없으면 미인증(UNVERIFIED)으로 생성됩니다.</span>';
 }
 
-async function submitManualSignup() {
-  const username = document.getElementById('manual-signup-username')?.value?.trim();
-  const password = document.getElementById('manual-signup-password')?.value || '';
-  const password2 = document.getElementById('manual-signup-password2')?.value || '';
-  const name = document.getElementById('manual-signup-name')?.value?.trim();
-  const phone = document.getElementById('manual-signup-phone')?.value?.trim();
-  const birthDate = document.getElementById('manual-signup-birth')?.value?.trim();
-  const grade = document.getElementById('manual-signup-grade')?.value;
-  const classNumber = document.getElementById('manual-signup-class')?.value;
-  const colorId = document.getElementById('manual-signup-color')?.value;
-  const studentVerified = document.getElementById('manual-signup-student-verified')?.checked;
-  const adminNote = document.getElementById('manual-signup-note')?.value?.trim();
+async function submitManualSignup(values) {
+  const fromCaller = values != null && typeof values === 'object';
+  const username = fromCaller
+    ? String(values.username || '').trim()
+    : document.getElementById('manual-signup-username')?.value?.trim();
+  const password = fromCaller
+    ? String(values.password || '')
+    : (document.getElementById('manual-signup-password')?.value || '');
+  const password2 = fromCaller
+    ? String(values.password2 || '')
+    : (document.getElementById('manual-signup-password2')?.value || '');
+  const name = fromCaller
+    ? String(values.name || '').trim()
+    : document.getElementById('manual-signup-name')?.value?.trim();
+  const phone = fromCaller
+    ? String(values.phone || '').trim()
+    : document.getElementById('manual-signup-phone')?.value?.trim();
+  const birthDate = fromCaller
+    ? String(values.birthDate || '').trim()
+    : document.getElementById('manual-signup-birth')?.value?.trim();
+  const grade = fromCaller ? values.grade : document.getElementById('manual-signup-grade')?.value;
+  const classNumber = fromCaller ? values.classNumber : document.getElementById('manual-signup-class')?.value;
+  const colorId = fromCaller ? values.colorId : document.getElementById('manual-signup-color')?.value;
+  const studentVerified = fromCaller
+    ? Boolean(values.studentVerified)
+    : Boolean(document.getElementById('manual-signup-student-verified')?.checked);
+  const adminNote = fromCaller
+    ? String(values.adminNote || '').trim()
+    : document.getElementById('manual-signup-note')?.value?.trim();
+  const school = fromCaller ? values.school : manualSignupSchool;
   const resultHost = document.getElementById('manual-signup-result');
 
   if (password !== password2) {
     alert('비밀번호 확인이 일치하지 않습니다.');
-    return;
+    return false;
   }
-  if (studentVerified && !manualSignupSchool?.id) {
+  if (studentVerified && !school?.id) {
     alert('학생 인증 완료로 생성하려면 학교를 선택해 주세요.');
-    return;
+    return false;
   }
 
   try {
@@ -121,14 +148,14 @@ async function submitManualSignup() {
       studentVerified: Boolean(studentVerified),
       adminNote,
     };
-    if (manualSignupSchool?.id) body.schoolId = manualSignupSchool.id;
+    if (school?.id) body.schoolId = school.id;
 
     const { data } = await api('/users/manual', {
       method: 'POST',
       body: JSON.stringify(body),
     });
 
-    if (resultHost) {
+    if (!fromCaller && resultHost) {
       const verLabel = data.studentVerified
         ? '학생 인증 완료'
         : '미인증(UNVERIFIED)';
@@ -141,8 +168,11 @@ async function submitManualSignup() {
           <p class="section-hint">비밀번호는 이 화면에 다시 표시되지 않습니다. 사용자에게 안전하게 전달하세요.</p>
         </div>`;
     }
+    if (fromCaller) alert(`계정을 만들었습니다. UID #${data.userId} · ${data.username}`);
+    return true;
   } catch (error) {
     alert(`생성 실패: ${error.message}`);
+    return false;
   }
 }
 

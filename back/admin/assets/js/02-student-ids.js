@@ -25,6 +25,16 @@ async function fetchStudentIds(filters = {}) {
     }
   }
 
+  async function fetchReverificationIds(filters = {}) {
+    const qs = new URLSearchParams();
+    qs.set('status', filters.status || 'pending');
+    qs.set('purpose', 'reverification');
+    qs.set('limit', '50');
+    if (filters.q) qs.set('q', filters.q);
+    const { data } = await api(`/signup-student-ids?${qs.toString()}`);
+    return data.submissions || [];
+  }
+
   async function loadReverificationIds() {
     const status = document.getElementById('reverification-id-filter')?.value || 'pending';
     const q = document.getElementById('reverification-id-search-q')?.value?.trim() || '';
@@ -32,13 +42,7 @@ async function fetchStudentIds(filters = {}) {
     if (!host) return;
     host.innerHTML = '<p class="txt-muted">불러오는 중…</p>';
     try {
-      const qs = new URLSearchParams();
-      qs.set('status', status);
-      qs.set('purpose', 'reverification');
-      qs.set('limit', '50');
-      if (q) qs.set('q', q);
-      const { data } = await api(`/signup-student-ids?${qs.toString()}`);
-      state.reverificationIdSubmissions = data.submissions || [];
+      state.reverificationIdSubmissions = await fetchReverificationIds({ status, q });
       renderReverificationIds();
       if (status === 'pending') {
         setNavBadge('badge-reverification-ids', state.reverificationIdSubmissions.length);
@@ -301,6 +305,7 @@ async function fetchStudentIds(filters = {}) {
     if (fromCaller) {
       if (values.registeredName != null) pendingStudentIdRejectRegisteredName = String(values.registeredName).trim();
       if (values.schoolName != null) pendingStudentIdRejectSchoolName = String(values.schoolName).trim();
+      if (values.listKind) pendingStudentIdRejectListKind = values.listKind;
     }
     const sel = fromCaller ? values.reason : document.getElementById('student-id-reject-reason').value;
     let note = '';

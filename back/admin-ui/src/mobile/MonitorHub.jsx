@@ -103,10 +103,10 @@ export default function MonitorHub({ role, health = {}, onOpen }) {
         {MONITOR_ITEMS.map((item) => {
           const ready = item.id === 'ops-jobs';
           return (
-            <button key={item.id} type="button" className="m-hub-card" onClick={() => onOpen(ready ? 'jobs' : 'soon', item)}>
+            <button key={item.id} type="button" className="m-hub-card" onClick={() => onOpen(item.view, item)}>
               <span>{item.label}</span>
               <strong>{ready && cronValue != null ? cronValue.toLocaleString() : '—'}</strong>
-              <em>{ready ? (cronDelta || item.metric) : '다음 단계'}</em>
+              <em>{ready ? (cronDelta || item.metric) : item.metric}</em>
             </button>
           );
         })}

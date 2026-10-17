@@ -52,17 +52,25 @@ function renderRecommendedHashtags() {
   });
 }
 
+async function fetchRecommendedHashtags() {
+  const [listRes, usedRes] = await Promise.all([
+    api('/recommended-hashtags'),
+    api('/recommended-hashtags/used').catch(() => ({ data: { items: [] } })),
+  ]);
+  return {
+    items: Array.isArray(listRes.data?.items) ? listRes.data.items : [],
+    used: Array.isArray(usedRes.data?.items) ? usedRes.data.items : [],
+  };
+}
+
 async function loadRecommendedHashtagsPanel() {
   const host = document.getElementById('recommended-hashtags-host');
   if (!host) return;
   host.innerHTML = '<div class="txt-muted">불러오는 중…</div>';
   try {
-    const [listRes, usedRes] = await Promise.all([
-      api('/recommended-hashtags'),
-      api('/recommended-hashtags/used').catch(() => ({ data: { items: [] } })),
-    ]);
-    recommendedHashtagItems = Array.isArray(listRes.data?.items) ? listRes.data.items : [];
-    usedHashtagOptions = Array.isArray(usedRes.data?.items) ? usedRes.data.items : [];
+    const loaded = await fetchRecommendedHashtags();
+    recommendedHashtagItems = loaded.items;
+    usedHashtagOptions = loaded.used;
     renderRecommendedHashtags();
   } catch (error) {
     host.innerHTML = `<div class="txt-muted">${escapeHashtagText(error.message || '목록을 불러오지 못했습니다.')}</div>`;

@@ -10,6 +10,8 @@ import MonitorStatus from './MonitorStatus.jsx';
 import VerifyScreen from './VerifyScreen.jsx';
 import AttendanceScreen from './AttendanceScreen.jsx';
 import AnnouncementsScreen from './AnnouncementsScreen.jsx';
+import OpsScreen from './OpsScreen.jsx';
+import { TipsScreen, HashtagsScreen, WhackScreen, LogsScreen, EmergencyScreen } from './MoreEditors.jsx';
 
 const TABS = [
   { id: 'home', label: '홈' },
@@ -52,6 +54,11 @@ const LIVE_SCREENS = {
   'ops-user-lookup': 'lookup',
   attendance: 'attendance',
   announcements: 'announcements',
+  tips: 'tips',
+  recommendedHashtags: 'hashtags',
+  hallOfFame: 'whack',
+  logs: 'logs',
+  emergency: 'emergency',
 };
 
 function readSavedNav() {
@@ -153,6 +160,9 @@ export default function MobileShell({ role, name, sessionLabel, badges = {}, hea
           />
         ) : null}
         {!notice && monitor?.view === 'jobs' ? <CronScreen /> : null}
+        {!notice && monitor && ['user', 'timer', 'study-rooms', 'activity', 'terms', 'map', 'reach', 'funnel'].includes(monitor.view) ? (
+          <OpsScreen key={monitor.view} view={monitor.view} />
+        ) : null}
         {!notice && monitor?.view === 'status' ? (
           <MonitorStatus label={monitor.label} state={monitor.state} />
         ) : null}
@@ -162,6 +172,11 @@ export default function MobileShell({ role, name, sessionLabel, badges = {}, hea
         {!notice && !monitor && extra?.id === 'lookup' ? <UserLookup mode="mobile" /> : null}
         {!notice && !monitor && extra?.id === 'attendance' ? <AttendanceScreen /> : null}
         {!notice && !monitor && extra?.id === 'announcements' ? <AnnouncementsScreen /> : null}
+        {!notice && !monitor && extra?.id === 'tips' ? <TipsScreen /> : null}
+        {!notice && !monitor && extra?.id === 'hashtags' ? <HashtagsScreen /> : null}
+        {!notice && !monitor && extra?.id === 'whack' ? <WhackScreen /> : null}
+        {!notice && !monitor && extra?.id === 'logs' ? <LogsScreen /> : null}
+        {!notice && !monitor && extra?.id === 'emergency' ? <EmergencyScreen role={role} /> : null}
         {!notice && tab === 'home' ? <HomeScreen onOpenReports={() => setTab('reports')} /> : null}
         {!notice && tab === 'reports' ? <ReportsScreen role={role} /> : null}
         {!notice && tab === 'inquiries' ? <InquiriesScreen /> : null}

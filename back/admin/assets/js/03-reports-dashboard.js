@@ -49,11 +49,16 @@ async function fetchDashboardStats() {
     loadOpsUserEcosystem();
   }
 
+  async function fetchOpsUserEcosystem() {
+    const { data } = await api('/analytics/user-ecosystem');
+    return data || {};
+  }
+
   async function loadOpsUserEcosystem() {
     const host = document.getElementById('ops-eco-items');
     if (!host) return;
     try {
-      const { data } = await api('/analytics/user-ecosystem');
+      const data = await fetchOpsUserEcosystem();
       const n = (v) => Number(v || 0).toLocaleString();
       const chips = [
         ['학생', n(data?.users)],
@@ -328,8 +333,13 @@ async function fetchDashboardStats() {
   window.showOpsHub = showOpsHub;
   window.openOpsView = openOpsView;
 
-  async function loadOpsSchoolTerms() {
+  async function fetchOpsSchoolTerms() {
     const { data } = await api('/analytics/school-terms');
+    return data || {};
+  }
+
+  async function loadOpsSchoolTerms() {
+    const data = await fetchOpsSchoolTerms();
     const w = data?.window || {};
     const s = data?.summary || {};
     const kpis = document.getElementById('ops-terms-kpis');
@@ -963,8 +973,13 @@ async function fetchDashboardStats() {
     renderCronSolo((jobs || []).filter((j) => !CRON_MANAGED_KEYS.has(j.key) && j.key !== 'cron-manager'));
   }
 
+  async function fetchTimerOps(days = 14) {
+    const { data } = await api(`/analytics/timer?days=${days}`);
+    return data || {};
+  }
+
   async function loadTimerOps() {
-    const { data } = await api('/analytics/timer?days=14');
+    const data = await fetchTimerOps(14);
     renderTimerKpi(data?.summary || {});
     const hint = document.getElementById('timer-ops-hint');
     const s = data?.summary || {};
@@ -980,8 +995,13 @@ async function fetchDashboardStats() {
     renderTimerSessions(data?.recentSessions || []);
   }
 
-  async function loadStudyRoomOps() {
+  async function fetchStudyRoomOps() {
     const { data } = await api('/analytics/study-rooms');
+    return data || {};
+  }
+
+  async function loadStudyRoomOps() {
+    const data = await fetchStudyRoomOps();
     const set = (id, value) => {
       const el = document.getElementById(id);
       if (el) el.textContent = value;
@@ -1277,11 +1297,16 @@ async function fetchDashboardStats() {
     `;
   }
 
+  async function fetchActivityOps(days = 14) {
+    const { data } = await api(`/analytics/activity?days=${days}`);
+    return data || {};
+  }
+
   async function loadActivityOps() {
     bindActivityFeedFilters();
     activityFeedPage = 1;
     try {
-      const { data } = await api('/analytics/activity?days=14');
+      const data = await fetchActivityOps(14);
       const s = data?.summary || {};
       const set = (id, value) => {
         const el = document.getElementById(id);
@@ -1358,8 +1383,13 @@ async function fetchDashboardStats() {
     `).join('');
   }
 
+  async function fetchAnalyticsOverview(days = 14) {
+    const { data } = await api(`/analytics/overview?days=${days}`);
+    return data || {};
+  }
+
   async function loadAnalyticsOverview() {
-    const { data } = await api('/analytics/overview?days=14');
+    const data = await fetchAnalyticsOverview(14);
     window.__lastAnalyticsOverview = { data };
     renderAnalyticsKpi(data?.summary || {});
     renderAnalyticsLineChart(data?.series || []);
@@ -1367,8 +1397,13 @@ async function fetchDashboardStats() {
     renderAnalyticsScreenRanking(data?.screenRanking || [], data?.screenHourlyByKey || {});
   }
 
+  async function fetchInstallLandingStats(days = 14) {
+    const { data } = await api(`/analytics/install-landing?days=${days}`);
+    return data || {};
+  }
+
   async function loadInstallLandingStats() {
-    const { data } = await api('/analytics/install-landing?days=14');
+    const data = await fetchInstallLandingStats(14);
     window.__lastInstallLandingStats = { data };
     renderInstallLandingKpi(data?.summary || {});
     renderInstallLandingChart(data?.series || [], data?.summary || {});
@@ -1376,9 +1411,14 @@ async function fetchDashboardStats() {
     renderInstallDowChart(data?.byDow || []);
   }
 
+  async function fetchAppInstallFunnelStats(days = 14) {
+    const { data } = await api(`/analytics/app-install-funnel?days=${days}`);
+    return data || {};
+  }
+
   async function loadAppInstallFunnelStats() {
     try {
-      const { data } = await api('/analytics/app-install-funnel?days=14');
+      const data = await fetchAppInstallFunnelStats(14);
       const set = (id, v) => {
         const el = document.getElementById(id);
         if (el) el.textContent = typeof v === 'string' ? v : Number(v || 0).toLocaleString();

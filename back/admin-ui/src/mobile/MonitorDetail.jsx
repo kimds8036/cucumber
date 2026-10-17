@@ -58,7 +58,7 @@ export default function MonitorDetail({
       ) : null}
       {chart}
       {note ? <p className="m-empty">{note}</p> : null}
-      {visible.length === 0 ? <p className="m-empty">{empty}</p> : (
+      {visible.length === 0 ? (empty ? <p className="m-empty">{empty}</p> : null) : (
         <div className="m-cards">
           {visible.map((item) => (
             <article key={item.id} className="m-card">
