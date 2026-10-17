@@ -96,7 +96,11 @@ async function validateAdminCredentials(username, password) {
   return { admin };
 }
 
-router.use('/assets', express.static(getAdminStaticDir()));
+router.use('/assets', express.static(getAdminStaticDir(), {
+  setHeaders(res, filePath) {
+    if (String(filePath).endsWith('.webmanifest')) res.type('application/manifest+json');
+  },
+}));
 
 router.get('/login', (_req, res) => {
   res.type('html').send(renderAdminLoginHtml());

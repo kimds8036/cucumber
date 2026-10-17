@@ -27,17 +27,18 @@ function formatTipDate(iso) {
   }
 }
 
+async function fetchTips(filter = 'all') {
+  const qs = filter === 'all' ? 'limit=100' : `limit=100&status=${encodeURIComponent(filter)}`;
+  const { data } = await api(`/tips?${qs}`);
+  return data.items || [];
+}
+
 async function loadTipsPanel() {
   const host = document.getElementById('tips-host');
   if (!host) return;
   host.innerHTML = '<div class="txt-muted">불러오는 중…</div>';
   try {
-    const qs =
-      tipFilter === 'all'
-        ? 'limit=100'
-        : `limit=100&status=${encodeURIComponent(tipFilter)}`;
-    const { data } = await api(`/tips?${qs}`);
-    tipItems = data.items || [];
+    tipItems = await fetchTips(tipFilter);
     if (tipSelectedId && !tipItems.some((item) => item.id === tipSelectedId)) {
       tipSelectedId = null;
       tipDraft = { body: '', status: 'draft' };
@@ -156,17 +157,19 @@ function renderTipsPanel() {
   `;
 }
 
-async function tipSave() {
-  const body = String(tipDraft.body || '').trim();
-  const status = tipDraft.status === 'active' ? 'active' : 'draft';
+async function tipSave(values) {
+  const fromCaller = values != null && typeof values === 'object';
+  const body = String(fromCaller ? values.body : tipDraft.body || '').trim();
+  const status = (fromCaller ? values.status : tipDraft.status) === 'active' ? 'active' : 'draft';
+  const targetId = fromCaller ? (values.id || null) : tipSelectedId;
   if (!body) {
     alert('팁 문구를 입력해 주세요.');
-    return;
+    return false;
   }
   try {
     const payload = { body, status };
-    if (tipSelectedId) {
-      const { data } = await api(`/tips/${tipSelectedId}`, {
+    if (targetId) {
+      const { data } = await api(`/tips/${targetId}`, {
         method: 'PATCH',
         body: JSON.stringify(payload),
       });
@@ -179,21 +182,26 @@ async function tipSave() {
       tipSelectedId = data.id;
     }
     await loadTipsPanel();
+    return true;
   } catch (error) {
     alert(error.message || '저장에 실패했습니다.');
+    return false;
   }
 }
 
-async function tipDelete() {
-  if (!tipSelectedId) return;
-  if (!confirm(`팁 #${tipSelectedId}를 삭제할까요?`)) return;
+async function tipDelete(id) {
+  const targetId = id != null ? id : tipSelectedId;
+  if (!targetId) return false;
+  if (!confirm(`팁 #${targetId}를 삭제할까요?`)) return false;
   try {
-    await api(`/tips/${tipSelectedId}`, { method: 'DELETE' });
+    await api(`/tips/${targetId}`, { method: 'DELETE' });
     tipSelectedId = null;
     tipDraft = { body: '', status: 'draft' };
     await loadTipsPanel();
+    return true;
   } catch (error) {
     alert(error.message || '삭제에 실패했습니다.');
+    return false;
   }
 }
 

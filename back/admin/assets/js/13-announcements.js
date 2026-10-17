@@ -28,17 +28,20 @@ function formatAnnouncementDate(iso) {
   }
 }
 
+async function fetchAnnouncements(filter = 'all') {
+  const qs = filter === 'all'
+    ? 'limit=100'
+    : `limit=100&status=${encodeURIComponent(filter)}`;
+  const { data } = await api(`/announcements?${qs}`);
+  return data.items || [];
+}
+
 async function loadAnnouncementsPanel() {
   const host = document.getElementById('announcements-host');
   if (!host) return;
   host.innerHTML = '<div class="txt-muted">불러오는 중…</div>';
   try {
-    const qs =
-      announcementFilter === 'all'
-        ? 'limit=100'
-        : `limit=100&status=${encodeURIComponent(announcementFilter)}`;
-    const { data } = await api(`/announcements?${qs}`);
-    announcementItems = data.items || [];
+    announcementItems = await fetchAnnouncements(announcementFilter);
     if (
       announcementSelectedId &&
       !announcementItems.some((item) => item.id === announcementSelectedId)
@@ -172,18 +175,20 @@ function renderAnnouncementsPanel() {
   `;
 }
 
-async function announcementSave() {
-  const title = String(announcementDraft.title || '').trim();
-  const content = String(announcementDraft.content || '').trim();
-  const status = announcementDraft.status === 'published' ? 'published' : 'draft';
+async function announcementSave(values) {
+  const fromCaller = values != null && typeof values === 'object';
+  const title = String((fromCaller ? values.title : announcementDraft.title) || '').trim();
+  const content = String((fromCaller ? values.content : announcementDraft.content) || '').trim();
+  const status = (fromCaller ? values.status : announcementDraft.status) === 'published' ? 'published' : 'draft';
+  const targetId = fromCaller && values.id != null ? values.id : announcementSelectedId;
   if (!title || !content) {
     alert('제목과 내용을 입력해 주세요.');
-    return;
+    return false;
   }
   try {
     const body = { title, content, status };
-    if (announcementSelectedId) {
-      const { data } = await api(`/announcements/${announcementSelectedId}`, {
+    if (targetId) {
+      const { data } = await api(`/announcements/${targetId}`, {
         method: 'PATCH',
         body: JSON.stringify(body),
       });
@@ -196,21 +201,26 @@ async function announcementSave() {
       announcementSelectedId = data.id;
     }
     await loadAnnouncementsPanel();
+    return true;
   } catch (error) {
     alert(error.message || '저장에 실패했습니다.');
+    return false;
   }
 }
 
-async function announcementDelete() {
-  if (!announcementSelectedId) return;
-  if (!confirm(`공지 #${announcementSelectedId}를 삭제할까요?`)) return;
+async function announcementDelete(id) {
+  const targetId = id != null && String(id) !== '' ? Number(id) : announcementSelectedId;
+  if (!targetId) return false;
+  if (!confirm(`공지 #${targetId}를 삭제할까요?`)) return false;
   try {
-    await api(`/announcements/${announcementSelectedId}`, { method: 'DELETE' });
+    await api(`/announcements/${targetId}`, { method: 'DELETE' });
     announcementSelectedId = null;
     announcementDraft = { title: '', content: '', status: 'draft' };
     await loadAnnouncementsPanel();
+    return true;
   } catch (error) {
     alert(error.message || '삭제에 실패했습니다.');
+    return false;
   }
 }
 

@@ -23,13 +23,31 @@ function getAttendanceFilterQs() {
   return { days, maxRate };
 }
 
+async function fetchTodayAttendance(page = 1) {
+  const { data } = await api(
+    `/attendance/today?page=${encodeURIComponent(page)}&limit=${ATTENDANCE_TODAY_LIMIT}`,
+  );
+  return data || {};
+}
+
+async function fetchSuspiciousAttendance(page = 1, filters = {}) {
+  const days = filters.days || '14';
+  const maxRate = filters.maxRate || '0.25';
+  const qs = new URLSearchParams();
+  qs.set('days', days);
+  qs.set('maxRate', maxRate);
+  qs.set('minAccountDays', '7');
+  qs.set('page', String(page));
+  qs.set('limit', String(ATTENDANCE_SUSPICIOUS_LIMIT));
+  const { data } = await api(`/attendance/suspicious?${qs.toString()}`);
+  return data || {};
+}
+
 async function loadTodayAttendance(page = 1) {
   attendanceTodayPage = page;
   const hint = document.getElementById('attendance-today-hint');
   try {
-    const { data } = await api(
-      `/attendance/today?page=${encodeURIComponent(page)}&limit=${ATTENDANCE_TODAY_LIMIT}`,
-    );
+    const data = await fetchTodayAttendance(page);
     const total = Number(data?.total || 0);
     document.getElementById('att-stat-today').textContent = String(total);
     if (hint) {
@@ -52,13 +70,7 @@ async function loadSuspiciousUsers(page = 1) {
   const { days, maxRate } = getAttendanceFilterQs();
   const hint = document.getElementById('attendance-suspicious-hint');
   try {
-    const qs = new URLSearchParams();
-    qs.set('days', days);
-    qs.set('maxRate', maxRate);
-    qs.set('minAccountDays', '7');
-    qs.set('page', String(page));
-    qs.set('limit', String(ATTENDANCE_SUSPICIOUS_LIMIT));
-    const { data } = await api(`/attendance/suspicious?${qs.toString()}`);
+    const data = await fetchSuspiciousAttendance(page, { days, maxRate });
     const total = Number(data?.totalSuspicious ?? data?.pagination?.total ?? 0);
     document.getElementById('att-stat-suspicious').textContent = String(total);
     setNavBadge('badge-attendance-suspicious', total);

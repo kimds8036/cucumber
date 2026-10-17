@@ -1,5 +1,10 @@
-async function loadDashboard() {
+async function fetchDashboardStats() {
     const { data } = await api('/stats');
+    return data || {};
+  }
+
+  async function loadDashboard() {
+    const data = await fetchDashboardStats();
     document.getElementById('stat-today-new').textContent = String(data.todayNewReports || 0);
     document.getElementById('stat-pending-reports').textContent = String(data.pendingReports || 0);
     document.getElementById('stat-pending-appeals').textContent = String(data.pendingAppeals || 0);
@@ -44,11 +49,16 @@ async function loadDashboard() {
     loadOpsUserEcosystem();
   }
 
+  async function fetchOpsUserEcosystem() {
+    const { data } = await api('/analytics/user-ecosystem');
+    return data || {};
+  }
+
   async function loadOpsUserEcosystem() {
     const host = document.getElementById('ops-eco-items');
     if (!host) return;
     try {
-      const { data } = await api('/analytics/user-ecosystem');
+      const data = await fetchOpsUserEcosystem();
       const n = (v) => Number(v || 0).toLocaleString();
       const chips = [
         ['학생', n(data?.users)],
@@ -323,8 +333,13 @@ async function loadDashboard() {
   window.showOpsHub = showOpsHub;
   window.openOpsView = openOpsView;
 
-  async function loadOpsSchoolTerms() {
+  async function fetchOpsSchoolTerms() {
     const { data } = await api('/analytics/school-terms');
+    return data || {};
+  }
+
+  async function loadOpsSchoolTerms() {
+    const data = await fetchOpsSchoolTerms();
     const w = data?.window || {};
     const s = data?.summary || {};
     const kpis = document.getElementById('ops-terms-kpis');
@@ -607,13 +622,17 @@ async function loadDashboard() {
     return row.error_message || '-';
   }
 
+  async function fetchBatchJobs() {
+    const res = await api('/batch-jobs?limit=30');
+    return res?.data || {};
+  }
+
   async function loadBatchJobsOverview() {
     renderCronFlow(OPS_CRON_FALLBACK, { byStatus: [], pending: [] });
     renderCronSolo(OPS_CRON_FALLBACK.filter((j) => !CRON_MANAGED_KEYS.has(j.key) && j.key !== 'cron-manager'));
     let data = {};
     try {
-      const res = await api('/batch-jobs?limit=30');
-      data = res?.data || {};
+      data = await fetchBatchJobs();
     } catch (error) {
       console.warn('[Ops] batch-jobs', error?.message || error);
     }
@@ -954,8 +973,13 @@ async function loadDashboard() {
     renderCronSolo((jobs || []).filter((j) => !CRON_MANAGED_KEYS.has(j.key) && j.key !== 'cron-manager'));
   }
 
+  async function fetchTimerOps(days = 14) {
+    const { data } = await api(`/analytics/timer?days=${days}`);
+    return data || {};
+  }
+
   async function loadTimerOps() {
-    const { data } = await api('/analytics/timer?days=14');
+    const data = await fetchTimerOps(14);
     renderTimerKpi(data?.summary || {});
     const hint = document.getElementById('timer-ops-hint');
     const s = data?.summary || {};
@@ -971,8 +995,13 @@ async function loadDashboard() {
     renderTimerSessions(data?.recentSessions || []);
   }
 
-  async function loadStudyRoomOps() {
+  async function fetchStudyRoomOps() {
     const { data } = await api('/analytics/study-rooms');
+    return data || {};
+  }
+
+  async function loadStudyRoomOps() {
+    const data = await fetchStudyRoomOps();
     const set = (id, value) => {
       const el = document.getElementById(id);
       if (el) el.textContent = value;
@@ -1268,11 +1297,16 @@ async function loadDashboard() {
     `;
   }
 
+  async function fetchActivityOps(days = 14) {
+    const { data } = await api(`/analytics/activity?days=${days}`);
+    return data || {};
+  }
+
   async function loadActivityOps() {
     bindActivityFeedFilters();
     activityFeedPage = 1;
     try {
-      const { data } = await api('/analytics/activity?days=14');
+      const data = await fetchActivityOps(14);
       const s = data?.summary || {};
       const set = (id, value) => {
         const el = document.getElementById(id);
@@ -1349,8 +1383,13 @@ async function loadDashboard() {
     `).join('');
   }
 
+  async function fetchAnalyticsOverview(days = 14) {
+    const { data } = await api(`/analytics/overview?days=${days}`);
+    return data || {};
+  }
+
   async function loadAnalyticsOverview() {
-    const { data } = await api('/analytics/overview?days=14');
+    const data = await fetchAnalyticsOverview(14);
     window.__lastAnalyticsOverview = { data };
     renderAnalyticsKpi(data?.summary || {});
     renderAnalyticsLineChart(data?.series || []);
@@ -1358,8 +1397,13 @@ async function loadDashboard() {
     renderAnalyticsScreenRanking(data?.screenRanking || [], data?.screenHourlyByKey || {});
   }
 
+  async function fetchInstallLandingStats(days = 14) {
+    const { data } = await api(`/analytics/install-landing?days=${days}`);
+    return data || {};
+  }
+
   async function loadInstallLandingStats() {
-    const { data } = await api('/analytics/install-landing?days=14');
+    const data = await fetchInstallLandingStats(14);
     window.__lastInstallLandingStats = { data };
     renderInstallLandingKpi(data?.summary || {});
     renderInstallLandingChart(data?.series || [], data?.summary || {});
@@ -1367,9 +1411,14 @@ async function loadDashboard() {
     renderInstallDowChart(data?.byDow || []);
   }
 
+  async function fetchAppInstallFunnelStats(days = 14) {
+    const { data } = await api(`/analytics/app-install-funnel?days=${days}`);
+    return data || {};
+  }
+
   async function loadAppInstallFunnelStats() {
     try {
-      const { data } = await api('/analytics/app-install-funnel?days=14');
+      const data = await fetchAppInstallFunnelStats(14);
       const set = (id, v) => {
         const el = document.getElementById(id);
         if (el) el.textContent = typeof v === 'string' ? v : Number(v || 0).toLocaleString();
@@ -1996,9 +2045,14 @@ async function loadDashboard() {
     renderReports();
   }
 
-  async function doAction(id, action) {
-    const note = document.getElementById(`note-${id}`)?.value?.trim() || null;
-    const malicious = !!document.getElementById(`malicious-${id}`)?.checked;
+  async function doAction(id, action, values) {
+    const fromCaller = values != null && typeof values === 'object';
+    const note = fromCaller
+      ? (String(values.note || '').trim() || null)
+      : (document.getElementById(`note-${id}`)?.value?.trim() || null);
+    const malicious = fromCaller
+      ? !!values.malicious
+      : !!document.getElementById(`malicious-${id}`)?.checked;
     try {
       await api(`/reports/${id}`, {
         method: 'PATCH',
@@ -2010,8 +2064,10 @@ async function loadDashboard() {
       });
       await Promise.all([loadDashboard(), loadReports(), loadLogs()]);
       alert('처리되었습니다.');
+      return true;
     } catch (error) {
       alert(error.message);
+      return false;
     }
   }
 
@@ -2075,21 +2131,28 @@ async function loadDashboard() {
     if (event.target?.id === 'bulk-action-dialog-backdrop') closeBulkActionDialog();
   }
 
-  async function submitBulkActionDialog() {
-    const action = state.bulkActionMode;
-    if (!action) return;
+  async function submitBulkActionDialog(values) {
+    const fromCaller = values != null && typeof values === 'object';
+    const action = fromCaller && values.action ? values.action : state.bulkActionMode;
+    if (!action) return false;
     const loadedIds = new Set(state.reports.map((r) => String(r.id)));
-    const ids = [...state.selected].filter((id) => loadedIds.has(id)).map((v) => Number(v));
+    const ids = fromCaller && Array.isArray(values.ids)
+      ? values.ids.map((id) => Number(id)).filter((id) => Number.isFinite(id))
+      : [...state.selected].filter((id) => loadedIds.has(id)).map((v) => Number(v));
     if (!ids.length) {
       alert('선택된 신고가 없습니다.');
-      return;
+      return false;
     }
-    const note = String(document.getElementById('bulk-action-note-input')?.value || '').trim();
+    const note = fromCaller
+      ? String(values.note || '').trim()
+      : String(document.getElementById('bulk-action-note-input')?.value || '').trim();
     if (!note) {
       alert('처리 메모는 필수입니다.');
-      return;
+      return false;
     }
-    const malicious = !!document.getElementById('bulk-action-malicious-check')?.checked;
+    const malicious = fromCaller
+      ? !!values.malicious
+      : !!document.getElementById('bulk-action-malicious-check')?.checked;
     if (!confirm(`${ids.length}건을 일괄 ${action === 'confirm' ? '확정' : '기각'} 처리할까요?`)) return;
     try {
       await api(`/reports/bulk-${action}`, {
@@ -2100,13 +2163,27 @@ async function loadDashboard() {
       closeBulkActionDialog();
       await Promise.all([loadDashboard(), loadReports(), loadLogs()]);
       alert('일괄 처리되었습니다.');
+      return true;
     } catch (error) {
       alert(error.message);
+      return false;
     }
   }
 
   async function applyFilter() {
     await loadReports();
+  }
+
+  async function fetchPendingReports(filters = {}) {
+    const q = new URLSearchParams();
+    q.set('view', 'pending');
+    if (filters.reporter) q.set('reporter', filters.reporter);
+    if (filters.type) q.set('type', filters.type);
+    if (filters.reason) q.set('reason', filters.reason);
+    if (filters.fromDate) q.set('fromDate', filters.fromDate);
+    if (filters.toDate) q.set('toDate', filters.toDate);
+    const { data } = await api(`/reports?${q.toString()}`);
+    return data.reports || [];
   }
 
   async function loadReports() {
@@ -2115,15 +2192,7 @@ async function loadDashboard() {
     const reason = document.getElementById('filter-reason')?.value || '';
     const fromDate = document.getElementById('filter-from-date')?.value || '';
     const toDate = document.getElementById('filter-to-date')?.value || '';
-    const q = new URLSearchParams();
-    q.set('view', 'pending');
-    if (reporter) q.set('reporter', reporter);
-    if (type) q.set('type', type);
-    if (reason) q.set('reason', reason);
-    if (fromDate) q.set('fromDate', fromDate);
-    if (toDate) q.set('toDate', toDate);
-    const { data } = await api(`/reports?${q.toString()}`);
-    state.reports = data.reports || [];
+    state.reports = await fetchPendingReports({ reporter, type, reason, fromDate, toDate });
     if (!state.reports.some((r) => r.id === state.selectedReportId)) state.selectedReportId = null;
     renderReports();
   }
@@ -2232,21 +2301,25 @@ async function loadDashboard() {
     if (all) all.checked = state.processedReports.length > 0 && effectiveSelectedCount === state.processedReports.length;
   }
 
+  async function fetchProcessedReports(filters = {}) {
+    const q = new URLSearchParams();
+    q.set('view', 'processed');
+    if (filters.reporter) q.set('reporter', filters.reporter);
+    if (filters.type) q.set('type', filters.type);
+    if (filters.status) q.set('status', filters.status);
+    if (filters.fromDate) q.set('fromDate', filters.fromDate);
+    if (filters.toDate) q.set('toDate', filters.toDate);
+    const { data } = await api(`/reports?${q.toString()}`);
+    return data.reports || [];
+  }
+
   async function loadProcessedReports() {
     const reporter = document.getElementById('processed-search-reporter')?.value?.trim() || '';
     const type = document.getElementById('processed-filter-type')?.value || '';
     const status = document.getElementById('processed-filter-status')?.value || '';
     const fromDate = document.getElementById('processed-filter-from-date')?.value || '';
     const toDate = document.getElementById('processed-filter-to-date')?.value || '';
-    const q = new URLSearchParams();
-    q.set('view', 'processed');
-    if (reporter) q.set('reporter', reporter);
-    if (type) q.set('type', type);
-    if (status) q.set('status', status);
-    if (fromDate) q.set('fromDate', fromDate);
-    if (toDate) q.set('toDate', toDate);
-    const { data } = await api(`/reports?${q.toString()}`);
-    state.processedReports = data.reports || [];
+    state.processedReports = await fetchProcessedReports({ reporter, type, status, fromDate, toDate });
     state.processedSelected.clear();
     renderProcessedReports();
   }
@@ -2276,26 +2349,30 @@ async function loadDashboard() {
     }
   }
 
-  async function submitReopenDialog() {
-    const reportId = state.reopenReportId;
+  async function submitReopenDialog(values) {
+    const fromCaller = values != null && typeof values === 'object';
+    const reportId = fromCaller && values.reportId != null ? values.reportId : state.reopenReportId;
     const loadedIds = new Set(state.processedReports.map((r) => String(r.id)));
-    const selectedIds = [...state.processedSelected].filter((id) => loadedIds.has(id)).map((id) => Number(id));
-    const isBulk = state.reopenBulkMode === true;
-    if (!reportId && !isBulk) return;
-    const input = document.getElementById('reopen-note-input');
-    const trimmed = String(input?.value || '').trim();
+    const selectedIds = fromCaller && Array.isArray(values.ids)
+      ? values.ids.map((id) => Number(id)).filter((id) => Number.isFinite(id))
+      : [...state.processedSelected].filter((id) => loadedIds.has(id)).map((id) => Number(id));
+    const isBulk = fromCaller ? Array.isArray(values.ids) : state.reopenBulkMode === true;
+    if (!reportId && !isBulk) return false;
+    const trimmed = fromCaller
+      ? String(values.note || '').trim()
+      : String(document.getElementById('reopen-note-input')?.value || '').trim();
     if (!trimmed) {
       alert('재판정 메모는 필수입니다.');
-      return;
+      return false;
     }
     if (isBulk) {
       if (!selectedIds.length) {
         alert('선택된 신고가 없습니다.');
         return;
       }
-      if (!confirm(`${selectedIds.length}건을 미처리 상태로 일괄 재오픈할까요?`)) return;
+      if (!confirm(`${selectedIds.length}건을 미처리 상태로 일괄 재오픈할까요?`)) return false;
     } else {
-      if (!confirm(`#R-${reportId} 신고를 미처리 상태로 되돌릴까요?`)) return;
+      if (!confirm(`#R-${reportId} 신고를 미처리 상태로 되돌릴까요?`)) return false;
     }
     try {
       if (isBulk) {
@@ -2306,8 +2383,10 @@ async function loadDashboard() {
       await Promise.all([loadDashboard(), loadReports(), loadProcessedReports(), loadLogs()]);
       closeReopenDialog();
       alert(isBulk ? '선택 건을 미처리 상태로 되돌렸습니다.' : '미처리 상태로 되돌렸습니다.');
+      return true;
     } catch (error) {
       alert(error.message);
+      return false;
     }
   }
 

@@ -1,15 +1,31 @@
-async function loadInquiries() {
+async function fetchPendingInquiries(filters = {}) {
+    const qs = new URLSearchParams();
+    qs.set('view', 'pending');
+    if (filters.q) qs.set('q', filters.q);
+    if (filters.fromDate) qs.set('fromDate', filters.fromDate);
+    if (filters.toDate) qs.set('toDate', filters.toDate);
+    qs.set('limit', '50');
+    const { data } = await api(`/inquiries?${qs.toString()}`);
+    return data.inquiries || [];
+  }
+
+  async function fetchProcessedInquiries(filters = {}) {
+    const qs = new URLSearchParams();
+    qs.set('view', 'processed');
+    if (filters.q) qs.set('q', filters.q);
+    if (filters.status) qs.set('status', filters.status);
+    if (filters.fromDate) qs.set('fromDate', filters.fromDate);
+    if (filters.toDate) qs.set('toDate', filters.toDate);
+    qs.set('limit', '50');
+    const { data } = await api(`/inquiries?${qs.toString()}`);
+    return data.inquiries || [];
+  }
+
+  async function loadInquiries() {
     const q = document.getElementById('inquiry-search-q')?.value?.trim() || '';
     const fromDate = document.getElementById('inquiry-filter-from-date')?.value || '';
     const toDate = document.getElementById('inquiry-filter-to-date')?.value || '';
-    const qs = new URLSearchParams();
-    qs.set('view', 'pending');
-    if (q) qs.set('q', q);
-    if (fromDate) qs.set('fromDate', fromDate);
-    if (toDate) qs.set('toDate', toDate);
-    qs.set('limit', '50');
-    const { data } = await api(`/inquiries?${qs.toString()}`);
-    state.inquiries = data.inquiries || [];
+    state.inquiries = await fetchPendingInquiries({ q, fromDate, toDate });
     renderInquiries();
   }
 
@@ -18,15 +34,7 @@ async function loadInquiries() {
     const status = document.getElementById('processed-inquiry-filter-status')?.value || '';
     const fromDate = document.getElementById('processed-inquiry-filter-from-date')?.value || '';
     const toDate = document.getElementById('processed-inquiry-filter-to-date')?.value || '';
-    const qs = new URLSearchParams();
-    qs.set('view', 'processed');
-    if (q) qs.set('q', q);
-    if (status) qs.set('status', status);
-    if (fromDate) qs.set('fromDate', fromDate);
-    if (toDate) qs.set('toDate', toDate);
-    qs.set('limit', '50');
-    const { data } = await api(`/inquiries?${qs.toString()}`);
-    state.processedInquiries = data.inquiries || [];
+    state.processedInquiries = await fetchProcessedInquiries({ q, status, fromDate, toDate });
     renderProcessedInquiries();
   }
 
@@ -568,13 +576,16 @@ async function loadInquiries() {
   function closeInquiryReopenDialogByBackdrop(e) {
     if (e.target === e.currentTarget) closeInquiryReopenDialog();
   }
-  async function submitInquiryReopenDialog() {
-    const id = state.inquiryReopenId;
-    if (!id) return;
-    const note = document.getElementById('inquiry-reopen-note-input')?.value?.trim();
+  async function submitInquiryReopenDialog(values) {
+    const fromCaller = values != null && typeof values === 'object';
+    const id = fromCaller && values.id != null ? values.id : state.inquiryReopenId;
+    if (!id) return false;
+    const note = fromCaller
+      ? String(values.note || '').trim()
+      : document.getElementById('inquiry-reopen-note-input')?.value?.trim();
     if (!note) {
       alert('재오픈 사유를 입력해주세요.');
-      return;
+      return false;
     }
     try {
       await api(`/inquiries/${id}/reopen`, {
@@ -584,8 +595,10 @@ async function loadInquiries() {
       closeInquiryReopenDialog();
       await Promise.all([loadDashboard(), loadInquiries(), loadProcessedInquiries(), loadLogs()]);
       alert('문의를 미처리 상태로 되돌렸습니다.');
+      return true;
     } catch (error) {
       alert(error.message);
+      return false;
     }
   }
 
@@ -602,14 +615,19 @@ async function loadInquiries() {
   function closeInquiryBulkCloseDialogByBackdrop(e) {
     if (e.target === e.currentTarget) closeInquiryBulkCloseDialog();
   }
-  async function submitInquiryBulkCloseDialog() {
+  async function submitInquiryBulkCloseDialog(values) {
+    const fromCaller = values != null && typeof values === 'object';
     const loadedIds = new Set(state.inquiries.map((i) => String(i.id)));
-    const ids = [...state.inquirySelected].filter((id) => loadedIds.has(id)).map((v) => Number(v));
+    const ids = fromCaller && Array.isArray(values.ids)
+      ? values.ids.map((id) => Number(id)).filter((id) => Number.isFinite(id))
+      : [...state.inquirySelected].filter((id) => loadedIds.has(id)).map((v) => Number(v));
     if (!ids.length) {
       closeInquiryBulkCloseDialog();
-      return;
+      return false;
     }
-    const note = document.getElementById('inquiry-bulk-close-note-input')?.value?.trim() || null;
+    const note = fromCaller
+      ? (String(values.note || '').trim() || null)
+      : (document.getElementById('inquiry-bulk-close-note-input')?.value?.trim() || null);
     try {
       const { data } = await api(`/inquiries/bulk-close`, {
         method: 'POST',
@@ -619,8 +637,10 @@ async function loadInquiries() {
       state.inquirySelected.clear();
       await Promise.all([loadDashboard(), loadInquiries(), loadProcessedInquiries(), loadLogs()]);
       alert(`${data?.processed ?? 0}건 종결 처리되었습니다.`);
+      return true;
     } catch (error) {
       alert(error.message);
+      return false;
     }
   }
 

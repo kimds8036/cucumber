@@ -102,7 +102,19 @@ function AttendanceCalendar({ attendance }) {
   );
 }
 
-export default function UserLookup() {
+function Fold({ title, active, mobile, children }) {
+  if (!mobile && !active) return null;
+  if (!mobile) return children;
+  return (
+    <details className="m-fold" open={title === '개요'}>
+      <summary>{title}</summary>
+      {children}
+    </details>
+  );
+}
+
+export default function UserLookup({ mode = 'desktop' }) {
+  const mobile = mode === 'mobile';
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('all');
   const [page, setPage] = useState(1);
@@ -136,7 +148,10 @@ export default function UserLookup() {
   };
 
   const loadDetail = async (id, meta) => {
-    if (listRef.current) scrollRef.current = listRef.current.scrollTop;
+    const scroller = document.querySelector('.m-body');
+    if (scroller) scrollRef.current = scroller.scrollTop;
+    else if (listRef.current) scrollRef.current = listRef.current.scrollTop;
+    if (mobile) history.pushState({ adminLookupDetail: id }, '');
     setSelectedId(id);
     setSelectedMeta(meta || null);
     setSection('overview');
@@ -159,7 +174,16 @@ export default function UserLookup() {
       loadList(1, query, filter).catch((err) => setError(err?.message || '목록을 불러오지 못했습니다.'));
     };
     window.addEventListener('admin:user-lookup-open', open);
-    if (window.__adminOpsView === 'user') open();
+    if (!mobile && window.__adminOpsView === 'user') open();
+    if (mobile) open();
+    const onPop = () => {
+      setNarrowDetail(false);
+      requestAnimationFrame(() => {
+        const scroller = document.querySelector('.m-body');
+        if (scroller) scroller.scrollTop = scrollRef.current;
+      });
+    };
+    if (mobile) window.addEventListener('popstate', onPop);
     const onKey = (event) => {
       if (event.key === 'Escape') setPhotoUrl('');
     };
@@ -167,8 +191,9 @@ export default function UserLookup() {
     return () => {
       window.removeEventListener('admin:user-lookup-open', open);
       window.removeEventListener('keydown', onKey);
+      if (mobile) window.removeEventListener('popstate', onPop);
     };
-  }, []);
+  }, [mobile]);
 
   const user = detail?.user;
   const stats = detail?.stats || {};
@@ -190,7 +215,7 @@ export default function UserLookup() {
   };
 
   return (
-    <div className={`user-lookup ${narrowDetail ? 'is-detail' : ''}`}>
+    <div className={`user-lookup ${narrowDetail ? 'is-detail' : ''} ${mobile ? 'is-mobile' : ''}`}>
       <aside className="user-lookup-list">
         <form
           className="lookup-search"
@@ -261,7 +286,7 @@ export default function UserLookup() {
       </aside>
       <section className="user-lookup-detail">
         {narrowDetail ? (
-          <button type="button" className="lookup-back" onClick={() => setNarrowDetail(false)}>
+          <button type="button" className="lookup-back" onClick={() => (mobile ? history.back() : setNarrowDetail(false))}>
             <ChevronLeft size={16} /> 목록
           </button>
         ) : null}
@@ -305,7 +330,7 @@ export default function UserLookup() {
                 );
               })}
             </div>
-            {section === 'overview' ? (
+            <Fold title="개요" active={section === 'overview'} mobile={mobile}>
               <div className="lookup-grid">
                 <article className="lookup-card">
                   <h3>프로필 요약</h3>
@@ -339,8 +364,8 @@ export default function UserLookup() {
                   })}
                 </article>
               </div>
-            ) : null}
-            {section === 'profile' ? (
+            </Fold>
+            <Fold title="프로필" active={section === 'profile'} mobile={mobile}>
               <article className="lookup-card">
                 <h3>앱에 보이는 프로필</h3>
                 <Avatar url={user.avatarUrl} name={user.username} color={user.profileColorHex} onZoom={setPhotoUrl} />
@@ -352,8 +377,8 @@ export default function UserLookup() {
                 <p>가입 {formatWhen(user.createdAt)}</p>
                 <p className="lookup-muted">소개 문구 필드는 앱 프로필에 없습니다.</p>
               </article>
-            ) : null}
-            {section === 'devices' ? (
+            </Fold>
+            <Fold title="기기" active={section === 'devices'} mobile={mobile}>
               <div className="console-table-wrap">
                 <table className="console-table">
                   <thead>
@@ -374,8 +399,8 @@ export default function UserLookup() {
                   </tbody>
                 </table>
               </div>
-            ) : null}
-            {section === 'badges' ? (
+            </Fold>
+            <Fold title="배지" active={section === 'badges'} mobile={mobile}>
               <div className="lookup-card">
                 {(badges.items || []).map((badge) => {
                   const current = Number(badge.progress?.current || 0);
@@ -392,14 +417,14 @@ export default function UserLookup() {
                   );
                 })}
               </div>
-            ) : null}
-            {section === 'attendance' ? (
+            </Fold>
+            <Fold title="등교" active={section === 'attendance'} mobile={mobile}>
               <article className="lookup-card">
                 <p className="lookup-muted">초록은 체크인, 테두리는 등교일 미체크, 흐린 칸은 주말·방학·휴업입니다.</p>
                 <AttendanceCalendar attendance={detail.attendance} />
               </article>
-            ) : null}
-            {section === 'timetable' ? (
+            </Fold>
+            <Fold title="시간표" active={section === 'timetable'} mobile={mobile}>
               <article className="lookup-card">
                 {detail.timetable?.source?.override ? (
                   <div className="console-table-wrap">
@@ -424,7 +449,7 @@ export default function UserLookup() {
                   <p>{detail.timetable?.source?.neis ? 'NEIS 있음 · 앱에서 시간표 미사용' : '등록된 시간표가 없습니다.'}</p>
                 )}
               </article>
-            ) : null}
+            </Fold>
           </>
         )}
       </section>

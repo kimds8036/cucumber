@@ -26,18 +26,26 @@ function whackStatusPill(status) {
   return 'pill pill-danger';
 }
 
+async function fetchHallOfFame(query = '') {
+  const q = encodeURIComponent(query || '');
+  const [{ data: groupData }, { data: feedbackData }] = await Promise.all([
+    api(`/hall-of-fame/developer-feedback/groups?limit=100&q=${q}`),
+    api(`/hall-of-fame/developer-feedback?limit=120&q=${q}`),
+  ]);
+  return {
+    groups: groupData.items || [],
+    feedback: feedbackData.items || [],
+  };
+}
+
 async function loadHallOfFamePanel() {
   const host = document.getElementById('hall-of-fame-host');
   if (!host) return;
   host.innerHTML = '<div class="txt-muted">불러오는 중…</div>';
   try {
-    const q = encodeURIComponent(whackQuery || '');
-    const [{ data: groupData }, { data: feedbackData }] = await Promise.all([
-      api(`/hall-of-fame/developer-feedback/groups?limit=100&q=${q}`),
-      api(`/hall-of-fame/developer-feedback?limit=120&q=${q}`),
-    ]);
-    whackGroups = groupData.items || [];
-    whackFeedbackItems = feedbackData.items || [];
+    const loaded = await fetchHallOfFame(whackQuery);
+    whackGroups = loaded.groups;
+    whackFeedbackItems = loaded.feedback;
     if (whackSelectedGroupId && whackGroups.some((g) => g.id === whackSelectedGroupId)) {
       await whackSelectGroup(whackSelectedGroupId, { rerender: false });
     } else if (whackGroups.length) {
@@ -244,9 +252,18 @@ async function whackMergeSelected() {
   }
 }
 
-async function whackSaveResponse() {
-  if (!whackSelectedGroupId) return;
-  whackReadResponseFromDom();
+async function whackSaveResponse(values) {
+  const fromCaller = values != null && typeof values === 'object';
+  if (fromCaller) {
+    whackSelectedGroupId = values.id || whackSelectedGroupId;
+    whackResponseDraft = {
+      adminResponseStatus: values.status || 'none',
+      adminResponse: String(values.text || '').trim(),
+    };
+  } else {
+    whackReadResponseFromDom();
+  }
+  if (!whackSelectedGroupId) return false;
   try {
     await api(`/hall-of-fame/developer-feedback/groups/${whackSelectedGroupId}`, {
       method: 'PATCH',
@@ -254,8 +271,10 @@ async function whackSaveResponse() {
     });
     await loadHallOfFamePanel();
     alert('답변이 저장되었습니다.');
+    return true;
   } catch (error) {
     alert(error.message);
+    return false;
   }
 }
 

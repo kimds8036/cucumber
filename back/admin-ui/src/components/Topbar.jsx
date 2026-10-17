@@ -1,4 +1,4 @@
-import { Search } from 'lucide-react';
+import { Menu, Search } from 'lucide-react';
 import { ROLE_LABELS } from '../nav.js';
 
 export default function Topbar({ crumbs, role, name, envLabel, sessionLabel, onSearch }) {
@@ -6,6 +6,14 @@ export default function Topbar({ crumbs, role, name, envLabel, sessionLabel, onS
   const prod = env.startsWith('PROD');
   return (
     <header className="console-topbar">
+      <button
+        type="button"
+        className="console-menu-btn"
+        aria-label="메뉴"
+        onClick={() => window.toggleAdminSidebar?.()}
+      >
+        <Menu size={18} strokeWidth={1.75} />
+      </button>
       <div className="console-crumbs">
         {crumbs.map((crumb, index) => (
           <span key={`${crumb}-${index}`}>
