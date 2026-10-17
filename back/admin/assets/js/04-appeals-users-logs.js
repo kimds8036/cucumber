@@ -1,6 +1,10 @@
-async function loadAppeals() {
+async function fetchAppeals() {
     const { data } = await api('/appeals');
-    const list = data.appeals || [];
+    return data.appeals || [];
+  }
+
+  async function loadAppeals() {
+    const list = await fetchAppeals();
     const container = document.getElementById('appeals-list');
     if (!list.length) {
       container.innerHTML = `<div class="txt-muted">이의신청이 없습니다.</div>`;
@@ -31,8 +35,11 @@ async function loadAppeals() {
     `).join('');
   }
 
-  async function appealAction(id, action) {
-    const note = document.getElementById(`note-appeal-${id}`)?.value?.trim() || null;
+  async function appealAction(id, action, values) {
+    const fromCaller = values != null && typeof values === 'object';
+    const note = fromCaller
+      ? (String(values.note || '').trim() || null)
+      : (document.getElementById(`note-appeal-${id}`)?.value?.trim() || null);
     try {
       await api(`/appeals/${id}`, {
         method: 'PATCH',
@@ -40,9 +47,28 @@ async function loadAppeals() {
       });
       await Promise.all([loadDashboard(), loadAppeals(), loadLogs()]);
       alert('이의신청 처리가 완료되었습니다.');
+      return true;
     } catch (error) {
       alert(error.message);
+      return false;
     }
+  }
+
+  async function fetchUsers(filters = {}) {
+    const qs = new URLSearchParams();
+    if (filters.q) qs.set('q', filters.q);
+    if (filters.filter) qs.set('filter', filters.filter);
+    if (filters.minViolationWarning) qs.set('minViolationWarning', filters.minViolationWarning);
+    if (filters.minFalseReportWarning) qs.set('minFalseReportWarning', filters.minFalseReportWarning);
+    if (filters.minReported) qs.set('minReported', filters.minReported);
+    if (filters.sanction) qs.set('sanction', filters.sanction);
+    const { data } = await api(`/users?${qs.toString()}`);
+    let list = data.users || [];
+    const minBlockedByNum = Number(filters.minBlockedBy);
+    if (Number.isFinite(minBlockedByNum) && minBlockedByNum > 0) {
+      list = list.filter((u) => Number(u.blocked_by_count || 0) >= minBlockedByNum);
+    }
+    return list;
   }
 
   async function loadUsers() {
@@ -53,19 +79,15 @@ async function loadAppeals() {
     const minReported = document.getElementById('users-min-reported')?.value?.trim() || '';
     const minBlockedBy = document.getElementById('users-min-blocked-by')?.value?.trim() || '';
     const sanction = document.getElementById('users-sanction-filter')?.value || '';
-    const qs = new URLSearchParams();
-    if (qInput) qs.set('q', qInput);
-    if (filter) qs.set('filter', filter);
-    if (minViolationWarning) qs.set('minViolationWarning', minViolationWarning);
-    if (minFalseReportWarning) qs.set('minFalseReportWarning', minFalseReportWarning);
-    if (minReported) qs.set('minReported', minReported);
-    if (sanction) qs.set('sanction', sanction);
-    const { data } = await api(`/users?${qs.toString()}`);
-    let list = data.users || [];
-    const minBlockedByNum = Number(minBlockedBy);
-    if (Number.isFinite(minBlockedByNum) && minBlockedByNum > 0) {
-      list = list.filter((u) => Number(u.blocked_by_count || 0) >= minBlockedByNum);
-    }
+    const list = await fetchUsers({
+      q: qInput,
+      filter,
+      minViolationWarning,
+      minFalseReportWarning,
+      minReported,
+      minBlockedBy,
+      sanction,
+    });
     state.usersById = new Map(list.map((u) => [Number(u.id), u]));
     const container = document.getElementById('users-list');
     if (!list.length) {

@@ -141,12 +141,11 @@ function adminUrl(subpath) {
 
   function updateSessionCountdown() {
     const el = document.getElementById('session-countdown');
-    if (!el) return;
     const remainMs = Math.max(0, sessionExpiresAt - Date.now());
     const totalSec = Math.ceil(remainMs / 1000);
     const min = String(Math.floor(totalSec / 60)).padStart(2, '0');
     const sec = String(totalSec % 60).padStart(2, '0');
-    el.textContent = `${min}:${sec}`;
+    if (el) el.textContent = `${min}:${sec}`;
     if (remainMs <= 0) {
       alert('관리자 세션이 만료되었습니다. 다시 로그인해 주세요.');
       adminLogout();

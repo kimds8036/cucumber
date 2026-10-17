@@ -612,13 +612,17 @@ async function fetchDashboardStats() {
     return row.error_message || '-';
   }
 
+  async function fetchBatchJobs() {
+    const res = await api('/batch-jobs?limit=30');
+    return res?.data || {};
+  }
+
   async function loadBatchJobsOverview() {
     renderCronFlow(OPS_CRON_FALLBACK, { byStatus: [], pending: [] });
     renderCronSolo(OPS_CRON_FALLBACK.filter((j) => !CRON_MANAGED_KEYS.has(j.key) && j.key !== 'cron-manager'));
     let data = {};
     try {
-      const res = await api('/batch-jobs?limit=30');
-      data = res?.data || {};
+      data = await fetchBatchJobs();
     } catch (error) {
       console.warn('[Ops] batch-jobs', error?.message || error);
     }
@@ -2257,21 +2261,25 @@ async function fetchDashboardStats() {
     if (all) all.checked = state.processedReports.length > 0 && effectiveSelectedCount === state.processedReports.length;
   }
 
+  async function fetchProcessedReports(filters = {}) {
+    const q = new URLSearchParams();
+    q.set('view', 'processed');
+    if (filters.reporter) q.set('reporter', filters.reporter);
+    if (filters.type) q.set('type', filters.type);
+    if (filters.status) q.set('status', filters.status);
+    if (filters.fromDate) q.set('fromDate', filters.fromDate);
+    if (filters.toDate) q.set('toDate', filters.toDate);
+    const { data } = await api(`/reports?${q.toString()}`);
+    return data.reports || [];
+  }
+
   async function loadProcessedReports() {
     const reporter = document.getElementById('processed-search-reporter')?.value?.trim() || '';
     const type = document.getElementById('processed-filter-type')?.value || '';
     const status = document.getElementById('processed-filter-status')?.value || '';
     const fromDate = document.getElementById('processed-filter-from-date')?.value || '';
     const toDate = document.getElementById('processed-filter-to-date')?.value || '';
-    const q = new URLSearchParams();
-    q.set('view', 'processed');
-    if (reporter) q.set('reporter', reporter);
-    if (type) q.set('type', type);
-    if (status) q.set('status', status);
-    if (fromDate) q.set('fromDate', fromDate);
-    if (toDate) q.set('toDate', toDate);
-    const { data } = await api(`/reports?${q.toString()}`);
-    state.processedReports = data.reports || [];
+    state.processedReports = await fetchProcessedReports({ reporter, type, status, fromDate, toDate });
     state.processedSelected.clear();
     renderProcessedReports();
   }
@@ -2315,16 +2323,16 @@ async function fetchDashboardStats() {
       : String(document.getElementById('reopen-note-input')?.value || '').trim();
     if (!trimmed) {
       alert('재판정 메모는 필수입니다.');
-      return;
+      return false;
     }
     if (isBulk) {
       if (!selectedIds.length) {
         alert('선택된 신고가 없습니다.');
         return;
       }
-      if (!confirm(`${selectedIds.length}건을 미처리 상태로 일괄 재오픈할까요?`)) return;
+      if (!confirm(`${selectedIds.length}건을 미처리 상태로 일괄 재오픈할까요?`)) return false;
     } else {
-      if (!confirm(`#R-${reportId} 신고를 미처리 상태로 되돌릴까요?`)) return;
+      if (!confirm(`#R-${reportId} 신고를 미처리 상태로 되돌릴까요?`)) return false;
     }
     try {
       if (isBulk) {
@@ -2335,8 +2343,10 @@ async function fetchDashboardStats() {
       await Promise.all([loadDashboard(), loadReports(), loadProcessedReports(), loadLogs()]);
       closeReopenDialog();
       alert(isBulk ? '선택 건을 미처리 상태로 되돌렸습니다.' : '미처리 상태로 되돌렸습니다.');
+      return true;
     } catch (error) {
       alert(error.message);
+      return false;
     }
   }
 

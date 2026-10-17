@@ -25,7 +25,8 @@ export default function App() {
   const [palette, setPalette] = useState(false);
   const [sessionLabel, setSessionLabel] = useState('');
   const collapsed = false;
-  const isMobile = useNarrow(768);
+  const narrow = useNarrow(768);
+  const [isMobile, setIsMobile] = useState(narrow);
 
   useEffect(() => {
     const onPage = (event) => {
@@ -73,6 +74,11 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const timer = window.setTimeout(() => setIsMobile(narrow), 350);
+    return () => window.clearTimeout(timer);
+  }, [narrow]);
+
+  useEffect(() => {
     document.body.classList.toggle('admin-is-mobile', isMobile);
     if (isMobile) document.body.classList.remove('sidebar-open');
     return () => document.body.classList.remove('admin-is-mobile');
@@ -109,6 +115,7 @@ export default function App() {
         role={role}
         name={name}
         badges={badges}
+        health={health}
         sessionLabel={sessionLabel ? `세션 ${sessionLabel}` : '세션'}
         onLogout={() => window.adminLogout?.()}
         onExtend={() => window.extendAdminSession?.()}

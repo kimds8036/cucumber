@@ -1,17 +1,21 @@
-async function loadStudentIds() {
+async function fetchStudentIds(filters = {}) {
+    const qs = new URLSearchParams();
+    qs.set('status', filters.status || 'pending');
+    qs.set('purpose', 'signup');
+    qs.set('limit', '50');
+    if (filters.q) qs.set('q', filters.q);
+    const { data } = await api(`/signup-student-ids?${qs.toString()}`);
+    return data.submissions || [];
+  }
+
+  async function loadStudentIds() {
     const status = document.getElementById('student-id-filter')?.value || 'pending';
     const q = document.getElementById('student-id-search-q')?.value?.trim() || '';
     const host = document.getElementById('student-id-list');
     if (!host) return;
     host.innerHTML = '<p class="txt-muted">불러오는 중…</p>';
     try {
-      const qs = new URLSearchParams();
-      qs.set('status', status);
-      qs.set('purpose', 'signup');
-      qs.set('limit', '50');
-      if (q) qs.set('q', q);
-      const { data } = await api(`/signup-student-ids?${qs.toString()}`);
-      state.studentIdSubmissions = data.submissions || [];
+      state.studentIdSubmissions = await fetchStudentIds({ status, q });
       renderStudentIds();
       if (status === 'pending') {
         setNavBadge('badge-student-ids', state.studentIdSubmissions.length);
@@ -220,7 +224,7 @@ async function loadStudentIds() {
   }
 
   async function approveStudentId(id, listKind = 'signup') {
-    if (!confirm('이 학생증을 승인하시겠습니까?')) return;
+    if (!confirm('이 학생증을 승인하시겠습니까?')) return false;
     try {
       await api(`/signup-student-ids/${id}`, {
         method: 'PATCH',
@@ -229,8 +233,10 @@ async function loadStudentIds() {
       if (listKind === 'reverification') await loadReverificationIds();
       else await loadStudentIds();
       alert('승인되었습니다.');
+      return true;
     } catch (e) {
       alert(e.message);
+      return false;
     }
   }
 
@@ -292,6 +298,10 @@ async function loadStudentIds() {
     const fromCaller = values != null && typeof values === 'object';
     const targetId = fromCaller && values.id != null ? values.id : pendingStudentIdRejectId;
     if (!targetId) return false;
+    if (fromCaller) {
+      if (values.registeredName != null) pendingStudentIdRejectRegisteredName = String(values.registeredName).trim();
+      if (values.schoolName != null) pendingStudentIdRejectSchoolName = String(values.schoolName).trim();
+    }
     const sel = fromCaller ? values.reason : document.getElementById('student-id-reject-reason').value;
     let note = '';
     if (sel === 'custom') {
@@ -300,7 +310,7 @@ async function loadStudentIds() {
         : document.getElementById('student-id-reject-custom').value.trim();
       if (!note) {
         alert('거절 사유를 입력해 주세요.');
-        return;
+        return false;
       }
     } else if (sel === 'name_mismatch') {
       const idName = fromCaller
@@ -308,14 +318,14 @@ async function loadStudentIds() {
         : (document.getElementById('student-id-reject-id-name')?.value.trim() || '');
       if (!idName) {
         alert('학생증에 적힌 이름을 입력해 주세요.');
-        return;
+        return false;
       }
       note = buildNameMismatchRejectNote(pendingStudentIdRejectRegisteredName, idName);
     } else {
       note = buildStudentIdRejectNote(sel);
       if (!note) {
         alert('거절 사유를 선택해 주세요.');
-        return;
+        return false;
       }
     }
     try {
@@ -327,7 +337,9 @@ async function loadStudentIds() {
       if (pendingStudentIdRejectListKind === 'reverification') await loadReverificationIds();
       else await loadStudentIds();
       alert('거절 처리되었습니다.');
+      return true;
     } catch (e) {
       alert(e.message);
+      return false;
     }
   }
