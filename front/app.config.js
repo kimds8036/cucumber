@@ -53,6 +53,7 @@ export default ({ config }) => ({
         ITSAppUsesNonExemptEncryption: false,
       },
       bundleIdentifier: 'com.ucost.YouthPaper',
+      appStoreUrl: 'https://apps.apple.com/app/id6770454607',
       splash: {
         image: './assets/splash-icon-android.png',
         resizeMode: 'contain',
@@ -88,6 +89,8 @@ export default ({ config }) => ({
         'android.permission.READ_MEDIA_IMAGES',
       ],
       package: 'com.ucost.YouthPaper',
+      playStoreUrl:
+        'https://play.google.com/store/apps/details?id=com.ucost.YouthPaper',
       softwareKeyboardLayoutMode: 'pan',
     },
 

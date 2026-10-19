@@ -7,7 +7,7 @@
  * 테스트: REVIEW_PROMPT_TEST_ALWAYS=true 이면 이용일 무시·세션당 1회
  * 운영(false): 누적 이용 10일(연속 X) + 응답 후 90일 쿨다운
  */
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -76,6 +76,7 @@ export default function InAppReviewPrompt() {
   const [stars, setStars] = useState(3);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const pendingStoreReview = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -99,28 +100,39 @@ export default function InAppReviewPrompt() {
     await markReviewPromptDeferred();
   }, []);
 
+  const openStoreReview = useCallback(() => {
+    void (async () => {
+      const result = await requestAppReview({ openStoreFallback: true });
+      if (__DEV__) {
+        Alert.alert(
+          '[DEV] 스토어 리뷰',
+          result === 'in_app'
+            ? 'requestReview() 호출됨.\n실제 별점/리뷰 작성 여부는 앱이 알 수 없습니다.\n모달이 안 보이면 OS 할당량·로컬 설치 제한일 수 있습니다.'
+            : result === 'store'
+              ? '네이티브 불가 → 스토어 페이지를 열었습니다.'
+              : '네이티브·스토어 모두 실패했습니다.',
+        );
+      }
+    })();
+  }, []);
+
+  const onPopupDismissed = useCallback(() => {
+    if (!pendingStoreReview.current) return;
+    pendingStoreReview.current = false;
+    // Modal이 내린 다음 프레임에 요청해야 iOS·Android가 리뷰 창을 띄운다.
+    requestAnimationFrame(() => {
+      setTimeout(openStoreReview, 80);
+    });
+  }, [openStoreReview]);
+
   const onLike = async () => {
     if (submitting) return;
     setSubmitting(true);
     try {
+      pendingStoreReview.current = true;
       setVisible(false);
       // 스토어에 실제 리뷰를 남겼는지는 OS가 알려주지 않음 → 영구 숨김 X, 쿨다운만
       await markReviewPromptNativeAsked();
-      setTimeout(() => {
-        void (async () => {
-          const result = await requestAppReview({ openStoreFallback: true });
-          if (__DEV__) {
-            Alert.alert(
-              '[DEV] 스토어 리뷰',
-              result === 'in_app'
-                ? 'requestReview() 호출됨.\n실제 별점/리뷰 작성 여부는 앱이 알 수 없습니다.\n모달이 안 보이면 OS 할당량·로컬 설치 제한일 수 있습니다.'
-                : result === 'store'
-                  ? '네이티브 불가 → 스토어 페이지를 열었습니다.'
-                  : '네이티브·스토어 모두 실패했습니다.',
-            );
-          }
-        })();
-      }, 350);
     } finally {
       setSubmitting(false);
     }
@@ -172,6 +184,7 @@ export default function InAppReviewPrompt() {
       onClose={() => {}}
       dismissOnBackdrop={false}
       dismissOnBackPress={false}
+      onDismissed={onPopupDismissed}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
