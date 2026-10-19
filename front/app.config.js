@@ -20,7 +20,7 @@ export default ({ config }) => ({
     name: 'Youth Paper',
     slug: 'youth-paper',
     scheme: 'youthpaper',
-    version: '2.0.5',
+    version: '2.0.6',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
@@ -34,7 +34,7 @@ export default ({ config }) => ({
 
     ios: {
       supportsTablet: true,
-      buildNumber: '54',
+      buildNumber: '55',
       usesAppleSignIn: true,
       // iOS 전용 아이콘 (안드로이드·공통 icon.png 와 분리)
       icon: './assets/icon-ios.png',
@@ -53,6 +53,7 @@ export default ({ config }) => ({
         ITSAppUsesNonExemptEncryption: false,
       },
       bundleIdentifier: 'com.ucost.YouthPaper',
+      appStoreUrl: 'https://apps.apple.com/app/id6770454607',
       splash: {
         image: './assets/splash-icon-android.png',
         resizeMode: 'contain',
@@ -61,7 +62,7 @@ export default ({ config }) => ({
     },
 
     android: {
-      versionCode: 42,
+      versionCode: 43,
       usesCleartextTraffic: !isProduction,
       // (선택) 안드로이드도 같은 방식으로 secret 적용 가능
       googleServicesFile:
@@ -88,6 +89,8 @@ export default ({ config }) => ({
         'android.permission.READ_MEDIA_IMAGES',
       ],
       package: 'com.ucost.YouthPaper',
+      playStoreUrl:
+        'https://play.google.com/store/apps/details?id=com.ucost.YouthPaper',
       softwareKeyboardLayoutMode: 'pan',
     },
 

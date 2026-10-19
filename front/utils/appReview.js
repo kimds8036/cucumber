@@ -16,10 +16,11 @@ function loadStoreReview() {
   }
 }
 
-const STORAGE_KEY = '@youthpaper/store_review_meta_v1';
+/** v2: 이전 이용일·쿨다운·거절 기록은 무시하고 이 버전부터 다시 센다 */
+const STORAGE_KEY = '@youthpaper/store_review_meta_v2';
 const FEEDBACK_KEY = '@youthpaper/in_app_review_feedback_v1';
 /** 앱을 연 날짜(서울) 목록 — 누적 이용일 카운트 */
-const ACTIVE_DAYS_KEY = 'yp_review_prompt_active_days_v1';
+const ACTIVE_DAYS_KEY = 'yp_review_prompt_active_days_v2';
 
 /** 회초리 content 한도 (서버와 동일) */
 const WHACK_CONTENT_MAX = 50;
@@ -82,12 +83,22 @@ async function writeMeta(patch) {
   return next;
 }
 
+const IOS_WRITE_REVIEW_URL =
+  'itms-apps://apps.apple.com/app/id6770454607?action=write-review';
+
 export async function openStoreListing() {
-  const url = getStoreUrlForPlatform(Platform.OS);
+  const httpsUrl = getStoreUrlForPlatform(Platform.OS);
+  const url = Platform.OS === 'ios' ? IOS_WRITE_REVIEW_URL : httpsUrl;
   try {
     await Linking.openURL(url);
   } catch {
-    /* ignore */
+    if (url !== httpsUrl) {
+      try {
+        await Linking.openURL(httpsUrl);
+      } catch {
+        /* ignore */
+      }
+    }
   }
 }
 
