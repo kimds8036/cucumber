@@ -214,6 +214,7 @@ function TimetablePreview({ timetable, loading }) {
 }
 
 export default function TimetabelChoice({ navigation, route }) {
+  const { width } = useWindowDimensions();
   const [autoLoading, setAutoLoading] = useState(false);
   const [showAutoAddedModal, setShowAutoAddedModal] = useState(false);
   const [showAnomalyConfirmModal, setShowAnomalyConfirmModal] = useState(false);
