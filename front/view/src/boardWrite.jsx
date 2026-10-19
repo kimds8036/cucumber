@@ -20,7 +20,7 @@ import {
 } from 'react-native-keyboard-controller';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { StackActions } from '@react-navigation/native';
+import { CommonActions, StackActions } from '@react-navigation/native';
 import SubHeader from '../frame/subHeader';
 import SortChips from '../../components/common/SortChips';
 import ImageViewer from './ImageViewer';
@@ -63,6 +63,10 @@ const BoardWrite = ({ navigation, route }) => {
     [width, normalize],
   );
 
+  const boardContext = route?.params?.boardContext || 'national';
+  const contentPlaceholder =
+    String(route?.params?.contentPlaceholder || '').trim() ||
+    '내용을 입력해 주세요';
   const [content, setContent] = useState('');
   const [hashtags, setHashtags] = useState([]); // 추가된 해시태그 배열 (서버에는 tags로 전달)
   const [hashtagInput, setHashtagInput] = useState(''); // 입력 중인 해시태그
@@ -76,7 +80,6 @@ const BoardWrite = ({ navigation, route }) => {
   const [pollOptions, setPollOptions] = useState(createPollOptions);
   const [pollMulti, setPollMulti] = useState(false);
   const [viewerUri, setViewerUri] = useState(null);
-  const boardContext = route?.params?.boardContext || 'national';
   const [selectedBoard, setSelectedBoard] = useState('national');
   const scrollRef = useRef(null);
   const bodyInputRef = useRef(null);
@@ -390,6 +393,15 @@ const BoardWrite = ({ navigation, route }) => {
         {
           text: '확인',
           onPress: () => {
+            if (route?.params?.afterSubmit === 'board') {
+              navigation.dispatch(
+                CommonActions.reset({
+                  index: 0,
+                  routes: [{ name: 'Main', params: { screen: 'board' } }],
+                }),
+              );
+              return;
+            }
             if (boardContext === 'school') {
               navigation.dispatch(StackActions.pop(1));
             } else {
@@ -429,7 +441,7 @@ const BoardWrite = ({ navigation, route }) => {
         <TextInput
           ref={bodyInputRef}
           style={styles.writeBodyInput}
-          placeholder="내용을 입력해 주세요"
+          placeholder={contentPlaceholder}
           placeholderTextColor={colors.textLight4}
           multiline
           scrollEnabled={false}

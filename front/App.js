@@ -62,6 +62,7 @@ import YouthProtectionPolicy from './src/screens/Terms-of-Service/YouthProtectio
 import OpenSourceLicenses from './src/screens/Terms-of-Service/OpenSourceLicenses';
 import CommunityGuide from './src/screens/Terms-of-Service/CommunityGuide';
 import GuideOverlayScreen from './src/screens/UserGuide/GuideOverlayScreen';
+import PostWriteGuide from './view/src/PostWriteGuide';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef, useState } from 'react';
@@ -138,12 +139,17 @@ const navigationTheme = {
     background: colors.white,
   },
 };
+/** true면 로그인 후 첫 화면을 가입 직후 글쓰기 유도로 연다 (미리보기용). */
+const DEV_PREVIEW_POST_WRITE_GUIDE = true;
+
 const linking = {
   prefixes: ['cucumber://', 'youthpaper://', 'exp+youth-paper://'],
   config: {
     screens: {
+      // 미리보기: MainStack initialRouteName = PostWriteGuide
+      PostWriteGuide: 'post-write-guide',
       Main: {
-        initialRouteName: 'timer',
+        initialRouteName: 'board',
         screens: {
           board: 'board-tab',
           message: 'message',
@@ -243,6 +249,7 @@ function MainStack({ initialRouteName = 'Main' }) {
       screenOptions={{ headerShown: false }}
     >
       <Stack.Screen name="Main" component={MainScreen} />
+      <Stack.Screen name="PostWriteGuide" component={PostWriteGuide} />
       <Stack.Screen name="BoardWrite" component={BoardWrite} />
       <Stack.Screen name="BoardDetail" component={BoardDetail} />
       <Stack.Screen name="Chat" component={ChatRoomScreen} />
@@ -694,8 +701,11 @@ function RootNavigator() {
     !showReverificationPendingBanner &&
     (reverificationStatus === 'grace' || reverificationStatus === 'required');
 
-  const mainInitialRoute =
-    postLoginRoute === 'GuideOverlay' ? 'GuideOverlay' : 'Main';
+  const mainInitialRoute = DEV_PREVIEW_POST_WRITE_GUIDE
+    ? 'PostWriteGuide'
+    : postLoginRoute === 'GuideOverlay'
+      ? 'GuideOverlay'
+      : 'Main';
 
   // 프로필 아이디 설정 전체화면 게이트 — 임시 비활성
   // if (
