@@ -172,10 +172,10 @@ export default function PostWriteGuide({ navigation, route }) {
   };
 
   return (
-    <SafeAreaView style={styles.root} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.root} edges={['bottom']}>
       <View style={styles.wash}>
         <View style={styles.badge}>
-          <Feather name="edit-3" size={normalize(30)} color={colors.text} />
+          <Feather name="edit-3" size={normalize(30)} color={colors.primaryDark} />
         </View>
         <Animated.View style={{ opacity: headerOpacity, transform: [{ translateX: headerX }] }}>
           {fromBanner ? null : <Text style={styles.welcome}>가입 완료! 반가워요</Text>}
@@ -231,7 +231,7 @@ function createStyles(normalize, width) {
     root: { flex: 1, backgroundColor: colors.white },
     wash: {
       paddingHorizontal: gutter,
-      paddingTop: normalize(120),
+      paddingTop: normalize(180),
       overflow: 'hidden',
       paddingBottom: normalize(14),
       backgroundColor: colors.primaryLight2,
