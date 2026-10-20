@@ -20,13 +20,14 @@ import {
 } from 'react-native-keyboard-controller';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { StackActions } from '@react-navigation/native';
+import { CommonActions, StackActions } from '@react-navigation/native';
 import SubHeader from '../frame/subHeader';
 import SortChips from '../../components/common/SortChips';
 import ImageViewer from './ImageViewer';
 import { createWriteStyles, getNormalize } from '../../styles/board.style';
 import { api } from '../../utils/api';
 import { invalidateProfileCountsCache } from '../../utils/profileCountsCache';
+import { markPostWritePromptDone } from '../../utils/postWritePrompt';
 import { colors, fonts, fontSizes } from '../../styles/colors';
 import { useAuth } from '../../context/AuthContext';
 import { useLocationContext } from '../../context/LocationContext';
@@ -63,8 +64,16 @@ const BoardWrite = ({ navigation, route }) => {
     [width, normalize],
   );
 
+  const boardContext = route?.params?.boardContext || 'national';
+  const contentPlaceholder =
+    String(route?.params?.contentPlaceholder || '').trim() ||
+    '내용을 입력해 주세요';
   const [content, setContent] = useState('');
-  const [hashtags, setHashtags] = useState([]); // 추가된 해시태그 배열 (서버에는 tags로 전달)
+  const [hashtags, setHashtags] = useState(() => {
+    const preset = route?.params?.initialHashtags;
+    if (!Array.isArray(preset)) return [];
+    return preset.map((tag) => String(tag || '').replace(/^#/, '').trim()).filter(Boolean).slice(0, 5);
+  });
   const [hashtagInput, setHashtagInput] = useState(''); // 입력 중인 해시태그
   const [hashtagSuggestions, setHashtagSuggestions] = useState([]); // 추천 태그 목록
   const [recommendedHashtags, setRecommendedHashtags] = useState(FALLBACK_HASHTAGS);
@@ -76,7 +85,6 @@ const BoardWrite = ({ navigation, route }) => {
   const [pollOptions, setPollOptions] = useState(createPollOptions);
   const [pollMulti, setPollMulti] = useState(false);
   const [viewerUri, setViewerUri] = useState(null);
-  const boardContext = route?.params?.boardContext || 'national';
   const [selectedBoard, setSelectedBoard] = useState('national');
   const scrollRef = useRef(null);
   const bodyInputRef = useRef(null);
@@ -163,13 +171,27 @@ const BoardWrite = ({ navigation, route }) => {
 
   const handleBoardChange = (next) => {
     if (next !== 'national' && !studentBoardEnabled) {
-      Alert.alert('알림', '학생증 인증을 해주세요');
+      Alert.alert(
+        '학생증 인증 미완료',
+        studentVerificationStatus === 'PENDING'
+          ? '학생증을 검수하고 있어요. 승인되면 학생·학교 게시판을 쓸 수 있어요.'
+          : '학생증 인증이 완료되지 않은 계정이에요.',
+      );
       return;
     }
     setSelectedBoard(next);
   };
 
+  const boardOptions = BOARD_OPTIONS.map((option) => ({
+    ...option,
+    locked: option.value !== 'national' && !studentBoardEnabled,
+  }));
+
   const handleBack = () => {
+    if (route?.params?.fromPostWriteGuide === false) {
+      navigation.navigate('Main', { screen: 'board' });
+      return;
+    }
     navigation.goBack();
   };
 
@@ -310,7 +332,8 @@ const BoardWrite = ({ navigation, route }) => {
 
   const handleComplete = async () => {
     if (isSubmitting) return;
-    if (!content.trim()) {
+    const trimmed = content.trim();
+    if (!trimmed) {
       Alert.alert('알림', '내용을 입력해주세요.');
       return;
     }
@@ -384,12 +407,28 @@ const BoardWrite = ({ navigation, route }) => {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       await invalidateProfileCountsCache();
+      if (!route?.params?.preview) {
+        markPostWritePromptDone().catch(() => {});
+      }
 
       Keyboard.dismiss();
       Alert.alert('완료', '게시글이 작성되었습니다.', [
         {
           text: '확인',
           onPress: () => {
+            if (route?.params?.preview) {
+              navigation.goBack();
+              return;
+            }
+            if (route?.params?.afterSubmit === 'board') {
+              navigation.dispatch(
+                CommonActions.reset({
+                  index: 0,
+                  routes: [{ name: 'Main', params: { screen: 'board' } }],
+                }),
+              );
+              return;
+            }
             if (boardContext === 'school') {
               navigation.dispatch(StackActions.pop(1));
             } else {
@@ -429,7 +468,7 @@ const BoardWrite = ({ navigation, route }) => {
         <TextInput
           ref={bodyInputRef}
           style={styles.writeBodyInput}
-          placeholder="내용을 입력해 주세요"
+          placeholder={contentPlaceholder}
           placeholderTextColor={colors.textLight4}
           multiline
           scrollEnabled={false}
@@ -689,7 +728,7 @@ const BoardWrite = ({ navigation, route }) => {
                 <SortChips
                   value={selectedBoard}
                   onChange={handleBoardChange}
-                  options={BOARD_OPTIONS}
+                  options={boardOptions}
                   containerStyle={{ paddingBottom: 0 }}
                 />
                 <Text style={styles.boardScopeHint}>

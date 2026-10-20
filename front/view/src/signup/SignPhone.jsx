@@ -54,6 +54,7 @@ import {
   dismissInicisBrowserSafely,
 } from '../../../services/inicisAuth';
 import { useAuth } from '../../../context/AuthContext';
+import { loginAfterSignup } from '../../../utils/postWritePrompt';
 import { useAppNavigation } from '../../../navigation/useAppNavigation';
 import {
   showTooYoungForSignupAlert,
@@ -1175,7 +1176,7 @@ const SignPhone = ({ navigation }) => {
     if (token) {
       await setAuthToken(token, { persist: true });
     }
-    await login({
+    await loginAfterSignup(login, {
       studentVerificationStatus: status || 'UNVERIFIED',
       rejectReason: rejectReason || null,
     });
@@ -1195,7 +1196,7 @@ const SignPhone = ({ navigation }) => {
         await clearFlowSession();
         pendingEnterRef.current = { skip: true };
         if (currentStep === STEP.STUDENT_VERIFY && studentVerified) {
-          await login({ studentVerificationStatus: 'UNVERIFIED' });
+          await loginAfterSignup(login, { studentVerificationStatus: 'UNVERIFIED' });
         } else {
           setWelcomeAfterSignup(true);
         }
@@ -1236,7 +1237,7 @@ const SignPhone = ({ navigation }) => {
     setSubmitting(true);
     try {
       if (pending.skip) {
-        await login({ studentVerificationStatus: 'UNVERIFIED' });
+        await loginAfterSignup(login, { studentVerificationStatus: 'UNVERIFIED' });
         return;
       }
       await finishSignupAndEnterApp(pending.username, pending.password);

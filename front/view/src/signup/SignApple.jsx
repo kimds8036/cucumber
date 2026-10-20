@@ -58,6 +58,7 @@ import {
 } from '../../../services/inicisAuth';
 import { loginWithApple } from '../../../services/appleAuth';
 import { useAuth } from '../../../context/AuthContext';
+import { loginAfterSignup } from '../../../utils/postWritePrompt';
 import { useAppNavigation } from '../../../navigation/useAppNavigation';
 import {
   showTooYoungForSignupAlert,
@@ -1247,7 +1248,7 @@ const SignApple = ({ navigation }) => {
     if (refreshToken) {
       await setRefreshToken(refreshToken, { persist: true });
     }
-    await login({
+    await loginAfterSignup(login, {
       studentVerificationStatus: status || 'UNVERIFIED',
       rejectReason: rejectReason || null,
       needsProfileUsername: Boolean(
@@ -1278,7 +1279,7 @@ const SignApple = ({ navigation }) => {
       if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
         await clearFlowSession();
         if (currentStep === STEP.STUDENT_VERIFY && studentVerified) {
-          await login({ studentVerificationStatus: 'UNVERIFIED' });
+          await loginAfterSignup(login, { studentVerificationStatus: 'UNVERIFIED' });
         } else {
           setWelcomeAfterSignup(true);
         }
@@ -1325,7 +1326,7 @@ const SignApple = ({ navigation }) => {
     setSubmitting(true);
     try {
       if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
-        await login({ studentVerificationStatus: 'UNVERIFIED' });
+        await loginAfterSignup(login, { studentVerificationStatus: 'UNVERIFIED' });
         return;
       }
       await finishSignupAndEnterApp(pendingAppleTokenRef.current);
