@@ -196,4 +196,118 @@ router.post('/me/install-convert', authenticate, async (req, res) => {
   }
 });
 
+const PROMPT_BANNER_MS = 3 * 24 * 60 * 60 * 1000;
+
+async function ensureUserSettings(userId) {
+  await pool.execute(
+    'INSERT IGNORE INTO user_settings (user_id) VALUES (?)',
+    [userId],
+  );
+}
+
+async function readPostWritePrompt(userId) {
+  await ensureUserSettings(userId);
+  const [[row]] = await pool.execute(
+    `SELECT post_write_prompt_status AS status,
+            post_write_prompt_skipped_at AS skippedAt,
+            post_write_prompt_skip_count AS skipCount,
+            post_write_prompt_done_at AS doneAt,
+            post_write_prompt_banner_hidden AS bannerHidden
+     FROM user_settings WHERE user_id = ? LIMIT 1`,
+    [userId],
+  );
+  const [[countRow]] = await pool.execute(
+    `SELECT COUNT(*) AS cnt FROM posts WHERE user_id = ? AND is_deleted = FALSE`,
+    [userId],
+  );
+  const postCount = Number(countRow?.cnt || 0);
+  let status = row?.status || null;
+  let doneAt = row?.doneAt ? new Date(row.doneAt) : null;
+  if (postCount > 0 && status !== 'done') {
+    await pool.execute(
+      `UPDATE user_settings
+       SET post_write_prompt_status = 'done',
+           post_write_prompt_done_at = IFNULL(post_write_prompt_done_at, NOW())
+       WHERE user_id = ? AND (post_write_prompt_status IS NULL OR post_write_prompt_status <> 'done')`,
+      [userId],
+    );
+    status = 'done';
+    doneAt = doneAt || new Date();
+  }
+  const skippedAt = row?.skippedAt ? new Date(row.skippedAt) : null;
+  const withinBanner = skippedAt && Date.now() - skippedAt.getTime() < PROMPT_BANNER_MS;
+  const bannerHidden = Number(row?.bannerHidden || 0) === 1;
+  return {
+    status,
+    skippedAt: skippedAt ? skippedAt.toISOString() : null,
+    doneAt: doneAt ? doneAt.toISOString() : null,
+    skipCount: Number(row?.skipCount || 0),
+    bannerHidden,
+    showGuide: status === 'pending',
+    showBanner: status === 'skipped' && Boolean(withinBanner) && postCount === 0 && !bannerHidden,
+  };
+}
+
+router.get('/me/post-write-prompt', authenticate, async (req, res) => {
+  try {
+    const data = await readPostWritePrompt(req.user.userId);
+    return res.json({ success: true, data });
+  } catch (error) {
+    console.error('첫 글 안내 조회 오류:', error);
+    return res.status(500).json({ success: false, message: '첫 글 안내를 불러오지 못했습니다.' });
+  }
+});
+
+router.post('/me/post-write-prompt', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const action = String(req.body?.action || '');
+    await ensureUserSettings(userId);
+    if (action === 'pending') {
+      await pool.execute(
+        `UPDATE user_settings
+         SET post_write_prompt_status = 'pending'
+         WHERE user_id = ? AND post_write_prompt_status IS NULL`,
+        [userId],
+      );
+    } else if (action === 'skip') {
+      await pool.execute(
+        `UPDATE user_settings
+         SET post_write_prompt_status = 'skipped',
+             post_write_prompt_skipped_at = IFNULL(post_write_prompt_skipped_at, NOW()),
+             post_write_prompt_skip_count = post_write_prompt_skip_count + 1,
+             post_write_prompt_skip_log = JSON_ARRAY_APPEND(
+               IFNULL(post_write_prompt_skip_log, JSON_ARRAY()),
+               '$',
+               DATE_FORMAT(UTC_TIMESTAMP(), '%Y-%m-%dT%H:%i:%sZ')
+             )
+         WHERE user_id = ? AND (post_write_prompt_status IS NULL OR post_write_prompt_status <> 'done')`,
+        [userId],
+      );
+    } else if (action === 'done') {
+      await pool.execute(
+        `UPDATE user_settings
+         SET post_write_prompt_status = 'done',
+             post_write_prompt_done_at = IFNULL(post_write_prompt_done_at, NOW())
+         WHERE user_id = ?`,
+        [userId],
+      );
+    } else if (action === 'dismiss') {
+      await pool.execute(
+        `UPDATE user_settings
+         SET post_write_prompt_banner_hidden = 1
+         WHERE user_id = ? AND post_write_prompt_status = 'skipped'`,
+        [userId],
+      );
+    } else {
+      return res.status(400).json({ success: false, message: 'action을 확인해 주세요.' });
+    }
+    const data = await readPostWritePrompt(userId);
+    return res.json({ success: true, data });
+  } catch (error) {
+    console.error('첫 글 안내 저장 오류:', error);
+    return res.status(500).json({ success: false, message: '첫 글 안내를 저장하지 못했습니다.' });
+  }
+});
+
 export default router;
