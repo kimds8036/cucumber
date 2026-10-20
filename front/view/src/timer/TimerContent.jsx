@@ -10,9 +10,7 @@ import React, {
 } from 'react';
 import {
   View,
-  Text,
   ScrollView,
-  TouchableOpacity,
   PixelRatio,
   useWindowDimensions,
   Alert,
@@ -26,7 +24,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { createTimerStyles, getNormalize } from '../../../styles/timer';
-import { colors, fonts } from '../../../styles/colors';
+import { colors } from '../../../styles/colors';
 import MainHeader from '../../frame/mainHeader';
 import { getMainTabTitle } from '../../../context/MainShellContext';
 import { api, getApiUserFacingMessage } from '../../../utils/api';
@@ -454,26 +452,6 @@ export function TimerContent() {
       navigation={navigation}
     />
   );
-  const previewGuideButton = __DEV__ ? (
-    <TouchableOpacity
-      onPress={() => navigation.navigate('PostWriteGuide', { preview: true })}
-      activeOpacity={0.85}
-      style={{
-        marginHorizontal: timerGutter,
-        marginTop: normalize(8),
-        marginBottom: normalize(4),
-        minHeight: 44,
-        borderRadius: normalize(12),
-        backgroundColor: colors.primaryLight2,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <Text style={{ fontFamily: fonts.bold, color: colors.text, fontSize: normalize(14) }}>
-        첫 글 안내 보기
-      </Text>
-    </TouchableOpacity>
-  ) : null;
   const friendStoryStickyStyle = {
     backgroundColor: colors.white,
     paddingHorizontal: timerGutter,
@@ -514,7 +492,6 @@ export function TimerContent() {
         showsVerticalScrollIndicator={false}
       >
         {scrollingHeader}
-        {previewGuideButton}
         <View
           style={[styles.friendStoryRow, friendStoryStickyStyle, tdb('#FFCC00')]}
           collapsable={false}
@@ -629,7 +606,6 @@ export function TimerContent() {
               onScroll={onPlannerScroll}
             >
               {scrollingHeader}
-              {previewGuideButton}
               <View
                 style={friendStoryStickyStyle}
                 collapsable={false}

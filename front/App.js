@@ -148,7 +148,7 @@ const linking = {
       // 미리보기: MainStack initialRouteName = PostWriteGuide
       PostWriteGuide: 'post-write-guide',
       Main: {
-        initialRouteName: 'board',
+        initialRouteName: 'timer',
         screens: {
           board: 'board-tab',
           message: 'message',
