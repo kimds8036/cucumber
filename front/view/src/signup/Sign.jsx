@@ -54,6 +54,7 @@ import {
   PASSWORD_ERROR,
 } from '../../../utils/signupValidation';
 import { useAuth } from '../../../context/AuthContext';
+import { loginAfterSignup } from '../../../utils/postWritePrompt';
 import { useAppNavigation } from '../../../navigation/useAppNavigation';
 import Skeleton from '../../../components/common/Skeleton';
 import {
@@ -1618,7 +1619,7 @@ const Sign = ({ navigation }) => {
     if (token) {
       await setAuthToken(token, { persist: true });
     }
-    await login({
+    await loginAfterSignup(login, {
       studentVerificationStatus: status || 'UNVERIFIED',
       rejectReason: rejectReason || null,
     });
@@ -1655,7 +1656,7 @@ const Sign = ({ navigation }) => {
     setSubmitting(true);
     try {
       if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
-        await login({ studentVerificationStatus: 'UNVERIFIED' });
+        await loginAfterSignup(login, { studentVerificationStatus: 'UNVERIFIED' });
         return;
       }
 

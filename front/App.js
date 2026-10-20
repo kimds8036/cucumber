@@ -140,7 +140,7 @@ const navigationTheme = {
   },
 };
 /** true면 로그인 후 첫 화면을 가입 직후 글쓰기 유도로 연다 (미리보기용). */
-const DEV_PREVIEW_POST_WRITE_GUIDE = true;
+const DEV_PREVIEW_POST_WRITE_GUIDE = false;
 
 const linking = {
   prefixes: ['cucumber://', 'youthpaper://', 'exp+youth-paper://'],
@@ -701,7 +701,7 @@ function RootNavigator() {
     !showReverificationPendingBanner &&
     (reverificationStatus === 'grace' || reverificationStatus === 'required');
 
-  const mainInitialRoute = DEV_PREVIEW_POST_WRITE_GUIDE
+  const mainInitialRoute = DEV_PREVIEW_POST_WRITE_GUIDE || postLoginRoute === 'PostWriteGuide'
     ? 'PostWriteGuide'
     : postLoginRoute === 'GuideOverlay'
       ? 'GuideOverlay'

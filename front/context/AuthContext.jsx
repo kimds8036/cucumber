@@ -149,11 +149,20 @@ export function AuthProvider({ children }) {
           getCachedStudentVerificationStatus(),
           getCachedReverification(),
         ]);
+        let nextRoute = 'Main';
+        try {
+          const { fetchPostWritePrompt } = require('../utils/postWritePrompt');
+          const prompt = await fetchPostWritePrompt();
+          if (prompt?.showGuide) nextRoute = 'PostWriteGuide';
+        } catch {
+          // 안내 상태를 못 가져와도 앱은 연다.
+        }
         if (mounted) {
           setStudentVerificationStatus(cachedVerification.status);
           setRejectReason(cachedVerification.rejectReason);
           setReverificationStatus(cachedReverification.status);
           setReverificationDeadline(cachedReverification.deadline);
+          setPostLoginRoute(nextRoute);
           setIsLoggedIn(true);
           setAuthHydrated(true);
           try {
@@ -208,8 +217,11 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(
     async (options = {}) => {
+      const requested = options?.postLoginRoute;
       const nextRoute =
-        options?.postLoginRoute === 'GuideOverlay' ? 'GuideOverlay' : 'Main';
+        requested === 'GuideOverlay' || requested === 'PostWriteGuide'
+          ? requested
+          : 'Main';
       setPostLoginRoute(nextRoute);
 
       if (options?.studentVerificationStatus) {

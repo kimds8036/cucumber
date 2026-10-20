@@ -51,6 +51,7 @@ import {
   isInicisClientEnabled,
 } from '../../../services/inicisAuth';
 import { useAuth } from '../../../context/AuthContext';
+import { loginAfterSignup } from '../../../utils/postWritePrompt';
 import { useAppNavigation } from '../../../navigation/useAppNavigation';
 import {
   showTooYoungForSignupAlert,
@@ -653,7 +654,7 @@ const SignKakao = ({ navigation }) => {
     if (refreshToken) {
       await setRefreshToken(refreshToken, { persist: true });
     }
-    await login({
+    await loginAfterSignup(login, {
       studentVerificationStatus: status || 'UNVERIFIED',
       rejectReason: rejectReason || null,
       needsProfileUsername: Boolean(
@@ -682,7 +683,7 @@ const SignKakao = ({ navigation }) => {
       if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
         await clearFlowSession();
         if (currentStep === STEP.STUDENT_VERIFY && studentVerified) {
-          await login({ studentVerificationStatus: 'UNVERIFIED' });
+          await loginAfterSignup(login, { studentVerificationStatus: 'UNVERIFIED' });
         } else {
           setWelcomeAfterSignup(true);
         }
@@ -720,7 +721,7 @@ const SignKakao = ({ navigation }) => {
     setSubmitting(true);
     try {
       if (SIGNUP_REDESIGN_SKIP_VALIDATION) {
-        await login({ studentVerificationStatus: 'UNVERIFIED' });
+        await loginAfterSignup(login, { studentVerificationStatus: 'UNVERIFIED' });
         return;
       }
       await finishSignupAndEnterApp();

@@ -60,6 +60,11 @@ function createSortChipStyles(width, normalize) {
       backgroundColor: colors.primaryLight6,
       borderWidth: 0,
     },
+    chipInner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: normalize(4),
+    },
     label: {
       fontSize: normalize(fontSizes.xl),
       fontFamily: fonts.bold,
@@ -159,9 +164,18 @@ export default function SortChips({
         ]}
         onPress={() => onChange(option.value)}
       >
-        <Text style={[styles.label, active && styles.labelActive]}>
-          {option.label}
-        </Text>
+        <View style={styles.chipInner}>
+          <Text style={[styles.label, active && styles.labelActive]}>
+            {option.label}
+          </Text>
+          {option.locked ? (
+            <Ionicons
+              name="lock-closed"
+              size={normalize(12)}
+              color={active ? colors.white : colors.textLight4}
+            />
+          ) : null}
+        </View>
       </TouchableOpacity>
     );
   });

@@ -35,6 +35,7 @@ import { equippedBadgeFromApiRow } from '../../constants/badges';
 import BoardPostCard from '../../components/Boardpostcard';
 import AdPlaceholder from '../../src/screens/ad/AdPlaceholder';
 import TopAdBanner from '../../components/ads/TopAdBanner';
+import PostWritePromptBanner from '../../components/board/PostWritePromptBanner';
 import SortChips from '../../components/common/SortChips';
 import Skeleton from '../../components/common/Skeleton';
 import { useLocationContext } from '../../context/LocationContext';
@@ -755,6 +756,7 @@ export function BoardAllContent({ navigation, posts }) {
             <View>
               <MainHeader />
               <TopAdBanner placement="board" />
+              <PostWritePromptBanner />
             </View>
           }
           showsVerticalScrollIndicator={false}
