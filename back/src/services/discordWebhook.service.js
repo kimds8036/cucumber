@@ -1,7 +1,7 @@
 import pool from '../config/database.js';
 import { getAdminBasePath } from '../config/adminPath.js';
 
-/** @typedef {'review' | 'inquiry' | 'report' | 'signup'} DiscordChannel */
+/** @typedef {'review' | 'inquiry' | 'report' | 'signup' | 'daily'} DiscordChannel */
 
 const EMBED_COLOR = {
   review: 0x3b82f6,
@@ -10,6 +10,7 @@ const EMBED_COLOR = {
   autoHide: 0xef4444,
   appeal: 0x8b5cf6,
   signup: 0x06b6d4,
+  daily: 0xf97316,
 };
 
 const PURPOSE_LABEL = {
@@ -34,6 +35,7 @@ function resolveWebhookUrl(channel) {
     inquiry: process.env.DISCORD_WEBHOOK_URL_INQUIRY,
     report: process.env.DISCORD_WEBHOOK_URL_REPORT,
     signup: process.env.DISCORD_WEBHOOK_URL_SIGNUP,
+    daily: process.env.DISCORD_WEBHOOK_URL_DAILY,
   };
   return String(
     byChannel[channel] || process.env.DISCORD_WEBHOOK_URL || '',
@@ -404,6 +406,24 @@ export function notifyAppealCreated(p) {
           field('관리자', adminPanelHint('appeals'), false),
         ],
         timestamp: isoNow(p.createdAt),
+      },
+    ],
+  }));
+}
+
+export function notifyDailyPushPickReminder({ dayKey, hour }) {
+  enqueue('daily', async () => ({
+    embeds: [
+      {
+        title: '오늘 알림을 골라 주세요',
+        color: EMBED_COLOR.daily,
+        fields: [
+          field('날짜', dayKey || '-'),
+          field('시각', `${hour}시`),
+          field('안내', '이미 보냈으면 이 알림은 오지 않습니다. 고르지 않으면 오늘 사용자 알림은 없습니다.', false),
+          field('관리자', adminPanelHint('dailyPush'), false),
+        ],
+        timestamp: isoNow(),
       },
     ],
   }));
