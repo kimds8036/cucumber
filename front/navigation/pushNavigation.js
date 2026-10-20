@@ -1,5 +1,6 @@
 import { CommonActions } from '@react-navigation/native';
 import { navigationRef } from './navigationRef';
+import { isStudentVerifiedSnapshot } from '../utils/studentVerificationSnapshot';
 
 /** 푸시/토스트 진입 시 Main 하단 탭 선택 */
 export function resolveMainTabForPush(name = '', relatedType = '') {
@@ -134,6 +135,28 @@ export function resolvePushNavigation(data = {}, remoteMessage = null) {
         ...data,
       },
     };
+  }
+
+  if (relatedType === 'daily_admin' || type === 'daily_admin') {
+    const needsVerify = String(data?.requiresStudentVerification || '') === '1';
+    if (needsVerify && !isStudentVerifiedSnapshot()) {
+      return {
+        name: 'Main',
+        params: { initialTab: 'school', screen: 'school' },
+      };
+    }
+    if (String(data?.kind || '') === 'study_room' || targetScreen === 'Timer') {
+      return { name: 'Main', params: { initialTab: 'timer', screen: 'timer' } };
+    }
+    if (targetScreen === 'AnnouncementDetail' && relatedId) {
+      return { name: 'AnnouncementDetail', params: { announcementId: relatedId, ...data } };
+    }
+    if (relatedId) {
+      return {
+        name: 'BoardDetail',
+        params: buildBoardDetailNavParams(relatedId, data),
+      };
+    }
   }
 
   // 게시글: targetScreen 또는 relatedType/category

@@ -18,6 +18,15 @@ function hasTimetableEntries(timetable) {
   return Object.values(tt).some((value) => String(value || '').trim());
 }
 
+function isSameTerm(entry, term) {
+  if (!entry || term?.academicYear == null || term?.semester == null) return false;
+  if (entry.academicYear == null || entry.semester == null) return false;
+  return (
+    Number(entry.academicYear) === Number(term.academicYear) &&
+    Number(entry.semester) === Number(term.semester)
+  );
+}
+
 /** @returns {Promise<string|null>} */
 export async function resolveTimetableCacheKeyForCurrentUser() {
   try {
@@ -45,26 +54,59 @@ export async function readTimetableCacheEntry(cacheKey) {
 
 /** @param {Record<string, string>} timetable */
 export async function pushTimetableToServer(timetable) {
-  await api.put('/api/timetable', { timetable });
+  const res = await api.put('/api/timetable', { timetable });
+  return res.data?.data || null;
 }
 
 export async function fetchSavedTimetableFromServer() {
   const res = await api.get('/api/timetable/me');
   const data = res.data?.data;
-  if (!data?.timetable || typeof data.timetable !== 'object') return null;
+  if (!data || typeof data !== 'object') return null;
+  const timetable =
+    data.timetable && typeof data.timetable === 'object' && !Array.isArray(data.timetable)
+      ? data.timetable
+      : {};
+  const hasSavedRow =
+    typeof data.hasSavedRow === 'boolean'
+      ? data.hasSavedRow
+      : hasTimetableEntries(timetable);
+  const cleared =
+    typeof data.cleared === 'boolean'
+      ? data.cleared
+      : hasSavedRow && !hasTimetableEntries(timetable);
   return {
-    timetable: data.timetable,
+    timetable,
     updatedAt: data.updatedAt || null,
+    academicYear: data.academicYear ?? null,
+    semester: data.semester ?? null,
+    hasSavedRow,
+    cleared,
   };
 }
 
-/**
- * 로컬 캐시 저장 + 위젯 반영 + 서버 PUT (실패 시 로컬만 유지)
- * @param {string} cacheKey
- * @param {Record<string, string>} timetable
- * @param {{ source?: 'auto'|'manual', autoRefreshWeekKey?: string }} [opts]
- */
-export async function saveTimetableLocalAndSync(cacheKey, timetable, opts = {}) {
+async function writeSavedCache(cacheKey, server, prev) {
+  const ts = Date.now();
+  const same = isSameTerm(prev, server);
+  const payload = {
+    ts,
+    serverUpdatedAt: server.updatedAt || null,
+    academicYear: server.academicYear ?? null,
+    semester: server.semester ?? null,
+    timetable: server.cleared ? null : server.timetable,
+    clearedByUser: Boolean(server.cleared),
+    pendingSync: false,
+    ...(same && prev?.source ? { source: prev.source } : {}),
+    ...(same && prev?.autoRefreshWeekKey
+      ? { autoRefreshWeekKey: prev.autoRefreshWeekKey }
+      : {}),
+  };
+  await AsyncStorage.setItem(cacheKey, JSON.stringify(payload));
+  syncTimetableWidgetFromFlat(server.cleared ? null : server.timetable, {
+    generatedAt: server.updatedAt || new Date(ts).toISOString(),
+  }).catch(() => {});
+}
+
+async function writePendingCache(cacheKey, timetable, opts) {
   const ts = Date.now();
   const prev = await readTimetableCacheEntry(cacheKey);
   const source =
@@ -74,139 +116,163 @@ export async function saveTimetableLocalAndSync(cacheKey, timetable, opts = {}) 
   const autoRefreshWeekKey =
     opts.autoRefreshWeekKey ??
     (source === TIMETABLE_SOURCE_AUTO ? getKstWeekKey() : prev?.autoRefreshWeekKey);
-
   const payload = {
     ts,
-    timetable,
-    clearedByUser: false,
+    timetable: opts.clearedByUser ? null : timetable,
+    clearedByUser: Boolean(opts.clearedByUser),
+    pendingSync: true,
+    academicYear: opts.academicYear ?? prev?.academicYear ?? null,
+    semester: opts.semester ?? prev?.semester ?? null,
     ...(source ? { source } : {}),
     ...(autoRefreshWeekKey ? { autoRefreshWeekKey } : {}),
   };
-
   await AsyncStorage.setItem(cacheKey, JSON.stringify(payload));
-  syncTimetableWidgetFromFlat(timetable, {
+  syncTimetableWidgetFromFlat(opts.clearedByUser ? null : timetable, {
     generatedAt: new Date(ts).toISOString(),
   }).catch(() => {});
-  pushTimetableToServer(timetable).catch((e) => {
-    console.warn('[timetableSync] 서버 저장 실패:', e?.message || e);
-  });
+  return { prev, source, autoRefreshWeekKey, ts };
+}
+
+async function markCacheSynced(cacheKey, timetable, meta, draft) {
+  const savedTimetable =
+    meta?.timetable && typeof meta.timetable === 'object' && !Array.isArray(meta.timetable)
+      ? meta.timetable
+      : timetable;
+  const ts = Date.now();
+  const payload = {
+    ts,
+    serverUpdatedAt: meta?.updatedAt || null,
+    academicYear: meta?.academicYear ?? draft.academicYear ?? null,
+    semester: meta?.semester ?? draft.semester ?? null,
+    timetable: draft.clearedByUser ? null : savedTimetable,
+    clearedByUser: Boolean(draft.clearedByUser),
+    pendingSync: false,
+    ...(draft.source ? { source: draft.source } : {}),
+    ...(draft.autoRefreshWeekKey ? { autoRefreshWeekKey: draft.autoRefreshWeekKey } : {}),
+  };
+  await AsyncStorage.setItem(cacheKey, JSON.stringify(payload));
   return ts;
 }
 
 /**
- * 시간표 초기화 — 로컬·위젯·서버 override 모두 비움.
+ * 사용자가 자동 선택·직접 저장을 눌렀을 때만 서버에 반영한다.
+ * @param {string} cacheKey
+ * @param {Record<string, string>} timetable
+ * @param {{ source?: 'auto'|'manual', autoRefreshWeekKey?: string }} [opts]
+ */
+export async function saveTimetableLocalAndSync(cacheKey, timetable, opts = {}) {
+  const draft = await writePendingCache(cacheKey, timetable, {
+    ...opts,
+    clearedByUser: false,
+  });
+  try {
+    const saved = await pushTimetableToServer(timetable);
+    return markCacheSynced(cacheKey, timetable, saved, {
+      ...draft,
+      clearedByUser: false,
+      academicYear: saved?.academicYear ?? draft.prev?.academicYear ?? null,
+      semester: saved?.semester ?? draft.prev?.semester ?? null,
+    });
+  } catch (e) {
+    console.warn('[timetableSync] 서버 저장 실패:', e?.message || e);
+    return draft.ts;
+  }
+}
+
+/**
+ * 이번 학기 행을 빈 시간표로 저장한다. 지난 학기 행은 건드리지 않는다.
  * @param {string} cacheKey
  */
 export async function clearTimetableLocalAndSync(cacheKey) {
-  const ts = Date.now();
-  await AsyncStorage.setItem(
-    cacheKey,
-    JSON.stringify({
-      ts,
-      timetable: null,
+  const draft = await writePendingCache(cacheKey, {}, {
+    clearedByUser: true,
+  });
+  try {
+    const saved = await pushTimetableToServer({});
+    return markCacheSynced(cacheKey, {}, saved, {
+      ...draft,
       clearedByUser: true,
-    }),
-  );
-  await syncTimetableWidgetFromFlat(null).catch(() => {});
-  await pushTimetableToServer({});
-  return ts;
+      academicYear: saved?.academicYear ?? null,
+      semester: saved?.semester ?? null,
+    });
+  } catch (e) {
+    console.warn('[timetableSync] 시간표 비우기 저장 실패:', e?.message || e);
+    return draft.ts;
+  }
 }
 
 /**
- * auto 저장 사용자 — 새 주(월요일 기준 주) 첫 앱 실행 시 NEIS 재조회 → 캐시·위젯·서버 갱신
- * @param {string} cacheKey
- * @returns {Promise<Record<string, string>|null>}
+ * 주간 NEIS 자동 덮어쓰기는 하지 않는다.
+ * 이번 학기 행은 사용자가 다시 저장할 때만 바뀐다.
+ * @returns {Promise<null>}
  */
-export async function maybeRefreshAutoTimetableOnAppOpen(cacheKey) {
-  if (!cacheKey) return null;
+export async function maybeRefreshAutoTimetableOnAppOpen() {
+  return null;
+}
 
-  const entry = await readTimetableCacheEntry(cacheKey);
-  if (!entry || entry.clearedByUser) return null;
-  if (!hasTimetableEntries(entry.timetable)) return null;
-  if (entry.source !== TIMETABLE_SOURCE_AUTO) return null;
-
-  const weekKey = getKstWeekKey();
-  if (entry.autoRefreshWeekKey === weekKey) return null;
-
+async function previewNeisTimetable() {
   try {
     const { timetable } = await fetchTimetableFromApi({ neisOnly: true });
     if (!hasTimetableEntries(timetable)) return null;
-
-    await saveTimetableLocalAndSync(cacheKey, timetable, {
-      source: TIMETABLE_SOURCE_AUTO,
-      autoRefreshWeekKey: weekKey,
-    });
+    syncTimetableWidgetFromFlat(timetable, {
+      generatedAt: new Date().toISOString(),
+    }).catch(() => {});
     return timetable;
   } catch (e) {
-    console.warn('[timetableSync] auto 주간 갱신 실패:', e?.message || e);
+    console.warn('[timetableSync] NEIS 미리보기 실패:', e?.message || e);
     return null;
   }
 }
 
 /**
- * 서버 편집본이 더 최신이면 로컬·위젯 갱신. 로컬만 있으면 서버로 업로드.
+ * 이번 학기 DB 행이 있으면 그 JSON을 캐시에 넣는다.
+ * 행이 없으면 NEIS를 보여 주기만 하고 저장하지 않는다.
  * @param {string} cacheKey
  * @returns {Promise<Record<string, string>|null>}
  */
 export async function hydrateTimetableFromServer(cacheKey) {
+  if (!cacheKey) return null;
+
+  let local = null;
   try {
-    const server = await fetchSavedTimetableFromServer();
-    let local = null;
-    try {
-      local = await readTimetableCacheEntry(cacheKey);
-    } catch {
-      local = null;
-    }
+    local = await readTimetableCacheEntry(cacheKey);
+  } catch {
+    local = null;
+  }
 
-    const serverHasData =
-      server?.timetable && Object.keys(server.timetable).length > 0;
-    const localHasData =
-      local?.timetable && Object.keys(local.timetable).length > 0;
-    const serverTs = server?.updatedAt
-      ? new Date(server.updatedAt).getTime()
-      : 0;
-    const localTs = Number(local?.ts || 0);
-
-    if (local?.clearedByUser && localTs > 0 && localTs >= serverTs) {
-      if (serverHasData) {
-        pushTimetableToServer({}).catch(() => {});
-      }
-      return null;
-    }
-
-    if (serverHasData) {
-      if (!localHasData || serverTs >= localTs) {
-        const ts = Date.now();
-        await AsyncStorage.setItem(
-          cacheKey,
-          JSON.stringify({
-            ts,
-            serverUpdatedAt: server.updatedAt || null,
-            timetable: server.timetable,
-            clearedByUser: false,
-            ...(local?.source ? { source: local.source } : {}),
-            ...(local?.autoRefreshWeekKey
-              ? { autoRefreshWeekKey: local.autoRefreshWeekKey }
-              : {}),
-          }),
-        );
-        syncTimetableWidgetFromFlat(server.timetable, {
-          generatedAt: server.updatedAt || new Date(ts).toISOString(),
-        }).catch(() => {});
-        return server.timetable;
-      }
-    }
-
-    if (localHasData) {
-      pushTimetableToServer(local.timetable).catch(() => {});
-      return local.timetable;
-    }
-
-    return null;
+  let server;
+  try {
+    server = await fetchSavedTimetableFromServer();
   } catch (e) {
     console.warn('[timetableSync] 서버 동기화 실패:', e?.message || e);
+    if (local?.clearedByUser && local.academicYear != null) return null;
+    if (hasTimetableEntries(local?.timetable)) return local.timetable;
     return null;
   }
+  if (!server) return null;
+
+  const pendingSameTerm =
+    Boolean(local?.pendingSync) &&
+    (isSameTerm(local, server) || local?.academicYear == null || local?.semester == null);
+
+  if (pendingSameTerm) {
+    try {
+      await pushTimetableToServer(local.clearedByUser ? {} : local.timetable || {});
+      server = (await fetchSavedTimetableFromServer()) || server;
+    } catch (e) {
+      console.warn('[timetableSync] 미전송 시간표 재전송 실패:', e?.message || e);
+      if (local.clearedByUser) return null;
+      if (hasTimetableEntries(local.timetable)) return local.timetable;
+    }
+  }
+
+  if (server.hasSavedRow) {
+    await writeSavedCache(cacheKey, server, local);
+    if (server.cleared || !hasTimetableEntries(server.timetable)) return null;
+    return server.timetable;
+  }
+
+  return previewNeisTimetable();
 }
 
 /** @param {{ periodNumber: number, startTime: string, endTime: string }[]} periods */

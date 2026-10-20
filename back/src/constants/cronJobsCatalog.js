@@ -74,6 +74,15 @@ export const CRON_JOB_CATALOG = [
     blurb: '대시보드에 찍히는 신고·문의 건수가 실제랑 안 어긋나게 맞춰요.',
   },
   {
+    key: 'daily-admin-push-remind',
+    emoji: '📣',
+    title: '하루 알림 고르기',
+    whenDefault: '평일 18시 · 주말 14시',
+    envKey: 'CRON_DAILY_PUSH_REMIND',
+    defaultCron: '0 18 * * 1-5 | 0 14 * * 0,6',
+    blurb: '오늘 사용자 알림을 아직 안 보냈으면 디스코드로 골라 달라고 해요. 이미 보냈으면 조용합니다.',
+  },
+  {
     key: 'attendance-suspicion',
     emoji: '🎒',
     title: '미등교 의심',

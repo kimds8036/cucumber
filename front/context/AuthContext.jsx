@@ -14,6 +14,7 @@ import {
   setCachedStudentVerificationStatus,
   clearCachedStudentVerificationStatus,
 } from '../utils/studentVerificationStorage';
+import { setStudentVerificationSnapshot } from '../utils/studentVerificationSnapshot';
 import {
   getCachedReverification,
   setCachedReverification,
@@ -49,6 +50,7 @@ export function AuthProvider({ children }) {
 
   const applyVerification = useCallback(async (status, reason, extra = {}) => {
     const nextStatus = status || 'UNVERIFIED';
+    setStudentVerificationSnapshot(nextStatus);
     setStudentVerificationStatus(nextStatus);
     setRejectReason(reason || null);
     if (extra.reverificationSubmissionPending != null) {
@@ -99,6 +101,7 @@ export function AuthProvider({ children }) {
   const logout = useCallback(async () => {
     setPostLoginRoute('Main');
     setStudentVerificationStatus('UNVERIFIED');
+    setStudentVerificationSnapshot('UNVERIFIED');
     setRejectReason(null);
     setReverificationStatus('none');
     setReverificationDeadline(null);

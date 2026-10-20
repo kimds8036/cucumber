@@ -11,6 +11,7 @@ window.PANEL_LOADERS = {
   appeals: () => loadAppeals(),
   inquiries: () => loadInquiries(),
   announcements: () => loadAnnouncements(),
+  dailyPush: () => loadDailyPush(),
   tips: () => loadTips(),
   recommendedHashtags: () => loadRecommendedHashtags(),
   processedInquiries: () => loadProcessedInquiries(),

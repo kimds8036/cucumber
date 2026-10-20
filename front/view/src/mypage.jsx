@@ -27,10 +27,7 @@ import {
   getGuideTimetable,
 } from '../../src/screens/UserGuide/guidePreviewData';
 import { syncTimetableWidgetFromFlat } from '../../utils/widget';
-import {
-  hydrateTimetableFromServer,
-  maybeRefreshAutoTimetableOnAppOpen,
-} from '../../utils/timetableSync';
+import { hydrateTimetableFromServer } from '../../utils/timetableSync';
 import { hydratePeriodTimesFromServer } from '../../utils/widget/periodTimeSettings';
 
 const isSameProfileInfo = (a, b) => {
@@ -63,7 +60,6 @@ const MyPage = ({ navigation }) => {
   const { logout, studentVerificationStatus } = useAuth();
   const TIMETABLE_CACHE_KEY = '@mypage_timetable_cache_v1';
   const TIMETABLE_CACHE_KEY_PREFIX = '@mypage_timetable_cache_v1:';
-  const TIMETABLE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
   const PROFILE_CACHE_KEY = '@mypage_profile_cache_v1';
   const PROFILE_CACHE_TTL_MS = 2 * 60 * 60 * 1000;
   const [userInfo, setUserInfo] = useState(null);
@@ -291,47 +287,8 @@ const MyPage = ({ navigation }) => {
             ? timetableCacheKey.slice(TIMETABLE_CACHE_KEY_PREFIX.length)
             : null;
           await hydratePeriodTimesFromServer(scopeFromKey).catch(() => {});
-          await maybeRefreshAutoTimetableOnAppOpen(timetableCacheKey).catch(
-            () => {},
-          );
-          const hydrated = await hydrateTimetableFromServer(
-            timetableCacheKey,
-          ).catch(() => null);
-
-          const raw = await AsyncStorage.getItem(timetableCacheKey);
-          if (!raw || cancelled) {
-            const fromServer =
-              hydrated && Object.keys(hydrated).length > 0 ? hydrated : null;
-            if (!cancelled) {
-              setTimetable(fromServer);
-              syncTimetableWidgetFromFlat(fromServer).catch(() => {});
-            }
-            return;
-          }
-          const parsed = JSON.parse(raw);
-          const cached = parsed?.timetable ?? null;
-          const normalized =
-            cached && Object.keys(cached).length > 0 ? cached : null;
-          const cacheExpired =
-            Date.now() - Number(parsed?.ts || 0) >= TIMETABLE_CACHE_TTL_MS;
-          const toShow =
-            normalized ||
-            (hydrated && Object.keys(hydrated).length > 0 ? hydrated : null);
-          if (cacheExpired && !toShow) {
-            if (!cancelled) setTimetable(null);
-            return;
-          }
+          const toShow = await hydrateTimetableFromServer(timetableCacheKey);
           if (!cancelled) setTimetable(toShow);
-          if (!cancelled) {
-            const generatedAt =
-              parsed?.serverUpdatedAt ||
-              (parsed?.ts
-                ? new Date(Number(parsed.ts)).toISOString()
-                : undefined);
-            syncTimetableWidgetFromFlat(toShow, { generatedAt }).catch(
-              () => {},
-            );
-          }
         } catch (e) {
           console.warn('[MyPage] 시간표 캐시 읽기 실패:', e);
           if (!cancelled) setTimetable(null);
