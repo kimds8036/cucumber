@@ -208,6 +208,7 @@ function adminUrl(subpath) {
     appeals: { title: '이의신청 관리', sub: '소명 검토 및 상태 변경' },
     inquiries: { title: '문의 관리', sub: '미처리 문의 — 답변 작성 / 종결' },
     announcements: { title: '공지사항', sub: '앱 고객지원 공지 작성 · 게시' },
+    dailyPush: { title: '하루 알림', sub: '오늘 사용자에게 보낼 알림 한 건' },
     tips: { title: '인앱 팁', sub: '목록 사이 안내 문구' },
     recommendedHashtags: { title: '추천 해시태그', sub: '글 작성 화면 추천 칩 추가 · 삭제' },
     featureTests: { title: '기능 테스트', sub: 'Dry-Run · 토스트 발송' },
@@ -431,6 +432,7 @@ function adminUrl(subpath) {
       appeals: ['moderator'],
       inquiries: ['moderator', 'support'],
       announcements: ['moderator', 'support'],
+      dailyPush: ['moderator', 'support'],
       tips: ['moderator', 'support'],
       recommendedHashtags: ['moderator', 'support'],
       featureTests: ['moderator'],
@@ -525,7 +527,7 @@ function adminUrl(subpath) {
     document.querySelectorAll('.panel').forEach((p) => p.classList.remove('active'));
     const panel = document.getElementById(`panel-${page}`);
     if (panel) panel.classList.add('active');
-    const m = PAGE_META[page];
+    const m = PAGE_META[page] || { title: page, sub: '' };
     const titleEl = document.getElementById('topbar-title');
     const subEl = document.getElementById('topbar-sub');
     if (titleEl) titleEl.textContent = m.title;

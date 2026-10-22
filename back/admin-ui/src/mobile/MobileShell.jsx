@@ -10,6 +10,7 @@ import MonitorStatus from './MonitorStatus.jsx';
 import VerifyScreen from './VerifyScreen.jsx';
 import AttendanceScreen from './AttendanceScreen.jsx';
 import AnnouncementsScreen from './AnnouncementsScreen.jsx';
+import DailyPushScreen from './DailyPushScreen.jsx';
 import OpsScreen from './OpsScreen.jsx';
 import { TipsScreen, HashtagsScreen, WhackScreen, LogsScreen, EmergencyScreen } from './MoreEditors.jsx';
 
@@ -54,6 +55,7 @@ const LIVE_SCREENS = {
   'ops-user-lookup': 'lookup',
   attendance: 'attendance',
   announcements: 'announcements',
+  dailyPush: 'dailyPush',
   tips: 'tips',
   recommendedHashtags: 'hashtags',
   hallOfFame: 'whack',
@@ -172,6 +174,7 @@ export default function MobileShell({ role, name, sessionLabel, badges = {}, hea
         {!notice && !monitor && extra?.id === 'lookup' ? <UserLookup mode="mobile" /> : null}
         {!notice && !monitor && extra?.id === 'attendance' ? <AttendanceScreen /> : null}
         {!notice && !monitor && extra?.id === 'announcements' ? <AnnouncementsScreen /> : null}
+        {!notice && !monitor && extra?.id === 'dailyPush' ? <DailyPushScreen /> : null}
         {!notice && !monitor && extra?.id === 'tips' ? <TipsScreen /> : null}
         {!notice && !monitor && extra?.id === 'hashtags' ? <HashtagsScreen /> : null}
         {!notice && !monitor && extra?.id === 'whack' ? <WhackScreen /> : null}

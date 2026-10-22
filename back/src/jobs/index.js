@@ -15,6 +15,7 @@ import {
   maybeBootSchoolSemesterInfer,
 } from './schoolSemester.infer.js';
 import { runCronManagerJob } from './cronManager.js';
+import { runDailyAdminPushReminder } from './dailyAdminPush.remind.js';
 import { shouldRunCron } from '../config/serviceRole.js';
 
 const TZ = process.env.CRON_TIMEZONE || 'Asia/Seoul';
@@ -172,6 +173,21 @@ export function initJobs() {
     schoolTermsSchedule,
     async () => {
       await runSchoolTermsSyncJob();
+    },
+    { timezone: TZ },
+  );
+
+  cron.schedule(
+    '0 18 * * 1-5',
+    async () => {
+      await runDailyAdminPushReminder();
+    },
+    { timezone: TZ },
+  );
+  cron.schedule(
+    '0 14 * * 0,6',
+    async () => {
+      await runDailyAdminPushReminder();
     },
     { timezone: TZ },
   );

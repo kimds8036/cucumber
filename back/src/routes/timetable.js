@@ -4,7 +4,9 @@ import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { detectTimetableAnomalies } from '../utils/timetableAnomaly.js';
+import { academicYearOfYmd } from '../utils/schoolDay.js';
 import { freezeSchoolPeriodsIfEmpty } from '../services/attendance.service.js';
+import { resolveNeisSemester } from '../services/schoolSemester.service.js';
 import { formatKstDateYmd } from '../services/reverification.service.js';
 
 const router = express.Router();
@@ -55,12 +57,31 @@ function parseJsonColumn(raw) {
   }
 }
 
-async function loadUserOverride(userId) {
+function timetableHasEntries(timetable) {
+  if (!timetable || typeof timetable !== 'object' || Array.isArray(timetable)) return false;
+  return Object.values(timetable).some((value) => String(value ?? '').trim());
+}
+
+async function resolveCurrentTerm(userId) {
   const [rows] = await pool.execute(
-    'SELECT timetable_json, updated_at FROM user_timetable_overrides WHERE user_id = ? LIMIT 1',
+    'SELECT school_id FROM users WHERE id = ? LIMIT 1',
     [userId],
   );
-  if (!rows.length) return { timetable: {}, updatedAt: null };
+  const schoolId = rows[0]?.school_id ?? null;
+  const academicYear = academicYearOfYmd(formatKstDateYmd());
+  const semester = await resolveNeisSemester(schoolId);
+  return { academicYear, semester };
+}
+
+async function loadUserOverride(userId, academicYear, semester) {
+  const [rows] = await pool.execute(
+    `SELECT timetable_json, updated_at
+     FROM user_timetable_overrides
+     WHERE user_id = ? AND academic_year = ? AND semester = ?
+     LIMIT 1`,
+    [userId, academicYear, semester],
+  );
+  if (!rows.length) return { timetable: {}, updatedAt: null, hasSavedRow: false };
   const timetable = parseJsonColumn(rows[0].timetable_json);
   return {
     timetable:
@@ -68,17 +89,34 @@ async function loadUserOverride(userId) {
         ? timetable
         : {},
     updatedAt: rows[0].updated_at,
+    hasSavedRow: true,
   };
 }
 
-async function saveUserOverride(userId, timetable) {
+function presentSavedTimetable(term, saved) {
+  const timetable =
+    saved?.timetable && typeof saved.timetable === 'object' && !Array.isArray(saved.timetable)
+      ? saved.timetable
+      : {};
+  const hasSavedRow = Boolean(saved?.hasSavedRow);
+  return {
+    timetable: hasSavedRow ? timetable : {},
+    updatedAt: saved?.updatedAt ? new Date(saved.updatedAt).toISOString() : null,
+    academicYear: term.academicYear,
+    semester: term.semester,
+    hasSavedRow,
+    cleared: hasSavedRow && !timetableHasEntries(timetable),
+  };
+}
+
+async function saveUserOverride(userId, academicYear, semester, timetable) {
   await pool.execute(
-    `INSERT INTO user_timetable_overrides (user_id, timetable_json)
-     VALUES (?, ?)
+    `INSERT INTO user_timetable_overrides (user_id, academic_year, semester, timetable_json)
+     VALUES (?, ?, ?, ?)
      ON DUPLICATE KEY UPDATE
        timetable_json = VALUES(timetable_json),
        updated_at = CURRENT_TIMESTAMP`,
-    [userId, JSON.stringify(timetable)],
+    [userId, academicYear, semester, JSON.stringify(timetable)],
   );
 }
 
@@ -322,7 +360,6 @@ async function fetchBaseTimetableByUser(user) {
     user.school_name,
   );
   const { fromYmd, toYmd } = getWeekRange();
-  const { resolveNeisSemester } = await import('../services/schoolSemester.service.js');
   const preferredSem = await resolveNeisSemester(user.school_id);
 
   if (!NEIS_API_KEY || !user.edu_office_code || !user.admin_standard_code || !user.grade) {
@@ -407,7 +444,12 @@ router.get('/', authenticate, async (req, res) => {
         },
       });
     }
-    const { timetable: override } = await loadUserOverride(userId);
+    const term = await resolveCurrentTerm(userId);
+    const { timetable: override } = await loadUserOverride(
+      userId,
+      term.academicYear,
+      term.semester,
+    );
     const timetable = mergeTimetable(baseTimetable, override);
     const anomalies = detectTimetableAnomalies(timetable);
     return res.json({
@@ -435,15 +477,11 @@ router.get('/', authenticate, async (req, res) => {
 router.get('/me', authenticate, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const saved = await loadUserOverride(userId);
+    const term = await resolveCurrentTerm(userId);
+    const saved = await loadUserOverride(userId, term.academicYear, term.semester);
     return res.json({
       success: true,
-      data: {
-        timetable: saved.timetable,
-        updatedAt: saved.updatedAt
-          ? new Date(saved.updatedAt).toISOString()
-          : null,
-      },
+      data: presentSavedTimetable(term, saved),
     });
   } catch (error) {
     console.error('저장 시간표 조회 오류:', error);
@@ -527,18 +565,14 @@ router.put('/', authenticate, validate(updateTimetableValidators), async (req, r
         message: '유효한 시간표 데이터가 필요합니다.',
       });
     }
-    await saveUserOverride(userId, timetable);
-    const saved = await loadUserOverride(userId);
+    const term = await resolveCurrentTerm(userId);
+    await saveUserOverride(userId, term.academicYear, term.semester, timetable);
+    const saved = await loadUserOverride(userId, term.academicYear, term.semester);
 
     return res.json({
       success: true,
       message: '시간표 수정사항이 저장되었습니다.',
-      data: {
-        timetable,
-        updatedAt: saved.updatedAt
-          ? new Date(saved.updatedAt).toISOString()
-          : null,
-      },
+      data: presentSavedTimetable(term, saved),
     });
   } catch (error) {
     console.error('시간표 저장 오류:', error);
@@ -569,8 +603,13 @@ export async function getMergedTimetableForUserId(userId) {
   );
   if (!rows.length) return null;
   const user = rows[0];
-  const { timetable: override, updatedAt } = await loadUserOverride(userId);
-  const hasOverride = Object.keys(override).length > 0;
+  const term = await resolveCurrentTerm(userId);
+  const { timetable: override, updatedAt, hasSavedRow } = await loadUserOverride(
+    userId,
+    term.academicYear,
+    term.semester,
+  );
+  const hasOverride = hasSavedRow && timetableHasEntries(override);
 
   // NEIS는 힌트용으로만 조회 (격자에는 넣지 않음 — 저장본과 섞이면 수정한 표가 가려짐)
   let neisPresent = false;
@@ -591,6 +630,8 @@ export async function getMergedTimetableForUserId(userId) {
       override: hasOverride,
     },
     overrideUpdatedAt: updatedAt ? new Date(updatedAt).toISOString() : null,
+    academicYear: term.academicYear,
+    semester: term.semester,
   };
 }
 

@@ -2865,6 +2865,37 @@
       .panel { min-width: 0; }
     }
 
+    .daily-push-status {
+      display: inline-block;
+      margin: 0 0 10px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 13px;
+      background: #eef2f6;
+    }
+    .daily-push-status.is-sent { background: #e5f6e8; }
+    .daily-push-status.is-due { background: #fff3d6; }
+    .daily-push-status.is-missed { background: #fde8e8; }
+    .daily-badge {
+      display: inline-block;
+      margin-right: 6px;
+      padding: 1px 7px;
+      border-radius: 999px;
+      font-style: normal;
+      font-size: 11px;
+    }
+    .daily-badge.is-national { background: #e7f0ff; color: #1d4f91; }
+    .daily-badge.is-school { background: #fff3d6; color: #8a5a00; }
+    .daily-push-lock {
+      max-width: 360px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: #1c2430;
+      color: #f2f5f8;
+    }
+    .daily-push-lock strong { display: block; margin-bottom: 4px; }
+    .daily-push-lock p { margin: 0; color: #c5d0dc; }
+    .daily-push-history { margin: 0; padding-left: 18px; }
     body.admin-is-mobile .layout { display: none !important; }
     .admin-mobile-root {
       display: none;
