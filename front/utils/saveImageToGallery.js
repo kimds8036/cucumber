@@ -16,7 +16,8 @@ export async function saveImageUriToGallery(uri) {
     throw new Error('MISSING_URI');
   }
 
-  const { status } = await MediaLibrary.requestPermissionsAsync();
+  // 전체 앨범 읽기 권한 없이, 앱이 만든 이미지를 갤러리에 추가하는 저장만 요청한다.
+  const { status } = await MediaLibrary.requestPermissionsAsync(true);
   if (status !== 'granted') {
     throw new GalleryPermissionError();
   }

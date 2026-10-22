@@ -175,11 +175,7 @@ const ProfileCard = ({
 
   const pickAvatar = useCallback(async () => {
     if (isGuidePreview || savingAvatar) return;
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      appAlert.alert('권한 필요', '프로필 사진을 위해 앨범 접근 권한이 필요합니다.');
-      return;
-    }
+    // Android/iOS 시스템 사진 선택 도구 — 앨범 전체 읽기 권한 없이 고를 수 있다.
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: 'images',
       allowsMultipleSelection: false,

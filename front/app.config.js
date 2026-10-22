@@ -62,7 +62,7 @@ export default ({ config }) => ({
     },
 
     android: {
-      versionCode: 44,
+      versionCode: 45,
       usesCleartextTraffic: !isProduction,
       // (선택) 안드로이드도 같은 방식으로 secret 적용 가능
       googleServicesFile:
@@ -77,16 +77,18 @@ export default ({ config }) => ({
         backgroundColor: '#E5F4E0',
       },
       edgeToEdgeEnabled: true,
+      // 사진 고르기는 시스템 사진 선택 도구만 사용. 플러그인이 넣는 읽기 권한은 최종 매니페스트에서 제거.
+      blockedPermissions: [
+        'android.permission.READ_MEDIA_IMAGES',
+        'android.permission.READ_MEDIA_VIDEO',
+        'android.permission.READ_MEDIA_VISUAL_USER_SELECTED',
+      ],
       permissions: [
         'CAMERA',
         'ACCESS_FINE_LOCATION',
         'ACCESS_COARSE_LOCATION',
         'android.permission.ACCESS_COARSE_LOCATION',
         'android.permission.ACCESS_FINE_LOCATION',
-        'android.permission.READ_EXTERNAL_STORAGE',
-        'android.permission.WRITE_EXTERNAL_STORAGE',
-        'android.permission.READ_MEDIA_VISUAL_USER_SELECTED',
-        'android.permission.READ_MEDIA_IMAGES',
       ],
       package: 'com.ucost.YouthPaper',
       playStoreUrl:
@@ -157,11 +159,11 @@ export default ({ config }) => ({
       [
         'expo-media-library',
         {
-          photosPermission:
-            '갤러리에서 사진을 불러오기 위해 접근 권한이 필요합니다.',
+          // 읽기(전체 앨범) 권한 문구/선언은 넣지 않고, 저장(추가)만 허용한다.
+          photosPermission: false,
           savePhotosPermission:
             '캡처한 이미지를 갤러리에 저장하기 위해 권한이 필요합니다.',
-          granularPermissions: ['photo'],
+          granularPermissions: [],
         },
       ],
       '@react-native-firebase/app',

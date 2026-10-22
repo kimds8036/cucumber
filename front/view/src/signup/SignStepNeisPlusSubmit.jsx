@@ -46,11 +46,7 @@ const SignStepNeisPlusSubmit = ({
 
   const pickImage = async () => {
     if (busy) return;
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      appAlert.alert('권한 필요', '사진 첨부를 위해 앨범 접근 권한이 필요합니다.');
-      return;
-    }
+    // 시스템 사진 선택 도구 — 앨범 전체 읽기 권한 없이 고를 수 있다.
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: 'images',
       allowsMultipleSelection: false,
