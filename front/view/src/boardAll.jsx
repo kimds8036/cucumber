@@ -18,7 +18,6 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import MainHeader from '../frame/mainHeader';
 import MainFooter, { MAIN_FOOTER_SAFE_AREA_EDGES } from '../frame/mainFooter';
@@ -33,6 +32,7 @@ import { loadTips } from '../../utils/tipsApi';
 import { normalizeTagsFromApi } from '../../utils/normalizePostTags';
 import { equippedBadgeFromApiRow } from '../../constants/badges';
 import BoardPostCard from '../../components/Boardpostcard';
+import StudentBoardSilhouette from '../../components/board/StudentBoardSilhouette';
 import AdPlaceholder from '../../src/screens/ad/AdPlaceholder';
 import TopAdBanner from '../../components/ads/TopAdBanner';
 import PostWritePromptBanner from '../../components/board/PostWritePromptBanner';
@@ -114,7 +114,6 @@ function mapApiPost(p) {
 // 메인 화면(MainScreen)에서 헤더/푸터 없이 메인 영역만 렌더할 때 사용
 // posts: 외부에서 주입하는 게시글 배열 (없으면 defaultPosts 사용)
 export function BoardAllContent({ navigation, posts }) {
-  const tabNavigation = useNavigation();
   const { width } = useWindowDimensions();
   const normalize = useMemo(() => getNormalize(width), [width]);
   const tabBarInset = useMainTabBarInset();
@@ -616,10 +615,14 @@ export function BoardAllContent({ navigation, posts }) {
   );
 
   const flatListData = useMemo(() => {
+    if (studentFeedLocked) {
+      return [{ type: 'silhouette', id: 'student-board-silhouette' }];
+    }
     if (hideListBehindLoader) return skeletonListData;
     if (!showPinned) return dataWithAds;
     return [{ ...pinnedPost, type: 'post', featured: true }, ...dataWithAds];
   }, [
+    studentFeedLocked,
     hideListBehindLoader,
     dataWithAds,
     skeletonListData,
@@ -706,6 +709,9 @@ export function BoardAllContent({ navigation, posts }) {
     );
   };
   const renderItem = ({ item }) => {
+    if (item.type === 'silhouette') {
+      return <StudentBoardSilhouette normalize={normalize} width={width} />;
+    }
     let body;
     if (item.type === 'skeleton') {
       body = renderBoardSkeletonCard();
@@ -760,7 +766,7 @@ export function BoardAllContent({ navigation, posts }) {
             </View>
           }
           showsVerticalScrollIndicator={false}
-          onEndReached={handleLoadMore}
+          onEndReached={studentFeedLocked ? undefined : handleLoadMore}
           onEndReachedThreshold={0.5}
           refreshControl={
             postsInjected || isGuidePreview ? undefined : (
@@ -971,7 +977,6 @@ export function BoardAllContent({ navigation, posts }) {
             studentVerificationStatus !== 'APPROVED'
           ) {
             setBoardScope('national');
-            if (!isGuidePreview) tabNavigation.navigate('timer');
           }
         }}
         onPressVerify={() => {

@@ -123,6 +123,7 @@ export function TimerContent() {
 
   const [friends, setFriends] = useState(INITIAL_FRIENDS);
   const [suggestions, setSuggestions] = useState([]);
+  const [timerBots, setTimerBots] = useState([]);
   const [friendsBarLoading, setFriendsBarLoading] = useState(!isGuidePreview);
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [pokeTarget, setPokeTarget] = useState(null);
@@ -236,16 +237,22 @@ export function TimerContent() {
     setFriendsBarLoading(true);
     const loadFriends = async () => {
       try {
-        const [friendsRes, suggestRes] = await Promise.all([
+        const [friendsRes, suggestRes, botRes] = await Promise.all([
           api.get('/api/friends/list'),
           api.get('/api/friends/timer-suggestions').catch((err) => {
             console.warn('[Timer] 친구 추천 조회 실패', err?.message || err);
             return { data: { data: [] } };
           }),
+          api.get('/api/friends/timer-bots').catch((err) => {
+            console.warn('[Timer] 봇 조회 실패', err?.message || err);
+            return { data: { data: [] } };
+          }),
         ]);
         const list = friendsRes.data?.data ?? [];
         const suggestList = suggestRes.data?.data ?? [];
+        const botList = botRes.data?.data ?? [];
         if (!mounted) return;
+        refreshStudyingFriends?.();
         setFriends(
           list.map((f, index) => ({
             id: f.userId,
@@ -284,6 +291,21 @@ export function TimerContent() {
             };
           }),
         );
+        setTimerBots(
+          (Array.isArray(botList) ? botList : []).map((bot, index) => {
+            const displayId = bot.username ? `@${bot.username}` : '학생';
+            return {
+              id: bot.userId,
+              name: displayId,
+              username: displayId,
+              colorId: bot.colorId,
+              colorIndex: index % FRIEND_ICON_COLORS.length,
+              isTimerBot: true,
+              phase: bot.phase,
+              avatarUrl: bot.avatarUrl || null,
+            };
+          }),
+        );
       } catch (error) {
         console.error('타이머 친구 목록 조회 실패:', error);
       } finally {
@@ -291,23 +313,33 @@ export function TimerContent() {
       }
     };
     const cancel = runAfterTabTransition(loadFriends);
+    const refreshTimer = setInterval(loadFriends, 60 * 1000);
     return () => {
       mounted = false;
       cancel();
+      clearInterval(refreshTimer);
     };
-  }, [isFocused, isGuidePreview]);
+  }, [isFocused, isGuidePreview, refreshStudyingFriends]);
 
   useEffect(() => {
     if (!isGuidePreview) return;
     setFriends(getGuideTimerFriends());
     setSuggestions([]);
+    setTimerBots([]);
     setFriendsBarLoading(false);
   }, [isGuidePreview]);
 
   const storyFriends = useMemo(
-    () => [...friends, ...suggestions],
-    [friends, suggestions],
+    () => [...friends, ...suggestions, ...timerBots],
+    [friends, suggestions, timerBots],
   );
+  const storyStudying = useMemo(() => {
+    const merged = { ...(studyingFriends || {}) };
+    timerBots.forEach((bot) => {
+      if (bot.phase === 'study') merged[bot.id] = true;
+    });
+    return merged;
+  }, [studyingFriends, timerBots]);
 
   const handleOpenAddFriend = useCallback(() => setShowAddFriend(true), []);
 
@@ -343,7 +375,7 @@ export function TimerContent() {
 
   const handleFriendPress = useCallback(
     (friend) => {
-      if (friend?.isSuggestion) {
+      if (friend?.isTimerBot || friend?.isSuggestion) {
         const label = friend.username || friend.name || '이 사용자';
         Alert.alert(
           '친구 추가',
@@ -354,7 +386,12 @@ export function TimerContent() {
               text: '추가',
               onPress: async () => {
                 const ok = await sendFriendRequestByUsername(friend.username);
-                if (ok) {
+                if (!ok) return;
+                if (friend.isTimerBot) {
+                  setTimerBots((prev) =>
+                    prev.filter((bot) => String(bot.id) !== String(friend.id)),
+                  );
+                } else {
                   setSuggestions((prev) =>
                     prev.filter((s) => String(s.id) !== String(friend.id)),
                   );
@@ -612,7 +649,7 @@ export function TimerContent() {
               >
                 <FriendStoryBar
                   friends={storyFriends}
-                  studyingFriends={studyingFriends}
+                  studyingFriends={storyStudying}
                   normalize={normalize}
                   styles={styles}
                   loading={friendsBarLoading}

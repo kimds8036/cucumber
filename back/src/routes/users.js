@@ -129,6 +129,7 @@ router.get('/search', authenticate, validate(userSearchValidators), async (req, 
        FROM users u
        LEFT JOIN schools s ON u.school_id = s.school_id
        WHERE u.is_deleted = FALSE
+         AND u.is_bot = 0
          AND u.school_id = ?
          AND ${nameLookupWhereClause('u')}
        ORDER BY u.name_lookup ASC

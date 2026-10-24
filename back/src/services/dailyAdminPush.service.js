@@ -190,7 +190,8 @@ async function recipientIds() {
     `SELECT DISTINCT u.id
      FROM users u
      INNER JOIN fcm_tokens ft ON ft.user_id = u.id AND ft.is_active = TRUE
-     WHERE u.deleted_at IS NULL`,
+     WHERE u.deleted_at IS NULL
+       AND u.is_bot = 0`,
   );
   return rows.map((row) => Number(row.id)).filter((id) => id > 0);
 }

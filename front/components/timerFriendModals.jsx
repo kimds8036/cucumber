@@ -484,8 +484,10 @@ export const FriendStoryBar = memo(function FriendStoryBar({
   loading = false,
 }) {
   const orderedFriends = useMemo(() => {
-    const suggestions = friends.filter((f) => f.isSuggestion);
-    const realFriends = friends.filter((f) => !f.isSuggestion);
+    const bots = friends.filter((f) => f.isTimerBot);
+    const people = friends.filter((f) => !f.isTimerBot);
+    const suggestions = people.filter((f) => f.isSuggestion);
+    const realFriends = people.filter((f) => !f.isSuggestion);
     const activeFriends = realFriends.filter(
       (f) => studyingFriends[f.id] === true,
     );
@@ -493,15 +495,12 @@ export const FriendStoryBar = memo(function FriendStoryBar({
       (f) => studyingFriends[f.id] !== true,
     );
     const base = [...activeFriends, ...inactiveFriends];
-    if (!suggestions.length) return base;
-
     const result = [...base];
     suggestions.forEach((suggestion, index) => {
-      // 앞쪽에 추천을 섞되, 친구 목록이 길면 뒤로 밀려 가로 스크롤
       const insertAt = Math.min(index + 1, result.length);
       result.splice(insertAt, 0, suggestion);
     });
-    return result;
+    return result.concat(bots);
   }, [friends, studyingFriends]);
 
   return (
