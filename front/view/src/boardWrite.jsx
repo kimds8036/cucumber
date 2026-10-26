@@ -598,7 +598,7 @@ const BoardWrite = ({ navigation, route }) => {
             <MaterialCommunityIcons
               name={pollOpen ? 'vote' : 'vote-outline'}
               size={22}
-              color={pollOpen ? colors.textLight6 : colors.textLight4}
+              color={pollOpen ? colors.primary : colors.textLight4}
             />
           </TouchableOpacity>
         </View>

@@ -316,7 +316,7 @@ const createStyles = (width, normalize) => ({
   },
   resultBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     paddingHorizontal: normalize(28),
   },

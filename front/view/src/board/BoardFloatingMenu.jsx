@@ -194,7 +194,7 @@ export default function BoardFloatingMenu({
         <View
           style={{
             flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.3)',
+            backgroundColor: 'rgba(0,0,0,0.5)',
             ...(anchor
               ? {}
               : { justifyContent: 'center', alignItems: 'center' }),

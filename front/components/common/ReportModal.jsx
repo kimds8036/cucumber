@@ -357,7 +357,7 @@ const makeStyles = (N) =>
     root: { flex: 1 },
     backdrop: {
       ...StyleSheet.absoluteFill,
-      backgroundColor: 'rgba(0,0,0,0.35)',
+      backgroundColor: 'rgba(0,0,0,0.5)',
     },
     sheetWrapper: { flex: 1, justifyContent: 'flex-end' },
     sheet: {

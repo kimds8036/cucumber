@@ -364,7 +364,7 @@ export default function GuideOverlayScreen({ navigation, route }) {
             <Path d={focusHolePath} fillRule="evenodd" />
           </ClipPath>
         </Defs>
-        <Rect x="0" y="0" width={width} height={height} fill="rgba(0,0,0,0.55)" clipPath="url(#focusHole)" />
+        <Rect x="0" y="0" width={width} height={height} fill="rgba(0,0,0,0.5)" clipPath="url(#focusHole)" />
       </Svg>
 
       <View

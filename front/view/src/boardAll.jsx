@@ -845,7 +845,7 @@ export function BoardAllContent({ navigation, posts }) {
           <View
             style={{
               flex: 1,
-              backgroundColor: 'rgba(0,0,0,0.3)',
+              backgroundColor: 'rgba(0,0,0,0.5)',
               ...(floatingMenuAnchor
                 ? {}
                 : { justifyContent: 'center', alignItems: 'center' }),

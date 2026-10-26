@@ -158,7 +158,7 @@ export const createLoginStyles = (width, normalize) => {
     },
     policyOverlay: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.38)',
+      backgroundColor: 'rgba(0,0,0,0.5)',
       justifyContent: 'center',
       paddingHorizontal: normalize(24),
     },

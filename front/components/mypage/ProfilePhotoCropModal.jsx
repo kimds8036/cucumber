@@ -305,11 +305,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   dim: {
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   dimFlex: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
   guideFrame: {
     borderWidth: 2,

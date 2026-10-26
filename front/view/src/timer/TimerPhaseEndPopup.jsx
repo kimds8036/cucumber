@@ -33,7 +33,7 @@ export default function TimerPhaseEndPopup({ notice, onClose, styles, normalize 
       visible={notice != null}
       onClose={onClose}
       dismissOnBackPress
-      overlayColor="rgba(0,0,0,0.55)"
+      overlayColor="rgba(0,0,0,0.5)"
       cardStyle={styles.phaseEndCard}
     >
       <View

@@ -554,7 +554,7 @@ function createStyles(normalize, width) {
     },
     modalBackdrop: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.35)',
+      backgroundColor: 'rgba(0,0,0,0.5)',
       justifyContent: 'flex-end',
     },
     modalCard: {

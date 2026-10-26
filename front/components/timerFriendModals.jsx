@@ -509,32 +509,6 @@ export const FriendStoryBar = memo(function FriendStoryBar({
       name={T.TIMER_FRIEND_BAR}
       style={[styles.friendStoryRow, debugFriendStoryBorder('#FF3B30')]}
     >
-      <TouchableOpacity
-        style={[
-          styles.friendStoryAddCircleWrap,
-          debugFriendStoryBorder('#FFCC00'),
-        ]}
-        onPress={onAddFriendPress}
-        activeOpacity={0.8}
-        disabled={loading}
-      >
-        <View
-          style={[
-            styles.friendStoryAddCircle,
-            debugFriendStoryBorder('#34C759'),
-          ]}
-        >
-          <Ionicons name="add" size={normalize(25)} color={colors.primary} />
-        </View>
-        <Text
-          style={[
-            styles.friendStoryAddLabel,
-            debugFriendStoryBorder('#30B0C7'),
-          ]}
-        >
-          친구 추가
-        </Text>
-      </TouchableOpacity>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -544,7 +518,32 @@ export const FriendStoryBar = memo(function FriendStoryBar({
           debugFriendStoryBorder('#FF9500'),
         ]}
       >
-
+        <TouchableOpacity
+          style={[
+            styles.friendStoryAddCircleWrap,
+            debugFriendStoryBorder('#FFCC00'),
+          ]}
+          onPress={onAddFriendPress}
+          activeOpacity={0.8}
+          disabled={loading}
+        >
+          <View
+            style={[
+              styles.friendStoryAddCircle,
+              debugFriendStoryBorder('#34C759'),
+            ]}
+          >
+            <Ionicons name="add" size={normalize(25)} color={colors.primary} />
+          </View>
+          <Text
+            style={[
+              styles.friendStoryAddLabel,
+              debugFriendStoryBorder('#30B0C7'),
+            ]}
+          >
+            친구 추가
+          </Text>
+        </TouchableOpacity>
         {loading
           ? [0, 1, 2].map((i) => (
               <View

@@ -36,7 +36,7 @@ export default function SubmittingLockModal({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(39, 42, 38, 0.45)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 32,

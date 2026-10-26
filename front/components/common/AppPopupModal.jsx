@@ -53,7 +53,7 @@ export default function AppPopupModal({
   dismissOnBackPress = true,
   cardStyle,
   containerStyle,
-  overlayColor = 'rgba(0,0,0,0.3)',
+  overlayColor = 'rgba(0,0,0,0.5)',
   useDefaultContainerWidth = true,
   onDismissed,
 }) {

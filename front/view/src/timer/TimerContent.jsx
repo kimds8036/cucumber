@@ -454,7 +454,6 @@ export function TimerContent() {
   );
   const friendStoryStickyStyle = {
     backgroundColor: colors.white,
-    paddingHorizontal: timerGutter,
     paddingTop: normalize(8),
   };
 
@@ -496,7 +495,7 @@ export function TimerContent() {
           style={[styles.friendStoryRow, friendStoryStickyStyle, tdb('#FFCC00')]}
           collapsable={false}
         >
-          <View style={{ width: '100%', paddingRight: normalize(16) }}>
+          <View style={{ width: '100%' }}>
             <Skeleton
               width="100%"
               height={normalize(74)}
