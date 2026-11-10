@@ -2394,7 +2394,7 @@ router.post('/login', validate(loginValidators), async (req, res) => {
     // 사용자 조회
     const [users] = await pool.execute(
       `SELECT id, username, password, name_enc, phone_enc, is_deleted, is_banned, is_suspended, suspended_until,
-              token_version, reverification_status, reverification_deadline
+              token_version, reverification_status, reverification_deadline, is_bot
        FROM users WHERE username = ?`,
       [username]
     );
@@ -2407,6 +2407,12 @@ router.post('/login', validate(loginValidators), async (req, res) => {
     }
 
     const user = users[0];
+    if (Number(user.is_bot) === 1) {
+      return res.status(401).json({
+        success: false,
+        message: '사용자명 또는 비밀번호가 일치하지 않습니다.',
+      });
+    }
 
     try {
       await assertUserAllowedToLogin(user);

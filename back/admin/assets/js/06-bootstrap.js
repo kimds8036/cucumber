@@ -12,6 +12,7 @@ window.PANEL_LOADERS = {
   inquiries: () => loadInquiries(),
   announcements: () => loadAnnouncements(),
   dailyPush: () => loadDailyPush(),
+  timerBots: () => loadTimerBots(),
   tips: () => loadTips(),
   recommendedHashtags: () => loadRecommendedHashtags(),
   processedInquiries: () => loadProcessedInquiries(),

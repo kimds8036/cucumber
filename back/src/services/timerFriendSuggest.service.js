@@ -122,6 +122,7 @@ async function pickCandidateIds(userId, limit, filters = {}) {
      FROM users u
      ${joinSql}
      WHERE u.is_deleted = FALSE
+       AND u.is_bot = 0
        AND u.student_verified = TRUE
        AND u.id <> ?
        ${extraClauses.join('\n       ')}

@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import {
   createRedisRateLimitStore,
   logRateLimitStoreMode,
@@ -39,6 +41,7 @@ import legalRoutes from './routes/legal.js';
 import announcementsRoutes from './routes/announcements.js';
 import adminAnnouncementsRoutes from './routes/adminAnnouncements.js';
 import adminDailyPushRoutes from './routes/adminDailyPush.js';
+import adminTimerBotsRoutes from './routes/adminTimerBots.js';
 import tipsRoutes from './routes/tips.js';
 import adminTipsRoutes from './routes/adminTips.js';
 import adminRecommendedHashtagsRoutes from './routes/adminRecommendedHashtags.js';
@@ -249,6 +252,25 @@ if (isProductionEnv()) {
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 }
 
+// 3D 스터디룸 맵 (WebView). 인증 없이 GET만.
+const snowmapDir = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../snowmap',
+);
+app.use(
+  '/snowmap',
+  express.static(snowmapDir, {
+    index: 'index.html',
+    redirect: true,
+    maxAge: '1h',
+    setHeaders(res, filePath) {
+      if (filePath.endsWith('.js')) {
+        res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+      }
+    },
+  }),
+);
+
 // Health check
 app.get('/health', async (req, res) => {
   const payload = {
@@ -329,6 +351,7 @@ app.use('/api/tips', tipsRoutes);
 app.use('/api/admin', adminReportsRoutes);
 app.use('/api/admin/announcements', adminAnnouncementsRoutes);
 app.use('/api/admin/daily-push', adminDailyPushRoutes);
+app.use('/api/admin/timer-bots', adminTimerBotsRoutes);
 app.use('/api/admin/tips', adminTipsRoutes);
 app.use('/api/admin/recommended-hashtags', adminRecommendedHashtagsRoutes);
 app.use('/api/admin/inquiries', adminInquiriesRoutes);

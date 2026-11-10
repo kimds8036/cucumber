@@ -35,9 +35,8 @@ router.post(
     body('kind').isIn(['post', 'announcement', 'study_room']),
     body('postId').optional({ values: 'falsy' }).isInt({ min: 1 }),
     body('announcementId').optional({ values: 'falsy' }).isInt({ min: 1 }),
-    body('phraseKind').optional({ values: 'falsy' }).isIn(['popular', 'worry', 'question', 'tip', 'review', 'topic']),
+    body('phraseKind').optional({ values: 'falsy' }).isIn(['popular', 'topic']),
     body('topicLabel').optional({ values: 'falsy' }).isString().isLength({ max: 30 }),
-    body('confirmReported').optional().isBoolean(),
   ]),
   async (req, res) => {
     try {
@@ -52,7 +51,6 @@ router.post(
         announcementId: req.body.announcementId,
         phraseKind: req.body.phraseKind,
         topicLabel: req.body.topicLabel,
-        confirmReported: req.body.confirmReported === true,
       });
       if (!result.ok) {
         return res.status(result.status).json({ success: false, message: result.message });
