@@ -16,7 +16,6 @@ export const DEFAULT_TIMER_SETTINGS = {
   shortBreakMin: 5,
   longBreakMin: 15,
   longBreakEvery: 4,
-  gender: 'random',
 };
 
 const LIMITS = {
@@ -46,7 +45,6 @@ function normalizePhaseEndCue(src) {
 
 export function normalizeTimerSettings(raw) {
   const src = raw && typeof raw === 'object' ? raw : {};
-  const gender = src.gender === 'girl' || src.gender === 'boy' ? src.gender : 'random';
   return {
     pomodoroOn: src.pomodoroOn === true,
     autoStart: src.autoStart === true,
@@ -55,7 +53,6 @@ export function normalizeTimerSettings(raw) {
     shortBreakMin: clampSetting('shortBreakMin', src.shortBreakMin),
     longBreakMin: clampSetting('longBreakMin', src.longBreakMin),
     longBreakEvery: clampSetting('longBreakEvery', src.longBreakEvery),
-    gender,
   };
 }
 

@@ -484,10 +484,8 @@ export const FriendStoryBar = memo(function FriendStoryBar({
   loading = false,
 }) {
   const orderedFriends = useMemo(() => {
-    const bots = friends.filter((f) => f.isTimerBot);
-    const people = friends.filter((f) => !f.isTimerBot);
-    const suggestions = people.filter((f) => f.isSuggestion);
-    const realFriends = people.filter((f) => !f.isSuggestion);
+    const suggestions = friends.filter((f) => f.isSuggestion);
+    const realFriends = friends.filter((f) => !f.isSuggestion);
     const activeFriends = realFriends.filter(
       (f) => studyingFriends[f.id] === true,
     );
@@ -500,7 +498,7 @@ export const FriendStoryBar = memo(function FriendStoryBar({
       const insertAt = Math.min(index + 1, result.length);
       result.splice(insertAt, 0, suggestion);
     });
-    return result.concat(bots);
+    return result;
   }, [friends, studyingFriends]);
 
   return (

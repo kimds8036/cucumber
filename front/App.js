@@ -280,7 +280,15 @@ function MainStack({ initialRouteName = 'Main' }) {
       <Stack.Screen name="SchoolMailDetail" component={SchoolMailDetail} />
       <Stack.Screen name="SendSchoolMail" component={SendSchoolMailScreen} />
       <Stack.Screen name="Timer" component={Timer} />
-      <Stack.Screen name="TimerAniLab" component={TimerAniLab} />
+      <Stack.Screen
+        name="TimerAniLab"
+        component={TimerAniLab}
+        options={{
+          headerShown: false,
+          orientation: 'landscape',
+          animation: 'fade',
+        }}
+      />
       <Stack.Screen name="TimerSettings" component={TimerSettings} />
       <Stack.Screen name="Friends" component={FriendsScreen} />
       <Stack.Screen

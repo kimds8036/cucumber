@@ -64,7 +64,6 @@ import {
   subscribePhaseEndNotice,
 } from './phaseEndNoticeStore';
 import { playPhaseEndSound, vibratePhaseEnd } from './phaseEndCue';
-import { registerPomodoroRoomActions } from './pomodoroRoomBridge';
 import { appAlert } from '../../../utils/appAlert';
 
 export function useTimerDay({
@@ -897,17 +896,6 @@ export function useTimerDay({
     }
     return isRunning ? pauseTimer() : startTimerTop();
   };
-
-  const pomoRoomActionsRef = useRef({ toggle: toggleTimer, skip: pomoSkip });
-  pomoRoomActionsRef.current.toggle = toggleTimer;
-  pomoRoomActionsRef.current.skip = pomoSkip;
-
-  useEffect(() => {
-    return registerPomodoroRoomActions({
-      toggle: () => pomoRoomActionsRef.current.toggle(),
-      skip: () => pomoRoomActionsRef.current.skip(),
-    });
-  }, []);
 
   const reloadTodayFromServer = useCallback(async () => {
     const dayKey = timerDayKey ?? getTimerDayKey(new Date());

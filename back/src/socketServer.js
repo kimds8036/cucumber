@@ -23,7 +23,6 @@ import { Server } from 'socket.io';
 import pool from './config/database.js';
 import { verifyToken } from './utils/auth.js';
 import { registerFriendEvents } from './socket/friendEvents.js';
-import { registerStudyRoomEvents } from './socket/studyRoomEvents.js';
 import { registerHunminGameEvents } from './socket/hunminGameRooms.js';
 import { getReverificationBlockCode } from './services/reverification.service.js';
 
@@ -144,7 +143,6 @@ export function initSocketServer(httpServer) {
 
     // ── 친구/타이머 관련 실시간 이벤트 등록 ──
     registerFriendEvents(socket);
-    registerStudyRoomEvents(socket);
 
     // ── 등교 미니게임: 훈민정음 멀티 ──
     registerHunminGameEvents(socket, io);

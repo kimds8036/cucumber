@@ -54,7 +54,6 @@ import {
   setTimerRuntimeState,
   TIMER_COUNTDOWN_TOTAL_SECONDS,
 } from '../../../utils/timerRuntimeStore';
-import { preloadStudyRoomAssets } from '../../../utils/preloadStudyRoomAssets';
 import { tdb } from './timerHelpers';
 import TopAdBanner from '../../../components/ads/TopAdBanner';
 import { pickActiveNoticeForBanner, pickBanner } from '../../../constants/bannerAssets';
@@ -123,7 +122,6 @@ export function TimerContent() {
 
   const [friends, setFriends] = useState(INITIAL_FRIENDS);
   const [suggestions, setSuggestions] = useState([]);
-  const [timerBots, setTimerBots] = useState([]);
   const [friendsBarLoading, setFriendsBarLoading] = useState(!isGuidePreview);
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [pokeTarget, setPokeTarget] = useState(null);
@@ -237,20 +235,15 @@ export function TimerContent() {
     setFriendsBarLoading(true);
     const loadFriends = async () => {
       try {
-        const [friendsRes, suggestRes, botRes] = await Promise.all([
+        const [friendsRes, suggestRes] = await Promise.all([
           api.get('/api/friends/list'),
           api.get('/api/friends/timer-suggestions').catch((err) => {
             console.warn('[Timer] 친구 추천 조회 실패', err?.message || err);
             return { data: { data: [] } };
           }),
-          api.get('/api/friends/timer-bots').catch((err) => {
-            console.warn('[Timer] 봇 조회 실패', err?.message || err);
-            return { data: { data: [] } };
-          }),
         ]);
         const list = friendsRes.data?.data ?? [];
         const suggestList = suggestRes.data?.data ?? [];
-        const botList = botRes.data?.data ?? [];
         if (!mounted) return;
         refreshStudyingFriends?.();
         setFriends(
@@ -291,21 +284,6 @@ export function TimerContent() {
             };
           }),
         );
-        setTimerBots(
-          (Array.isArray(botList) ? botList : []).map((bot, index) => {
-            const displayId = bot.username ? `@${bot.username}` : '학생';
-            return {
-              id: bot.userId,
-              name: displayId,
-              username: displayId,
-              colorId: bot.colorId,
-              colorIndex: index % FRIEND_ICON_COLORS.length,
-              isTimerBot: true,
-              phase: bot.phase,
-              avatarUrl: bot.avatarUrl || null,
-            };
-          }),
-        );
       } catch (error) {
         console.error('타이머 친구 목록 조회 실패:', error);
       } finally {
@@ -325,21 +303,14 @@ export function TimerContent() {
     if (!isGuidePreview) return;
     setFriends(getGuideTimerFriends());
     setSuggestions([]);
-    setTimerBots([]);
     setFriendsBarLoading(false);
   }, [isGuidePreview]);
 
   const storyFriends = useMemo(
-    () => [...friends, ...suggestions, ...timerBots],
-    [friends, suggestions, timerBots],
+    () => [...friends, ...suggestions],
+    [friends, suggestions],
   );
-  const storyStudying = useMemo(() => {
-    const merged = { ...(studyingFriends || {}) };
-    timerBots.forEach((bot) => {
-      if (bot.phase === 'study') merged[bot.id] = true;
-    });
-    return merged;
-  }, [studyingFriends, timerBots]);
+  const storyStudying = studyingFriends || {};
 
   const handleOpenAddFriend = useCallback(() => setShowAddFriend(true), []);
 
@@ -375,7 +346,7 @@ export function TimerContent() {
 
   const handleFriendPress = useCallback(
     (friend) => {
-      if (friend?.isTimerBot || friend?.isSuggestion) {
+      if (friend?.isSuggestion) {
         const label = friend.username || friend.name || '이 사용자';
         Alert.alert(
           '친구 추가',
@@ -387,15 +358,9 @@ export function TimerContent() {
               onPress: async () => {
                 const ok = await sendFriendRequestByUsername(friend.username);
                 if (!ok) return;
-                if (friend.isTimerBot) {
-                  setTimerBots((prev) =>
-                    prev.filter((bot) => String(bot.id) !== String(friend.id)),
-                  );
-                } else {
-                  setSuggestions((prev) =>
-                    prev.filter((s) => String(s.id) !== String(friend.id)),
-                  );
-                }
+                setSuggestions((prev) =>
+                  prev.filter((s) => String(s.id) !== String(friend.id)),
+                );
               },
             },
           ],
@@ -425,7 +390,6 @@ export function TimerContent() {
 
       const cancelEnter = runAfterTabTransition(() => {
         setIsTimerScreenActive?.(true);
-        preloadStudyRoomAssets();
         if (timer.isRunningRef.current) {
           timer.bumpLiveElapsedResync();
           setTimerRuntimeState({
@@ -577,7 +541,6 @@ export function TimerContent() {
     setShowCalendar: timer.setShowCalendar,
     handleSaveAsImage,
     onOpenStudyRoom: () => {
-      preloadStudyRoomAssets();
       navigation.navigate('TimerAniLab');
     },
     toggleTimer: timer.toggleTimer,

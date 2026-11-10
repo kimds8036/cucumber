@@ -16,7 +16,7 @@ import {
 } from './schoolSemester.infer.js';
 import { runCronManagerJob } from './cronManager.js';
 import { runDailyAdminPushReminder } from './dailyAdminPush.remind.js';
-import { tickTimerBots } from '../services/timerBots.service.js';
+import { shutdownTimerBots } from '../services/timerBots.service.js';
 import { shouldRunCron } from '../config/serviceRole.js';
 
 const TZ = process.env.CRON_TIMEZONE || 'Asia/Seoul';
@@ -193,17 +193,7 @@ export function initJobs() {
     { timezone: TZ },
   );
 
-  cron.schedule(
-    '* * * * *',
-    async () => {
-      try {
-        await tickTimerBots();
-      } catch (error) {
-        console.error('[timerBots] 갱신 실패', error?.message || error);
-      }
-    },
-    { timezone: TZ },
-  );
+  // 타이머 봇 1분 갱신 제거 — 자동 공부 표시 중단
 
   cron.schedule(
     schoolSemesterInferSchedule,
@@ -220,8 +210,8 @@ export function initJobs() {
     maybeBootSchoolSemesterInfer().catch((err) => {
       console.warn('[semester-infer] boot', err?.message || err);
     });
-    tickTimerBots().catch((err) => {
-      console.warn('[timerBots] boot', err?.message || err);
+    shutdownTimerBots().catch((err) => {
+      console.warn('[timerBots] shutdown', err?.message || err);
     });
   });
 

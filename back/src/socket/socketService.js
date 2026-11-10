@@ -2,21 +2,8 @@ import pool from '../config/database.js';
 import { getIO } from '../socketServer.js';
 import { enqueueNotification } from '../utils/notificationWorker.js';
 import { getTimerDayKey } from '../utils/timerDayKey.js';
-import { isoFromMysqlKstNaiveString } from '../utils/timerSessionTimes.js';
 import { upsertStudyDayTotalForUserKey } from '../utils/studyDayTotal.js';
-import {
-  STUDY_ROOM_LOBBY,
-  assignUserToStudyRoom,
-  getStudyRoomSnapshotForUser,
-  leaveStudyRoom,
-  studyRoomSocketName,
-} from '../services/studyRoom.service.js';
 import { freshSeenSql } from '../services/studyPresence.service.js';
-
-export { getStudyRoomSnapshotForUser };
-
-/** @deprecated 전역 구독 룸 — 방 단위 study_room:{id} 로 이전 */
-export const STUDY_ROOM_SOCKET_ROOM = 'study_room';
 
 // in-memory throttle map: key = `${fromUserId}:${targetUserId}`
 const lastPokeAtMap = new Map();
@@ -206,68 +193,6 @@ export async function broadcastTimerStatus({ userId, status }) {
   }
 
   const updatedAt = new Date().toISOString();
-  let username = null;
-  let avatarUrl = null;
-  let startedAt = null;
-  let closedTotalMs = 0;
-  try {
-    const [userRows] = await pool.execute(
-      'SELECT username, avatar_url FROM users WHERE id = ? AND is_deleted = FALSE LIMIT 1',
-      [userId],
-    );
-    username = userRows[0]?.username || null;
-    avatarUrl = userRows[0]?.avatar_url || null;
-    if (status === 'studying') {
-      const todayTimerDayKey = getTimerDayKey();
-      const [sessionRows] = await pool.execute(
-        `SELECT DATE_FORMAT(started_at, '%Y-%m-%d %H:%i:%s.%f') AS started_at_fmt
-         FROM study_sessions
-         WHERE user_id = ? AND ended_at IS NULL
-         ORDER BY id DESC
-         LIMIT 1`,
-        [userId],
-      );
-      startedAt = isoFromMysqlKstNaiveString(sessionRows[0]?.started_at_fmt) || updatedAt;
-      const { sumClosedStudyMs } = await import('../utils/studyDayTotal.js');
-      closedTotalMs = await sumClosedStudyMs(pool, userId, todayTimerDayKey);
-    }
-  } catch (err) {
-    console.warn('[FriendSocket] study_room 페이로드 보강 실패', err?.message);
-  }
-
-  // 스터디룸: 해당 방 구독자에게만 전파 (전체 목록 방송 없음)
-  let studyRoomId = null;
-  try {
-    if (status === 'studying') {
-      const assigned = await assignUserToStudyRoom(userId);
-      studyRoomId = assigned.roomId;
-    } else {
-      const left = await leaveStudyRoom(userId);
-      studyRoomId = left.roomId;
-    }
-  } catch (err) {
-    console.warn('[FriendSocket] study_room 배정 실패', err?.message);
-  }
-
-  const roomPayload = {
-    type: 'study_room_timer_status',
-    userId,
-    username,
-    avatarUrl,
-    status,
-    startedAt,
-    closedTotalMs,
-    roomId: studyRoomId,
-    updatedAt,
-  };
-  // 방에 아직 안 들어간 구경 화면도 시작/종료를 받도록 로비에 항상 보낸다.
-  io.to(STUDY_ROOM_LOBBY).emit('study_room_timer_status', roomPayload);
-  if (studyRoomId) {
-    io.to(studyRoomSocketName(studyRoomId)).emit(
-      'study_room_timer_status',
-      roomPayload,
-    );
-  }
 
   // 나와 친구 관계인 모든 유저 ID 조회
   const [rows] = await pool.execute(
@@ -380,13 +305,6 @@ export async function broadcastTimerStatus({ userId, status }) {
       console.log('[FriendSocket] idle 이지만 대기중인 watcher 없음', { userId });
     }
   }
-}
-
-/**
- * @deprecated use getStudyRoomSnapshotForUser from studyRoom.service
- */
-export async function listStudyingUsersForStudyRoom() {
-  throw new Error('listStudyingUsersForStudyRoom is removed; use getStudyRoomSnapshotForUser');
 }
 
 /**

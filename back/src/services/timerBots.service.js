@@ -149,58 +149,27 @@ async function notifyFriendsOfPhase(userId, phase) {
   }
 }
 
-export async function tickTimerBots(date = new Date()) {
-  await ensureTimerBotUsers();
+/** 타이머 봇 자동 공부 표시는 중단. 열린 세션만 닫는다. */
+export async function tickTimerBots(_date = new Date()) {
+  return shutdownTimerBots();
+}
+
+/** 봇 공부 세션을 모두 닫고 친구에게 idle을 알린다. */
+export async function shutdownTimerBots() {
+  await refreshBotIds();
   const [rows] = await pool.execute(
-    `SELECT id, username FROM users WHERE is_bot = 1 AND is_deleted = FALSE`,
+    `SELECT id FROM users WHERE is_bot = 1 AND is_deleted = FALSE`,
   );
   for (const row of rows) {
-    const bot = timerBotByUsername(row.username);
-    if (!bot) continue;
     const userId = Number(row.id);
-    const phase = timerBotPhase(bot, date);
-    if (phase === 'study') {
-      await keepOpenSession(userId);
-    } else {
-      await closeOpenSessions(userId);
-    }
-    await notifyFriendsOfPhase(userId, phase);
+    await closeOpenSessions(userId);
+    await notifyFriendsOfPhase(userId, 'off');
   }
 }
 
-export async function listTimerBarBots(viewerId) {
-  const [rows] = await pool.execute(
-    `SELECT u.id, u.username, u.avatar_url, u.color_id
-     FROM users u
-     WHERE u.is_bot = 1
-       AND u.is_deleted = FALSE
-       AND NOT EXISTS (
-         SELECT 1 FROM user_friendships uf
-         WHERE (uf.requester_id = ? AND uf.addressee_id = u.id)
-            OR (uf.requester_id = u.id AND uf.addressee_id = ?)
-       )
-       AND NOT EXISTS (
-         SELECT 1 FROM user_blocks ub
-         WHERE (ub.user_id = ? AND ub.blocked_user_id = u.id)
-            OR (ub.user_id = u.id AND ub.blocked_user_id = ?)
-       )`,
-    [viewerId, viewerId, viewerId, viewerId],
-  );
-  const byName = new Map(rows.map((row) => [row.username, row]));
-  const now = new Date();
-  return TIMER_BOTS.map((bot) => {
-    const row = byName.get(bot.username);
-    if (!row) return null;
-    const phase = timerBotPhase(bot, now);
-    if (phase === 'off') return null;
-    return {
-      userId: Number(row.id),
-      username: bot.username,
-      phase,
-      avatarUrl: row.avatar_url || null,
-      colorId: row.color_id,
-    };
-  }).filter(Boolean);
+/** 타이머 친구 줄 봇 노출 중단 */
+export async function listTimerBarBots(_viewerId) {
+  return [];
 }
 
 export function friendSchoolLineForBot(username) {

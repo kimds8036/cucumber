@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import {
   createRedisRateLimitStore,
   logRateLimitStoreMode,
@@ -249,6 +251,25 @@ if (isProductionEnv()) {
 } else {
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 }
+
+// 3D 스터디룸 맵 (WebView). 인증 없이 GET만.
+const snowmapDir = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../snowmap',
+);
+app.use(
+  '/snowmap',
+  express.static(snowmapDir, {
+    index: 'index.html',
+    redirect: true,
+    maxAge: '1h',
+    setHeaders(res, filePath) {
+      if (filePath.endsWith('.js')) {
+        res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+      }
+    },
+  }),
+);
 
 // Health check
 app.get('/health', async (req, res) => {
