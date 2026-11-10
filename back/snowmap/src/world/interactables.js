@@ -568,30 +568,65 @@ export function createInteractables(mapRoot, ctx) {
     moveIntent = raw;
   }
 
-  function tryInteract() {
+  /** 근처에서 할 수 있는 한 가지 동작. 버튼 라벨용. */
+  function peekAction() {
     const pivot = ctx.getPivot();
-    if (!pivot || (phase && phase !== "held")) return;
+    if (!pivot || (phase && phase !== "held")) return null;
+
     if (phase === "held") {
-      standUp();
-      return;
+      const desk = ctx.mapLamps?.nearestLamp?.(pivot.position.x, pivot.position.z, {
+        deskOnly: true,
+      });
+      if (desk) {
+        return {
+          kind: "lamp",
+          label: desk.on ? "끄기" : "켜기",
+          run: () => ctx.mapLamps.toggleLamp(desk),
+        };
+      }
+      return { kind: "stand", label: "일어서기", run: () => standUp() };
     }
+
     const seat = nearestSeat(pivot.position.x, pivot.position.z);
     if (seat) {
-      sitDown(seat);
-      return;
+      return {
+        kind: seat.kind === "bed" ? "lay" : "sit",
+        label: seat.kind === "bed" ? "눕기" : "앉기",
+        run: () => sitDown(seat),
+      };
     }
     const board = nearestBoard(pivot.position.x, pivot.position.z);
     if (board) {
-      ctx.onOpenBoard?.(board.id);
-      return;
+      return {
+        kind: "board",
+        label: "보기",
+        run: () => ctx.onOpenBoard?.(board.id),
+      };
     }
     const door = nearestDoor(pivot.position.x, pivot.position.z);
     if (door) {
-      toggleDoor(door);
-      return;
+      return {
+        kind: "door",
+        label: door.open ? "닫기" : "열기",
+        run: () => toggleDoor(door),
+      };
     }
-    const lamp = ctx.mapLamps.nearestLamp(pivot.position.x, pivot.position.z, { excludeDesk: true });
-    if (lamp) ctx.mapLamps.toggleLamp(lamp);
+    const lamp = ctx.mapLamps?.nearestLamp?.(pivot.position.x, pivot.position.z, {
+      excludeDesk: true,
+    });
+    if (lamp) {
+      return {
+        kind: "lamp",
+        label: lamp.on ? "끄기" : "켜기",
+        run: () => ctx.mapLamps.toggleLamp(lamp),
+      };
+    }
+    return null;
+  }
+
+  function tryInteract() {
+    const action = peekAction();
+    action?.run?.();
   }
 
   function logSeatError() {
@@ -681,6 +716,7 @@ export function createInteractables(mapRoot, ctx) {
     },
     setMoveIntent,
     setSeatOccupant,
+    peekAction,
     tryInteract,
     sitDown,
     standUp,

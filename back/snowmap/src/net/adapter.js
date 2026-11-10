@@ -38,8 +38,8 @@ import { createServerAdapter } from "./serverAdapter.js";
  * }} NetAdapter
  */
 
-/** @returns {NetAdapter} */
-export function createNetAdapter() {
-  if (CONFIG.NET_ADAPTER === "server") return createServerAdapter();
-  return createMockAdapter();
+/** @param {string} [roomId] @returns {NetAdapter & { roomId?: string }} */
+export function createNetAdapter(roomId) {
+  if (CONFIG.NET_ADAPTER === "server") return createServerAdapter(roomId);
+  return createMockAdapter(roomId || CONFIG.NET_ROOM_ID);
 }

@@ -1,7 +1,7 @@
 import { CONFIG } from "../config.js";
 
 /**
- * 전체 채팅: 좌측 상단 로그 + 입력창, 머리 위 말풍선.
+ * 채팅: 좌측 상단 로그(최근 4줄, 10초 뒤 페이드아웃) + 가운데 아래 입력 버튼.
  * Enter = 입력창 열기 / 보내기, Esc = 닫기. 사용자 글은 textContent로만 넣는다.
  * @param {{
  *   net: import("../net/adapter.js").NetAdapter,
@@ -23,12 +23,33 @@ export function createChat(deps) {
   const seenIds = new Set();
   let lastSentAt = 0;
   let idleTimer = 0;
+  let hideTimer = 0;
+
+  function showLog() {
+    window.clearTimeout(hideTimer);
+    log.hidden = false;
+    // 다음 프레임에 fade 클래스를 빼야 transition이 먹는다.
+    requestAnimationFrame(() => {
+      log.classList.remove("fade-out");
+    });
+  }
+
+  function hideLog() {
+    if (root.classList.contains("typing")) return;
+    log.classList.add("fade-out");
+    window.clearTimeout(hideTimer);
+    hideTimer = window.setTimeout(() => {
+      if (root.classList.contains("typing")) return;
+      if (!log.classList.contains("fade-out")) return;
+      log.hidden = true;
+    }, 450);
+  }
 
   function wake() {
-    root.classList.remove("idle");
+    showLog();
     window.clearTimeout(idleTimer);
     idleTimer = window.setTimeout(() => {
-      if (!root.classList.contains("typing")) root.classList.add("idle");
+      hideLog();
     }, CONFIG.CHAT_LOG_FADE_SEC * 1000);
   }
 
@@ -37,8 +58,9 @@ export function createChat(deps) {
     line.className = "line";
     build(line);
     log.append(line);
-    while (log.childElementCount > CONFIG.CHAT_LOG_KEEP) log.firstElementChild?.remove();
-    log.scrollTop = log.scrollHeight;
+    while (log.childElementCount > CONFIG.CHAT_LOG_KEEP) {
+      log.firstElementChild?.remove();
+    }
     wake();
   }
 
@@ -71,7 +93,8 @@ export function createChat(deps) {
   function open() {
     if (isOpen()) return;
     root.classList.add("typing");
-    wake();
+    showLog();
+    window.clearTimeout(idleTimer);
     deps.onOpenChange?.(true);
     window.setTimeout(() => input.focus(), 0);
   }
@@ -122,11 +145,18 @@ export function createChat(deps) {
   async function loadHistory() {
     try {
       const recent = await net.getRecentChat(CONFIG.CHAT_HISTORY_ON_JOIN);
-      for (const msg of recent) addMessage(msg);
+      const slice = Array.isArray(recent)
+        ? recent.slice(-CONFIG.CHAT_LOG_KEEP)
+        : [];
+      for (const msg of slice) addMessage(msg);
+      if (!slice.length) hideLog();
     } catch (err) {
       console.error("[chat] history", err);
+      hideLog();
     }
   }
+
+  hideLog();
 
   return {
     open,

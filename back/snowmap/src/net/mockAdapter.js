@@ -5,14 +5,13 @@ import { createEmitter } from "./emitter.js";
  * 로컬 테스트용 가짜 서버.
  * - 같은 PC·같은 브라우저의 탭끼리 BroadcastChannel로 위치/채팅/게시글을 주고받는다.
  * - 게시글과 최근 채팅은 localStorage에 남아 새로고침해도 보인다.
- * 실제 서버로 옮길 때는 serverAdapter.js가 같은 메서드를 구현하면 된다.
+ * @param {string} [roomId]
  * @returns {import("./adapter.js").NetAdapter}
  */
-export function createMockAdapter() {
+export function createMockAdapter(roomId = CONFIG.NET_ROOM_ID) {
   const events = createEmitter();
-  const room = CONFIG.NET_ROOM_ID;
+  const room = roomId || CONFIG.NET_ROOM_ID;
   const chatKey = `${room}:chat`;
-  // 예전 글 게시판 키(board:)와 분리. 방명록은 획(stroke)만 저장
   const boardKey = (boardId) => `${room}:guestbook:${boardId}`;
 
   /** @type {BroadcastChannel|null} */
@@ -79,7 +78,6 @@ export function createMockAdapter() {
   }
 
   function sweep() {
-    // 백그라운드 탭은 렌더 루프가 멈춰 sendState가 끊기므로 마지막 상태를 다시 알린다
     if (lastState) post({ type: "state", state: lastState });
     const now = performance.now();
     const timeout = CONFIG.NET_PLAYER_TIMEOUT_SEC * 1000;
@@ -93,6 +91,7 @@ export function createMockAdapter() {
   }
 
   return {
+    roomId: room,
     async connect(identity) {
       me = identity;
       channel = new BroadcastChannel(`study-room:${room}`);
@@ -100,7 +99,7 @@ export function createMockAdapter() {
       window.addEventListener("pagehide", onPageHide);
       sweepTimer = window.setInterval(sweep, 1000);
       post({ type: "hello" });
-      console.info("[net:mock] connected", identity);
+      console.info("[net:mock] connected", { room, identity });
     },
     disconnect() {
       post({ type: "bye" });

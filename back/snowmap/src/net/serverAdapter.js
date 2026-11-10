@@ -16,10 +16,12 @@ import { createEmitter } from "./emitter.js";
  *      획 삭제 → events.emit("stroke-remove", boardId, strokeIds[])
  * 3. send* / listStrokes / addStroke / removeStroke / removeMyStrokes 를 서버 API로 연결
  * 서버는 removeStroke 시 authorId === 요청자인지 반드시 검증한다.
+ * @param {string} [roomId]
  * @returns {import("./adapter.js").NetAdapter}
  */
-export function createServerAdapter() {
+export function createServerAdapter(roomId = CONFIG.NET_ROOM_ID) {
   const events = createEmitter();
+  const room = roomId || CONFIG.NET_ROOM_ID;
   /** @type {WebSocket|null} */
   let socket = null;
 
@@ -28,9 +30,10 @@ export function createServerAdapter() {
   }
 
   return {
+    roomId: room,
     async connect(identity) {
       // TODO(이식): 기존 서버 주소/인증 방식으로 교체
-      // socket = new WebSocket(`wss://YOUR_SERVER/rooms/${CONFIG.NET_ROOM_ID}?token=...`);
+      // socket = new WebSocket(`wss://YOUR_SERVER/rooms/${room}?token=...`);
       // socket.addEventListener("message", (e) => {
       //   const msg = JSON.parse(e.data);
       //   if (msg.type === "join") events.emit("join", msg.state);
@@ -40,7 +43,10 @@ export function createServerAdapter() {
       //   else if (msg.type === "stroke:new") events.emit("stroke", msg.boardId, msg.stroke);
       //   else if (msg.type === "stroke:remove") events.emit("stroke-remove", msg.boardId, msg.strokeIds);
       // });
-      console.warn("[net:server] 아직 연결 코드가 없습니다 — src/net/serverAdapter.js TODO 참고", identity);
+      console.warn("[net:server] 아직 연결 코드가 없습니다 — src/net/serverAdapter.js TODO 참고", {
+        room,
+        identity,
+      });
     },
     disconnect() {
       socket?.close();

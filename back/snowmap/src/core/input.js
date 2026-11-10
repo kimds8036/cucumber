@@ -10,6 +10,7 @@ export function isTyping(e) {
 export function createInput() {
   const keys = new Set();
   const stick = { x: 0, y: 0 };
+  let runHeld = false;
 
   function onKeyDown(e) {
     if (isTyping(e)) return;
@@ -59,8 +60,12 @@ export function createInput() {
     return {
       x: x * inv,
       y: y * inv,
-      running: keys.has("shift"),
+      running: runHeld || keys.has("shift"),
     };
+  }
+
+  function setRunHeld(held) {
+    runHeld = Boolean(held);
   }
 
   /**
@@ -109,6 +114,7 @@ export function createInput() {
   return {
     read,
     bindStick,
+    setRunHeld,
     keys,
     dispose() {
       window.removeEventListener("keydown", onKeyDown);

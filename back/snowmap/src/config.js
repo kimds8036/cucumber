@@ -324,7 +324,7 @@ export const CONFIG = {
   /** 앉았을 때 카메라 거리 배율. 낮추면 더 가까이 줌인 */
   CAMERA_SEAT_ZOOM: 0.6,
   /** 스폰 섬을 벗어나 메인 섬 쪽에 있을 때 카메라 거리 배율. 낮추면 더 가까이 */
-  CAMERA_MAIN_ISLAND_ZOOM: 0.75,
+  CAMERA_MAIN_ISLAND_ZOOM: 0.7,
   /** 줌인/줌아웃 속도. 올리면 더 빨리 바뀜 */
   CAMERA_ZOOM_SHARPNESS: 3,
   /** 성능 표시 토글 */
@@ -335,8 +335,12 @@ export const CONFIG = {
   // --- 멀티플레이 · 채팅 · 게시판 (docs/social-features-plan.md) ---
   /** "mock": 같은 PC 탭끼리 테스트 / "server": 기존 서버 (src/net/serverAdapter.js) */
   NET_ADAPTER: "mock",
-  /** 같은 방에 들어온 사람끼리만 보임 */
-  NET_ROOM_ID: "study-room",
+  /** 기본 방 id(쿼리·자동배정 없을 때) */
+  NET_ROOM_ID: "room-1",
+  /** 스터디 카페 방 개수 */
+  ROOM_COUNT: 10,
+  /** 방 하나 정원 */
+  ROOM_CAPACITY: 10,
   /** 내 위치를 보내는 횟수(초당) */
   NET_SEND_HZ: 10,
   /** 다른 사람 위치를 이만큼 늦춰서 보간(ms). 올리면 더 부드럽지만 지연↑ */
@@ -371,11 +375,11 @@ export const CONFIG = {
   CHAT_COOLDOWN_SEC: 1,
   /** 머리 위 말풍선 표시 시간(초) */
   CHAT_BUBBLE_SECONDS: 5,
-  /** 채팅 로그 보관 개수 */
-  CHAT_LOG_KEEP: 50,
+  /** 좌측 채팅 로그에 보이는 최대 줄 수 */
+  CHAT_LOG_KEEP: 4,
   /** 입장 시 불러올 최근 채팅 개수 */
-  CHAT_HISTORY_ON_JOIN: 20,
-  /** 이 시간(초) 동안 새 채팅이 없으면 로그 배경이 더 투명해짐 */
+  CHAT_HISTORY_ON_JOIN: 4,
+  /** 이 시간(초) 동안 새 채팅이 없으면 좌측 채팅 로그를 페이드아웃 */
   CHAT_LOG_FADE_SEC: 10,
 
   // --- Phase 1 임시 씬 ---

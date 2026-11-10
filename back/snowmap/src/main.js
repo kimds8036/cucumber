@@ -1,5 +1,5 @@
 /**
- * Phase 6: interactables (문·침대/벤치·아웃라인) + 맵 램프 ON/OFF UI
+ * 스터디 카페 snowmap 부트
  */
 import * as THREE from "three";
 import { CONFIG } from "./config.js";
@@ -20,33 +20,59 @@ import { loadCharacter } from "./character/loader.js";
 import { createAnimationController } from "./character/animation.js";
 import { createCharacterController } from "./character/controller.js";
 import { loadSavedGender } from "./character/gender.js";
-import { createGenderSelect } from "./ui/genderSelect.js";
-import { createLightToggle } from "./ui/lightToggle.js";
-import { createDoorToggle } from "./ui/doorToggle.js";
-import { createLampAllToggle } from "./ui/lampAllToggle.js";
+import { createPadControls } from "./ui/padControls.js";
+import { createDeskTimer } from "./ui/deskTimer.js";
 import { createPerfHud } from "./debug/perfHud.js";
 import { createNetAdapter } from "./net/adapter.js";
 import { getIdentity } from "./net/identity.js";
+import {
+  leavePresence,
+  resolveRoomFromQuery,
+  syncRoomQuery,
+  touchPresence,
+} from "./net/rooms.js";
 import { createBoardUI } from "./social/board.js";
 import { createNameTags } from "./social/nameTags.js";
 import { createRemotePlayers } from "./social/remotePlayers.js";
 import { createChat } from "./social/chat.js";
+import { createRoomSwitch } from "./ui/roomSwitch.js";
+import { createUserRoster } from "./ui/userRoster.js";
+import { createAppBridge } from "./net/appBridge.js";
 
 const statusEl = document.getElementById("status");
-const hudEl = document.getElementById("hud");
+const statusLabel = statusEl?.querySelector(".status-label");
+const statusFill = document.getElementById("status-fill");
 
-function setStatus(text, isError = false) {
+function setLoading(progress, label = "불러오는 중") {
   if (!statusEl) return;
-  statusEl.textContent = text;
-  statusEl.classList.toggle("error", isError);
-  statusEl.hidden = !text;
+  statusEl.hidden = false;
+  statusEl.classList.remove("error");
+  if (statusLabel) statusLabel.textContent = label;
+  if (statusFill) {
+    const pct = Math.max(0, Math.min(100, Number(progress) || 0));
+    statusFill.style.width = `${pct}%`;
+  }
+}
+
+function hideLoading() {
+  if (!statusEl) return;
+  statusEl.hidden = true;
+  statusEl.classList.remove("error");
+}
+
+function setStatusError(text) {
+  if (!statusEl) return;
+  statusEl.hidden = false;
+  statusEl.classList.add("error");
+  if (statusLabel) statusLabel.textContent = text;
 }
 
 async function boot() {
-  setStatus("Phase 6: 로딩…");
+  setLoading(4, "준비 중");
 
   const { renderer } = createRenderer(document.body);
   applyQuality(renderer, loadSavedQuality());
+  setLoading(10, "화면 준비");
 
   const scene = new THREE.Scene();
   const lights = createWorldLights(scene);
@@ -69,12 +95,16 @@ async function boot() {
     camRight.set(-camForward.z, 0, camForward.x);
   }
 
+  setLoading(18, "맵 불러오는 중");
   const { root: mapRoot } = await loadMap(scene);
+  setLoading(42, "지형 정리");
   const collisionWorld = buildCollisionWorld(mapRoot);
   const colliderDebug = createColliderDebug(scene, collisionWorld);
   const mapLamps = createMapLamps(mapRoot, scene);
+  setLoading(55, "하늘·물");
   const sky = await createSky(scene);
   const water = createPondWater(mapRoot);
+  setLoading(62, "상호작용");
 
   /** @type {Awaited<ReturnType<typeof loadCharacter>>|null} */
   let character = null;
@@ -92,11 +122,17 @@ async function boot() {
   };
 
   const me = await getIdentity();
-  const net = createNetAdapter();
+  const cafeRoom = resolveRoomFromQuery(me.userId);
+  syncRoomQuery(cafeRoom);
+  touchPresence(me.userId, cafeRoom.id);
+  const net = createNetAdapter(cafeRoom.id);
   const boardUI = createBoardUI(net, me, {
     onOpenChange: () => input.keys.clear(),
   });
-  const isUiOpen = () => boardUI.isOpen || chat.isOpen;
+  const isUiOpen = () =>
+    boardUI.isOpen ||
+    chat.isOpen ||
+    document.getElementById("room-switch")?.classList.contains("open");
 
   const interact = createInteractables(mapRoot, {
     onOpenBoard: (boardId) => boardUI.open(boardId),
@@ -122,28 +158,111 @@ async function boot() {
     { getHips: () => character?.hips ?? null }
   );
 
-  const lightToggle = createLightToggle({
-    mapLamps,
-    getPivot: () => character?.pivot ?? null,
-    isSitting: () => Boolean(interact.isOccupied || anim?.isSeated || anim?.isLaid),
-  });
-
-  const doorToggle = createDoorToggle({
-    getNearbyDoor: () => interact.nearbyDoor,
-    toggleDoor: (door) => interact.toggleDoor(door),
-    isSitting: () => Boolean(interact.isOccupied || anim?.isSeated || anim?.isLaid),
-  });
-
-  const lampAll = createLampAllToggle(mapLamps);
   const perfHud = createPerfHud();
 
   const nameTags = createNameTags(scene, camera);
+  /** @type {ReturnType<typeof createUserRoster>|null} */
+  let userRoster = null;
   const chat = createChat({
     net,
     me,
     nameTags,
-    canOpen: () => !boardUI.isOpen,
+    canOpen: () => !boardUI.isOpen && !userRoster?.isOpen,
     onOpenChange: () => input.keys.clear(),
+  });
+
+  const pad = createPadControls({
+    onInteract: () => interact.tryInteract(),
+    peekAction: () => interact.peekAction(),
+    setRunHeld: (held) => input.setRunHeld(held),
+    isSeated: () =>
+      Boolean(interact.isOccupied || anim?.isSeated || anim?.isLaid),
+  });
+
+  /** @type {ReturnType<typeof createDeskTimer>|null} */
+  let deskTimer = null;
+  /** 입장 직후 첫 앱 스냅샷에서만 자동 착석 시도 */
+  let entrySeatHandled = false;
+
+  function pickAutoSeat() {
+    const pivot = character?.pivot?.position;
+    if (!pivot) return null;
+    let best = null;
+    let bestDist = Infinity;
+    for (const seat of interact.seats) {
+      if (!seat || seat.kind === "bed") continue;
+      if (seat.occupiedBy && seat.occupiedBy !== me.userId) continue;
+      const deskLike =
+        seat.desk || /chair|desk|sideTable/i.test(seat.mesh?.name || "");
+      if (!deskLike) continue;
+      const dx = seat.surface.x - pivot.x;
+      const dz = seat.surface.z - pivot.z;
+      const d = dx * dx + dz * dz;
+      if (d < bestDist) {
+        best = seat;
+        bestDist = d;
+      }
+    }
+    return best;
+  }
+
+  function handleEntryAutoSeat(isRunning) {
+    if (entrySeatHandled) return;
+    // 스폰 전에 스냅샷이 오면 다음 스냅샷에서 다시 시도
+    if (!character?.pivot) return;
+    entrySeatHandled = true;
+    if (!isRunning) return;
+    if (interact.isOccupied) return;
+    const seat = pickAutoSeat();
+    if (!seat) {
+      chat.system("빈 자리가 없어 서서 입장했어요");
+      return;
+    }
+    interact.sitDown(seat);
+  }
+
+  const bridge = createAppBridge({
+    onTimerSnapshot: (payload) => {
+      deskTimer?.applySnapshot(payload);
+      deskTimer?.refresh();
+      handleEntryAutoSeat(!!payload?.isRunning);
+    },
+    onTimerResult: (payload) => {
+      if (payload?.snapshot) deskTimer?.applySnapshot(payload.snapshot);
+      deskTimer?.refresh();
+    },
+    onFriendList: (payload) => {
+      userRoster?.setFriendsFromApp(payload?.friends || []);
+    },
+    onFriendResult: (payload) => {
+      userRoster?.applyFriendResult(payload || {});
+    },
+  });
+
+  deskTimer = createDeskTimer({
+    bridge,
+    isAtDesk: () =>
+      Boolean(
+        interact.isHeld &&
+          interact.activeSeat &&
+          (interact.activeSeat.desk ||
+            /chair|desk|sideTable/i.test(interact.activeSeat.mesh?.name || "")),
+      ),
+  });
+
+  const roomSwitch = createRoomSwitch({
+    getUserId: () => me.userId,
+    getRoomId: () => cafeRoom.id,
+    canOpen: () => !boardUI.isOpen && !chat.isOpen && !userRoster?.isOpen,
+  });
+
+  const presenceTimer = window.setInterval(() => {
+    touchPresence(me.userId, cafeRoom.id);
+    roomSwitch.refresh();
+  }, 2500);
+  window.addEventListener("pagehide", () => {
+    leavePresence(me.userId);
+    window.clearInterval(presenceTimer);
   });
 
   /** 성별별 원본 캐릭터(다른 사람 캐릭터는 이걸 복제). 내 캐릭터도 여기서 재사용 */
@@ -167,8 +286,22 @@ async function boot() {
     onJoin: (state) => {
       // 접속 직후 이미 있던 사람들 목록은 입장 메시지 생략
       if (performance.now() - connectedAt.t > 2000) chat.system(`${state.displayName}님이 들어왔어요`);
+      userRoster?.refresh();
     },
-    onLeave: (_userId, displayName) => chat.system(`${displayName}님이 나갔어요`),
+    onLeave: (_userId, displayName) => {
+      chat.system(`${displayName}님이 나갔어요`);
+      userRoster?.refresh();
+    },
+  });
+
+  userRoster = createUserRoster({
+    me,
+    remotes,
+    bridge,
+    canOpen: () => !boardUI.isOpen && !chat.isOpen,
+    onFriendAdd: (user) => {
+      chat.system(`${user.displayName} 님에게 친구 요청을 보냈어요`);
+    },
   });
 
   const pitch = THREE.MathUtils.degToRad(
@@ -254,8 +387,8 @@ async function boot() {
     updateMoveAxes();
   }
 
-  async function spawnCharacter(gender) {
-    setStatus("캐릭터 로딩…");
+  async function spawnCharacter(gender, { showLoading = true } = {}) {
+    if (showLoading) setLoading(78, "캐릭터 준비");
     if (interact.isOccupied) interact.abort();
     if (character?.pivot) {
       scene.remove(character.pivot);
@@ -278,7 +411,6 @@ async function boot() {
     anim.startIdle();
     placeCamera();
     mapLamps.warmShaders(renderer, scene, camera);
-    setStatus("");
     console.info("[character] ready", {
       gender,
       clips: Object.fromEntries(
@@ -287,16 +419,8 @@ async function boot() {
     });
   }
 
-  await spawnCharacter(loadSavedGender());
-
-  createGenderSelect(async (gender) => {
-    try {
-      await spawnCharacter(gender);
-    } catch (err) {
-      console.error("[gender]", err);
-      setStatus(`캐릭터 로드 실패: ${err?.message || err}`, true);
-    }
-  });
+  setLoading(72, "캐릭터 준비");
+  await spawnCharacter(loadSavedGender(), { showLoading: false });
 
   if (CONFIG.SHOW_MY_NAMETAG) {
     nameTags.add(me.userId, {
@@ -306,33 +430,24 @@ async function boot() {
     });
   }
 
+  setLoading(90, "연결 중");
   await net.connect(me);
   connectedAt.t = performance.now();
   chat.loadHistory();
+  setLoading(100, "거의 완료");
+  hideLoading();
+  bridge.ready();
 
   window.addEventListener("keydown", (e) => {
     if (!anim || e.repeat || isTyping(e) || isUiOpen()) return;
     const key = e.key.toLowerCase();
     if (key === "e") {
       interact.tryInteract();
-      lightToggle.refresh();
-      doorToggle.refresh();
+      pad.refresh();
     } else if (key === "v") {
-      // Phase 6 멀티유저 훅: 앉은 채 인사
       if (anim.isSeated) anim.playSitHi();
     }
   });
-
-  const hudBody = hudEl?.querySelector(".hud-body");
-  if (hudBody) {
-    hudBody.innerHTML = `
-      WASD · Shift · 성별<br/>
-      <kbd>E</kbd> 앉기/문/불/방명록 · <kbd>V</kbd> 인사<br/>
-      <kbd>Enter</kbd> 채팅 · <kbd>Esc</kbd> 닫기<br/>
-      <kbd>F2</kbd> 충돌 · <kbd>F3</kbd> 좌석 · <kbd>F4</kbd> 성능
-    `;
-  }
-  hudEl?.addEventListener("click", () => hudEl.classList.toggle("collapsed"));
 
   /** 서버로 보낼 내 애니 이름 */
   function localAnimName() {
@@ -459,9 +574,8 @@ async function boot() {
         renderer.render(scene, camera);
         nameTags.render();
       }
-      lightToggle.refresh();
-      doorToggle.refresh();
-      lampAll.refresh();
+      pad.refresh();
+      deskTimer.refresh();
       seatDebug.refresh();
       colliderDebug.refresh();
       perfHud.frame(frameDt, {
@@ -477,7 +591,7 @@ async function boot() {
   });
 
   loop.start();
-  console.info("[phase6] ok — interactables + 램프 UI", {
+  console.info("[study-cafe] ready", {
     seats: interact.seats.length,
     doors: interact.doors.length,
     lamps: mapLamps.lamps.length,
@@ -486,5 +600,5 @@ async function boot() {
 
 boot().catch((err) => {
   console.error("[boot]", err);
-  setStatus(`부트 실패: ${err?.message || err}`, true);
+  setStatusError(`불러오지 못했어요: ${err?.message || err}`);
 });
