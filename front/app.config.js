@@ -21,7 +21,7 @@ export default ({ config }) => ({
     slug: 'youth-paper',
     scheme: 'youthpaper',
     version: '2.0.8',
-    // 기본은 세로. 스터디룸(TimerAniLab)만 런타임에 가로 잠금.
+    // 기본은 세로. 스터디 카페(TimerAniLab)만 런타임에 가로 잠금.
     orientation: 'default',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',

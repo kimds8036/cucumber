@@ -7,17 +7,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { colors, fonts } from '../styles/colors';
-
-const DOT_PHASES = [
-  '.',
-  '..',
-  '...',
-  '....',
-  '.....',
-  '......',
-  '.......',
-  '........',
-];
+import Skeleton from './common/Skeleton';
 
 function formatDistance(km) {
   if (typeof km !== 'number' || Number.isNaN(km)) return null;
@@ -30,44 +20,69 @@ const FRESH_THEME = {
   accent: colors.primaryDark,
 };
 
-const STALE_THEME = {
-  chipBg: colors.scrap,
-  accent: colors.scrapDark,
+const CHIP_LABEL_STYLE = {
+  fontFamily: fonts.regular,
 };
 
-function BadgeDots({ accent, normalize }) {
-  const [phase, setPhase] = useState(0);
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      setPhase((p) => (p + 1) % DOT_PHASES.length);
-    }, 450);
-    return () => clearInterval(id);
-  }, []);
+/** 거리 숫자 자리. 로딩 스켈레톤이 실제 칩과 같은 칸을 쓰도록 0km 칩을 재서 맞춘다. */
+function DistanceLoadingChip({ normalize }) {
+  const radius = normalize(10);
+  const [box, setBox] = useState(null);
+  const labelStyle = {
+    ...CHIP_LABEL_STYLE,
+    fontSize: normalize(10),
+  };
 
   return (
     <View
+      onLayout={(event) => {
+        const { width, height } = event.nativeEvent.layout;
+        if (width <= 0 || height <= 0) return;
+        setBox((prev) =>
+          prev && prev.width === width && prev.height === height
+            ? prev
+            : { width, height },
+        );
+      }}
       style={{
-        width: normalize(20),
-        alignItems: 'flex-start',
-        justifyContent: 'center',
+        alignSelf: 'flex-start',
+        borderRadius: radius,
+        overflow: 'hidden',
       }}
     >
-      <Text
+      <View
+        pointerEvents="none"
         style={{
-          fontSize: normalize(11),
-          fontFamily: fonts.regular,
-          color: accent,
+          opacity: 0,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: normalize(1),
+          paddingHorizontal: normalize(7),
+          paddingVertical: normalize(2),
         }}
       >
-        {DOT_PHASES[phase]}
-      </Text>
+        <MaterialIcons
+          name="location-on"
+          size={normalize(10)}
+          color={colors.primaryDark}
+        />
+        <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+          <Text style={labelStyle}>0</Text>
+          <Text style={labelStyle}>km</Text>
+        </View>
+      </View>
+      <Skeleton
+        width={box?.width ?? normalize(46)}
+        height={box?.height ?? normalize(18)}
+        borderRadius={radius}
+        style={{ position: 'absolute', left: 0, top: 0 }}
+      />
     </View>
   );
 }
 
 /**
- * 거리(km) 배지 — 좌표 없음: 주황 칩, coords 있음(캐시·GPS): 초록 칩. loading 시 주황 칩 + 점 애니메이션.
+ * 거리(km) 배지. 거리가 있으면 초록 칩. 계산 중에는 그 칩과 같은 크기의 로딩 스켈레톤.
  */
 export default function DistanceBadge({
   distanceKm,
@@ -78,13 +93,12 @@ export default function DistanceBadge({
   chipStyle,
 }) {
   const formatted = useMemo(() => formatDistance(distanceKm), [distanceKm]);
-  const showDots = loading && !formatted;
-  const theme = stale || showDots ? STALE_THEME : FRESH_THEME;
+  const showSkeleton = loading && !formatted;
   const opacity = useSharedValue(1);
   const prevKeyRef = useRef(null);
 
-  const displayKey = showDots
-    ? 'dots'
+  const displayKey = showSkeleton
+    ? 'skeleton'
     : formatted
       ? `${formatted.number}-${formatted.unit}`
       : 'empty';
@@ -105,7 +119,15 @@ export default function DistanceBadge({
   const layoutChip = chipStyle ? StyleSheet.flatten(chipStyle) : {};
   const { backgroundColor: _bg, color: _c, ...chipLayoutOnly } = layoutChip;
 
-  if (!formatted && !showDots) {
+  if (showSkeleton) {
+    return (
+      <View style={wrapStyle}>
+        <DistanceLoadingChip normalize={normalize} />
+      </View>
+    );
+  }
+
+  if (!formatted) {
     return null;
   }
 
@@ -118,7 +140,7 @@ export default function DistanceBadge({
             flexDirection: 'row',
             alignItems: 'center',
             gap: normalize(1),
-            backgroundColor: theme.chipBg,
+            backgroundColor: FRESH_THEME.chipBg,
             borderRadius: normalize(10),
             paddingHorizontal: normalize(7),
             paddingVertical: normalize(2),
@@ -129,32 +151,28 @@ export default function DistanceBadge({
         <MaterialIcons
           name="location-on"
           size={normalize(10)}
-          color={theme.accent}
+          color={FRESH_THEME.accent}
         />
-        {showDots ? (
-          <BadgeDots accent={theme.accent} normalize={normalize} />
-        ) : (
-          <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
-            <Text
-              style={{
-                fontSize: normalize(10),
-                fontFamily: fonts.regular,
-                color: theme.accent,
-              }}
-            >
-              {formatted.number}
-            </Text>
-            <Text
-              style={{
-                fontSize: normalize(10),
-                fontFamily: fonts.regular,
-                color: theme.accent,
-              }}
-            >
-              {formatted.unit}
-            </Text>
-          </View>
-        )}
+        <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+          <Text
+            style={{
+              fontSize: normalize(10),
+              fontFamily: fonts.regular,
+              color: FRESH_THEME.accent,
+            }}
+          >
+            {formatted.number}
+          </Text>
+          <Text
+            style={{
+              fontSize: normalize(10),
+              fontFamily: fonts.regular,
+              color: FRESH_THEME.accent,
+            }}
+          >
+            {formatted.unit}
+          </Text>
+        </View>
       </Animated.View>
     </View>
   );

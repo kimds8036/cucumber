@@ -20,8 +20,8 @@ import { collectPostImageUris } from './board/PostImageSlider';
  *  - layoutStableEpoch : 목록이 배치한 로드 배치 번호(부모 ref). 콜백과 짝을 맞출 때 사용
  *  - hideDistanceBadge : true면 우측 거리(km) 뱃지만 숨김
  *  - showDistanceBadge : 위치 권한 등으로 배지 영역 표시
- *  - distanceStale : 좌표 없음(주황 칩), coords 있으면 캐시·GPS 모두 초록
- *  - distanceLoading : 거리 미계산 시 주황 칩 + 점 로딩
+ *  - distanceStale : 좌표가 아직 없을 때. 칩 색은 거리가 있으면 초록
+ *  - distanceLoading : 거리 미계산 시 칩 크기 로딩 스켈레톤
  *  - featured : 인기 1등 고정 카드. 불꽃 아이콘 + 본문 한 줄만 표시
  *  - authorLabel : 시간 앞에 붙는 보낸 사람 라벨 (학교 우편 카드용)
  *  - highlightQuery : 본문에서 강조할 검색어 (검색 결과용)

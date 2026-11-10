@@ -569,29 +569,21 @@ export default function TimerCard({
         <TouchableOpacity
           style={styles.timerMenuItem}
           onPress={onOpenStudyRoom}
-          disabled={!isRunning}
           activeOpacity={0.7}
-          accessibilityLabel="스터디룸 입장"
-          accessibilityState={{ disabled: !isRunning }}
+          accessibilityLabel="스터디 카페 입장"
         >
           <View style={styles.timerMenuIconBox}>
             <MaterialCommunityIcons
               name="door-open"
               size={normalize(22)}
-              color={isRunning ? colors.subcolor : colors.textLight3}
+              color={colors.subcolor}
             />
           </View>
           <View style={styles.timerMenuTextCol}>
             <Text style={styles.timerMenuLabel} numberOfLines={1}>
-              스터디룸
+              스터디 카페
             </Text>
-            <Text
-              style={[
-                styles.timerMenuValue,
-                !isRunning && styles.timerMenuValueDisabled,
-              ]}
-              numberOfLines={1}
-            >
+            <Text style={styles.timerMenuValue} numberOfLines={1}>
               입장하기
             </Text>
           </View>
