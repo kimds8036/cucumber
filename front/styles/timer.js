@@ -2296,7 +2296,7 @@ export const createTimerModalsStyles = (normalize) =>
     },
   });
 
-/** 타이머 설정 화면 — 뽀모도로 · 스터디룸 캐릭터 */
+/** 타이머 설정 화면 — 뽀모도로 · 스터디 카페 성별 */
 export const createTimerSettingsStyles = (width, normalize) =>
   StyleSheet.create({
     root: {

@@ -1,5 +1,5 @@
 /**
- * 타이머 설정 — 뽀모도로
+ * 타이머 설정 — 뽀모도로 · 스터디 카페 성별
  * 값은 기기 캐시에 남겨 앱을 다시 열어도 유지한다.
  */
 import React, { useMemo } from 'react';
@@ -17,6 +17,11 @@ import SubHeader from '../../frame/subHeader';
 import { colors } from '../../../styles/colors';
 import { createTimerSettingsStyles, getNormalize } from '../../../styles/timer';
 import { shiftTimerSetting, useTimerSettings } from './timerSettingsStorage';
+
+const GENDER_OPTIONS = [
+  { key: 'girl', label: '여자' },
+  { key: 'boy', label: '남자' },
+];
 
 const PHASE_END_CUES = [
   { key: 'sound', label: '소리' },
@@ -52,7 +57,7 @@ export default function TimerSettings({ navigation }) {
     [width, normalize],
   );
   const { settings, ready, update } = useTimerSettings();
-  const { pomodoroOn, autoStart, phaseEndCue } = settings;
+  const { pomodoroOn, autoStart, phaseEndCue, gender } = settings;
 
   const switchColors = {
     trackColor: { false: colors.textLight1, true: colors.primary },
@@ -155,6 +160,39 @@ export default function TimerSettings({ navigation }) {
                 );
               })}
             </View>
+          </View>
+        </View>
+
+        <Text style={styles.sectionTitle}>스터디 카페 성별</Text>
+        <Text style={styles.footNote}>
+          선택한 캐릭터는 이 기기에 저장되고, 스터디 카페에 보여요
+        </Text>
+        <View style={styles.card}>
+          <View style={styles.genderRow}>
+            {GENDER_OPTIONS.map((opt) => {
+              const active = gender === opt.key;
+              return (
+                <TouchableOpacity
+                  key={opt.key}
+                  style={[styles.genderOption, active && styles.genderOptionActive]}
+                  onPress={() => update({ gender: opt.key })}
+                  activeOpacity={0.8}
+                  disabled={!ready}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: active }}
+                >
+                  <Ionicons
+                    name={opt.key === 'girl' ? 'female' : 'male'}
+                    size={normalize(28)}
+                    color={active ? colors.primaryDark : colors.textLight4}
+                    style={{ marginBottom: normalize(6) }}
+                  />
+                  <Text style={[styles.genderLabel, active && styles.genderLabelActive]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
       </ScrollView>

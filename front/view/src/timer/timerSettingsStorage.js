@@ -16,6 +16,8 @@ export const DEFAULT_TIMER_SETTINGS = {
   shortBreakMin: 5,
   longBreakMin: 15,
   longBreakEvery: 4,
+  /** 스터디 카페 캐릭터 성별 */
+  gender: 'boy',
 };
 
 const LIMITS = {
@@ -45,6 +47,7 @@ function normalizePhaseEndCue(src) {
 
 export function normalizeTimerSettings(raw) {
   const src = raw && typeof raw === 'object' ? raw : {};
+  const gender = src.gender === 'girl' || src.gender === 'boy' ? src.gender : 'boy';
   return {
     pomodoroOn: src.pomodoroOn === true,
     autoStart: src.autoStart === true,
@@ -53,6 +56,7 @@ export function normalizeTimerSettings(raw) {
     shortBreakMin: clampSetting('shortBreakMin', src.shortBreakMin),
     longBreakMin: clampSetting('longBreakMin', src.longBreakMin),
     longBreakEvery: clampSetting('longBreakEvery', src.longBreakEvery),
+    gender,
   };
 }
 

@@ -14,10 +14,14 @@ function identityFromQuery() {
     const displayName = String(
       params.get("displayName") || params.get("username") || "",
     ).trim();
+    const avatarUrl = String(
+      params.get("avatarUrl") || params.get("avatar") || "",
+    ).trim() || null;
     if (userId || displayName) {
       return {
         userId: userId || `user:${displayName}`,
         displayName: displayName || userId,
+        avatarUrl,
       };
     }
   } catch {

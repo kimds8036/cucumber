@@ -54,6 +54,7 @@ import {
   setTimerRuntimeState,
   TIMER_COUNTDOWN_TOTAL_SECONDS,
 } from '../../../utils/timerRuntimeStore';
+import { registerStudyCafeController } from '../../../utils/studyCafeBridge';
 import { tdb } from './timerHelpers';
 import TopAdBanner from '../../../components/ads/TopAdBanner';
 import { pickActiveNoticeForBanner, pickBanner } from '../../../constants/bannerAssets';
@@ -383,6 +384,95 @@ export function TimerContent() {
     emitTimerStatus,
     pushTimerToast,
   });
+
+  const timerRef = useRef(timer);
+  timerRef.current = timer;
+  const cafePendingSubjectRef = useRef(null);
+
+  // 스터디 카페 WebView가 쓰는 타이머/친구 컨트롤러 (앱이 원본)
+  useEffect(() => {
+    if (isGuidePreview) return undefined;
+    const unreg = registerStudyCafeController({
+      getSnapshot: () => {
+        const t = timerRef.current;
+        return {
+          isRunning: !!t.isRunningRef.current,
+          startedAt: t.openSessionStartedAtMs ?? null,
+          totalElapsedMs: Number(t.totalElapsedMs) || 0,
+          subjects: (t.subjects || []).map((s) => ({
+            id: s.id,
+            name: s.name,
+            color: s.color,
+          })),
+          selectedSubjectId:
+            cafePendingSubjectRef.current ?? t.activeSubjectId ?? null,
+        };
+      },
+      start: (subjectId) => {
+        const t = timerRef.current;
+        const picked =
+          subjectId != null && subjectId !== ''
+            ? Number(subjectId) || subjectId
+            : cafePendingSubjectRef.current ?? t.activeSubjectId;
+        if (picked != null && picked !== '') {
+          cafePendingSubjectRef.current = picked;
+          t.startForSubject(picked);
+        } else {
+          t.toggleTimer();
+        }
+        return true;
+      },
+      stop: () => {
+        timerRef.current.pauseTimer();
+        return true;
+      },
+      selectSubject: (subjectId) => {
+        if (subjectId == null || subjectId === '') return false;
+        const id = Number(subjectId) || subjectId;
+        cafePendingSubjectRef.current = id;
+        const t = timerRef.current;
+        if (t.isRunningRef.current) t.startForSubject(id);
+        return true;
+      },
+      listFriends: async () => {
+        const res = await api.get('/api/friends/list');
+        const list = res.data?.data ?? [];
+        return (Array.isArray(list) ? list : []).map((f) => ({
+          id: f.userId,
+          userId: f.userId,
+          username: String(f.username || '').replace(/^@/, ''),
+          nickname: f.name || f.username || '',
+          avatarUrl: f.avatarUrl || f.avatar_url || null,
+        }));
+      },
+      addFriend: async ({ username, displayName, userId }) => {
+        const raw = String(username || displayName || '')
+          .trim()
+          .replace(/^@/, '');
+        if (!raw) {
+          return { ok: false, status: 'failed', error: 'username_required' };
+        }
+        try {
+          await api.post('/api/friends/requests', { username: raw });
+          pushTimerToast('', '친구 요청을 보냈어요');
+          return { ok: true, status: 'requested', userId };
+        } catch (error) {
+          const msg = getApiUserFacingMessage(
+            error,
+            '친구 요청 중 문제가 발생했어요.',
+          );
+          if (/이미 친구/.test(String(msg || ''))) {
+            return { ok: true, status: 'already', userId };
+          }
+          if (/이미 처리 중|이미 .*요청/.test(String(msg || ''))) {
+            return { ok: true, status: 'requested', userId };
+          }
+          return { ok: false, status: 'failed', error: msg, userId };
+        }
+      },
+    });
+    return unreg;
+  }, [isGuidePreview, pushTimerToast]);
 
   useFocusEffect(
     React.useCallback(() => {

@@ -66,6 +66,7 @@ export function createRemotePlayers(deps) {
       player = {
         userId: state.userId,
         displayName: state.displayName,
+        avatarUrl: state.avatarUrl || null,
         gender: state.gender,
         char: null,
         anim: null,
@@ -82,6 +83,9 @@ export function createRemotePlayers(deps) {
     if (state.displayName && state.displayName !== player.displayName) {
       player.displayName = state.displayName;
       nameTags.setName(player.userId, state.displayName);
+    }
+    if (state.avatarUrl !== undefined) {
+      player.avatarUrl = state.avatarUrl || null;
     }
     if (state.gender && state.gender !== player.gender) {
       player.gender = state.gender;
@@ -189,13 +193,69 @@ export function createRemotePlayers(deps) {
   net.onPlayerState(upsert);
   net.onPlayerLeave(removePlayer);
 
+  const hitCenter = new THREE.Vector3();
+  const hitDelta = new THREE.Vector3();
+
+  /**
+   * 화면 클릭으로 상대 캐릭터 고르기.
+   * 스키닝 메시 레이캐스트는 잘 안 맞아서, 몸통 근처 구로 판정한다.
+   * @param {THREE.Raycaster} raycaster
+   */
+  function hitTest(raycaster) {
+    /** @type {{ dist: number, userId: string, displayName: string, getHead: Function }|null} */
+    let best = null;
+    const radius = 0.55;
+    for (const player of players.values()) {
+      if (!player.char?.pivot) continue;
+      hitCenter.copy(player.char.pivot.position);
+      hitCenter.y += 0.9;
+      hitDelta.subVectors(hitCenter, raycaster.ray.origin);
+      const along = hitDelta.dot(raycaster.ray.direction);
+      if (along < 0.2) continue;
+      const distToRay = Math.sqrt(
+        Math.max(0, hitDelta.lengthSq() - along * along),
+      );
+      if (distToRay > radius) continue;
+      if (best && along >= best.dist) continue;
+      best = {
+        dist: along,
+        userId: player.userId,
+        displayName: player.displayName,
+        getHead: (out) =>
+          player.char?.head ? player.char.head.getWorldPosition(out) : null,
+      };
+    }
+    if (!best) return null;
+    return {
+      userId: best.userId,
+      displayName: best.displayName,
+      getHead: best.getHead,
+    };
+  }
+
   return {
     update,
+    hitTest,
+    /** 로컬 봇·테스트용. 네트워크와 같은 경로로 원격 캐릭터를 넣는다. */
+    applyState(state) {
+      upsert(state);
+    },
+    remove(userId) {
+      removePlayer(userId);
+    },
     get count() {
       return players.size;
     },
     displayNameOf(userId) {
       return players.get(userId)?.displayName ?? null;
+    },
+    list() {
+      return [...players.values()].map((p) => ({
+        userId: p.userId,
+        displayName: p.displayName,
+        avatarUrl: p.avatarUrl || null,
+        gender: p.gender,
+      }));
     },
   };
 }
