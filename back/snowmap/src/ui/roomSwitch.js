@@ -8,6 +8,7 @@ import {
  * @param {{
  *   getUserId: () => string,
  *   getRoomId: () => string,
+ *   listRooms?: null | (() => Promise<any[]|null>),
  *   canOpen?: () => boolean,
  * }} opts
  */
@@ -40,6 +41,31 @@ export function createRoomSwitch(opts) {
   const list = root.querySelector("#room-switch-list");
 
   let open = false;
+  /** 서버 모드에서 받은 방 목록 (없으면 mock: 이 기기 탭끼리) */
+  let serverRooms = null;
+  let loading = false;
+  let ticks = 0;
+
+  function currentRooms() {
+    const userId = opts.getUserId?.() || "";
+    const roomId = opts.getRoomId?.() || "";
+    if (!opts.listRooms) return getRoomStatuses(userId, roomId);
+    return (serverRooms || []).map((room) => ({ ...room, isMine: room.id === roomId }));
+  }
+
+  async function load() {
+    if (!opts.listRooms || loading) return;
+    loading = true;
+    try {
+      const list = await opts.listRooms();
+      if (Array.isArray(list)) serverRooms = list;
+    } catch {
+      /* 다음 주기에 다시 */
+    } finally {
+      loading = false;
+    }
+    render();
+  }
 
   function setOpen(next) {
     if (opts.canOpen && !opts.canOpen() && next) return;
@@ -47,13 +73,14 @@ export function createRoomSwitch(opts) {
     panel.hidden = !open;
     tab.setAttribute("aria-expanded", open ? "true" : "false");
     root.classList.toggle("open", open);
-    if (open) render();
+    if (open) {
+      render();
+      load();
+    }
   }
 
   function render() {
-    const userId = opts.getUserId?.() || "";
-    const roomId = opts.getRoomId?.() || "";
-    const rooms = getRoomStatuses(userId, roomId);
+    const rooms = currentRooms();
     const mine = rooms.find((r) => r.isMine) || rooms[0];
     if (mine) {
       label.textContent = mine.name;
@@ -104,10 +131,22 @@ export function createRoomSwitch(opts) {
   });
 
   render();
-  const timer = window.setInterval(render, 2000);
+  load();
+  // 서버 모드: 패널이 열려 있으면 2초, 닫혀 있으면 10초마다 인원 갱신
+  const timer = window.setInterval(() => {
+    ticks += 1;
+    if (opts.listRooms) {
+      if (open || ticks % 5 === 0) load();
+      return;
+    }
+    render();
+  }, 2000);
 
   return {
-    refresh: render,
+    refresh() {
+      render();
+      load();
+    },
     close: () => setOpen(false),
     dispose() {
       window.clearInterval(timer);

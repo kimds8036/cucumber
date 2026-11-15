@@ -346,8 +346,11 @@ export const CONFIG = {
    * 브라우저에서는 그대로 보인다. 서버 어댑터를 붙이면 자동으로 다시 보인다.
    */
   HIDE_MOCK_SOCIAL_IN_APP: true,
-  /** "mock": 같은 PC 탭끼리 테스트 / "server": 기존 서버 (src/net/serverAdapter.js) */
-  NET_ADAPTER: "mock",
+  /**
+   * "auto": 앱이 로그인 토큰을 넣어 주면 실제 서버(src/net/serverAdapter.js), 없으면 mock
+   * "server": 항상 서버 / "mock": 같은 PC 탭끼리 테스트 (BroadcastChannel)
+   */
+  NET_ADAPTER: "auto",
   /** 기본 방 id(쿼리·자동배정 없을 때) */
   NET_ROOM_ID: "room-1",
   /** 스터디 카페 방 개수 */

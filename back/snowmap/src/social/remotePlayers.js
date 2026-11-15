@@ -34,7 +34,7 @@ export function createRemotePlayers(deps) {
     const gender = player.gender;
     try {
       const base = await deps.getTemplate(gender);
-      if (!players.has(player.userId) || player.gender !== gender) return;
+      if (players.get(player.userId) !== player || player.gender !== gender) return;
       if (player.char) scene.remove(player.char.pivot);
       const char = cloneCharacter(base);
       player.char = char;
@@ -97,14 +97,19 @@ export function createRemotePlayers(deps) {
     setSeat(player, state.seatId);
   }
 
-  function removePlayer(userId) {
+  /** @param {{ silent?: boolean }} [opts] silent면 '나갔어요' 안내를 하지 않는다 (차단 등) */
+  function removePlayer(userId, opts = {}) {
     const player = players.get(userId);
     if (!player) return;
     setSeat(player, null);
-    if (player.char) scene.remove(player.char.pivot);
+    if (player.char) {
+      scene.remove(player.char.pivot);
+      player.char.mixer?.stopAllAction();
+      player.char.mixer?.uncacheRoot(player.char.root);
+    }
     nameTags.remove(userId);
     players.delete(userId);
-    deps.onLeave?.(userId, player.displayName);
+    if (!opts.silent) deps.onLeave?.(userId, player.displayName);
   }
 
   function applyAnim(player, name) {
@@ -240,8 +245,8 @@ export function createRemotePlayers(deps) {
     applyState(state) {
       upsert(state);
     },
-    remove(userId) {
-      removePlayer(userId);
+    remove(userId, opts) {
+      removePlayer(userId, opts);
     },
     get count() {
       return players.size;

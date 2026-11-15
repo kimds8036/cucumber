@@ -23,10 +23,12 @@ import { loadSavedGender } from "./character/gender.js";
 import { createPadControls } from "./ui/padControls.js";
 import { createDeskTimer } from "./ui/deskTimer.js";
 import { createPerfHud } from "./debug/perfHud.js";
-import { createNetAdapter } from "./net/adapter.js";
+import { createNetAdapter, pickNetMode } from "./net/adapter.js";
+import { setTokenRefresher } from "./net/auth.js";
 import { getIdentity } from "./net/identity.js";
 import {
   leavePresence,
+  requestedRoomFromQuery,
   resolveRoomFromQuery,
   syncRoomQuery,
   touchPresence,
@@ -122,10 +124,21 @@ async function boot() {
   };
 
   const me = await getIdentity();
-  const cafeRoom = resolveRoomFromQuery(me.userId);
-  syncRoomQuery(cafeRoom);
-  touchPresence(me.userId, cafeRoom.id);
-  const net = createNetAdapter(cafeRoom.id);
+  /** "server": Railway 서버(앱에서 로그인 토큰을 받은 경우) / "mock": 브라우저 개발용 */
+  const netMode = pickNetMode();
+  const useServer = netMode === "server";
+  /**
+   * 지금 방. mock은 이 기기 기준으로 고르고, 서버 모드는 원하는 방만 보내고
+   * 연결 뒤 서버가 정한 방(net.room)으로 바꾼다.
+   * @type {{ id: string, name: string, index: number }|null}
+   */
+  let cafeRoom = useServer ? requestedRoomFromQuery() : resolveRoomFromQuery(me.userId);
+  if (!useServer && cafeRoom) {
+    syncRoomQuery(cafeRoom);
+    touchPresence(me.userId, cafeRoom.id);
+  }
+  const net = createNetAdapter(cafeRoom?.id || null, netMode);
+  console.info("[study-cafe] net", netMode);
   const boardUI = createBoardUI(net, me, {
     onOpenChange: () => input.keys.clear(),
   });
@@ -134,10 +147,10 @@ async function boot() {
     chat.isOpen ||
     document.getElementById("room-switch")?.classList.contains("open");
 
-  // 앱 안에서 mock 네트워크면 방명록·채팅 입력은 내 폰에만 저장되는 가짜다. 서버가 생길 때까지 숨긴다.
+  // 앱 안인데 서버 연결이 없으면(mock) 방명록·채팅 입력은 내 폰에만 저장되는 가짜라 숨긴다.
   const socialEnabled = !(
     CONFIG.HIDE_MOCK_SOCIAL_IN_APP &&
-    CONFIG.NET_ADAPTER === "mock" &&
+    !useServer &&
     window.ReactNativeWebView?.postMessage
   );
   if (!socialEnabled) {
@@ -265,6 +278,8 @@ async function boot() {
       userRoster?.applyFriendResult(payload || {});
     },
   });
+  // 서버 토큰이 만료되면 앱에 새 토큰을 받는다
+  setTokenRefresher(() => bridge.refreshAuth());
 
   deskTimer = createDeskTimer({
     bridge,
@@ -279,18 +294,24 @@ async function boot() {
 
   const roomSwitch = createRoomSwitch({
     getUserId: () => me.userId,
-    getRoomId: () => cafeRoom.id,
+    getRoomId: () => cafeRoom?.id || "",
+    // 서버 모드: 실제 방 인원 / mock: 이 기기 탭끼리
+    listRooms: useServer ? () => net.listRooms() : null,
     canOpen: () => !boardUI.isOpen && !chat.isOpen && !userRoster?.isOpen,
   });
 
-  const presenceTimer = window.setInterval(() => {
-    touchPresence(me.userId, cafeRoom.id);
-    roomSwitch.refresh();
-  }, 2500);
-  window.addEventListener("pagehide", () => {
-    leavePresence(me.userId);
-    window.clearInterval(presenceTimer);
-  });
+  if (!useServer) {
+    const presenceTimer = window.setInterval(() => {
+      touchPresence(me.userId, cafeRoom.id);
+      roomSwitch.refresh();
+    }, 2500);
+    window.addEventListener("pagehide", () => {
+      leavePresence(me.userId);
+      window.clearInterval(presenceTimer);
+    });
+  } else {
+    window.addEventListener("pagehide", () => net.disconnect());
+  }
 
   /** 성별별 원본 캐릭터(다른 사람 캐릭터는 이걸 복제). 내 캐릭터도 여기서 재사용 */
   const templates = new Map();
@@ -325,6 +346,20 @@ async function boot() {
     me,
     remotes,
     bridge,
+    // 서버 모드에서만 신고·차단 (mock은 저장할 곳이 없다)
+    moderation: useServer
+      ? {
+          report: (userId, reason) => net.report(userId, reason),
+          block: async (userId, displayName) => {
+            const res = await net.block(userId);
+            if (res?.ok) {
+              remotes.remove(userId, { silent: true });
+              chat.system(`${displayName} 님을 차단했어요`);
+            }
+            return res;
+          },
+        }
+      : null,
     canOpen: () => !boardUI.isOpen && !chat.isOpen,
     onFriendAdd: (user, status) => {
       chat.system(
@@ -462,9 +497,54 @@ async function boot() {
   }
 
   setLoading(90, "연결 중");
-  await net.connect(me);
+  await net.connect({ ...me, gender: character?.gender || loadSavedGender() });
   connectedAt.t = performance.now();
   netReadyAt = connectedAt.t;
+  if (useServer) {
+    // 방과 내 이름은 서버가 정한 값을 쓴다
+    if (net.room) {
+      cafeRoom = net.room;
+      syncRoomQuery(cafeRoom);
+    }
+    const serverMe = net.me;
+    if (serverMe) {
+      const prevId = me.userId;
+      Object.assign(me, serverMe);
+      if (CONFIG.SHOW_MY_NAMETAG) {
+        if (prevId !== me.userId) nameTags.remove(prevId);
+        nameTags.add(me.userId, {
+          name: me.displayName,
+          isMe: true,
+          getHead: (out) => (character?.head ? character.head.getWorldPosition(out) : null),
+        });
+      }
+    }
+    roomSwitch.refresh();
+
+    // 다른 사람이 먼저 앉은 자리면 앉기를 취소한다
+    net.onSeatDenied(({ seatId, occupantId } = {}) => {
+      if (!seatId) return;
+      if (interact.activeSeat?.id === seatId) {
+        if (interact.isHeld) interact.standUp();
+        else {
+          interact.abort();
+          anim?.releaseToLocomotion(null);
+        }
+        chat.system("다른 사람이 먼저 앉은 자리예요");
+      }
+      // 일어서는 동안은 내 자리로 잡혀 있어 표시를 못 한다. 잠시 뒤 다시 표시
+      const mark = () => interact.setSeatOccupant(seatId, occupantId ? String(occupantId) : "other");
+      if (!mark()) window.setTimeout(mark, 1500);
+    });
+    net.onKicked(() => {
+      setStatusError("다른 곳에서 스터디 카페에 들어와 연결을 끊었어요");
+    });
+    net.onChatError?.((code) => {
+      if (code === "cooldown") chat.system("조금 천천히 보내 주세요");
+      else if (code === "too_long") chat.system("채팅이 너무 길어요");
+      else if (code !== "empty") chat.system("채팅을 보내지 못했어요");
+    });
+  }
   chat.loadHistory();
   setLoading(100, "거의 완료");
   hideLoading();

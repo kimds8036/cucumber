@@ -81,6 +81,14 @@ export function createDeskTimer(opts) {
 
   let menuOpen = false;
   let mode = "hidden"; // hidden | chip | panel
+  /** 직전 프레임에 책상에 앉아 있었는지 (일어서는 순간을 잡는다) */
+  let wasAtDesk = false;
+  let wasRunning = false;
+  /** 서 있는 채로 타이머가 멈춘 뒤 '정지됨' 칩을 보여 줄 마감 시각 */
+  let lingerUntil = 0;
+  let autoStopping = false;
+  /** 일어선 뒤 '정지됨' 칩이 남아 있는 시간(ms) */
+  const STOP_LINGER_MS = 3000;
   let busy = false;
   let raf = 0;
 
@@ -163,7 +171,12 @@ export function createDeskTimer(opts) {
     root.classList.toggle("running", running);
     if (tabLabel) {
       tabLabel.textContent =
-        flashText || (!localMode && snap.onBreak ? "휴식 중" : "타이머");
+        flashText ||
+        (!running && mode === "chip"
+          ? "정지됨"
+          : !localMode && snap.onBreak
+            ? "휴식 중"
+            : "타이머");
     }
     root.classList.toggle("busy", busy);
     paintTrigger();
@@ -305,7 +318,7 @@ export function createDeskTimer(opts) {
           root.hidden = true;
           root.classList.remove("leaving");
         }
-      }, 220);
+      }, 650);
       return;
     }
     root.hidden = false;
@@ -316,11 +329,31 @@ export function createDeskTimer(opts) {
     paintClock();
   }
 
+  /**
+   * 책상에 앉아 있으면 패널(시작·정지·과목).
+   * 책상에서 일어나면 타이머를 멈추고, '정지됨' 칩을 3초 보여 준 뒤 스르륵 사라진다.
+   * 다시 시작은 책상 의자에 앉아서만 한다.
+   */
   function refreshVisibility() {
     const atDesk = Boolean(opts.isAtDesk?.());
     const running = isRunning();
+    const now = performance.now();
+
+    if (wasAtDesk && !atDesk && running && !autoStopping) {
+      autoStopping = true;
+      runCommand("stop").finally(() => {
+        autoStopping = false;
+      });
+    }
+    if (!atDesk && wasRunning && !running) {
+      lingerUntil = now + STOP_LINGER_MS;
+    }
+    wasAtDesk = atDesk;
+    wasRunning = running;
+
     if (atDesk) setMode("panel");
     else if (running) setMode("chip");
+    else if (now < lingerUntil) setMode("chip");
     else setMode("hidden");
   }
 
@@ -339,13 +372,7 @@ export function createDeskTimer(opts) {
     await toggleRunning();
   });
 
-  // 칩 모드에서는 버튼이 숨겨지므로 카드 탭으로 정지/시작
-  root.addEventListener("click", async (e) => {
-    if (mode !== "chip" || busy) return;
-    if (e.target instanceof Element && e.target.closest("button")) return;
-    e.preventDefault();
-    await toggleRunning();
-  });
+  // 칩은 보기만 한다. 눌러도 타이머를 멈추지 않는다 (정지는 일어서기, 시작은 책상에서).
 
   trigger.addEventListener("click", (e) => {
     e.preventDefault();
