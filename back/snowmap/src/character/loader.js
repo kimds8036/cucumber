@@ -19,13 +19,28 @@ async function loadFbx(url) {
   }
 }
 
-function pickClip(fbx, patterns = []) {
-  const clips = fbx.animations || [];
-  for (const pattern of patterns) {
-    const found = clips.find((c) => pattern.test(c.name));
-    if (found) return found;
+/**
+ * 모션 FBX(Mixamo Without Skin)에서 클립 하나를 꺼내 상태 이름으로 바꾼다.
+ * Mixamo 클립 이름은 전부 "mixamo.com"이라 이름으로 고르지 않고, 파일 = 상태 1:1로 둔다.
+ * 실패하면 null (stay 외에는 없어도 캐릭터는 뜬다).
+ * @param {string} key
+ * @param {string} url
+ */
+async function loadAnimClip(key, url) {
+  if (!url) return null;
+  try {
+    const fbx = await loadFbx(url);
+    const clip = fbx.animations?.[0] ?? null;
+    if (!clip) {
+      console.warn(`[character] 클립 없음: ${key} (${url})`);
+      return null;
+    }
+    clip.name = key;
+    return clip;
+  } catch (err) {
+    console.warn(`[character] 모션 로드 실패: ${key}`, err);
+    return null;
   }
-  return clips[0] || null;
 }
 
 function findBone(root, pattern) {
@@ -126,32 +141,32 @@ function samplePose(root, clip, time, hips, head, feet) {
 }
 
 /**
- * boy/girl FBX 세트 로드, 머티리얼 보정, 피벗에 배치.
+ * boy/girl 모델 1개 + 모션 클립 로드, 머티리얼 보정, 피벗에 배치.
  * 크기와 중심은 바인드 포즈가 아니라 stay t=0(실제 서 있는 포즈) 기준.
  * @param {"boy"|"girl"} gender
  */
 export async function loadCharacter(gender = "boy") {
   const preset = CONFIG.CHAR[gender] || CONFIG.CHAR.boy;
+  const animKeys = ["stay", "walk", "run", "sit", "sitHi", "lay"];
 
-  const [stayFbx, walkFbx, runFbx, sitFbx, sitHiFbx, layFbx] = await Promise.all([
-    loadFbx(preset.stay),
-    loadFbx(preset.walk),
-    loadFbx(preset.run),
-    loadFbx(preset.sit),
-    loadFbx(preset.sitHi),
-    loadFbx(preset.lay),
+  const [stayFbx, ...rawClips] = await Promise.all([
+    loadFbx(preset.model),
+    ...animKeys.map((key) => loadAnimClip(key, preset.anims?.[key])),
   ]);
+  const raw = Object.fromEntries(animKeys.map((key, i) => [key, rawClips[i]]));
+  // 모델 FBX에 같이 들어 있던 예전 모션은 쓰지 않는다
+  stayFbx.animations = [];
 
-  const rawStay = pickClip(stayFbx, [/stay/i, /idle/i]);
+  const rawStay = raw.stay;
   const hipsRef = hipsXZAt(rawStay, 0);
 
   const clips = {
     stay: pinHips(rawStay, hipsRef),
-    walk: pinHips(pickClip(walkFbx, [/walk/i]), hipsRef, { lockDriftY: true }),
-    run: pinHips(pickClip(runFbx, [/run/i]), hipsRef, { lockDriftY: true }),
-    sit: pinHips(pickClip(sitFbx, [/sit/i]), hipsRef),
-    sitHi: pinHips(pickClip(sitHiFbx, [/sit/i, /hi/i, /wave/i]), hipsRef),
-    lay: pinHips(pickClip(layFbx, [/lay/i, /lie/i, /sleep/i]), hipsRef),
+    walk: pinHips(raw.walk, hipsRef, { lockDriftY: true }),
+    run: pinHips(raw.run, hipsRef, { lockDriftY: true }),
+    sit: pinHips(raw.sit, hipsRef),
+    sitHi: pinHips(raw.sitHi, hipsRef),
+    lay: pinHips(raw.lay, hipsRef),
   };
 
   stayFbx.position.set(0, 0, 0);
@@ -185,7 +200,8 @@ export async function loadCharacter(gender = "boy") {
   stayFbx.updateMatrixWorld(true);
 
   const poseCalib = {
-    sit: clips.sit ? samplePose(stayFbx, clips.sit, 0, hips, head, feet) : null,
+    // Stand To Sit 끝 프레임 = 앉은 자세
+    sit: clips.sit ? samplePose(stayFbx, clips.sit, clips.sit.duration, hips, head, feet) : null,
     lay: clips.lay ? samplePose(stayFbx, clips.lay, clips.lay.duration, hips, head, feet) : null,
   };
   applyClip(stayFbx, clips.stay, 0);
