@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>스터디 카페</title>
   <style>
     html, body {
@@ -186,6 +186,7 @@
       box-shadow: 0 8px 20px rgba(0, 0, 0, 0.28);
     }
     #chat.typing #chat-open { display: none; }
+    #chat-open[hidden] { display: none !important; }
 
     /* 우측: 상호작용 + 뛰기 */
     #pad-right {
@@ -199,6 +200,7 @@
       gap: 14px;
     }
     #btn-interact,
+    #btn-interact-alt,
     #btn-run {
       width: 72px;
       height: 72px;
@@ -212,7 +214,9 @@
       touch-action: none;
       user-select: none;
     }
+    #btn-interact-alt { width: 58px; height: 58px; font-size: 12px; }
     #btn-interact[hidden],
+    #btn-interact-alt[hidden],
     #btn-run[hidden] { display: none !important; }
     #btn-run.held {
       background: rgba(70, 140, 255, 0.92);
@@ -852,6 +856,7 @@
     <button id="chat-open" type="button">채팅</button>
   </div>
   <div id="pad-right">
+    <button id="btn-interact-alt" type="button" hidden></button>
     <button id="btn-interact" type="button" hidden>앉기</button>
     <button id="btn-run" type="button">뛰기</button>
   </div>

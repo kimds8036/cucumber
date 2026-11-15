@@ -7,7 +7,7 @@
  *   remotes: { list: () => { userId: string, displayName: string, avatarUrl?: string|null }[] },
  *   canOpen?: () => boolean,
  *   bridge?: { isNative: boolean, friendAdd: Function },
- *   onFriendAdd?: (user: { userId: string, displayName: string }) => void,
+ *   onFriendAdd?: (user: { userId: string, displayName: string }, status: "requested"|"already") => void,
  * }} opts
  */
 export function createUserRoster(opts) {
@@ -19,7 +19,12 @@ export function createUserRoster(opts) {
   let friendIds = loadLocalFriendIds();
   /** @type {Set<string>} */
   let pendingIds = new Set();
+  /** 친구 요청을 보내는 중(응답 대기) */
+  const requestingIds = new Set();
   let fromApp = false;
+  /** 마지막으로 그린 목록 내용. 같으면 다시 그리지 않는다(버튼·사진이 깜빡이거나 눌림이 사라지지 않게) */
+  let lastStackKey = "";
+  let lastListKey = "";
 
   let root = document.getElementById("user-roster");
   if (!root) {
@@ -201,6 +206,13 @@ export function createUserRoster(opts) {
         badge.className = "user-roster-badge";
         badge.textContent = "요청됨";
         row.append(badge);
+      } else if (requestingIds.has(String(user.userId))) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "user-roster-friend";
+        btn.textContent = "요청 중…";
+        btn.disabled = true;
+        row.append(btn);
       } else {
         const btn = document.createElement("button");
         btn.type = "button";
@@ -209,31 +221,36 @@ export function createUserRoster(opts) {
         btn.addEventListener("click", async (e) => {
           e.preventDefault();
           e.stopPropagation();
-          btn.disabled = true;
-          btn.textContent = "요청 중…";
+          const uid = String(user.userId);
+          if (requestingIds.has(uid)) return;
+          requestingIds.add(uid);
+          render();
           const payload = {
             userId: user.userId,
             displayName: user.displayName,
             username: String(user.displayName || "").replace(/^@/, ""),
           };
           let result = { ok: true, status: "requested" };
-          if (opts.bridge?.isNative) {
-            result = await opts.bridge.friendAdd(payload);
-          } else {
-            friendIds.add(String(user.userId));
-            saveLocalFriendIds();
-            result = { ok: true, status: "already" };
+          try {
+            if (opts.bridge?.isNative) {
+              result = await opts.bridge.friendAdd(payload);
+            } else {
+              friendIds.add(uid);
+              saveLocalFriendIds();
+              result = { ok: true, status: "already" };
+            }
+          } catch {
+            result = { ok: false };
+          } finally {
+            requestingIds.delete(uid);
           }
           if (result?.ok) {
             if (result.status === "already") {
-              friendIds.add(String(user.userId));
+              friendIds.add(uid);
             } else {
-              pendingIds.add(String(user.userId));
+              pendingIds.add(uid);
             }
-            opts.onFriendAdd?.(payload);
-          } else {
-            btn.disabled = false;
-            btn.textContent = "친구 추가";
+            opts.onFriendAdd?.(payload, result.status === "already" ? "already" : "requested");
           }
           render();
         });
@@ -244,11 +261,39 @@ export function createUserRoster(opts) {
     }
   }
 
-  function render() {
+  function userKey(user) {
+    const uid = String(user.userId);
+    const state = user.isMe
+      ? "me"
+      : isFriend(user.userId, user.displayName)
+        ? "friend"
+        : pendingIds.has(uid)
+          ? "pending"
+          : requestingIds.has(uid)
+            ? "requesting"
+            : "none";
+    const avatar = user.avatarUrl || friendById.get(uid)?.avatarUrl || "";
+    return `${uid}|${user.displayName}|${avatar}|${state}`;
+  }
+
+  function render({ force = false } = {}) {
     const users = members();
     sub.textContent = `${users.length}명`;
-    renderStack(users);
-    if (open) renderList(users);
+    const keys = users.map(userKey);
+    const stackKey = keys.slice(0, 3).join("\n");
+    if (force || stackKey !== lastStackKey) {
+      lastStackKey = stackKey;
+      renderStack(users);
+    }
+    if (!open) {
+      lastListKey = "";
+      return;
+    }
+    const listKey = keys.join("\n");
+    if (force || listKey !== lastListKey) {
+      lastListKey = listKey;
+      renderList(users);
+    }
   }
 
   function setFriendsFromApp(listIn) {

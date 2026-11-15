@@ -83,29 +83,39 @@ export const CONFIG = {
   STAIR_RAIL_HEIGHT: 1.0,
   /** 계단 끝에서 언덕 쪽으로 옆 레일만 얼마나 연장할지 (출구는 막지 않음) */
   STAIR_RAIL_TOP_EXTEND: 0.35,
+  /**
+   * 캐릭터 = 모델 FBX 1개(With Skin) + 모션 FBX 여러 개(Mixamo Without Skin).
+   * 모델은 한 번만 파싱하고, 모션 파일에서는 클립만 꺼내 모델 뼈에 붙인다(뼈 이름 mixamorig* 일치 필요).
+   */
   CHAR: {
     boy: {
-      stay: "CHA/boy/boy stay.fbx",
-      walk: "CHA/boy/boy walk.fbx",
-      run: "CHA/boy/boy Run.fbx",
-      sit: "CHA/boy/boy sit.fbx", // 앉기: 거꾸로 재생
-      sitHi: "CHA/boy/boy sit hi.fbx", // 앉은 채 인사
-      lay: "CHA/boy/boy lay.fbx", // 침대 눕기
+      model: "CHA/boy/boy.fbx",
+      anims: {
+        stay: "CHA/boy/anim/stay.fbx", // Breathing Idle
+        walk: "CHA/boy/anim/walk.fbx", // Walking (In Place)
+        run: "CHA/boy/anim/run.fbx", // Slow Run (In Place)
+        sit: "CHA/boy/anim/sit.fbx", // Stand To Sit: 정방향 = 앉기
+        sitHi: "CHA/boy/anim/sit-hi.fbx", // Sitting And Pointing: 앉은 채 인사
+        lay: "CHA/boy/anim/lay.fbx", // Lying Down: 정방향 = 눕기
+      },
     },
     girl: {
-      stay: "CHA/GIRL/girl stay.fbx",
-      walk: "CHA/GIRL/girl walk.fbx",
-      run: "CHA/GIRL/girl run.fbx",
-      sit: "CHA/GIRL/girl sit.fbx", // 앉기: 거꾸로 재생
-      sitHi: "CHA/GIRL/girl sit hi.fbx",
-      lay: "CHA/GIRL/girl lay.fbx",
+      model: "CHA/GIRL/girl.fbx",
+      anims: {
+        stay: "CHA/GIRL/anim/stay.fbx",
+        walk: "CHA/GIRL/anim/walk.fbx",
+        run: "CHA/GIRL/anim/run.fbx",
+        sit: "CHA/GIRL/anim/sit.fbx",
+        sitHi: "CHA/GIRL/anim/sit-hi.fbx",
+        lay: "CHA/GIRL/anim/lay.fbx",
+      },
     },
   },
 
   /**
    * 애니 규칙 (Phase 5 상태머신에서 사용)
    * - stay: 대기 중 루프 유지 (클립 앞 팔벌림이라 간격 재생하면 발작처럼 보임)
-   * - sit: timeScale < 0 (거꾸로) 로 의자에 앉기 / 정방향 = 일어서기
+   * - sit: 정방향 = 의자에 앉기 (Stand To Sit) / 역재생 = 일어서기
    * - sitHi: 앉아 있을 때 새 유저 입장 인사
    * - lay: 정방향 = 침대 눕기 / 역재생 = 일어서기 (sit으로 일어나면 대각선)
    * - walk / run: 이동
@@ -114,16 +124,14 @@ export const CONFIG = {
   STAY_LOOP: true,
   /** STAY_LOOP=false일 때만 사용. 줄이면 더 자주 몸짓 */
   IDLE_STAY_INTERVAL_SEC: 5,
-  /** 앉기(역재생) 배율. 절댓값↑이면 더 빨리 앉음 (음수=역방향) */
-  SIT_DOWN_TIMESCALE: -1.85,
-  /** 의자에서 일어서기 배율. 올리면 더 빨리 일어남 */
+  /** 앉기(sit 정방향) 배율. 올리면 더 빨리 앉음 */
+  SIT_DOWN_TIMESCALE: 1.85,
+  /** 의자에서 일어서기(sit 역재생) 배율. 올리면 더 빨리 일어남 */
   STAND_UP_TIMESCALE: 3.4,
   /** 침대 눕기 배율. 올리면 더 빨리 누움 */
   LAY_DOWN_TIMESCALE: 1.7,
   /** 침대에서 일어서기 배율. 올리면 더 빨리 일어남 */
   LAY_STAND_TIMESCALE: 3.2,
-  /** @deprecated STAND_UP / SIT_DOWN 로 분리됨. 호환용 */
-  SIT_REVERSE_TIMESCALE: -1.85,
 
   // --- 캐릭터 머티리얼 / 키 라이트 (Phase 3) ---
   /** 목표 키 높이(발→머리뼈). 올리면 캐릭터가 커짐. 0.68이면 침대에 두 명이 나란히 누울 폭 */
@@ -333,6 +341,11 @@ export const CONFIG = {
   CAMERA_DISTANCE_MAX: 16,
 
   // --- 멀티플레이 · 채팅 · 게시판 (docs/social-features-plan.md) ---
+  /**
+   * true면 앱 WebView + mock 네트워크일 때 방명록과 채팅 입력을 숨긴다(내 폰에만 저장되는 가짜라서).
+   * 브라우저에서는 그대로 보인다. 서버 어댑터를 붙이면 자동으로 다시 보인다.
+   */
+  HIDE_MOCK_SOCIAL_IN_APP: true,
   /** "mock": 같은 PC 탭끼리 테스트 / "server": 기존 서버 (src/net/serverAdapter.js) */
   NET_ADAPTER: "mock",
   /** 기본 방 id(쿼리·자동배정 없을 때) */
@@ -345,6 +358,8 @@ export const CONFIG = {
   NET_SEND_HZ: 10,
   /** 다른 사람 위치를 이만큼 늦춰서 보간(ms). 올리면 더 부드럽지만 지연↑ */
   NET_INTERP_DELAY_MS: 120,
+  /** 입장 자동 착석 전에 다른 사람 상태를 기다리는 시간(ms). 늘리면 겹쳐 앉을 일이 줄지만 늦게 앉음 */
+  ENTRY_SEAT_WAIT_MS: 1500,
   /** 이 시간(초) 동안 소식이 없으면 나간 것으로 처리 */
   NET_PLAYER_TIMEOUT_SEC: 6,
   /** 방명록(게시판) 메시 이름 */

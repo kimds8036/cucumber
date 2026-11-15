@@ -134,8 +134,20 @@ async function boot() {
     chat.isOpen ||
     document.getElementById("room-switch")?.classList.contains("open");
 
+  // 앱 안에서 mock 네트워크면 방명록·채팅 입력은 내 폰에만 저장되는 가짜다. 서버가 생길 때까지 숨긴다.
+  const socialEnabled = !(
+    CONFIG.HIDE_MOCK_SOCIAL_IN_APP &&
+    CONFIG.NET_ADAPTER === "mock" &&
+    window.ReactNativeWebView?.postMessage
+  );
+  if (!socialEnabled) {
+    const chatOpenBtn = document.getElementById("chat-open");
+    if (chatOpenBtn) chatOpenBtn.hidden = true;
+    console.info("[study-cafe] 방명록·채팅 입력 숨김 (앱 + mock 네트워크)");
+  }
+
   const interact = createInteractables(mapRoot, {
-    onOpenBoard: (boardId) => boardUI.open(boardId),
+    onOpenBoard: socialEnabled ? (boardId) => boardUI.open(boardId) : null,
     getPivot: () => character?.pivot ?? null,
     getAnim: () => anim,
     getCalib: () => character?.poseCalib ?? null,
@@ -167,13 +179,15 @@ async function boot() {
     net,
     me,
     nameTags,
-    canOpen: () => !boardUI.isOpen && !userRoster?.isOpen,
+    canOpen: () => socialEnabled && !boardUI.isOpen && !userRoster?.isOpen,
     onOpenChange: () => input.keys.clear(),
   });
 
   const pad = createPadControls({
     onInteract: () => interact.tryInteract(),
     peekAction: () => interact.peekAction(),
+    onSecondary: () => interact.trySecondary(),
+    peekSecondary: () => interact.peekSecondaryAction(),
     setRunHeld: (held) => input.setRunHeld(held),
     isSeated: () =>
       Boolean(interact.isOccupied || anim?.isSeated || anim?.isLaid),
@@ -183,6 +197,9 @@ async function boot() {
   let deskTimer = null;
   /** 입장 직후 첫 앱 스냅샷에서만 자동 착석 시도 */
   let entrySeatHandled = false;
+  let entrySeatTimer = 0;
+  /** 방 연결이 끝난 시각. 그 전에는 다른 사람이 앉은 자리를 아직 모른다 */
+  let netReadyAt = Infinity;
 
   function pickAutoSeat() {
     const pivot = character?.pivot?.position;
@@ -210,6 +227,16 @@ async function boot() {
     if (entrySeatHandled) return;
     // 스폰 전에 스냅샷이 오면 다음 스냅샷에서 다시 시도
     if (!character?.pivot) return;
+    // 연결 직후에는 다른 사람 상태(앉은 자리)가 아직 안 왔을 수 있다. 잠깐 기다렸다가 고른다.
+    const waited = performance.now() - netReadyAt;
+    if (!(waited >= CONFIG.ENTRY_SEAT_WAIT_MS)) {
+      const delay = Number.isFinite(waited) ? CONFIG.ENTRY_SEAT_WAIT_MS - waited : 500;
+      window.clearTimeout(entrySeatTimer);
+      entrySeatTimer = window.setTimeout(() => {
+        handleEntryAutoSeat(Boolean(deskTimer?.getState().isRunning));
+      }, Math.max(50, delay));
+      return;
+    }
     entrySeatHandled = true;
     if (!isRunning) return;
     if (interact.isOccupied) return;
@@ -299,8 +326,12 @@ async function boot() {
     remotes,
     bridge,
     canOpen: () => !boardUI.isOpen && !chat.isOpen,
-    onFriendAdd: (user) => {
-      chat.system(`${user.displayName} 님에게 친구 요청을 보냈어요`);
+    onFriendAdd: (user, status) => {
+      chat.system(
+        status === "already"
+          ? `${user.displayName} 님은 이미 친구예요`
+          : `${user.displayName} 님에게 친구 요청을 보냈어요`,
+      );
     },
   });
 
@@ -433,6 +464,7 @@ async function boot() {
   setLoading(90, "연결 중");
   await net.connect(me);
   connectedAt.t = performance.now();
+  netReadyAt = connectedAt.t;
   chat.loadHistory();
   setLoading(100, "거의 완료");
   hideLoading();
@@ -443,6 +475,9 @@ async function boot() {
     const key = e.key.toLowerCase();
     if (key === "e") {
       interact.tryInteract();
+      pad.refresh();
+    } else if (key === "f") {
+      interact.trySecondary();
       pad.refresh();
     } else if (key === "v") {
       if (anim.isSeated) anim.playSitHi();

@@ -52,6 +52,10 @@ export function createDeskTimer(opts) {
   const subjectList = root.querySelector("#desk-timer-subject-list");
   const selectedSwatch = root.querySelector("#desk-timer-selected-swatch");
   const selectedName = root.querySelector("#desk-timer-selected-name");
+  const tabLabel = root.querySelector(".desk-timer-tab-label");
+  /** 명령 실패 안내를 잠깐 보여 주는 동안의 문구 */
+  let flashText = "";
+  let flashTimer = 0;
 
   /** @type {{
    *   isRunning: boolean,
@@ -62,6 +66,7 @@ export function createDeskTimer(opts) {
    * }} */
   let snap = {
     isRunning: false,
+    onBreak: false,
     startedAt: null,
     totalElapsedMs: 0,
     subjects: [],
@@ -118,8 +123,19 @@ export function createDeskTimer(opts) {
     return base;
   }
 
+  /** 정지 버튼을 보여 줄 상태 (공부 중 또는 뽀모도로 휴식 중) */
   function isRunning() {
-    return localMode ? localRunning : !!snap.isRunning;
+    return localMode ? localRunning : !!snap.isRunning || !!snap.onBreak;
+  }
+
+  function flash(text) {
+    flashText = text;
+    window.clearTimeout(flashTimer);
+    flashTimer = window.setTimeout(() => {
+      flashText = "";
+      paintClock();
+    }, 2200);
+    paintClock();
   }
 
   function paintTrigger() {
@@ -145,6 +161,10 @@ export function createDeskTimer(opts) {
     toggleBtn.classList.toggle("pause", running);
     toggleBtn.disabled = busy;
     root.classList.toggle("running", running);
+    if (tabLabel) {
+      tabLabel.textContent =
+        flashText || (!localMode && snap.onBreak ? "휴식 중" : "타이머");
+    }
     root.classList.toggle("busy", busy);
     paintTrigger();
   }
@@ -195,6 +215,7 @@ export function createDeskTimer(opts) {
     localMode = false;
     snap = {
       isRunning: !!payload.isRunning,
+      onBreak: !!payload.onBreak,
       startedAt: payload.startedAt != null ? Number(payload.startedAt) : null,
       totalElapsedMs: Number(payload.totalElapsedMs) || 0,
       subjects: Array.isArray(payload.subjects) ? payload.subjects : [],
@@ -234,8 +255,12 @@ export function createDeskTimer(opts) {
     paintClock();
     try {
       const result = await opts.bridge.timerCommand(action, extra);
+      // 결과에는 스냅샷이 없을 수 있다. 최신 상태는 앱이 timer:snapshot으로 따로 보낸다.
       if (result?.snapshot) applySnapshot(result.snapshot);
       else busy = false;
+      if (!result?.ok) {
+        flash(result?.error === "timeout" ? "응답 없음" : "앱 타이머 연결 안 됨");
+      }
       paintClock();
       return result || { ok: false };
     } catch (err) {
@@ -368,6 +393,7 @@ export function createDeskTimer(opts) {
     },
     dispose() {
       cancelAnimationFrame(raf);
+      window.clearTimeout(flashTimer);
       window.clearInterval(nativeProbe);
       listeners.clear();
     },

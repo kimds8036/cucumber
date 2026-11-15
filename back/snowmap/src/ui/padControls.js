@@ -3,6 +3,8 @@
  * @param {{
  *   onInteract: () => void,
  *   peekAction: () => { label: string }|null,
+ *   onSecondary?: () => void,
+ *   peekSecondary?: () => { label: string }|null,
  *   setRunHeld: (held: boolean) => void,
  *   isSeated?: () => boolean,
  * }} opts
@@ -24,6 +26,15 @@ export function createPadControls(opts) {
     root.appendChild(interactBtn);
   }
 
+  let altBtn = document.getElementById("btn-interact-alt");
+  if (!altBtn) {
+    altBtn = document.createElement("button");
+    altBtn.id = "btn-interact-alt";
+    altBtn.type = "button";
+    altBtn.hidden = true;
+    root.insertBefore(altBtn, interactBtn);
+  }
+
   let runBtn = document.getElementById("btn-run");
   if (!runBtn) {
     runBtn = document.createElement("button");
@@ -34,11 +45,18 @@ export function createPadControls(opts) {
   }
 
   let lastLabel = "";
+  let lastAltLabel = "";
   let lastSeated = null;
 
   interactBtn.addEventListener("click", (e) => {
     e.preventDefault();
     opts.onInteract?.();
+    refresh();
+  });
+
+  altBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    opts.onSecondary?.();
     refresh();
   });
 
@@ -70,6 +88,14 @@ export function createPadControls(opts) {
       runBtn.hidden = seated;
       if (seated) setRun(false);
     }
+
+    const alt = opts.peekSecondary?.() || null;
+    const altLabel = alt?.label || "";
+    if (altLabel !== lastAltLabel) {
+      lastAltLabel = altLabel;
+      altBtn.textContent = altLabel;
+    }
+    altBtn.hidden = !alt;
 
     const action = opts.peekAction?.() || null;
     const label = action?.label || "";

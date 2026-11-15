@@ -6,7 +6,7 @@ import { CONFIG } from "../config.js";
  *
  * 규칙:
  * - stay: 루프 (STAY_LOOP)
- * - sit: 앉기 = 거꾸로 재생 (SIT_REVERSE_TIMESCALE), 일어서기 = 정방향
+ * - sit: 앉기 = 정방향 (Stand To Sit, SIT_DOWN_TIMESCALE), 일어서기 = 역재생 (STAND_UP_TIMESCALE)
  * - sitHi: 앉은 채 인사 (Phase 6 멀티유저 훅)
  * - lay: 정방향 = 눕기, 역재생 = 일어서기 (sit으로 일어나면 대각선으로 남음)
  */
@@ -123,7 +123,7 @@ export function createAnimationController(mixer, clips) {
     fadeTo(target, 0.15);
   }
 
-  /** 의자 앉기: sit 클립 역재생 (클립 끝이 서 있는 포즈) */
+  /** 의자 앉기: sit 클립 정방향 (클립 시작 = 서 있음, 끝 = 앉음) */
   function playSitDown() {
     if (!actions.sit) {
       console.warn("[animation] sit 클립 없음 — 앉기 스킵 (나중에 에셋만 추가하면 됨)");
@@ -131,10 +131,9 @@ export function createAnimationController(mixer, clips) {
     }
     postureLocked = true;
     postureKind = "sit";
-    const clip = actions.sit.getClip();
     fadeTo("sit", 0.12, {
-      timeScale: CONFIG.SIT_DOWN_TIMESCALE,
-      time: clip.duration,
+      timeScale: Math.abs(CONFIG.SIT_DOWN_TIMESCALE),
+      time: 0,
     });
     return true;
   }
@@ -189,10 +188,11 @@ export function createAnimationController(mixer, clips) {
     }
     postureLocked = true;
     postureKind = "sit";
-    // 앉기 역재생 끝 = time≈0. 정방향으로 일어서기 (fadeIn 금지)
+    // 앉기 끝 = time≈duration. 역재생으로 일어서기 (fadeIn 금지)
+    const sitDuration = actions.sit.getClip().duration;
     continueAction(actions.sit, {
-      timeScale: CONFIG.STAND_UP_TIMESCALE,
-      time: Math.min(actions.sit.time, actions.sit.getClip().duration * 0.02),
+      timeScale: -Math.abs(CONFIG.STAND_UP_TIMESCALE),
+      time: Math.max(actions.sit.time, sitDuration * 0.98),
     });
     current = "sit";
     onActionFinished(actions.sit, () => {
@@ -256,7 +256,8 @@ export function createAnimationController(mixer, clips) {
     if (postureKind === "none") postureKind = "sit";
     fadeTo("sitHi", 0.2);
     onActionFinished(actions.sitHi, () => {
-      if (actions.sit) fadeTo("sit", 0.3, { time: 0, timeScale: 0 });
+      // 앉은 자세(sit 끝 프레임)로 돌아가 멈춤
+      if (actions.sit) fadeTo("sit", 0.3, { time: actions.sit.getClip().duration, timeScale: 0 });
     });
     return true;
   }
