@@ -21,6 +21,7 @@ import friendRoutes from './routes/friends.js';
 import notificationRoutes from './routes/notifications.js';
 import settingsRoutes from './routes/settings.js';
 import timerRoutes from './routes/timer.js';
+import studyCafeRoutes from './routes/studyCafe.js';
 import timetableRoutes from './routes/timetable.js';
 import schoolsRoutes from './routes/schools.js';
 import usersRoutes from './routes/users.js';
@@ -139,15 +140,27 @@ const allowedOrigins = isProductionEnv()
     ]
   : ['http://localhost:3000', 'http://localhost:8081', ...defaultAdminOrigins];
 
-const corsMiddleware = cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    return callback(new Error('CORS 정책에 의해 차단되었습니다.'));
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+/** 같은 서버가 내려준 페이지(/snowmap 스터디 카페 등)가 자기 서버로 보내는 요청 */
+function isSameHostOrigin(req, origin) {
+  try {
+    return new URL(origin).host === req.get('host');
+  } catch {
+    return false;
+  }
+}
+
+const corsMiddleware = cors((req, callback) => {
+  const origin = req.header('Origin');
+  const options = {
+    origin: true,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  };
+  // 같은 출처 요청은 CORS 대상이 아니다. 도메인이 목록에 없어도(커스텀 도메인·로컬) 막지 않는다.
+  if (!origin || isSameHostOrigin(req, origin) || allowedOrigins.includes(origin)) {
+    return callback(null, options);
+  }
+  return callback(new Error('CORS 정책에 의해 차단되었습니다.'));
 });
 
 // 이니시스 인증 완료 후 successUrl/failUrl로 form POST — Origin이 inicis.com 등 허용 목록 밖.
@@ -336,6 +349,7 @@ app.use('/api/friends', friendRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/timer', timerRoutes);
+app.use('/api/study-cafe', studyCafeRoutes);
 app.use('/api/timetable', timetableRoutes);
 app.use('/api/schools', schoolsRoutes);
 app.use('/api/users', usersRoutes);

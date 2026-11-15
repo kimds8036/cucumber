@@ -100,18 +100,23 @@ export function pickEntryRoom(myUserId) {
   return statuses[0];
 }
 
-export function resolveRoomFromQuery(myUserId) {
+/** 주소의 ?room= 이 가리키는 방. 없으면 null (서버 모드에서는 서버가 방을 정한다) */
+export function requestedRoomFromQuery() {
   try {
     const id = String(
       new URLSearchParams(window.location.search).get("room") || "",
     ).trim();
+    if (!id) return null;
     const rooms = listCafeRooms();
-    const found = rooms.find((r) => r.id === id || r.name === id || String(r.index) === id);
-    if (found) return found;
+    return rooms.find((r) => r.id === id || r.name === id || String(r.index) === id) || null;
   } catch {
-    /* ignore */
+    return null;
   }
-  return pickEntryRoom(myUserId);
+}
+
+/** mock 모드: 주소의 방, 없으면 이 기기 기준으로 고른 방 */
+export function resolveRoomFromQuery(myUserId) {
+  return requestedRoomFromQuery() || pickEntryRoom(myUserId);
 }
 
 export function syncRoomQuery(room) {

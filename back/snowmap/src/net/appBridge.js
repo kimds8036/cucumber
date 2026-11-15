@@ -18,8 +18,22 @@ export function createAppBridge(handlers = {}) {
   const pending = new Map();
   let native = typeof window !== "undefined" && !!window.ReactNativeWebView?.postMessage;
 
+  /** 요청에 대한 답이면 기다리던 쪽을 깨운다 */
+  function resolvePending(msg) {
+    const replyTo = msg.payload?.replyTo || msg.id;
+    const waiter = replyTo ? pending.get(String(replyTo)) : null;
+    if (!waiter) return false;
+    pending.delete(String(replyTo));
+    waiter(msg.payload || {});
+    return true;
+  }
+
   function emit(msg) {
     if (!msg || !msg.type) return;
+    if (msg.type === "auth:token") {
+      resolvePending(msg);
+      return;
+    }
     if (msg.type === "timer:snapshot") handlers.onTimerSnapshot?.(msg.payload || {});
     else if (msg.type === "timer:result") {
       handlers.onTimerResult?.(msg.payload || {});
@@ -101,6 +115,11 @@ export function createAppBridge(handlers = {}) {
     },
     timerCommand(action, extra = {}) {
       return request("timer:command", { action, ...extra });
+    },
+    /** 앱에 새 로그인 토큰을 받는다 (서버 토큰 만료 시). 실패하면 null */
+    async refreshAuth() {
+      const res = await request("auth:refresh", {}, 10000);
+      return res?.ok && typeof res.token === "string" ? res.token : null;
     },
     friendAdd(user) {
       return request("friend:add", {

@@ -29,8 +29,14 @@ export function createBoardUI(net, me, hooks = {}) {
   let boardId = null;
   /** @type {import("../net/adapter.js").BoardStroke[]} */
   let strokes = [];
-  /** @type {"pen"|"eraser"} */
+  /** @type {"pen"|"eraser"|"report"} */
   let tool = "pen";
+  /** 서버 모드에서만 신고 도구를 보여 준다 */
+  const canReport = typeof net.reportStroke === "function";
+  const reportToolBtn = document.getElementById("board-tool-report");
+  if (reportToolBtn) reportToolBtn.hidden = !canReport;
+  /** 신고한 획 (내 화면에서는 바로 숨긴다) */
+  const reportedStrokeIds = new Set();
   let color = COLORS[0];
   let penWidth = CONFIG.BOARD_PEN_WIDTH;
   /** @type {number[]|null} */
@@ -50,11 +56,13 @@ export function createBoardUI(net, me, hooks = {}) {
   function refreshTools() {
     for (const btn of toolBtns) btn.classList.toggle("active", btn.dataset.boardTool === tool);
     for (const btn of colorBtns) btn.classList.toggle("active", btn.dataset.boardColor === color);
-    canvas.style.cursor = tool === "eraser" ? "cell" : "crosshair";
+    canvas.style.cursor = tool === "pen" ? "crosshair" : "cell";
     hint.textContent =
       tool === "eraser"
         ? "지우개: 내가 그린 선만 지워져요"
-        : "펜으로 그리고, 손을 떼면 바로 저장돼요";
+        : tool === "report"
+          ? "신고: 문제가 있는 다른 사람의 선을 눌러 주세요"
+          : "펜으로 그리고, 손을 떼면 바로 저장돼요";
   }
 
   function drawStroke(stroke, g = ctx) {
@@ -88,7 +96,7 @@ export function createBoardUI(net, me, hooks = {}) {
       ctx.lineTo(W, y);
       ctx.stroke();
     }
-    for (const s of strokes) drawStroke(s);
+    for (const s of strokes) if (!reportedStrokeIds.has(s.id)) drawStroke(s);
     for (const s of outbox) if (s.boardId === boardId) drawStroke(s);
     if (draft && draft.length >= 4) {
       drawStroke({ color, width: penWidth, points: draft });
@@ -114,11 +122,13 @@ export function createBoardUI(net, me, hooks = {}) {
     return Math.hypot(px - qx, py - qy);
   }
 
-  function hitMyStroke(x, y) {
+  /** @param {boolean} [mine] true면 내 획, false면 남의 획 */
+  function hitStroke(x, y, mine = true) {
     const r = CONFIG.BOARD_ERASER_RADIUS;
     for (let i = strokes.length - 1; i >= 0; i--) {
       const s = strokes[i];
-      if (s.authorId !== me.userId) continue;
+      if ((String(s.authorId) === String(me.userId)) !== mine) continue;
+      if (reportedStrokeIds.has(s.id)) continue;
       if (erasing.has(s.id)) continue;
       const pts = s.points;
       const pad = r + s.width * 0.5;
@@ -128,6 +138,31 @@ export function createBoardUI(net, me, hooks = {}) {
       if (pts.length === 2 && Math.hypot(x - pts[0], y - pts[1]) <= pad) return s;
     }
     return null;
+  }
+
+  function hitMyStroke(x, y) {
+    return hitStroke(x, y, true);
+  }
+
+  let reporting = false;
+  async function reportAt(x, y) {
+    if (reporting) return;
+    const hit = hitStroke(x, y, false);
+    if (!hit) return;
+    if (!window.confirm(`${hit.authorName || "이 사용자"} 님이 그린 선을 신고할까요?`)) return;
+    reporting = true;
+    try {
+      const res = await net.reportStroke(hit.id, "부적절한 그림");
+      if (res?.ok || res?.code === "ALREADY_REPORTED") {
+        reportedStrokeIds.add(hit.id);
+        redraw();
+        setError(res?.ok ? "신고했어요. 운영진이 확인할게요." : "이미 신고한 선이에요.");
+      } else {
+        setError(res?.message || "신고하지 못했어요");
+      }
+    } finally {
+      reporting = false;
+    }
   }
 
   async function eraseAt(x, y) {
@@ -190,6 +225,11 @@ export function createBoardUI(net, me, hooks = {}) {
     const { x, y } = toCanvas(e);
     if (tool === "eraser") {
       eraseAt(x, y);
+      return;
+    }
+    if (tool === "report") {
+      pointerId = null;
+      reportAt(x, y);
       return;
     }
     draft = [x, y];
@@ -274,7 +314,7 @@ export function createBoardUI(net, me, hooks = {}) {
 
   for (const btn of toolBtns) {
     btn.addEventListener("click", () => {
-      tool = /** @type {"pen"|"eraser"} */ (btn.dataset.boardTool);
+      tool = /** @type {"pen"|"eraser"|"report"} */ (btn.dataset.boardTool);
       refreshTools();
     });
   }

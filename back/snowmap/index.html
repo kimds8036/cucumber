@@ -242,6 +242,12 @@
       opacity: 0;
       transform: translateY(-8px);
       pointer-events: none;
+      transition-duration: 0.6s;
+    }
+    /* 일어서서 멈춘 직후 '정지됨' 칩 */
+    #desk-timer.chip:not(.running) .desk-timer-card {
+      border-color: rgba(255, 255, 255, 0.1);
+      opacity: 0.85;
     }
     .desk-timer-card {
       width: min(176px, calc(100vw - 28px));
@@ -680,6 +686,40 @@
       background: rgba(166, 218, 149, 0.18);
       color: #c8efb8;
     }
+    .user-roster-row { flex-wrap: wrap; }
+    #board-tools button[hidden] { display: none !important; }
+    .user-roster-more {
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 0;
+      background: rgba(255, 255, 255, 0.08);
+      color: rgba(232, 238, 245, 0.8);
+      font: 700 14px/1 "Segoe UI", system-ui, sans-serif;
+      cursor: pointer;
+    }
+    .user-roster-actions {
+      flex: 1 0 100%;
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+    }
+    .user-roster-actions button {
+      height: 28px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.06);
+      color: #e8eef5;
+      font: 700 11px/1 "Segoe UI", system-ui, sans-serif;
+      cursor: pointer;
+    }
+    .user-roster-actions button.danger {
+      border-color: rgba(255, 140, 140, 0.45);
+      color: #ffb4b4;
+    }
+    .user-roster-actions button:disabled { opacity: 0.5; }
 
     /* 머리 위 이름표 · 말풍선 (CSS2D) */
     #labels { position: fixed; inset: 0; pointer-events: none; z-index: 4; }
@@ -871,6 +911,7 @@
         <div class="group">
           <button type="button" data-board-tool="pen" class="active">펜</button>
           <button type="button" data-board-tool="eraser">지우개</button>
+          <button type="button" data-board-tool="report" id="board-tool-report" hidden>신고</button>
         </div>
         <div class="group" aria-label="색상">
           <button type="button" class="swatch active" data-board-color="#222222" style="background:#222" title="검정"></button>

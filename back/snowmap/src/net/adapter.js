@@ -1,6 +1,7 @@
 import { CONFIG } from "../config.js";
 import { createMockAdapter } from "./mockAdapter.js";
 import { createServerAdapter } from "./serverAdapter.js";
+import { getAuthToken } from "./auth.js";
 
 /**
  * 네트워크 어댑터 인터페이스. 게임 코드는 이 메서드만 쓴다(서버 종류를 모름).
@@ -38,8 +39,25 @@ import { createServerAdapter } from "./serverAdapter.js";
  * }} NetAdapter
  */
 
-/** @param {string} [roomId] @returns {NetAdapter & { roomId?: string }} */
-export function createNetAdapter(roomId) {
-  if (CONFIG.NET_ADAPTER === "server") return createServerAdapter(roomId);
+/**
+ * 어떤 연결을 쓸지.
+ * - ?net=mock / ?net=server 로 강제할 수 있다 (개발용)
+ * - CONFIG.NET_ADAPTER가 "auto"면: 앱이 로그인 토큰을 넣어 줬으면 서버, 아니면 mock(브라우저 개발)
+ * @returns {"server"|"mock"}
+ */
+export function pickNetMode() {
+  try {
+    const q = new URLSearchParams(window.location.search).get("net");
+    if (q === "mock" || q === "server") return q;
+  } catch {
+    /* ignore */
+  }
+  if (CONFIG.NET_ADAPTER === "server" || CONFIG.NET_ADAPTER === "mock") return CONFIG.NET_ADAPTER;
+  return getAuthToken() ? "server" : "mock";
+}
+
+/** @param {string|null} [roomId] @returns {NetAdapter & Record<string, any>} */
+export function createNetAdapter(roomId, mode = pickNetMode()) {
+  if (mode === "server") return createServerAdapter(roomId || null);
   return createMockAdapter(roomId || CONFIG.NET_ROOM_ID);
 }

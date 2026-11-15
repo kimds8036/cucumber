@@ -8,6 +8,10 @@
  *   canOpen?: () => boolean,
  *   bridge?: { isNative: boolean, friendAdd: Function },
  *   onFriendAdd?: (user: { userId: string, displayName: string }, status: "requested"|"already") => void,
+ *   moderation?: null | {
+ *     report: (userId: string, reason?: string) => Promise<{ ok: boolean, code?: string|null, message?: string|null }>,
+ *     block: (userId: string, displayName: string) => Promise<{ ok: boolean, message?: string }>,
+ *   },
  * }} opts
  */
 export function createUserRoster(opts) {
@@ -25,6 +29,10 @@ export function createUserRoster(opts) {
   /** 마지막으로 그린 목록 내용. 같으면 다시 그리지 않는다(버튼·사진이 깜빡이거나 눌림이 사라지지 않게) */
   let lastStackKey = "";
   let lastListKey = "";
+  /** 신고·차단 메뉴를 펼친 사람 */
+  let menuFor = null;
+  /** 신고를 보낸 사람 (같은 화면에서 다시 못 누르게) */
+  const reportedIds = new Set();
 
   let root = document.getElementById("user-roster");
   if (!root) {
@@ -257,6 +265,73 @@ export function createUserRoster(opts) {
         row.append(btn);
       }
 
+      if (!user.isMe && opts.moderation) {
+        const uid = String(user.userId);
+        const more = document.createElement("button");
+        more.type = "button";
+        more.className = "user-roster-more";
+        more.textContent = "⋯";
+        more.setAttribute("aria-label", `${formatId(user.displayName)} 신고·차단`);
+        more.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          menuFor = menuFor === uid ? null : uid;
+          render({ force: true });
+        });
+        row.append(more);
+
+        if (menuFor === uid) {
+          const actions = document.createElement("div");
+          actions.className = "user-roster-actions";
+          const reportBtn = document.createElement("button");
+          reportBtn.type = "button";
+          reportBtn.textContent = reportedIds.has(uid) ? "신고함" : "신고";
+          reportBtn.disabled = reportedIds.has(uid);
+          reportBtn.addEventListener("click", async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!window.confirm(`${formatId(user.displayName)} 님을 신고할까요?\n최근 채팅이 함께 전달돼요.`)) return;
+            reportBtn.disabled = true;
+            const res = await opts.moderation.report(uid, "스터디 카페 부적절한 행동");
+            if (res?.ok || res?.code === "ALREADY_REPORTED") {
+              reportedIds.add(uid);
+              window.alert(res?.ok ? "신고했어요. 운영진이 확인할게요." : "이미 신고한 사용자예요.");
+            } else {
+              reportBtn.disabled = false;
+              window.alert(res?.message || "신고하지 못했어요.");
+            }
+            render({ force: true });
+          });
+          const blockBtn = document.createElement("button");
+          blockBtn.type = "button";
+          blockBtn.className = "danger";
+          blockBtn.textContent = "차단";
+          blockBtn.addEventListener("click", async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (
+              !window.confirm(
+                `${formatId(user.displayName)} 님을 차단할까요?\n서로의 캐릭터·채팅·방명록이 보이지 않고 친구 관계도 끊겨요.`,
+              )
+            ) {
+              return;
+            }
+            blockBtn.disabled = true;
+            const res = await opts.moderation.block(uid, user.displayName);
+            if (!res?.ok) {
+              blockBtn.disabled = false;
+              window.alert(res?.message || "차단하지 못했어요.");
+              return;
+            }
+            menuFor = null;
+            friendIds.delete(uid);
+            render({ force: true });
+          });
+          actions.append(reportBtn, blockBtn);
+          row.append(actions);
+        }
+      }
+
       list.append(row);
     }
   }
@@ -273,7 +348,7 @@ export function createUserRoster(opts) {
             ? "requesting"
             : "none";
     const avatar = user.avatarUrl || friendById.get(uid)?.avatarUrl || "";
-    return `${uid}|${user.displayName}|${avatar}|${state}`;
+    return `${uid}|${user.displayName}|${avatar}|${state}|${menuFor === uid ? "menu" : ""}`;
   }
 
   function render({ force = false } = {}) {

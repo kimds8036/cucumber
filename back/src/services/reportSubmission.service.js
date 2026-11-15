@@ -49,6 +49,13 @@ export async function resolveReportedUserId(targetType, targetId, connection = p
     );
     return rows[0]?.user_id ?? null;
   }
+  if (t === 'cafe_stroke') {
+    const [rows] = await connection.execute(
+      'SELECT user_id FROM study_cafe_strokes WHERE id = ? AND is_deleted = 0 LIMIT 1',
+      [id],
+    );
+    return rows[0]?.user_id ?? null;
+  }
 
   return null;
 }

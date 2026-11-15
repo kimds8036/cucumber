@@ -17,7 +17,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { colors } from '../../styles/colors';
-import { api, getApiBaseUrlNoSlash } from '../../utils/api';
+import {
+  api,
+  getApiBaseUrlNoSlash,
+  getAuthToken,
+  refreshAccessToken,
+} from '../../utils/api';
 import { useMainShellOptional } from '../../context/MainShellContext';
 import { loadTimerSettings } from './timer/timerSettingsStorage';
 import {
@@ -26,6 +31,7 @@ import {
   buildTimerSnapshotMessage,
   getStudyCafeController,
   handleStudyCafeIncoming,
+  makeBridgeMessage,
   parseBridgeMessage,
   subscribeStudyCafeController,
   subscribeStudyCafeSnapshot,
@@ -57,6 +63,27 @@ async function buildSnowmapUrl() {
   return query ? `${base}/snowmap/?${query}` : `${base}/snowmap/`;
 }
 
+/**
+ * 카페 페이지가 뜨기 전에 로그인 토큰을 넣는다 (서버 소켓·방명록 API 인증용).
+ * 토큰은 URL에 싣지 않는다 — 주소는 로그·에러 화면에 남을 수 있다.
+ */
+function buildAuthInjectScript(token) {
+  const json = JSON.stringify(JSON.stringify({ token: token || null }));
+  return `
+    (function(){
+      try { window.__STUDY_CAFE_AUTH__ = JSON.parse(${json}); } catch (e) {}
+      true;
+    })();
+  `;
+}
+
+/** 카페 페이지(같은 서버의 /snowmap/)만 열 수 있다. 토큰이 다른 페이지에 들어가지 않게 */
+function isSnowmapUrl(url) {
+  const base = getApiBaseUrlNoSlash().replace(/\/+$/, '');
+  const u = String(url || '');
+  return u === `${base}/snowmap` || u.startsWith(`${base}/snowmap/`) || u === 'about:blank';
+}
+
 async function fetchFriendListForCafe() {
   try {
     const res = await api.get('/api/friends/list');
@@ -81,6 +108,7 @@ export default function TimerAniLab({ navigation }) {
   const readyRef = useRef(false);
   const [loadError, setLoadError] = useState(null);
   const [snowmapUrl, setSnowmapUrl] = useState(null);
+  const [authScript, setAuthScript] = useState(null);
 
   const inject = useCallback((message) => {
     const ref = webRef.current;
@@ -141,8 +169,13 @@ export default function TimerAniLab({ navigation }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const url = await buildSnowmapUrl();
-      if (!cancelled) setSnowmapUrl(url);
+      const [url, token] = await Promise.all([
+        buildSnowmapUrl(),
+        getAuthToken().catch(() => null),
+      ]);
+      if (cancelled) return;
+      setAuthScript(buildAuthInjectScript(token));
+      setSnowmapUrl(url);
     })();
     return () => {
       cancelled = true;
@@ -189,12 +222,32 @@ export default function TimerAniLab({ navigation }) {
 
   const onWebMessage = useCallback(
     async (event) => {
+      // 카페 페이지에서 온 메시지만 받는다
+      if (event?.nativeEvent?.url && !isSnowmapUrl(event.nativeEvent.url)) return;
       const msg = parseBridgeMessage(event?.nativeEvent?.data);
       if (!msg) return;
 
       if (msg.type === 'bridge:ready') {
         readyRef.current = true;
         syncAll();
+        return;
+      }
+
+      // 카페 서버 토큰이 만료됐을 때 새 토큰을 준다
+      if (msg.type === 'auth:refresh') {
+        let token = null;
+        try {
+          token = (await refreshAccessToken()) || (await getAuthToken());
+        } catch {
+          token = null;
+        }
+        inject(
+          makeBridgeMessage(
+            'auth:token',
+            { replyTo: msg.id, ok: !!token, token: token || null },
+            msg.id,
+          ),
+        );
         return;
       }
 
@@ -217,13 +270,15 @@ export default function TimerAniLab({ navigation }) {
         <WebView
           ref={webRef}
           source={{ uri: snowmapUrl }}
+          injectedJavaScriptBeforeContentLoaded={authScript || undefined}
           style={styles.webview}
-          originWhitelist={['*']}
+          originWhitelist={['https://*', 'http://*']}
+          onShouldStartLoadWithRequest={(req) => isSnowmapUrl(req?.url)}
           javaScriptEnabled
           domStorageEnabled
           allowsInlineMediaPlayback
           mediaPlaybackRequiresUserAction={false}
-          mixedContentMode="always"
+          mixedContentMode="compatibility"
           setSupportMultipleWindows={false}
           allowsBackForwardNavigationGestures={false}
           startInLoadingState
@@ -254,7 +309,7 @@ export default function TimerAniLab({ navigation }) {
       {loadError ? (
         <View style={styles.errorBox} pointerEvents="box-none">
           <Text style={styles.errorText}>{loadError}</Text>
-          <Text style={styles.errorHint}>{snowmapUrl}</Text>
+          {__DEV__ ? <Text style={styles.errorHint}>{snowmapUrl}</Text> : null}
         </View>
       ) : null}
 

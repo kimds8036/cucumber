@@ -1,99 +1,292 @@
-import { CONFIG } from "../config.js";
 import { createEmitter } from "./emitter.js";
+import { getAuthToken, refreshAuthToken } from "./auth.js";
 
 /**
- * 기존 서버 연결용 어댑터 (이식 지점).
- * config.js에서 NET_ADAPTER: "server" 로 바꾸면 이 파일이 쓰인다.
+ * 실제 서버(Railway, back/src) 연결.
+ * - 위치·자리·채팅·방 목록·차단·신고: socket.io (back/src/socket/studyCafeEvents.js)
+ * - 방명록 획 저장·조회·삭제·신고: REST /api/study-cafe (back/src/routes/studyCafe.js)
+ * 페이지가 같은 서버의 /snowmap/ 에서 열리므로 주소는 같은 origin을 쓴다.
  *
- * 할 일 (docs/social-features-plan.md 11장):
- * 1. connect: 기존 서버 소켓/채널에 접속하고 room(CONFIG.NET_ROOM_ID)에 입장
- * 2. 서버 메시지를 아래 이벤트로 변환해 events.emit 호출
- *      입장  → events.emit("join", PlayerState)
- *      위치  → events.emit("state", PlayerState)
- *      퇴장  → events.emit("leave", userId)
- *      채팅  → events.emit("chat", ChatMessage)
- *      획 추가 → events.emit("stroke", boardId, BoardStroke)
- *      획 삭제 → events.emit("stroke-remove", boardId, strokeIds[])
- * 3. send* / listStrokes / addStroke / removeStroke / removeMyStrokes 를 서버 API로 연결
- * 서버는 removeStroke 시 authorId === 요청자인지 반드시 검증한다.
- * @param {string} [roomId]
- * @returns {import("./adapter.js").NetAdapter}
+ * @param {string|null} [requestedRoomId] 원하는 방. 서버가 정원을 보고 최종 결정한다
+ * @returns {import("./adapter.js").NetAdapter & Record<string, any>}
  */
-export function createServerAdapter(roomId = CONFIG.NET_ROOM_ID) {
+export function createServerAdapter(requestedRoomId = null) {
   const events = createEmitter();
-  const room = roomId || CONFIG.NET_ROOM_ID;
-  /** @type {WebSocket|null} */
+  /** @type {any} */
   let socket = null;
+  /** @type {{ id: string, name: string, index: number, capacity: number }|null} */
+  let room = null;
+  /** @type {{ userId: string, displayName: string, avatarUrl: string|null }|null} */
+  let meInfo = null;
+  /** @type {any[]} */
+  let joinChat = [];
+  let lastState = null;
+  let gender = "boy";
+  let kicked = false;
+  /** 지금 화면에 있는 다른 사람 (처음 보면 join 이벤트) */
+  const known = new Set();
 
-  function send(type, payload) {
-    if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type, ...payload }));
+  function emitPlayer(state) {
+    if (!state?.userId) return;
+    if (!known.has(state.userId)) {
+      known.add(state.userId);
+      events.emit("join", state);
+    }
+    events.emit("state", state);
+  }
+
+  /** 재접속 후 서버 목록과 맞춘다. 목록에 없는 사람은 나간 것으로 처리 */
+  function syncPlayers(list) {
+    const next = new Set((list || []).map((p) => p.userId));
+    for (const id of [...known]) {
+      if (!next.has(id)) {
+        known.delete(id);
+        events.emit("leave", id);
+      }
+    }
+    for (const p of list || []) emitPlayer(p);
+  }
+
+  function emitAck(event, payload, timeoutMs = 8000) {
+    return new Promise((resolve) => {
+      if (!socket?.connected) {
+        resolve({ ok: false, error: "disconnected" });
+        return;
+      }
+      socket.timeout(timeoutMs).emit(event, payload, (err, res) => {
+        if (err) resolve({ ok: false, error: "timeout" });
+        else resolve(res || { ok: false });
+      });
+    });
+  }
+
+  async function join() {
+    const res = await emitAck("cafe:join", {
+      roomId: room?.id || requestedRoomId || null,
+      gender,
+      state: lastState,
+    });
+    if (!res?.ok) return res;
+    room = res.room;
+    meInfo = res.me;
+    joinChat = Array.isArray(res.chat) ? res.chat : [];
+    syncPlayers(res.players);
+    return res;
+  }
+
+  /** REST 호출. 401이면 토큰을 새로 받아 한 번 더 시도한다 */
+  async function api(method, path, body) {
+    const run = async () => {
+      const token = getAuthToken();
+      const res = await fetch(`/api/study-cafe${path}`, {
+        method,
+        headers: {
+          ...(body ? { "Content-Type": "application/json" } : {}),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      let json = null;
+      try {
+        json = await res.json();
+      } catch {
+        json = null;
+      }
+      return { res, json };
+    };
+    let { res, json } = await run();
+    if (res.status === 401 && (await refreshAuthToken())) {
+      ({ res, json } = await run());
+    }
+    if (!res.ok || json?.success === false) {
+      const err = new Error(json?.message || `요청 실패 (${res.status})`);
+      /** @type {any} */ (err).status = res.status;
+      /** @type {any} */ (err).code = json?.code || null;
+      throw err;
+    }
+    return json?.data ?? {};
+  }
+
+  function boardPath(boardId) {
+    if (!room) throw new Error("방에 아직 들어가지 않았어요");
+    return `/rooms/${encodeURIComponent(room.id)}/boards/${encodeURIComponent(boardId)}/strokes`;
   }
 
   return {
-    roomId: room,
-    async connect(identity) {
-      // TODO(이식): 기존 서버 주소/인증 방식으로 교체
-      // socket = new WebSocket(`wss://YOUR_SERVER/rooms/${room}?token=...`);
-      // socket.addEventListener("message", (e) => {
-      //   const msg = JSON.parse(e.data);
-      //   if (msg.type === "join") events.emit("join", msg.state);
-      //   else if (msg.type === "state") events.emit("state", msg.state);
-      //   else if (msg.type === "leave") events.emit("leave", msg.userId);
-      //   else if (msg.type === "chat") events.emit("chat", msg.message);
-      //   else if (msg.type === "stroke:new") events.emit("stroke", msg.boardId, msg.stroke);
-      //   else if (msg.type === "stroke:remove") events.emit("stroke-remove", msg.boardId, msg.strokeIds);
-      // });
-      console.warn("[net:server] 아직 연결 코드가 없습니다 — src/net/serverAdapter.js TODO 참고", {
-        room,
-        identity,
-      });
+    isServer: true,
+    get roomId() {
+      return room?.id || requestedRoomId || null;
     },
+    get room() {
+      return room;
+    },
+    get me() {
+      return meInfo;
+    },
+
+    async connect(identity) {
+      gender = identity?.gender === "girl" ? "girl" : "boy";
+      const { io } = await import("/socket.io/socket.io.esm.min.js");
+      socket = io(window.location.origin, {
+        path: "/socket.io",
+        transports: ["websocket", "polling"],
+        auth: (cb) => cb({ token: getAuthToken() }),
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 10000,
+        timeout: 10000,
+      });
+
+      let authRetries = 0;
+      let firstJoin = null;
+      const firstJoinDone = new Promise((resolve, reject) => {
+        firstJoin = { resolve, reject };
+      });
+
+      socket.on("connect", async () => {
+        authRetries = 0;
+        const res = await join();
+        if (firstJoin) {
+          const done = firstJoin;
+          firstJoin = null;
+          if (res?.ok) done.resolve(res);
+          else {
+            const err = new Error(res?.message || "스터디 카페에 들어가지 못했어요");
+            /** @type {any} */ (err).code = res?.error || null;
+            done.reject(err);
+          }
+        } else if (!res?.ok) {
+          console.warn("[net:server] 재입장 실패", res);
+        }
+      });
+
+      socket.on("connect_error", async (err) => {
+        const code = err?.data?.code;
+        console.warn("[net:server] connect_error", code || err?.message);
+        // 인증 실패는 socket.io가 다시 붙지 않는다. 토큰을 새로 받고 직접 다시 연결한다.
+        if ((code === "TOKEN_EXPIRED" || code === "INVALID_TOKEN") && authRetries < 2) {
+          authRetries += 1;
+          if (await refreshAuthToken()) {
+            socket.connect();
+            return;
+          }
+        }
+        if (code && firstJoin) {
+          const done = firstJoin;
+          firstJoin = null;
+          done.reject(new Error(err?.message || "서버에 연결하지 못했어요"));
+        }
+      });
+
+      socket.on("cafe:player:state", (state) => emitPlayer(state));
+      socket.on("cafe:player:leave", ({ userId } = {}) => {
+        if (!userId || !known.delete(userId)) return;
+        events.emit("leave", userId);
+      });
+      socket.on("cafe:chat", (msg) => events.emit("chat", msg));
+      socket.on("cafe:stroke", ({ boardId, stroke } = {}) => {
+        if (boardId && stroke) events.emit("stroke", boardId, stroke);
+      });
+      socket.on("cafe:stroke:remove", ({ boardId, strokeIds } = {}) => {
+        if (boardId) events.emit("stroke-remove", boardId, strokeIds || []);
+      });
+      socket.on("cafe:seat:denied", (payload) => events.emit("seat-denied", payload || {}));
+      socket.on("cafe:kicked", (payload) => {
+        kicked = true;
+        socket.disconnect();
+        events.emit("kicked", payload || {});
+      });
+
+      const timeout = new Promise((_, reject) => {
+        window.setTimeout(() => reject(new Error("서버 연결이 너무 오래 걸려요")), 15000);
+      });
+      await Promise.race([firstJoinDone, timeout]);
+      console.info("[net:server] connected", { room: room?.id, me: meInfo?.userId });
+    },
+
     disconnect() {
-      socket?.close();
+      socket?.emit("cafe:leave");
+      socket?.disconnect();
       socket = null;
     },
 
     sendState(state) {
-      send("state", { state });
+      lastState = state;
+      if (state?.gender) gender = state.gender;
+      if (!socket?.connected || kicked) return;
+      // 위치는 늦게 가느니 버리는 편이 낫다
+      socket.volatile.emit("cafe:state", state);
     },
     onPlayerJoin: (cb) => events.on("join", cb),
     onPlayerState: (cb) => events.on("state", cb),
     onPlayerLeave: (cb) => events.on("leave", cb),
 
     sendChat(text) {
-      send("chat", { text });
+      emitAck("cafe:chat", { text }).then((res) => {
+        if (!res?.ok) events.emit("chat-error", res?.error || "failed");
+      });
     },
     onChat: (cb) => events.on("chat", cb),
+    onChatError: (cb) => events.on("chat-error", cb),
     async getRecentChat(limit) {
-      // TODO(이식): return (await fetch(`/api/rooms/${CONFIG.NET_ROOM_ID}/chat?limit=${limit}`)).json();
-      return [];
+      return joinChat.slice(-limit);
     },
 
     async listStrokes(boardId) {
-      // TODO(이식): return (await fetch(`/api/boards/${boardId}/strokes`)).json();
-      return [];
+      const data = await api("GET", boardPath(boardId));
+      return Array.isArray(data.strokes) ? data.strokes : [];
     },
     async addStroke(boardId, stroke) {
-      // TODO(이식): 서버에 저장하고 저장된 BoardStroke를 돌려받기
-      // const res = await fetch(`/api/boards/${boardId}/strokes`, {
-      //   method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(stroke),
-      // });
-      // return res.json();
-      throw new Error("서버 어댑터가 아직 연결되지 않았습니다");
+      const data = await api("POST", boardPath(boardId), {
+        color: stroke.color,
+        width: stroke.width,
+        points: stroke.points,
+      });
+      // 다른 사람에게는 소켓으로 간다. 나에게도 소켓으로 오지만 board.js가 id로 중복을 거른다.
+      if (data.stroke) events.emit("stroke", boardId, data.stroke);
+      return data.stroke;
     },
     async removeStroke(boardId, strokeId) {
-      // TODO(이식): 서버가 authorId를 검증한 뒤 삭제. 성공 여부 boolean
-      // const res = await fetch(`/api/boards/${boardId}/strokes/${strokeId}`, { method: "DELETE" });
-      // return res.ok;
-      throw new Error("서버 어댑터가 아직 연결되지 않았습니다");
+      await api("DELETE", `${boardPath(boardId)}/${encodeURIComponent(strokeId)}`);
+      events.emit("stroke-remove", boardId, [String(strokeId)]);
+      return true;
     },
     async removeMyStrokes(boardId) {
-      // TODO(이식): 내 획만 일괄 삭제. 삭제된 id 배열 반환
-      // const res = await fetch(`/api/boards/${boardId}/strokes/mine`, { method: "DELETE" });
-      // return res.json();
-      throw new Error("서버 어댑터가 아직 연결되지 않았습니다");
+      const data = await api("DELETE", `${boardPath(boardId)}/mine`);
+      const ids = Array.isArray(data.strokeIds) ? data.strokeIds : [];
+      if (ids.length) events.emit("stroke-remove", boardId, ids);
+      return ids;
     },
     onStroke: (cb) => events.on("stroke", cb),
     onStrokeRemove: (cb) => events.on("stroke-remove", cb),
+
+    /** 방 목록·인원 (방 이동 패널) */
+    async listRooms() {
+      const res = await emitAck("cafe:rooms", {});
+      return res?.ok && Array.isArray(res.rooms) ? res.rooms : null;
+    },
+    onSeatDenied: (cb) => events.on("seat-denied", cb),
+    onKicked: (cb) => events.on("kicked", cb),
+    /** @param {string} userId */
+    block(userId) {
+      return emitAck("cafe:block", { userId });
+    },
+    /** @param {string} userId @param {string} [reason] */
+    report(userId, reason) {
+      return emitAck("cafe:report", { userId, reason });
+    },
+    /** 방명록 획 신고 */
+    async reportStroke(strokeId, reason) {
+      try {
+        await api("POST", `/strokes/${encodeURIComponent(strokeId)}/report`, { reason });
+        return { ok: true };
+      } catch (err) {
+        return {
+          ok: false,
+          code: /** @type {any} */ (err).code || null,
+          message: err?.message || "신고하지 못했어요",
+        };
+      }
+    },
   };
 }
