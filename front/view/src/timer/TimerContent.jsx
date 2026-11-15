@@ -54,7 +54,10 @@ import {
   setTimerRuntimeState,
   TIMER_COUNTDOWN_TOTAL_SECONDS,
 } from '../../../utils/timerRuntimeStore';
-import { registerStudyCafeController } from '../../../utils/studyCafeBridge';
+import {
+  notifyStudyCafeSnapshot,
+  registerStudyCafeController,
+} from '../../../utils/studyCafeBridge';
 import { tdb } from './timerHelpers';
 import TopAdBanner from '../../../components/ads/TopAdBanner';
 import { pickActiveNoticeForBanner, pickBanner } from '../../../constants/bannerAssets';
@@ -390,13 +393,26 @@ export function TimerContent() {
   const cafePendingSubjectRef = useRef(null);
 
   // 스터디 카페 WebView가 쓰는 타이머/친구 컨트롤러 (앱이 원본)
+  // start/stop/selectSubject는 토글이 아니라 의도한 상태로만 바꾼다 (이미 그 상태면 아무것도 안 함).
   useEffect(() => {
     if (isGuidePreview) return undefined;
+    const sameSubject = (a, b) => a != null && b != null && String(a) === String(b);
+    /** 카페에서 온 id(문자열일 수 있음)를 앱 과목 id 타입으로 맞춘다. 없는 과목이면 null */
+    const resolveSubjectId = (raw) => {
+      if (raw == null || raw === '') return null;
+      const hit = (timerRef.current.subjects || []).find(
+        (s) => String(s.id) === String(raw),
+      );
+      return hit ? hit.id : null;
+    };
     const unreg = registerStudyCafeController({
       getSnapshot: () => {
         const t = timerRef.current;
+        const isRunning = !!t.isRunningRef.current;
         return {
-          isRunning: !!t.isRunningRef.current,
+          isRunning,
+          /** 뽀모도로 휴식 중 (공부 시간은 멈춰 있지만 뽀모도로 시계는 돈다) */
+          onBreak: !isRunning && !!t.pomoClockOn,
           startedAt: t.openSessionStartedAtMs ?? null,
           totalElapsedMs: Number(t.totalElapsedMs) || 0,
           subjects: (t.subjects || []).map((s) => ({
@@ -411,28 +427,43 @@ export function TimerContent() {
       start: (subjectId) => {
         const t = timerRef.current;
         const picked =
-          subjectId != null && subjectId !== ''
-            ? Number(subjectId) || subjectId
-            : cafePendingSubjectRef.current ?? t.activeSubjectId;
-        if (picked != null && picked !== '') {
-          cafePendingSubjectRef.current = picked;
-          t.startForSubject(picked);
-        } else {
-          t.toggleTimer();
+          resolveSubjectId(subjectId) ??
+          resolveSubjectId(cafePendingSubjectRef.current) ??
+          t.activeSubjectId ??
+          null;
+        cafePendingSubjectRef.current = null;
+        if (t.isRunningRef.current) {
+          // 이미 공부 중: 다른 과목을 골랐을 때만 바꾼다
+          if (picked != null && !sameSubject(picked, t.activeSubjectId)) {
+            t.startForSubject(picked);
+          }
+          return true;
         }
+        if (picked != null) t.startForSubject(picked);
+        else t.toggleTimer();
         return true;
       },
       stop: () => {
-        timerRef.current.pauseTimer();
+        const t = timerRef.current;
+        if (!t.isRunningRef.current && !t.pomoClockOn) return true;
+        t.pauseTimer();
         return true;
       },
       selectSubject: (subjectId) => {
-        if (subjectId == null || subjectId === '') return false;
-        const id = Number(subjectId) || subjectId;
-        cafePendingSubjectRef.current = id;
+        const id = resolveSubjectId(subjectId);
+        if (id == null) return false;
         const t = timerRef.current;
-        if (t.isRunningRef.current) t.startForSubject(id);
+        if (t.isRunningRef.current) {
+          cafePendingSubjectRef.current = null;
+          if (!sameSubject(id, t.activeSubjectId)) t.startForSubject(id);
+          return true;
+        }
+        cafePendingSubjectRef.current = id;
         return true;
+      },
+      /** 카페를 나가면 카페에서만 고른 과목을 버린다 */
+      resetSession: () => {
+        cafePendingSubjectRef.current = null;
       },
       listFriends: async () => {
         const res = await api.get('/api/friends/list');
@@ -454,7 +485,7 @@ export function TimerContent() {
         }
         try {
           await api.post('/api/friends/requests', { username: raw });
-          pushTimerToast('', '친구 요청을 보냈어요');
+          // 앱 토스트는 카페 WebView에 가려 보이지 않는다. 안내는 카페 채팅 시스템 메시지가 한다.
           return { ok: true, status: 'requested', userId };
         } catch (error) {
           const msg = getApiUserFacingMessage(
@@ -472,7 +503,21 @@ export function TimerContent() {
       },
     });
     return unreg;
-  }, [isGuidePreview, pushTimerToast]);
+  }, [isGuidePreview]);
+
+  // 타이머 상태가 바뀌면 카페에 바로 알린다 (명령 직후·뽀모도로 전환·앱에서 멈춤 모두)
+  useEffect(() => {
+    if (isGuidePreview) return;
+    notifyStudyCafeSnapshot();
+  }, [
+    isGuidePreview,
+    timer.isRunning,
+    timer.pomoClockOn,
+    timer.activeSubjectId,
+    timer.totalElapsedMs,
+    timer.openSessionStartedAtMs,
+    timer.subjects,
+  ]);
 
   useFocusEffect(
     React.useCallback(() => {

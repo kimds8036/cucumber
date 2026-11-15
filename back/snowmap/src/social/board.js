@@ -37,6 +37,9 @@ export function createBoardUI(net, me, hooks = {}) {
   let draft = null;
   let pointerId = null;
   let sending = false;
+  /** 저장을 기다리는 획. 저장 중에 그린 획도 버리지 않고 차례로 보낸다 */
+  /** @type {{ boardId: string, color: string, width: number, points: number[] }[]} */
+  const outbox = [];
   /** 지우개로 이미 지운 획(드래그 중 중복 요청 방지) */
   const erasing = new Set();
 
@@ -86,6 +89,7 @@ export function createBoardUI(net, me, hooks = {}) {
       ctx.stroke();
     }
     for (const s of strokes) drawStroke(s);
+    for (const s of outbox) if (s.boardId === boardId) drawStroke(s);
     if (draft && draft.length >= 4) {
       drawStroke({ color, width: penWidth, points: draft });
     }
@@ -140,25 +144,42 @@ export function createBoardUI(net, me, hooks = {}) {
     }
   }
 
-  async function commitDraft() {
-    if (!boardId || !draft || draft.length < 4 || sending) {
+  async function flushOutbox() {
+    if (sending) return;
+    sending = true;
+    try {
+      while (outbox.length) {
+        const item = outbox[0];
+        try {
+          await net.addStroke(item.boardId, {
+            color: item.color,
+            width: item.width,
+            points: item.points,
+          });
+        } catch (err) {
+          setError("저장하지 못했어요");
+          console.error("[board] stroke", err);
+        }
+        outbox.shift();
+        redraw();
+      }
+    } finally {
+      sending = false;
+    }
+  }
+
+  function commitDraft() {
+    if (!boardId || !draft || draft.length < 4) {
       draft = null;
       redraw();
       return;
     }
     const points = draft.map((n) => +n.toFixed(1));
     draft = null;
-    sending = true;
     setError("");
-    try {
-      await net.addStroke(boardId, { color, width: penWidth, points });
-    } catch (err) {
-      setError("저장하지 못했어요");
-      console.error("[board] stroke", err);
-      redraw();
-    } finally {
-      sending = false;
-    }
+    outbox.push({ boardId, color, width: penWidth, points });
+    redraw();
+    flushOutbox();
   }
 
   function onPointerDown(e) {
@@ -194,7 +215,7 @@ export function createBoardUI(net, me, hooks = {}) {
   async function onPointerUp(e) {
     if (pointerId !== e.pointerId) return;
     pointerId = null;
-    if (tool === "pen") await commitDraft();
+    if (tool === "pen") commitDraft();
   }
 
   function upsertStroke(stroke) {
@@ -223,7 +244,12 @@ export function createBoardUI(net, me, hooks = {}) {
     strokes = [];
     redraw();
     try {
-      strokes = await net.listStrokes(id);
+      const loaded = await net.listStrokes(id);
+      if (boardId === id) {
+        // 불러오는 동안 실시간으로 들어온 획은 버리지 않고 합친다
+        const known = new Set(loaded.map((stroke) => stroke.id));
+        strokes = [...loaded, ...strokes.filter((stroke) => !known.has(stroke.id))];
+      }
     } catch (err) {
       setError("방명록을 불러오지 못했어요");
       console.error("[board] list", err);

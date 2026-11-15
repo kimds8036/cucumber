@@ -573,17 +573,8 @@ export function createInteractables(mapRoot, ctx) {
     const pivot = ctx.getPivot();
     if (!pivot || (phase && phase !== "held")) return null;
 
+    // 앉아 있을 때 주 버튼은 늘 일어서기. 책상 램프는 보조 버튼(peekSecondaryAction)으로 뺀다.
     if (phase === "held") {
-      const desk = ctx.mapLamps?.nearestLamp?.(pivot.position.x, pivot.position.z, {
-        deskOnly: true,
-      });
-      if (desk) {
-        return {
-          kind: "lamp",
-          label: desk.on ? "끄기" : "켜기",
-          run: () => ctx.mapLamps.toggleLamp(desk),
-        };
-      }
       return { kind: "stand", label: "일어서기", run: () => standUp() };
     }
 
@@ -595,7 +586,8 @@ export function createInteractables(mapRoot, ctx) {
         run: () => sitDown(seat),
       };
     }
-    const board = nearestBoard(pivot.position.x, pivot.position.z);
+    // 방명록이 꺼져 있으면(onOpenBoard 없음) 게시판 상호작용을 보여 주지 않는다
+    const board = ctx.onOpenBoard ? nearestBoard(pivot.position.x, pivot.position.z) : null;
     if (board) {
       return {
         kind: "board",
@@ -622,6 +614,25 @@ export function createInteractables(mapRoot, ctx) {
       };
     }
     return null;
+  }
+
+  /** 앉아 있을 때 근처 책상 램프 켜기/끄기 (보조 버튼). 없으면 null */
+  function peekSecondaryAction() {
+    const pivot = ctx.getPivot();
+    if (!pivot || phase !== "held") return null;
+    const desk = ctx.mapLamps?.nearestLamp?.(pivot.position.x, pivot.position.z, {
+      deskOnly: true,
+    });
+    if (!desk) return null;
+    return {
+      kind: "lamp",
+      label: desk.on ? "램프 끄기" : "램프 켜기",
+      run: () => ctx.mapLamps.toggleLamp(desk),
+    };
+  }
+
+  function trySecondary() {
+    peekSecondaryAction()?.run?.();
   }
 
   function tryInteract() {
@@ -683,7 +694,10 @@ export function createInteractables(mapRoot, ctx) {
       return;
     }
 
-    setGlow(nearestSeat(pivot.position.x, pivot.position.z) || nearestBoard(pivot.position.x, pivot.position.z));
+    setGlow(
+      nearestSeat(pivot.position.x, pivot.position.z) ||
+        (ctx.onOpenBoard ? nearestBoard(pivot.position.x, pivot.position.z) : null),
+    );
     nearbyDoor = nearestDoor(pivot.position.x, pivot.position.z);
   }
 
@@ -717,7 +731,9 @@ export function createInteractables(mapRoot, ctx) {
     setMoveIntent,
     setSeatOccupant,
     peekAction,
+    peekSecondaryAction,
     tryInteract,
+    trySecondary,
     sitDown,
     standUp,
     abort,

@@ -12,6 +12,7 @@ const BRIDGE_VERSION = 1;
  *   selectSubject: (subjectId: string|number|null) => boolean|Promise<boolean>,
  *   listFriends: () => Promise<object[]>,
  *   addFriend: (payload: { userId?: string|number, username?: string, displayName?: string }) => Promise<{ ok: boolean, status: string, error?: string }>,
+ *   resetSession?: () => void,
  * }} */
 let controller = null;
 
@@ -29,6 +30,25 @@ export function registerStudyCafeController(next) {
   return () => {
     if (controller === next) controller = null;
   };
+}
+
+const snapshotListeners = new Set();
+
+/** 앱 타이머 상태가 바뀌었을 때 호출 (TimerContent). 카페 화면이 최신 스냅샷을 다시 보낸다. */
+export function notifyStudyCafeSnapshot() {
+  snapshotListeners.forEach((fn) => {
+    try {
+      fn();
+    } catch {
+      // noop
+    }
+  });
+}
+
+export function subscribeStudyCafeSnapshot(listener) {
+  if (typeof listener !== 'function') return () => {};
+  snapshotListeners.add(listener);
+  return () => snapshotListeners.delete(listener);
 }
 
 export function getStudyCafeController() {
@@ -89,7 +109,8 @@ export function buildInjectBridgeScript(message) {
 export async function handleStudyCafeIncoming(message) {
   const ctrl = controller;
   if (!ctrl) {
-    return makeBridgeMessage('timer:result', {
+    const resultType = message?.type === 'friend:add' ? 'friend:result' : 'timer:result';
+    return makeBridgeMessage(resultType, {
       replyTo: message?.id || null,
       ok: false,
       error: 'controller_unavailable',
@@ -122,13 +143,14 @@ export async function handleStudyCafeIncoming(message) {
       ok = false;
       error = err?.message || 'command_failed';
     }
+    // 스냅샷은 넣지 않는다. 명령 직후에는 React가 아직 다시 그리지 않아 이전 상태가 나온다.
+    // 최신 상태는 타이머가 바뀐 뒤 notifyStudyCafeSnapshot → timer:snapshot 으로 따로 간다.
     return makeBridgeMessage(
       'timer:result',
       {
         replyTo: message.id,
         ok,
         error: ok ? undefined : error || 'command_failed',
-        snapshot: ctrl.getSnapshot(),
       },
       message.id,
     );

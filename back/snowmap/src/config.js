@@ -341,6 +341,11 @@ export const CONFIG = {
   CAMERA_DISTANCE_MAX: 16,
 
   // --- 멀티플레이 · 채팅 · 게시판 (docs/social-features-plan.md) ---
+  /**
+   * true면 앱 WebView + mock 네트워크일 때 방명록과 채팅 입력을 숨긴다(내 폰에만 저장되는 가짜라서).
+   * 브라우저에서는 그대로 보인다. 서버 어댑터를 붙이면 자동으로 다시 보인다.
+   */
+  HIDE_MOCK_SOCIAL_IN_APP: true,
   /** "mock": 같은 PC 탭끼리 테스트 / "server": 기존 서버 (src/net/serverAdapter.js) */
   NET_ADAPTER: "mock",
   /** 기본 방 id(쿼리·자동배정 없을 때) */
@@ -353,6 +358,8 @@ export const CONFIG = {
   NET_SEND_HZ: 10,
   /** 다른 사람 위치를 이만큼 늦춰서 보간(ms). 올리면 더 부드럽지만 지연↑ */
   NET_INTERP_DELAY_MS: 120,
+  /** 입장 자동 착석 전에 다른 사람 상태를 기다리는 시간(ms). 늘리면 겹쳐 앉을 일이 줄지만 늦게 앉음 */
+  ENTRY_SEAT_WAIT_MS: 1500,
   /** 이 시간(초) 동안 소식이 없으면 나간 것으로 처리 */
   NET_PLAYER_TIMEOUT_SEC: 6,
   /** 방명록(게시판) 메시 이름 */

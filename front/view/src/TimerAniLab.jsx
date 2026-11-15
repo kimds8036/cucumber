@@ -28,6 +28,7 @@ import {
   handleStudyCafeIncoming,
   parseBridgeMessage,
   subscribeStudyCafeController,
+  subscribeStudyCafeSnapshot,
 } from '../../utils/studyCafeBridge';
 
 async function buildSnowmapUrl() {
@@ -162,14 +163,29 @@ export default function TimerAniLab({ navigation }) {
     return () => sub.remove();
   }, [syncAll]);
 
+  // 앱 타이머가 바뀌면 바로 보낸다 (정지·뽀모도로 전환 포함)
+  useEffect(() => {
+    const unsub = subscribeStudyCafeSnapshot(() => {
+      if (readyRef.current) pushSnapshot();
+    });
+    return unsub;
+  }, [pushSnapshot]);
+
+  // 놓친 변화가 있어도 맞춰지도록 5초마다 한 번 (실행 중이 아니어도)
   useEffect(() => {
     const timer = setInterval(() => {
-      if (!readyRef.current) return;
-      const snap = getStudyCafeController()?.getSnapshot?.();
-      if (snap?.isRunning) pushSnapshot();
+      if (readyRef.current) pushSnapshot();
     }, 5000);
     return () => clearInterval(timer);
   }, [pushSnapshot]);
+
+  // 카페를 나가면 카페에서만 고른 과목을 버린다
+  useEffect(
+    () => () => {
+      getStudyCafeController()?.resetSession?.();
+    },
+    [],
+  );
 
   const onWebMessage = useCallback(
     async (event) => {
@@ -184,12 +200,9 @@ export default function TimerAniLab({ navigation }) {
 
       const reply = await handleStudyCafeIncoming(msg);
       if (reply) inject(reply);
-      if (msg.type === 'timer:command') {
-        // result 스냅샷 외에 최신 상태 한 번 더
-        pushSnapshot();
-      }
+      // 최신 타이머 상태는 TimerContent가 바뀐 뒤 subscribeStudyCafeSnapshot으로 보낸다
     },
-    [inject, pushSnapshot, syncAll],
+    [inject, syncAll],
   );
 
   const goBack = () => {
