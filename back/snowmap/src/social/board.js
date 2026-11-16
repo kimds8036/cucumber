@@ -18,7 +18,8 @@ export function createBoardUI(net, me, hooks = {}) {
   const toolBtns = /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll("[data-board-tool]"));
   const colorBtns = /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll("[data-board-color]"));
   const clearMineBtn = document.getElementById("board-clear-mine");
-  const sizeInput = /** @type {HTMLInputElement} */ (document.getElementById("board-size"));
+  /** 굵기 세 단계 버튼 (가늘게·보통·굵게) */
+  const sizeBtns = /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll("[data-board-size]"));
 
   const W = CONFIG.BOARD_CANVAS_W;
   const H = CONFIG.BOARD_CANVAS_H;
@@ -56,6 +57,7 @@ export function createBoardUI(net, me, hooks = {}) {
   function refreshTools() {
     for (const btn of toolBtns) btn.classList.toggle("active", btn.dataset.boardTool === tool);
     for (const btn of colorBtns) btn.classList.toggle("active", btn.dataset.boardColor === color);
+    for (const btn of sizeBtns) btn.classList.toggle("active", Number(btn.dataset.boardSize) === penWidth);
     canvas.style.cursor = tool === "pen" ? "crosshair" : "cell";
     hint.textContent =
       tool === "eraser"
@@ -325,9 +327,13 @@ export function createBoardUI(net, me, hooks = {}) {
       refreshTools();
     });
   }
-  sizeInput.addEventListener("input", () => {
-    penWidth = Number(sizeInput.value) || CONFIG.BOARD_PEN_WIDTH;
-  });
+  for (const btn of sizeBtns) {
+    btn.addEventListener("click", () => {
+      penWidth = Number(btn.dataset.boardSize) || CONFIG.BOARD_PEN_WIDTH;
+      if (tool !== "pen") tool = "pen";
+      refreshTools();
+    });
+  }
   clearMineBtn.addEventListener("click", async () => {
     if (!boardId) return;
     try {
@@ -356,7 +362,6 @@ export function createBoardUI(net, me, hooks = {}) {
     if (id === boardId) dropStrokes(ids);
   });
 
-  sizeInput.value = String(penWidth);
   refreshTools();
   redraw();
 

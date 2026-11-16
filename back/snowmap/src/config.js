@@ -378,7 +378,7 @@ export const CONFIG = {
   /** 방명록에 보관할 획 최대 개수(오래된 것부터 정리) */
   BOARD_STROKE_KEEP: 800,
   /** 기본 펜 굵기(캔버스 논리 좌표) */
-  BOARD_PEN_WIDTH: 4,
+  BOARD_PEN_WIDTH: 6,
   /** 지우개 반경(캔버스 논리 좌표). 본인 획만 지움 */
   BOARD_ERASER_RADIUS: 22,
   /** 머리 뼈 위로 이름표를 띄우는 높이 */
