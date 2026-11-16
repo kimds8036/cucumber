@@ -46,7 +46,23 @@ const statusEl = document.getElementById("status");
 const statusLabel = statusEl?.querySelector(".status-label");
 const statusFill = document.getElementById("status-fill");
 
+/**
+ * 앱 WebView 안이면 로딩 진행률을 앱에 알린다. 앱은 로딩 카드를 한 장만 그리고(앱 로딩 → 웹 로딩으로
+ * 바뀌며 위치가 튀지 않게), 웹 로딩(#status)은 index.html의 .in-app-loader 규칙으로 숨겨져 있다.
+ */
+function postToApp(type, payload = {}) {
+  try {
+    if (!window.ReactNativeWebView?.postMessage) return;
+    window.ReactNativeWebView.postMessage(
+      JSON.stringify({ v: 1, type, id: `${Date.now()}-${type}`, payload }),
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
 function setLoading(progress, label = "불러오는 중") {
+  postToApp("cafe:loading", { progress, label });
   if (!statusEl) return;
   statusEl.hidden = false;
   statusEl.classList.remove("error");
@@ -64,6 +80,8 @@ function hideLoading() {
 }
 
 function setStatusError(text) {
+  // 앱의 로딩 카드를 내리고 웹 오류 화면을 보이게 한다
+  postToApp("cafe:error", { message: String(text || "") });
   if (!statusEl) return;
   statusEl.hidden = false;
   statusEl.classList.add("error");

@@ -23,6 +23,8 @@
       z-index: 10;
     }
     #status[hidden] { display: none !important; }
+    /* 앱 안에서는 로딩을 앱이 그린다(위치가 튀지 않게 한 장만). 오류 화면만 웹이 보여 준다 */
+    .in-app-loader #status:not(.error) { visibility: hidden; }
     #status .status-card {
       width: min(280px, calc(100vw - 48px));
       padding: 18px 16px 16px;
@@ -938,6 +940,14 @@
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
     }
   </style>
+  <script>
+    // 앱 WebView 안이면 웹 로딩(#status)을 숨긴다. 로딩 카드는 앱이 한 장만 그린다(위치가 튀지 않게)
+    try {
+      if (window.ReactNativeWebView || window.__STUDY_CAFE_AUTH__) {
+        document.documentElement.classList.add("in-app-loader");
+      }
+    } catch (e) {}
+  </script>
   <script type="importmap">
     {
       "imports": {
