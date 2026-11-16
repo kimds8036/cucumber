@@ -438,12 +438,13 @@ export const createProfileCardStyles = (normalize, width) =>
       color: colors.text,
       includeFontPadding: false,
     },
+    // 새 친구 요청 표시: 숫자를 가리지 않게 숫자 오른쪽 위 바깥에 붙인다 (알림 탭 점과 같은 방식)
     quickLinkDot: {
       position: 'absolute',
-      top: normalize(6),
-      right: normalize(6),
-      width: normalize(8),
-      height: normalize(8),
+      top: normalize(7),
+      right: -normalize(9),
+      width: normalize(7),
+      height: normalize(7),
       borderRadius: normalize(4),
       backgroundColor: colors.alert,
     },

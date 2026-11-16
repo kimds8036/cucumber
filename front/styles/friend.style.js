@@ -46,21 +46,17 @@ export const createFriendStyles = (normalize, width) =>
     requestsScroll: {
       paddingRight: normalize(24),
     },
+    // 확인이 필요한 강조 카드: 디자인 시스템 '선택·강조' 면(primaryLight10=primaryLight2) + 보더(primaryLight30=primaryLight4)
     requestCard: {
       width: normalize(120),
       marginRight: normalize(12),
       alignItems: 'center',
-      backgroundColor: colors.textLight1,
+      backgroundColor: colors.primaryLight2,
       borderRadius: normalize(12),
       paddingVertical: normalize(12),
       paddingHorizontal: normalize(8),
       borderWidth: 1,
-      borderColor: colors.textLight1,
-      shadowColor: colors.text,
-      shadowOffset: { width: 0, height: normalize(2) },
-      shadowOpacity: 0.08,
-      shadowRadius: normalize(4),
-      elevation: 2,
+      borderColor: colors.primaryLight4,
     },
     reqAvatar: {
       width: normalize(52),
@@ -104,11 +100,14 @@ export const createFriendStyles = (normalize, width) =>
       fontFamily: fonts.bold,
       color: colors.white,
     },
+    // 거절: 흰 바탕 + 연한 보더 (초록 카드 위에서 수락보다 약하게 보이게)
     reqRejectBtn: {
       flex: 1,
-      backgroundColor: colors.textLight05,
+      backgroundColor: colors.white,
       paddingVertical: normalize(6),
       borderRadius: normalize(8),
+      borderWidth: 1,
+      borderColor: colors.textLight1,
       alignItems: 'center',
     },
     reqRejectText: {
