@@ -92,6 +92,8 @@ export function createRemotePlayers(deps) {
       build(player);
     }
     player.pending = state;
+    // 타이머 실행 중이면 머리 위 시계 (이름표가 아직 없어도 기억해 두었다가 만들 때 붙는다)
+    nameTags.setStudying(player.userId, Boolean(state.studying));
     player.samples.push({ at: performance.now(), x: state.x, y: state.y, z: state.z, yaw: state.yaw });
     if (player.samples.length > 30) player.samples.splice(0, player.samples.length - 30);
     setSeat(player, state.seatId);

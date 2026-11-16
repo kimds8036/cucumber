@@ -222,7 +222,9 @@ export function sanitizeCafeState(raw) {
   const anim = ANIMS.has(raw.anim) ? raw.anim : 'stay';
   const seatId =
     typeof raw.seatId === 'string' && ID_RE.test(raw.seatId) ? raw.seatId : null;
-  return { x, y, z, yaw, anim, seatId };
+  // 타이머 실행 중이면 다른 사람 화면에서 머리 위에 시계가 뜬다
+  const studying = raw.studying === true;
+  return { x, y, z, yaw, anim, seatId, studying };
 }
 
 /**

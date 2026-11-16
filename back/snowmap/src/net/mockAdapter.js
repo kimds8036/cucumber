@@ -182,6 +182,11 @@ export function createMockAdapter(roomId = CONFIG.NET_ROOM_ID) {
       events.emit("stroke-remove", boardId, mine);
       return mine;
     },
+    /** 브라우저 개발용: 신고는 저장할 곳이 없어 콘솔에만 남긴다 */
+    async reportStroke(strokeId, reason, description) {
+      console.info("[net:mock] 획 신고", { strokeId, reason, description });
+      return { ok: true };
+    },
     onStroke: (cb) => events.on("stroke", cb),
     onStrokeRemove: (cb) => events.on("stroke-remove", cb),
   };
