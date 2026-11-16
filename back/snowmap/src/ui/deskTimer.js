@@ -87,6 +87,7 @@ export function createDeskTimer(opts) {
   /** 서 있는 채로 타이머가 멈춘 뒤 '정지됨' 칩을 보여 줄 마감 시각 */
   let lingerUntil = 0;
   let autoStopping = false;
+  let leaveTimer = 0;
   /** 일어선 뒤 '정지됨' 칩이 남아 있는 시간(ms) */
   const STOP_LINGER_MS = 3000;
   let busy = false;
@@ -309,18 +310,22 @@ export function createDeskTimer(opts) {
   function setMode(next) {
     if (next === mode) return;
     mode = next;
-    root.classList.remove("chip", "panel", "leaving", "entering");
+    window.clearTimeout(leaveTimer);
     if (mode === "hidden") {
       setMenuOpen(false);
+      // 사라지는 동안에는 직전 모양(칩/패널) 클래스를 그대로 둔다.
+      // 먼저 지우면 페이드아웃 0.6초 동안 기본 모양(큰 패널)이 잠깐 보였다.
+      root.classList.remove("entering");
       root.classList.add("leaving");
-      window.setTimeout(() => {
+      leaveTimer = window.setTimeout(() => {
         if (mode === "hidden") {
           root.hidden = true;
-          root.classList.remove("leaving");
+          root.classList.remove("leaving", "chip", "panel");
         }
       }, 650);
       return;
     }
+    root.classList.remove("chip", "panel", "leaving", "entering");
     root.hidden = false;
     root.classList.add(mode === "chip" ? "chip" : "panel", "entering");
     requestAnimationFrame(() => root.classList.remove("entering"));
@@ -421,6 +426,7 @@ export function createDeskTimer(opts) {
     dispose() {
       cancelAnimationFrame(raf);
       window.clearTimeout(flashTimer);
+      window.clearTimeout(leaveTimer);
       window.clearInterval(nativeProbe);
       listeners.clear();
     },
