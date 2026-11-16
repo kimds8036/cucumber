@@ -20,6 +20,30 @@ const ENABLE_NATIVE_CHAT_BRIDGE = false;
  */
 let toastInterceptor = null;
 
+/**
+ * 같은 알림이 짧은 시간에 두 번 들어와도(소켓 재연결·두 경로 수신 등) 토스트·카페 알림벨에는 한 번만 보이게 한다.
+ * 같은 문구·종류·대상이면 이 시간(ms) 안의 두 번째부터 무시한다.
+ */
+const TOAST_DEDUPE_MS = 3000;
+const recentToastKeys = new Map();
+
+function isDuplicateToast(next, text) {
+  const key = [
+    text,
+    next.type ?? '',
+    next.relatedType ?? '',
+    next.relatedId ?? '',
+    next.roomId ?? '',
+  ].join('|');
+  const now = Date.now();
+  for (const [k, at] of recentToastKeys) {
+    if (now - at > TOAST_DEDUPE_MS) recentToastKeys.delete(k);
+  }
+  if (recentToastKeys.has(key)) return true;
+  recentToastKeys.set(key, now);
+  return false;
+}
+
 /** @param {null | ((toast: object) => boolean)} fn */
 export function setToastInterceptor(fn) {
   toastInterceptor = typeof fn === 'function' ? fn : null;
@@ -71,6 +95,14 @@ export function ToastProvider({ children }) {
         typeof input === 'string' ? { message: input } : (input ?? {});
       const text = String(next.message ?? '').trim();
       if (!text) return;
+      if (isDuplicateToast(next, text)) {
+        console.log('[ToastSystem] duplicate skipped:', {
+          message: text,
+          type: next.type ?? null,
+          relatedId: next.relatedId ?? null,
+        });
+        return;
+      }
 
       if (toastInterceptor) {
         try {
