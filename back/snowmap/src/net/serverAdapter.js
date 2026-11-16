@@ -276,9 +276,12 @@ export function createServerAdapter(requestedRoomId = null) {
       return emitAck("cafe:report", { userId, reason });
     },
     /** 방명록 획 신고 */
-    async reportStroke(strokeId, reason) {
+    async reportStroke(strokeId, reason, description) {
       try {
-        await api("POST", `/strokes/${encodeURIComponent(strokeId)}/report`, { reason });
+        await api("POST", `/strokes/${encodeURIComponent(strokeId)}/report`, {
+          reason,
+          ...(description ? { description } : {}),
+        });
         return { ok: true };
       } catch (err) {
         return {

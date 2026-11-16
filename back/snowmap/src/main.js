@@ -753,7 +753,7 @@ async function boot() {
 
   // 성능 확인용 (?debug=perf)
   if (/[?&]debug=perf\b/.test(window.location.search)) {
-    window.__cafePerf = { renderer, scene, targetFps, mobile: isMobileDevice() };
+    window.__cafePerf = { renderer, scene, targetFps, mobile: isMobileDevice(), boardUI };
   }
   console.info("[study-cafe] ready", {
     seats: interact.seats.length,

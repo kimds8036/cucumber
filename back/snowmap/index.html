@@ -772,8 +772,8 @@
       justify-content: center;
       box-sizing: border-box;
       background: rgba(6, 10, 18, 0.55);
-      padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right))
-        max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+      padding: max(6px, env(safe-area-inset-top)) max(6px, env(safe-area-inset-right))
+        max(6px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
     }
     #board-modal[hidden] { display: none !important; }
     #board-panel,
@@ -797,8 +797,8 @@
       display: flex;
       flex-direction: column;
       align-items: stretch;
-      gap: 8px;
-      padding: 10px 8px;
+      gap: 6px;
+      padding: 8px 7px;
       border-right: 1px solid rgba(255, 255, 255, 0.1);
       overflow-y: auto;
       overscroll-behavior: contain;
@@ -819,8 +819,8 @@
       background: rgba(255, 255, 255, 0.06);
       color: #e8eef5;
       border-radius: 10px;
-      min-height: 34px;
-      padding: 6px 4px;
+      min-height: 30px;
+      padding: 5px 4px;
       font: 700 12px/1.1 "Segoe UI", system-ui, sans-serif;
       cursor: pointer;
       flex-shrink: 0;
@@ -875,61 +875,63 @@
       min-width: 0;
       display: flex;
       flex-direction: column;
+      position: relative;
     }
-    #board-panel header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 4px 6px 4px 12px;
-      min-height: 34px;
-      flex-shrink: 0;
-    }
-    #board-panel header .title {
-      font-weight: 700;
-      font-size: 14px;
-      flex-shrink: 0;
-    }
-    #board-hint,
-    #board-error {
-      flex: 1;
-      min-width: 0;
-      font-size: 11px;
-      color: rgba(232, 238, 245, 0.62);
+    /* 안내·오류는 그림판 위에 잠깐 떴다 사라지는 알림 (제목줄을 없애 그림판을 키움) */
+    #board-notice {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translate(-50%, -4px);
+      max-width: calc(100% - 32px);
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(12, 18, 28, 0.82);
+      color: #e8eef5;
+      font-size: 12px;
+      font-weight: 600;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      z-index: 2;
     }
-    #board-error { color: #ffb4b4; }
-    #board-error:empty { display: none; }
-    #board-error:not(:empty) + #board-hint { display: none; }
-    #board-close {
-      flex-shrink: 0;
-      width: 32px;
-      height: 32px;
-      border: 0;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.06);
-      color: #e8eef5;
+    #board-notice.show {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+    #board-notice.error { color: #ffc4c4; }
+    /* 낮은 화면(작은 폰 가로)에서는 도구줄이 넘치지 않게 촘촘하게 */
+    @media (max-height: 380px) {
+      #board-tools { gap: 4px; padding: 6px; }
+      #board-tools button { min-height: 26px; padding: 3px 4px; font-size: 11px; }
+      #board-tools .swatches { grid-template-columns: repeat(3, 1fr); gap: 4px; }
+      #board-tools .swatch { width: 18px; height: 18px; }
+      #board-tools .size { min-height: 24px; }
+    }
+    #board-tools #board-close {
       font-size: 20px;
       line-height: 1;
-      cursor: pointer;
+      font-weight: 400;
     }
     #board-canvas-wrap {
       flex: 1 1 0;
       min-height: 0;
-      padding: 0 10px 10px;
+      padding: 6px;
       display: flex;
       align-items: center;
       justify-content: center;
       overflow: hidden;
     }
-    /* 16:9를 지키면서 남은 공간에 꽉 맞춘다 (늘어나면 그림이 찌그러져 보인다) */
+    /* 2:1을 지키면서 남은 공간에 꽉 맞춘다 (폰 가로 화면이 약 2:1이라 양옆 여백이 거의 없다) */
     #board-canvas {
       width: auto;
       height: auto;
       max-width: 100%;
       max-height: 100%;
-      aspect-ratio: 16 / 9;
+      aspect-ratio: 2 / 1;
       border-radius: 8px;
       background: #f4efe6;
       touch-action: none;
@@ -962,6 +964,7 @@
   <div id="board-modal" hidden>
     <div id="board-panel" role="dialog" aria-label="방명록">
       <div id="board-tools">
+        <button id="board-close" type="button" aria-label="방명록 닫기">×</button>
         <div class="group" aria-label="도구">
           <button type="button" data-board-tool="pen" class="active">펜</button>
           <button type="button" data-board-tool="eraser">지우개</button>
@@ -986,14 +989,9 @@
         <button type="button" id="board-clear-mine" title="내가 그린 선 모두 지우기">내 그림<br />지우기</button>
       </div>
       <div id="board-main">
-        <header>
-          <span class="title">방명록</span>
-          <span id="board-error"></span>
-          <span id="board-hint">펜으로 그리고, 손을 떼면 바로 저장돼요</span>
-          <button id="board-close" type="button" aria-label="닫기">×</button>
-        </header>
+        <div id="board-notice" role="status" aria-live="polite"></div>
         <div id="board-canvas-wrap">
-          <canvas id="board-canvas" width="1280" height="720"></canvas>
+          <canvas id="board-canvas" width="1440" height="720"></canvas>
         </div>
       </div>
     </div>
