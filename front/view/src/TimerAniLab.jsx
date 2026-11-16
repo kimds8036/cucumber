@@ -78,11 +78,32 @@ function buildAuthInjectScript(token) {
   `;
 }
 
-/** 카페 페이지(같은 서버의 /snowmap/)만 열 수 있다. 토큰이 다른 페이지에 들어가지 않게 */
+/**
+ * 주소를 { host, path }로 나눈다. 호스트는 소문자, 기본 포트(:80/:443)는 뺀다.
+ * RN의 URL 구현은 기기마다 차이가 있어 정규식으로 직접 나눈다.
+ */
+function splitUrl(url) {
+  const m = /^(https?):\/\/([^/?#]+)([^?#]*)/i.exec(String(url || '').trim());
+  if (!m) return null;
+  const scheme = m[1].toLowerCase();
+  let host = m[2].toLowerCase();
+  if ((scheme === 'https' && host.endsWith(':443')) || (scheme === 'http' && host.endsWith(':80'))) {
+    host = host.replace(/:\d+$/, '');
+  }
+  return { host, path: m[3] || '/' };
+}
+
+/**
+ * 카페 페이지(같은 서버의 /snowmap)인지. 토큰이 다른 페이지에 들어가지 않게 이동·메시지를 막는 데 쓴다.
+ * 문자열 앞부분 비교(startsWith)는 기기가 주소를 조금만 다르게 넘겨도(대소문자·포트·http/https)
+ * 카페 메시지를 전부 버려 앱 타이머와 연결이 끊겼다. 호스트와 경로만 비교한다.
+ */
 function isSnowmapUrl(url) {
-  const base = getApiBaseUrlNoSlash().replace(/\/+$/, '');
-  const u = String(url || '');
-  return u === `${base}/snowmap` || u.startsWith(`${base}/snowmap/`) || u === 'about:blank';
+  if (String(url || '') === 'about:blank') return true;
+  const page = splitUrl(url);
+  const base = splitUrl(getApiBaseUrlNoSlash());
+  if (!page || !base) return false;
+  return page.host === base.host && /^\/snowmap(\/|$)/.test(page.path);
 }
 
 async function fetchFriendListForCafe() {
@@ -259,7 +280,16 @@ export default function TimerAniLab({ navigation }) {
   const onWebMessage = useCallback(
     async (event) => {
       // 카페 페이지에서 온 메시지만 받는다
-      if (event?.nativeEvent?.url && !isSnowmapUrl(event.nativeEvent.url)) return;
+      const fromUrl = event?.nativeEvent?.url;
+      if (fromUrl && !isSnowmapUrl(fromUrl)) {
+        if (__DEV__) {
+          console.warn('[StudyCafe] 카페 밖 주소의 메시지를 버림', {
+            fromUrl,
+            apiBase: getApiBaseUrlNoSlash(),
+          });
+        }
+        return;
+      }
       const msg = parseBridgeMessage(event?.nativeEvent?.data);
       if (!msg) return;
 
@@ -309,7 +339,13 @@ export default function TimerAniLab({ navigation }) {
           injectedJavaScriptBeforeContentLoaded={authScript || undefined}
           style={styles.webview}
           originWhitelist={['https://*', 'http://*']}
-          onShouldStartLoadWithRequest={(req) => isSnowmapUrl(req?.url)}
+          onShouldStartLoadWithRequest={(req) => {
+            const ok = isSnowmapUrl(req?.url);
+            if (!ok && __DEV__) {
+              console.warn('[StudyCafe] 카페 밖 주소로 이동 막음', req?.url);
+            }
+            return ok;
+          }}
           javaScriptEnabled
           domStorageEnabled
           allowsInlineMediaPlayback
