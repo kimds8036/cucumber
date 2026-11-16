@@ -4,17 +4,13 @@
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Animated,
   AppState,
   BackHandler,
   Dimensions,
-  Easing,
-  Modal,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
@@ -156,51 +152,6 @@ async function fetchFriendListForCafe() {
   }
 }
 
-/**
- * 앱이 그리는 로딩 카드. 카페 웹페이지(index.html #status)의 첫 화면과 모양·크기·문구를 똑같이 맞춰
- * 앱 로딩 → 웹 로딩으로 넘어갈 때 위치가 튀지 않게 한다.
- */
-function CafeLoadingCard({ visible = true, progress = 8, label = '준비 중' }) {
-  const spin = useRef(new Animated.Value(0)).current;
-  const fade = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    Animated.timing(fade, {
-      toValue: visible ? 1 : 0,
-      duration: visible ? 160 : 0,
-      useNativeDriver: true,
-    }).start();
-  }, [fade, visible]);
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.timing(spin, {
-        toValue: 1,
-        duration: 750,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      }),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [spin]);
-  const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-  return (
-    <View style={styles.loading} pointerEvents="none">
-      <Animated.View style={[styles.loadingCard, { opacity: fade }]}>
-        <Animated.View style={[styles.loadingSpinner, { transform: [{ rotate }] }]} />
-        <Text style={styles.loadingText}>{label}</Text>
-        <View style={styles.loadingBar}>
-          <View
-            style={[
-              styles.loadingFill,
-              { width: `${Math.max(8, Math.min(100, Number(progress) || 0))}%` },
-            ]}
-          />
-        </View>
-      </Animated.View>
-    </View>
-  );
-}
-
 export default function TimerAniLab({ navigation }) {
   const insets = useSafeAreaInsets();
   const shell = useMainShellOptional();
@@ -209,43 +160,11 @@ export default function TimerAniLab({ navigation }) {
   const [loadError, setLoadError] = useState(null);
   const [snowmapUrl, setSnowmapUrl] = useState(null);
   const [authScript, setAuthScript] = useState(null);
-  /** 가로 고정이 끝난 뒤에 로딩을 그린다 (세로로 그렸다가 돌아가며 위치가 튀지 않게) */
-  const [orientationReady, setOrientationReady] = useState(false);
-  /**
-   * 화면 크기가 자리 잡았는지. 들어올 때 회전·상태바 숨김·내비게이션 바 때문에 크기가 여러 번 바뀌어
-   * 가운데 놓인 로딩 카드가 위아래로 흔들렸다. 가로이고 0.2초 동안 크기가 그대로일 때만 카드를 보여 준다.
-   */
-  const { width: winW, height: winH } = useWindowDimensions();
-  const [layoutStable, setLayoutStable] = useState(false);
-  useEffect(() => {
-    setLayoutStable(false);
-    if (winW <= winH) return undefined;
-    const t = setTimeout(() => setLayoutStable(true), 220);
-    return () => clearTimeout(t);
-  }, [winW, winH]);
-  /** 카페 화면이 다 떴는지 (bridge:ready). 그 전까지 앱 로딩 카드를 덮어 둔다 */
-  const [webBooted, setWebBooted] = useState(false);
-  const [loadProgress, setLoadProgress] = useState({ progress: 8, label: '준비 중' });
   /** 나가는 중 (세로로 돌린 뒤 닫는다) */
   const [leaving, setLeaving] = useState(false);
   const leavingRef = useRef(false);
   const allowRemoveRef = useRef(false);
-  const bootFallbackRef = useRef(0);
-  useEffect(() => () => clearTimeout(bootFallbackRef.current), []);
 
-  /**
-   * 로딩 창(Modal) 크기. 안드로이드에서 Modal 안 영역이 화면 높이를 못 받고 카드 높이만큼만 잡혀
-   * '가운데 정렬'이 맨 위가 됐다. 상태바·내비게이션 바까지 덮는 Modal이라 기기 화면(screen) 크기를 직접 준다.
-   */
-  const [screenSize, setScreenSize] = useState(() => Dimensions.get('screen'));
-  useEffect(() => {
-    const sub = Dimensions.addEventListener('change', ({ screen }) => {
-      if (screen) setScreenSize(screen);
-    });
-    return () => sub?.remove?.();
-  }, []);
-  const modalW = Math.max(screenSize.width, screenSize.height);
-  const modalH = Math.min(screenSize.width, screenSize.height);
 
 
   // 스터디 카페에 있는 동안은 화면이 꺼지지 않게 한다 (타이머 화면과 같은 방식)
@@ -345,7 +264,7 @@ export default function TimerAniLab({ navigation }) {
       } catch (err) {
         console.warn('[StudyCafe] landscape lock failed', err?.message);
       }
-      if (active) setOrientationReady(true);
+      void active;
     })();
     return () => {
       active = false;
@@ -428,7 +347,6 @@ export default function TimerAniLab({ navigation }) {
 
       if (msg.type === 'bridge:ready') {
         readyRef.current = true;
-        setWebBooted(true);
         syncAll();
         // 로딩 중에 온 알림을 이제 보낸다
         const queued = pendingNoticesRef.current.splice(0);
@@ -436,19 +354,8 @@ export default function TimerAniLab({ navigation }) {
         return;
       }
 
-      // 카페 로딩 진행률 (로딩 카드는 앱이 한 장만 그린다)
-      if (msg.type === 'cafe:loading') {
-        setLoadProgress({
-          progress: Number(msg.payload?.progress) || 0,
-          label: String(msg.payload?.label || '불러오는 중'),
-        });
-        return;
-      }
-      // 카페가 불러오기에 실패하면 웹의 오류 화면이 보이게 로딩 카드를 내린다
-      if (msg.type === 'cafe:error') {
-        setWebBooted(true);
-        return;
-      }
+      // 로딩은 웹이 그린다. 진행률·오류 알림은 받기만 한다
+      if (msg.type === 'cafe:loading' || msg.type === 'cafe:error') return;
 
       // 카페 서버 토큰이 만료됐을 때 새 토큰을 준다
       if (msg.type === 'auth:refresh') {
@@ -540,13 +447,7 @@ export default function TimerAniLab({ navigation }) {
           setSupportMultipleWindows={false}
           allowsBackForwardNavigationGestures={false}
           onMessage={onWebMessage}
-          onLoadEnd={() => {
-            // 실패하면 bridge:ready가 오지 않는다. 로딩 카드가 오류 화면을 계속 덮지 않게 60초 뒤에는 내린다
-            clearTimeout(bootFallbackRef.current);
-            bootFallbackRef.current = setTimeout(() => setWebBooted(true), 60000);
-          }}
           onError={(event) => {
-            setWebBooted(true);
             setLoadError(event?.nativeEvent?.description || '맵을 열 수 없어요');
           }}
           onHttpError={(event) => {
@@ -559,40 +460,10 @@ export default function TimerAniLab({ navigation }) {
       ) : null}
 
       {/*
-        로딩은 별도 전체 화면 창(Modal)에 그린다.
-        회전하는 동안 이 화면 틀의 크기·위치가 흔들려, 틀 안에 놓은 로딩 덮개가 화면 중간부터 그려지고
-        카드가 아래로 잘렸다. Modal은 기기 화면 전체를 기준으로 그려져 항상 정가운데에 온다.
+        로딩 카드는 웹(index.html #status)이 그린다. 앱(React Native)이 그리면 회전하는 동안 화면 틀이 흔들려
+        카드가 위·아래로 밀렸다(덮개·Modal 모두). 웹은 자기 화면 크기를 정확히 알고, 크기가 자리 잡은 뒤에만
+        카드를 보여 준다. 앱은 같은 바탕색(#151f2d)만 깔아 둔다.
       */}
-      <Modal
-        visible={!webBooted && !loadError}
-        transparent
-        animationType="none"
-        statusBarTranslucent
-        navigationBarTranslucent
-        hardwareAccelerated
-        supportedOrientations={['portrait', 'landscape', 'landscape-left', 'landscape-right']}
-        onRequestClose={() => {}}
-      >
-        <View style={[styles.modalFill, { width: modalW, height: modalH }]}>
-          <CafeLoadingCard
-            visible={orientationReady && layoutStable}
-            progress={loadProgress.progress}
-            label={loadProgress.label}
-          />
-          {/* 로딩이 오래 걸려도 나갈 수 있게 */}
-          <TouchableOpacity
-            style={[
-              styles.backBtn,
-              { top: Math.max(10, insets.top || 10), left: Math.max(10, insets.left || 10) },
-            ]}
-            onPress={goBack}
-            activeOpacity={0.85}
-            accessibilityLabel="뒤로가기"
-          >
-            <Ionicons name="chevron-back" size={24} color={colors.white} />
-          </TouchableOpacity>
-        </View>
-      </Modal>
 
       {/* 나가는 동안 회전하는 화면을 가린다 */}
       {leaving ? <View style={styles.leaveCover} pointerEvents="none" /> : null}
@@ -623,72 +494,19 @@ export default function TimerAniLab({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  // 웹 로딩(#status) 바탕과 같은 색. 웹이 그려지기 전·회전 중에도 경계선이 보이지 않게 한다
   root: {
     flex: 1,
-    backgroundColor: '#1a2433',
+    backgroundColor: '#151f2d',
   },
   webview: {
     flex: 1,
-    backgroundColor: '#1a2433',
-  },
-  // 아래 loading* 값은 back/snowmap/index.html 의 #status 와 같게 둔다
-  loading: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-    // #1a2433 위에 rgba(20, 30, 44, 0.92) 오버레이를 얹은 색
-    backgroundColor: '#151f2d',
-  },
-  modalFill: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
     backgroundColor: '#151f2d',
   },
   leaveCover: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#151f2d',
     zIndex: 30,
-  },
-  loadingCard: {
-    width: 280,
-    maxWidth: '86%',
-    paddingTop: 18,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    borderRadius: 14,
-    backgroundColor: 'rgba(12, 18, 28, 0.88)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-    alignItems: 'center',
-  },
-  loadingSpinner: {
-    width: 28,
-    height: 28,
-    marginBottom: 12,
-    borderRadius: 14,
-    borderWidth: 3,
-    borderColor: 'rgba(255, 255, 255, 0.14)',
-    borderTopColor: '#9fd0ff',
-  },
-  loadingText: {
-    color: '#e8eef5',
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  loadingBar: {
-    alignSelf: 'stretch',
-    height: 8,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    overflow: 'hidden',
-  },
-  loadingFill: {
-    width: '8%',
-    height: '100%',
-    borderRadius: 999,
-    backgroundColor: '#6ea8ff',
   },
   errorBox: {
     position: 'absolute',
