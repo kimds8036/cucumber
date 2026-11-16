@@ -774,12 +774,12 @@
     .nametag .study {
       display: none;
       position: relative;
-      width: 20px;
-      height: 20px;
+      width: 14px;
+      height: 14px;
       border-radius: 50%;
       background: #fffaf0;
-      border: 2px solid #a6da95;
-      box-shadow: 0 0 0 2px rgba(12, 18, 28, 0.45), 0 0 10px rgba(166, 218, 149, 0.75);
+      border: 1.5px solid #a6da95;
+      box-shadow: 0 0 0 1.5px rgba(12, 18, 28, 0.45), 0 0 7px rgba(166, 218, 149, 0.75);
       animation: study-bob 2.4s ease-in-out infinite;
     }
     .nametag.studying .study { display: block; }
@@ -789,20 +789,20 @@
       position: absolute;
       left: 50%;
       bottom: 50%;
-      width: 2px;
-      margin-left: -1px;
+      width: 1.5px;
+      margin-left: -0.75px;
       border-radius: 1px;
       background: #2d3b2a;
       transform-origin: 50% 100%;
     }
     /* 분침 */
     .nametag .study::before {
-      height: 6px;
+      height: 4px;
       animation: study-hand 3s linear infinite;
     }
     /* 시침 */
     .nametag .study::after {
-      height: 4px;
+      height: 3px;
       transform: rotate(90deg);
     }
     @keyframes study-hand {
@@ -810,7 +810,7 @@
     }
     @keyframes study-bob {
       0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-2px); }
+      50% { transform: translateY(-1.5px); }
     }
 
     /* 방명록(그림판) */
