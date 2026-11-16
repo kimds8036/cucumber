@@ -259,6 +259,8 @@ export function createDeskTimer(opts) {
   function getState() {
     return {
       isRunning: isRunning(),
+      /** 공부 시간이 실제로 흐르는 중 (뽀모도로 휴식은 아님). 머리 위 시계 표시에 쓴다 */
+      studying: localMode ? localRunning : !!snap.isRunning,
       startedAt: localMode ? null : snap.startedAt,
       totalElapsedMs: localMode ? localElapsedMs : snap.totalElapsedMs,
       selectedSubjectId: selectedId(),

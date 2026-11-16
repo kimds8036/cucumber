@@ -6,6 +6,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   AppState,
+  BackHandler,
   Dimensions,
   Easing,
   StatusBar,
@@ -19,6 +20,7 @@ import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { colors } from '../../styles/colors';
 import {
   api,
@@ -226,6 +228,22 @@ export default function TimerAniLab({ navigation }) {
   const allowRemoveRef = useRef(false);
   const bootFallbackRef = useRef(0);
   useEffect(() => () => clearTimeout(bootFallbackRef.current), []);
+
+  // 스터디 카페에 있는 동안은 화면이 꺼지지 않게 한다 (타이머 화면과 같은 방식)
+  useEffect(() => {
+    const tag = 'youth-paper-study-cafe';
+    activateKeepAwakeAsync(tag).catch(() => {});
+    return () => {
+      deactivateKeepAwake(tag);
+    };
+  }, []);
+
+  // 안드로이드: 가장자리 스와이프·뒤로가기 키는 무시한다. 조이스틱을 쓰다 스와이프가 뒤로가기로 인식되던 문제.
+  // (스와이프와 뒤로가기 키는 구분할 수 없다. 나가기는 화면 왼쪽 위 뒤로가기 버튼으로만 한다)
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => true);
+    return () => sub.remove();
+  }, []);
 
   const inject = useCallback((message) => {
     const ref = webRef.current;
@@ -485,7 +503,12 @@ export default function TimerAniLab({ navigation }) {
 
       {/* 로딩 카드는 이 한 장만 쓴다 (화면 크기가 자리 잡은 뒤에 나타난다) */}
       {!webBooted && !loadError ? (
-        <View style={styles.loadingCover} pointerEvents="none">
+        // 부모 틀이 회전 중 세로 높이를 잠깐 유지하면 '가운데'가 화면 아래로 계산돼 카드가 잘렸다.
+        // 덮개 크기를 실제 창 크기에 고정해 항상 화면 한가운데에 둔다.
+        <View
+          style={[styles.loadingCover, { width: winW, height: winH }]}
+          pointerEvents="none"
+        >
           <CafeLoadingCard
             visible={orientationReady && layoutStable}
             progress={loadProgress.progress}
@@ -540,7 +563,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#151f2d',
   },
   loadingCover: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    backgroundColor: '#151f2d',
   },
   leaveCover: {
     ...StyleSheet.absoluteFillObject,

@@ -285,8 +285,12 @@ function MainStack({ initialRouteName = 'Main' }) {
         component={TimerAniLab}
         options={{
           headerShown: false,
-          orientation: 'landscape',
+          // 화면 방향은 TimerAniLab이 expo-screen-orientation으로만 정한다.
+          // 여기서 orientation: 'landscape'를 같이 쓰면 아이폰에서 둘이 충돌해, 나온 뒤에도 가로로 남았다.
           animation: 'fade',
+          // 조이스틱을 쓰다 화면 가장자리 스와이프가 뒤로가기로 인식되지 않게 한다 (나가기는 화면의 뒤로가기 버튼)
+          gestureEnabled: false,
+          fullScreenGestureEnabled: false,
         }}
       />
       <Stack.Screen name="TimerSettings" component={TimerSettings} />
