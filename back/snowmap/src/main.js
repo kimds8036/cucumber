@@ -74,6 +74,8 @@ function setLoading(progress, label = "불러오는 중") {
 }
 
 function hideLoading() {
+  // 조이스틱·버튼 등을 이제 보여 준다
+  document.body.classList.remove("booting");
   if (!statusEl) return;
   statusEl.hidden = true;
   statusEl.classList.remove("error");
@@ -630,8 +632,11 @@ async function boot() {
       yaw: +character.pivot.rotation.y.toFixed(3),
       anim: localAnimName(),
       seatId: phase && phase !== "rise" && phase !== "dismount" ? interact.activeSeat?.id ?? null : null,
+      /** 타이머 실행 중이면 다른 사람 화면에서 머리 위에 시계가 뜬다 */
+      studying: Boolean(deskTimer?.getState().studying),
       t: Date.now(),
     };
+    if (CONFIG.SHOW_MY_NAMETAG) nameTags.setStudying(me.userId, state.studying);
     const now = performance.now();
     const same =
       lastSent &&
@@ -641,6 +646,7 @@ async function boot() {
       lastSent.yaw === state.yaw &&
       lastSent.anim === state.anim &&
       lastSent.seatId === state.seatId &&
+      lastSent.studying === state.studying &&
       lastSent.gender === state.gender;
     if (same && now - lastSentAt < 1000) return;
     lastSent = state;
