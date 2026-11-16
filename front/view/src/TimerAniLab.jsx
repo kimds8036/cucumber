@@ -9,6 +9,7 @@ import {
   BackHandler,
   Dimensions,
   Easing,
+  Modal,
   StatusBar,
   StyleSheet,
   Text,
@@ -45,6 +46,8 @@ import {
 async function buildSnowmapUrl() {
   const base = getApiBaseUrlNoSlash().replace(/\/+$/, '');
   const params = new URLSearchParams();
+  // 웹이 처음 그릴 때부터 앱 안인지 알게 한다 (웹 로딩을 숨기고 앱 로딩 한 장만 보이게)
+  params.set('inApp', '1');
   try {
     const res = await api.get('/api/auth/me');
     const me = res.data?.data;
@@ -501,21 +504,41 @@ export default function TimerAniLab({ navigation }) {
         />
       ) : null}
 
-      {/* 로딩 카드는 이 한 장만 쓴다 (화면 크기가 자리 잡은 뒤에 나타난다) */}
-      {!webBooted && !loadError ? (
-        // 부모 틀이 회전 중 세로 높이를 잠깐 유지하면 '가운데'가 화면 아래로 계산돼 카드가 잘렸다.
-        // 덮개 크기를 실제 창 크기에 고정해 항상 화면 한가운데에 둔다.
-        <View
-          style={[styles.loadingCover, { width: winW, height: winH }]}
-          pointerEvents="none"
-        >
+      {/*
+        로딩은 별도 전체 화면 창(Modal)에 그린다.
+        회전하는 동안 이 화면 틀의 크기·위치가 흔들려, 틀 안에 놓은 로딩 덮개가 화면 중간부터 그려지고
+        카드가 아래로 잘렸다. Modal은 기기 화면 전체를 기준으로 그려져 항상 정가운데에 온다.
+      */}
+      <Modal
+        visible={!webBooted && !loadError}
+        transparent
+        animationType="none"
+        statusBarTranslucent
+        navigationBarTranslucent
+        hardwareAccelerated
+        supportedOrientations={['portrait', 'landscape', 'landscape-left', 'landscape-right']}
+        onRequestClose={() => {}}
+      >
+        <View style={styles.modalFill}>
           <CafeLoadingCard
             visible={orientationReady && layoutStable}
             progress={loadProgress.progress}
             label={loadProgress.label}
           />
+          {/* 로딩이 오래 걸려도 나갈 수 있게 */}
+          <TouchableOpacity
+            style={[
+              styles.backBtn,
+              { top: Math.max(10, insets.top || 10), left: Math.max(10, insets.left || 10) },
+            ]}
+            onPress={goBack}
+            activeOpacity={0.85}
+            accessibilityLabel="뒤로가기"
+          >
+            <Ionicons name="chevron-back" size={24} color={colors.white} />
+          </TouchableOpacity>
         </View>
-      ) : null}
+      </Modal>
 
       {/* 나가는 동안 회전하는 화면을 가린다 */}
       {leaving ? <View style={styles.leaveCover} pointerEvents="none" /> : null}
@@ -562,10 +585,8 @@ const styles = StyleSheet.create({
     // #1a2433 위에 rgba(20, 30, 44, 0.92) 오버레이를 얹은 색
     backgroundColor: '#151f2d',
   },
-  loadingCover: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
+  modalFill: {
+    flex: 1,
     backgroundColor: '#151f2d',
   },
   leaveCover: {

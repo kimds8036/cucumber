@@ -993,7 +993,12 @@
   <script>
     // 앱 WebView 안이면 웹 로딩(#status)을 숨긴다. 로딩 카드는 앱이 한 장만 그린다(위치가 튀지 않게)
     try {
-      if (window.ReactNativeWebView || window.__STUDY_CAFE_AUTH__) {
+      // 안드로이드는 ReactNativeWebView가 이 시점보다 늦게 생길 수 있어, 앱이 붙여 주는 ?inApp=1도 본다
+      if (
+        /[?&]inApp=1(&|$)/.test(window.location.search) ||
+        window.ReactNativeWebView ||
+        window.__STUDY_CAFE_AUTH__
+      ) {
         document.documentElement.classList.add("in-app-loader");
       }
     } catch (e) {}
