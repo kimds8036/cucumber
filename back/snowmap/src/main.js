@@ -41,6 +41,7 @@ import { createChat } from "./social/chat.js";
 import { createRoomSwitch } from "./ui/roomSwitch.js";
 import { createUserRoster } from "./ui/userRoster.js";
 import { createAppBridge } from "./net/appBridge.js";
+import { createNotifyBell } from "./ui/notifyBell.js";
 
 const statusEl = document.getElementById("status");
 const statusLabel = statusEl?.querySelector(".status-label");
@@ -225,6 +226,8 @@ async function boot() {
   const nameTags = createNameTags(scene, camera);
   /** @type {ReturnType<typeof createUserRoster>|null} */
   let userRoster = null;
+  /** @type {ReturnType<typeof createNotifyBell>|null} */
+  let notifyBell = null;
   const chat = createChat({
     net,
     me,
@@ -313,6 +316,9 @@ async function boot() {
     },
     onFriendResult: (payload) => {
       userRoster?.applyFriendResult(payload || {});
+    },
+    onAppNotice: (payload) => {
+      notifyBell?.push(payload);
     },
   });
   // 서버 토큰이 만료되면 앱에 새 토큰을 받는다
@@ -406,6 +412,8 @@ async function boot() {
       );
     },
   });
+  /** 사용자 탭 오른쪽 알림벨 (앱 토스트 대신) */
+  notifyBell = createNotifyBell();
 
   const pitch = THREE.MathUtils.degToRad(
     THREE.MathUtils.clamp(CONFIG.CAMERA_PITCH_DEG, CONFIG.CAMERA_PITCH_MIN_DEG, CONFIG.CAMERA_PITCH_MAX_DEG)

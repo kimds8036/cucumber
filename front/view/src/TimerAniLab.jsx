@@ -30,6 +30,7 @@ import {
   refreshAccessToken,
 } from '../../utils/api';
 import { useMainShellOptional } from '../../context/MainShellContext';
+import { setToastInterceptor } from '../../context/ToastContext';
 import { loadTimerSettings } from './timer/timerSettingsStorage';
 import {
   buildFriendListMessage,
@@ -232,6 +233,21 @@ export default function TimerAniLab({ navigation }) {
   const bootFallbackRef = useRef(0);
   useEffect(() => () => clearTimeout(bootFallbackRef.current), []);
 
+  /**
+   * 로딩 창(Modal) 크기. 안드로이드에서 Modal 안 영역이 화면 높이를 못 받고 카드 높이만큼만 잡혀
+   * '가운데 정렬'이 맨 위가 됐다. 상태바·내비게이션 바까지 덮는 Modal이라 기기 화면(screen) 크기를 직접 준다.
+   */
+  const [screenSize, setScreenSize] = useState(() => Dimensions.get('screen'));
+  useEffect(() => {
+    const sub = Dimensions.addEventListener('change', ({ screen }) => {
+      if (screen) setScreenSize(screen);
+    });
+    return () => sub?.remove?.();
+  }, []);
+  const modalW = Math.max(screenSize.width, screenSize.height);
+  const modalH = Math.min(screenSize.width, screenSize.height);
+
+
   // 스터디 카페에 있는 동안은 화면이 꺼지지 않게 한다 (타이머 화면과 같은 방식)
   useEffect(() => {
     const tag = 'youth-paper-study-cafe';
@@ -283,6 +299,41 @@ export default function TimerAniLab({ navigation }) {
     pushSnapshot();
     pushFriends();
   }, [pushFriends, pushSnapshot]);
+
+  /**
+   * 카페에 있는 동안 앱 토스트(친구 요청 등)는 띄우지 않고 카페 화면의 알림벨로 보낸다.
+   * 세로 기준 토스트가 가로 화면을 크게 덮었다. 카페가 아직 준비 전이면 모아 두었다가 준비되면 보낸다.
+   */
+  const pendingNoticesRef = useRef([]);
+  const sendNotice = useCallback(
+    (notice) => {
+      if (!readyRef.current) {
+        pendingNoticesRef.current.push(notice);
+        if (pendingNoticesRef.current.length > 20) pendingNoticesRef.current.shift();
+        return;
+      }
+      inject(makeBridgeMessage('app:notice', notice));
+    },
+    [inject],
+  );
+  useEffect(
+    () =>
+      setToastInterceptor((toast) => {
+        sendNotice({
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          title: toast.title || null,
+          message: String(toast.message || ''),
+          senderName: toast.senderName || null,
+          body: toast.body || null,
+          type: toast.type || null,
+          category: toast.category || null,
+          relatedType: toast.relatedType || null,
+          at: Date.now(),
+        });
+        return true;
+      }),
+    [sendNotice],
+  );
 
   useEffect(() => {
     let active = true;
@@ -379,6 +430,9 @@ export default function TimerAniLab({ navigation }) {
         readyRef.current = true;
         setWebBooted(true);
         syncAll();
+        // 로딩 중에 온 알림을 이제 보낸다
+        const queued = pendingNoticesRef.current.splice(0);
+        for (const notice of queued) inject(makeBridgeMessage('app:notice', notice));
         return;
       }
 
@@ -519,7 +573,7 @@ export default function TimerAniLab({ navigation }) {
         supportedOrientations={['portrait', 'landscape', 'landscape-left', 'landscape-right']}
         onRequestClose={() => {}}
       >
-        <View style={styles.modalFill}>
+        <View style={[styles.modalFill, { width: modalW, height: modalH }]}>
           <CafeLoadingCard
             visible={orientationReady && layoutStable}
             progress={loadProgress.progress}
@@ -586,7 +640,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#151f2d',
   },
   modalFill: {
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
     backgroundColor: '#151f2d',
   },
   leaveCover: {

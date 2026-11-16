@@ -13,6 +13,21 @@ import { navigate } from '../navigation/navigationRef';
 const ToastContext = createContext(null);
 const ENABLE_NATIVE_CHAT_BRIDGE = false;
 
+/**
+ * 토스트를 대신 받아 갈 곳. 스터디 카페(가로 WebView)에 있는 동안은 세로 기준 토스트가 화면을 크게 덮으므로,
+ * 카페가 이 함수로 토스트를 받아 카페 화면 안의 알림벨로 보여 준다. true를 돌려주면 토스트를 띄우지 않는다.
+ * @type {null | ((toast: object) => boolean)}
+ */
+let toastInterceptor = null;
+
+/** @param {null | ((toast: object) => boolean)} fn */
+export function setToastInterceptor(fn) {
+  toastInterceptor = typeof fn === 'function' ? fn : null;
+  return () => {
+    if (toastInterceptor === fn) toastInterceptor = null;
+  };
+}
+
 export function ToastProvider({ children }) {
   const [visible, setVisible] = useState(false);
   const [toast, setToast] = useState({
@@ -56,6 +71,14 @@ export function ToastProvider({ children }) {
         typeof input === 'string' ? { message: input } : (input ?? {});
       const text = String(next.message ?? '').trim();
       if (!text) return;
+
+      if (toastInterceptor) {
+        try {
+          if (toastInterceptor({ ...next, message: text }) === true) return;
+        } catch (err) {
+          console.warn('[ToastSystem] interceptor failed', err?.message);
+        }
+      }
 
       clearHideTimer();
       const nextId = Date.now();
