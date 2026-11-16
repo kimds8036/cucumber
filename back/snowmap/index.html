@@ -762,121 +762,179 @@
     .nametag .bubble:empty { display: none; }
 
     /* 방명록(그림판) */
+    /* 방명록: 왼쪽 세로 도구 + 오른쪽 그림판 (가로 화면에서 그림판을 최대한 크게) */
     #board-modal {
       position: fixed;
       inset: 0;
       z-index: 20;
-      display: grid;
-      place-items: center;
-      background: rgba(6, 10, 18, 0.5);
-      padding: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      background: rgba(6, 10, 18, 0.55);
+      padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right))
+        max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
     }
     #board-modal[hidden] { display: none !important; }
+    #board-panel,
+    #board-panel * { box-sizing: border-box; }
     #board-panel {
-      width: min(1100px, calc(100vw - 24px));
-      max-height: calc(100vh - 24px);
+      width: 100%;
+      height: 100%;
+      max-width: 1200px;
+      max-height: 760px;
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       border-radius: 14px;
       background: rgba(18, 26, 38, 0.97);
       border: 1px solid rgba(255, 255, 255, 0.14);
       box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
       overflow: hidden;
     }
-    #board-panel header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 10px 14px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      font-weight: 700;
-      font-size: 15px;
-      flex-shrink: 0;
-    }
-    #board-close {
-      border: 0;
-      background: none;
-      color: #e8eef5;
-      font-size: 22px;
-      line-height: 1;
-      cursor: pointer;
-    }
     #board-tools {
+      flex: 0 0 auto;
+      width: 78px;
       display: flex;
-      flex-wrap: wrap;
-      align-items: center;
+      flex-direction: column;
+      align-items: stretch;
       gap: 8px;
-      padding: 8px 14px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      flex-shrink: 0;
+      padding: 10px 8px;
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
+      overflow-y: auto;
+      overscroll-behavior: contain;
     }
     #board-tools .group {
-      display: inline-flex;
-      align-items: center;
+      display: flex;
+      flex-direction: column;
       gap: 6px;
+    }
+    #board-tools .divider {
+      height: 1px;
+      background: rgba(255, 255, 255, 0.1);
+      margin: 2px 0;
+      flex-shrink: 0;
     }
     #board-tools button {
       border: 1px solid rgba(255, 255, 255, 0.18);
       background: rgba(255, 255, 255, 0.06);
       color: #e8eef5;
-      border-radius: 8px;
-      padding: 6px 10px;
-      font: 600 12px "Segoe UI", system-ui, sans-serif;
+      border-radius: 10px;
+      min-height: 34px;
+      padding: 6px 4px;
+      font: 700 12px/1.1 "Segoe UI", system-ui, sans-serif;
       cursor: pointer;
+      flex-shrink: 0;
     }
     #board-tools button.active {
       background: #4a8cff;
       border-color: #4a8cff;
       color: #fff;
     }
+    #board-tools .swatches {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+      justify-items: center;
+    }
     #board-tools .swatch {
       width: 22px;
       height: 22px;
+      min-height: 0;
       padding: 0;
       border-radius: 50%;
       border: 2px solid transparent;
     }
     #board-tools .swatch.active { border-color: #ffe4a8; box-shadow: 0 0 0 1px #222; }
     #board-tools .swatch[data-board-color="#ffffff"] { box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25); }
-    #board-tools label {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      color: rgba(232, 238, 245, 0.75);
+    #board-tools .sizes {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      gap: 4px;
     }
-    #board-size { width: 90px; accent-color: #4a8cff; }
-    #board-clear-mine { margin-left: auto; }
-    #board-canvas-wrap {
+    #board-tools .size {
       flex: 1;
-      min-height: 0;
-      padding: 10px 14px 6px;
+      min-height: 28px;
+      padding: 0;
+      border-radius: 8px !important;
       display: grid;
       place-items: center;
-      background: rgba(0, 0, 0, 0.18);
     }
+    #board-tools .size i {
+      display: block;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    #board-clear-mine {
+      margin-top: auto;
+      font-size: 11px !important;
+      color: #ffd2d2 !important;
+    }
+    #board-main {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    #board-panel header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 4px 6px 4px 12px;
+      min-height: 34px;
+      flex-shrink: 0;
+    }
+    #board-panel header .title {
+      font-weight: 700;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    #board-hint,
+    #board-error {
+      flex: 1;
+      min-width: 0;
+      font-size: 11px;
+      color: rgba(232, 238, 245, 0.62);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #board-error { color: #ffb4b4; }
+    #board-error:empty { display: none; }
+    #board-error:not(:empty) + #board-hint { display: none; }
+    #board-close {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      border: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.06);
+      color: #e8eef5;
+      font-size: 20px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    #board-canvas-wrap {
+      flex: 1 1 0;
+      min-height: 0;
+      padding: 0 10px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    /* 16:9를 지키면서 남은 공간에 꽉 맞춘다 (늘어나면 그림이 찌그러져 보인다) */
     #board-canvas {
-      width: 100%;
+      width: auto;
       height: auto;
-      max-height: min(70vh, calc(100vh - 180px));
+      max-width: 100%;
+      max-height: 100%;
       aspect-ratio: 16 / 9;
       border-radius: 8px;
       background: #f4efe6;
       touch-action: none;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
     }
-    #board-footer {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 8px 14px 12px;
-      font-size: 12px;
-      color: rgba(232, 238, 245, 0.7);
-      flex-shrink: 0;
-    }
-    #board-error { color: #ffb4b4; }
-    #board-hint { margin-left: auto; }
   </style>
   <script type="importmap">
     {
@@ -903,17 +961,14 @@
   <div id="labels"></div>
   <div id="board-modal" hidden>
     <div id="board-panel" role="dialog" aria-label="방명록">
-      <header>
-        <span>방명록</span>
-        <button id="board-close" type="button" aria-label="닫기">×</button>
-      </header>
       <div id="board-tools">
-        <div class="group">
+        <div class="group" aria-label="도구">
           <button type="button" data-board-tool="pen" class="active">펜</button>
           <button type="button" data-board-tool="eraser">지우개</button>
           <button type="button" data-board-tool="report" id="board-tool-report" hidden>신고</button>
         </div>
-        <div class="group" aria-label="색상">
+        <div class="divider"></div>
+        <div class="swatches" aria-label="색상">
           <button type="button" class="swatch active" data-board-color="#222222" style="background:#222" title="검정"></button>
           <button type="button" class="swatch" data-board-color="#e74c3c" style="background:#e74c3c" title="빨강"></button>
           <button type="button" class="swatch" data-board-color="#e67e22" style="background:#e67e22" title="주황"></button>
@@ -922,15 +977,24 @@
           <button type="button" class="swatch" data-board-color="#9b59b6" style="background:#9b59b6" title="보라"></button>
           <button type="button" class="swatch" data-board-color="#ffffff" style="background:#fff" title="흰색"></button>
         </div>
-        <label>굵기 <input id="board-size" type="range" min="2" max="18" value="4" /></label>
-        <button type="button" id="board-clear-mine">내 그림 전체 지우기</button>
+        <div class="divider"></div>
+        <div class="sizes" aria-label="굵기">
+          <button type="button" class="size" data-board-size="3" title="가늘게"><i style="width:4px;height:4px"></i></button>
+          <button type="button" class="size active" data-board-size="6" title="보통"><i style="width:7px;height:7px"></i></button>
+          <button type="button" class="size" data-board-size="12" title="굵게"><i style="width:11px;height:11px"></i></button>
+        </div>
+        <button type="button" id="board-clear-mine" title="내가 그린 선 모두 지우기">내 그림<br />지우기</button>
       </div>
-      <div id="board-canvas-wrap">
-        <canvas id="board-canvas" width="1280" height="720"></canvas>
-      </div>
-      <div id="board-footer">
-        <span id="board-error"></span>
-        <span id="board-hint">펜으로 그리고, 손을 떼면 바로 저장돼요</span>
+      <div id="board-main">
+        <header>
+          <span class="title">방명록</span>
+          <span id="board-error"></span>
+          <span id="board-hint">펜으로 그리고, 손을 떼면 바로 저장돼요</span>
+          <button id="board-close" type="button" aria-label="닫기">×</button>
+        </header>
+        <div id="board-canvas-wrap">
+          <canvas id="board-canvas" width="1280" height="720"></canvas>
+        </div>
       </div>
     </div>
   </div>
