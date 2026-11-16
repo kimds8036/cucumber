@@ -275,10 +275,16 @@ app.use(
   express.static(snowmapDir, {
     index: 'index.html',
     redirect: true,
+    // 큰 파일(캐릭터 FBX·맵 GLB·이미지)은 1시간 캐시
     maxAge: '1h',
     setHeaders(res, filePath) {
       if (filePath.endsWith('.js')) {
         res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+      }
+      // 화면 코드(HTML·JS·CSS·JSON)는 매번 서버에 바뀌었는지 묻는다 (안 바뀌면 304라 가볍다).
+      // 1시간 캐시면 배포해도 폰 WebView가 예전 화면을 계속 쓰고, 앱을 다시 빌드해도 지워지지 않는다.
+      if (/\.(html|js|css|json)$/i.test(filePath)) {
+        res.setHeader('Cache-Control', 'no-cache');
       }
     },
   }),

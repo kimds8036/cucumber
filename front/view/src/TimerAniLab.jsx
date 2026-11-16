@@ -106,6 +106,18 @@ function isSnowmapUrl(url) {
   return page.host === base.host && /^\/snowmap(\/|$)/.test(page.path);
 }
 
+/**
+ * 메시지를 보낸 페이지가 우리 서버인지.
+ * 안드로이드는 onMessage의 url로 경로 없이 출처(https://도메인)만 넘긴다. 그래서 메시지는 도메인만 본다.
+ * 페이지 이동은 isSnowmapUrl로 /snowmap 밖을 막고 있으니, 같은 도메인의 다른 페이지가 열릴 일은 없다.
+ */
+function isCafeMessageOrigin(url) {
+  const page = splitUrl(url);
+  const base = splitUrl(getApiBaseUrlNoSlash());
+  if (!page || !base) return false;
+  return page.host === base.host;
+}
+
 async function fetchFriendListForCafe() {
   try {
     const res = await api.get('/api/friends/list');
@@ -281,7 +293,7 @@ export default function TimerAniLab({ navigation }) {
     async (event) => {
       // 카페 페이지에서 온 메시지만 받는다
       const fromUrl = event?.nativeEvent?.url;
-      if (fromUrl && !isSnowmapUrl(fromUrl)) {
+      if (fromUrl && !isCafeMessageOrigin(fromUrl)) {
         if (__DEV__) {
           console.warn('[StudyCafe] 카페 밖 주소의 메시지를 버림', {
             fromUrl,
