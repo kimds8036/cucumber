@@ -4,8 +4,9 @@
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
+  Animated,
   AppState,
+  Easing,
   StatusBar,
   StyleSheet,
   Text,
@@ -101,6 +102,38 @@ async function fetchFriendListForCafe() {
   }
 }
 
+/**
+ * 앱이 그리는 로딩 카드. 카페 웹페이지(index.html #status)의 첫 화면과 모양·크기·문구를 똑같이 맞춰
+ * 앱 로딩 → 웹 로딩으로 넘어갈 때 위치가 튀지 않게 한다.
+ */
+function CafeLoadingCard() {
+  const spin = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.timing(spin, {
+        toValue: 1,
+        duration: 750,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [spin]);
+  const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  return (
+    <View style={styles.loading} pointerEvents="none">
+      <View style={styles.loadingCard}>
+        <Animated.View style={[styles.loadingSpinner, { transform: [{ rotate }] }]} />
+        <Text style={styles.loadingText}>준비 중</Text>
+        <View style={styles.loadingBar}>
+          <View style={styles.loadingFill} />
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export default function TimerAniLab({ navigation }) {
   const insets = useSafeAreaInsets();
   const shell = useMainShellOptional();
@@ -109,6 +142,8 @@ export default function TimerAniLab({ navigation }) {
   const [loadError, setLoadError] = useState(null);
   const [snowmapUrl, setSnowmapUrl] = useState(null);
   const [authScript, setAuthScript] = useState(null);
+  /** 가로 고정이 끝난 뒤에 로딩을 그린다 (세로로 그렸다가 돌아가며 위치가 튀지 않게) */
+  const [orientationReady, setOrientationReady] = useState(false);
 
   const inject = useCallback((message) => {
     const ref = webRef.current;
@@ -156,6 +191,7 @@ export default function TimerAniLab({ navigation }) {
       } catch (err) {
         console.warn('[StudyCafe] landscape lock failed', err?.message);
       }
+      if (active) setOrientationReady(true);
     })();
     return () => {
       active = false;
@@ -283,12 +319,7 @@ export default function TimerAniLab({ navigation }) {
           allowsBackForwardNavigationGestures={false}
           startInLoadingState
           onMessage={onWebMessage}
-          renderLoading={() => (
-            <View style={styles.loading}>
-              <ActivityIndicator size="large" color={colors.white} />
-              <Text style={styles.loadingText}>맵 불러오는 중…</Text>
-            </View>
-          )}
+          renderLoading={() => <CafeLoadingCard />}
           onError={(event) => {
             setLoadError(event?.nativeEvent?.description || '맵을 열 수 없어요');
           }}
@@ -299,11 +330,10 @@ export default function TimerAniLab({ navigation }) {
             }
           }}
         />
+      ) : orientationReady ? (
+        <CafeLoadingCard />
       ) : (
-        <View style={styles.loading}>
-          <ActivityIndicator size="large" color={colors.white} />
-          <Text style={styles.loadingText}>맵 불러오는 중…</Text>
-        </View>
+        <View style={styles.loading} />
       )}
 
       {loadError ? (
@@ -340,16 +370,53 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#1a2433',
   },
+  // 아래 loading* 값은 back/snowmap/index.html 의 #status 와 같게 둔다
   loading: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1a2433',
-    gap: 12,
+    // #1a2433 위에 rgba(20, 30, 44, 0.92) 오버레이를 얹은 색
+    backgroundColor: '#151f2d',
+  },
+  loadingCard: {
+    width: 280,
+    maxWidth: '86%',
+    paddingTop: 18,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    borderRadius: 14,
+    backgroundColor: 'rgba(12, 18, 28, 0.88)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    alignItems: 'center',
+  },
+  loadingSpinner: {
+    width: 28,
+    height: 28,
+    marginBottom: 12,
+    borderRadius: 14,
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.14)',
+    borderTopColor: '#9fd0ff',
   },
   loadingText: {
-    color: colors.white,
+    color: '#e8eef5',
     fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  loadingBar: {
+    alignSelf: 'stretch',
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    overflow: 'hidden',
+  },
+  loadingFill: {
+    width: '8%',
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: '#6ea8ff',
   },
   errorBox: {
     position: 'absolute',
