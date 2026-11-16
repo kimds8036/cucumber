@@ -546,6 +546,89 @@
       max-width: calc(100vw - 24px);
       max-height: calc(100dvh - 24px);
     }
+    /* 사용자 탭 + 알림벨 줄. 벨은 탭 오른쪽에 따로 붙어 탭이 옆으로 밀리지 않는다 */
+    .user-roster-top { position: relative; display: inline-flex; }
+    #notify-bell-wrap {
+      position: absolute;
+      left: calc(100% + 8px);
+      top: 50%;
+      transform: translateY(-50%) scale(0.85);
+      opacity: 0;
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+    #notify-bell-wrap[hidden] { display: none !important; }
+    #notify-bell-wrap.show { opacity: 1; transform: translateY(-50%) scale(1); }
+    #notify-bell {
+      position: relative;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: rgba(12, 18, 28, 0.82);
+      color: #ffd27a;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
+    }
+    #notify-bell svg { transform-origin: 50% 10%; }
+    #notify-bell-wrap.ringing #notify-bell svg { animation: bell-ring 2.4s ease-in-out infinite; }
+    @keyframes bell-ring {
+      0%, 55%, 100% { transform: rotate(0); }
+      10% { transform: rotate(16deg); }
+      20% { transform: rotate(-14deg); }
+      30% { transform: rotate(10deg); }
+      40% { transform: rotate(-6deg); }
+    }
+    #notify-bell-badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 4px;
+      border-radius: 999px;
+      background: #ff5a5a;
+      color: #fff;
+      font: 700 10px/16px "Segoe UI", system-ui, sans-serif;
+      text-align: center;
+    }
+    #notify-bell-badge:empty { display: none; }
+    #notify-bell-panel {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: -8px;
+      width: min(240px, 60vw);
+      padding: 10px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(12, 18, 28, 0.94);
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4);
+      color: #e8eef5;
+    }
+    #notify-bell-panel[hidden] { display: none !important; }
+    .notify-bell-head {
+      font: 700 12px/1.2 "Segoe UI", system-ui, sans-serif;
+      color: rgba(232, 238, 245, 0.6);
+      margin-bottom: 6px;
+    }
+    .notify-bell-item {
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .notify-bell-item + .notify-bell-item { margin-top: 6px; }
+    .notify-bell-title { font: 700 13px/1.3 "Segoe UI", system-ui, sans-serif; color: #ffe4a8; }
+    .notify-bell-msg {
+      margin-top: 2px;
+      font: 12px/1.35 "Segoe UI", system-ui, sans-serif;
+      color: rgba(232, 238, 245, 0.85);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      word-break: break-word;
+    }
     #user-roster-tab {
       display: inline-flex;
       align-items: center;
@@ -774,12 +857,12 @@
     .nametag .study {
       display: none;
       position: relative;
-      width: 14px;
-      height: 14px;
+      width: 10px;
+      height: 10px;
       border-radius: 50%;
       background: #fffaf0;
-      border: 1.5px solid #a6da95;
-      box-shadow: 0 0 0 1.5px rgba(12, 18, 28, 0.45), 0 0 7px rgba(166, 218, 149, 0.75);
+      border: 1px solid #a6da95;
+      box-shadow: 0 0 0 1px rgba(12, 18, 28, 0.45), 0 0 5px rgba(166, 218, 149, 0.75);
       animation: study-bob 2.4s ease-in-out infinite;
     }
     .nametag.studying .study { display: block; }
@@ -789,20 +872,20 @@
       position: absolute;
       left: 50%;
       bottom: 50%;
-      width: 1.5px;
-      margin-left: -0.75px;
+      width: 1px;
+      margin-left: -0.5px;
       border-radius: 1px;
       background: #2d3b2a;
       transform-origin: 50% 100%;
     }
     /* 분침 */
     .nametag .study::before {
-      height: 4px;
+      height: 3px;
       animation: study-hand 3s linear infinite;
     }
     /* 시침 */
     .nametag .study::after {
-      height: 3px;
+      height: 2px;
       transform: rotate(90deg);
     }
     @keyframes study-hand {
@@ -810,7 +893,7 @@
     }
     @keyframes study-bob {
       0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-1.5px); }
+      50% { transform: translateY(-1px); }
     }
 
     /* 방명록(그림판) */

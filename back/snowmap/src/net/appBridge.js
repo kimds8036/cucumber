@@ -12,6 +12,7 @@ function randomId() {
  *   onTimerResult?: (payload: object) => void,
  *   onFriendList?: (payload: object) => void,
  *   onFriendResult?: (payload: object) => void,
+ *   onAppNotice?: (payload: object) => void,
  * }} handlers
  */
 export function createAppBridge(handlers = {}) {
@@ -32,6 +33,11 @@ export function createAppBridge(handlers = {}) {
     if (!msg || !msg.type) return;
     if (msg.type === "auth:token") {
       resolvePending(msg);
+      return;
+    }
+    // 카페에 있는 동안 앱 토스트 대신 오는 알림 (친구 요청 등)
+    if (msg.type === "app:notice") {
+      handlers.onAppNotice?.(msg.payload || {});
       return;
     }
     if (msg.type === "timer:snapshot") handlers.onTimerSnapshot?.(msg.payload || {});
