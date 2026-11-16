@@ -6,11 +6,13 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   AppState,
+  Dimensions,
   Easing,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
@@ -73,9 +75,22 @@ function buildAuthInjectScript(token) {
   return `
     (function(){
       try { window.__STUDY_CAFE_AUTH__ = JSON.parse(${json}); } catch (e) {}
+      // 로딩은 앱이 한 장만 그린다. 웹 로딩(#status)은 숨기고 진행률만 앱에 보낸다
+      try { document.documentElement.classList.add('in-app-loader'); } catch (e) {}
       true;
     })();
   `;
+}
+
+/** 세로가 될 때까지(최대 timeoutMs) 기다린다 */
+async function waitForPortrait(timeoutMs = 900) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < timeoutMs) {
+    const { width, height } = Dimensions.get('window');
+    if (height > width) return true;
+    await new Promise((r) => setTimeout(r, 40));
+  }
+  return false;
 }
 
 /**
@@ -139,8 +154,16 @@ async function fetchFriendListForCafe() {
  * 앱이 그리는 로딩 카드. 카페 웹페이지(index.html #status)의 첫 화면과 모양·크기·문구를 똑같이 맞춰
  * 앱 로딩 → 웹 로딩으로 넘어갈 때 위치가 튀지 않게 한다.
  */
-function CafeLoadingCard() {
+function CafeLoadingCard({ visible = true, progress = 8, label = '준비 중' }) {
   const spin = useRef(new Animated.Value(0)).current;
+  const fade = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(fade, {
+      toValue: visible ? 1 : 0,
+      duration: visible ? 160 : 0,
+      useNativeDriver: true,
+    }).start();
+  }, [fade, visible]);
   useEffect(() => {
     const loop = Animated.loop(
       Animated.timing(spin, {
@@ -156,13 +179,18 @@ function CafeLoadingCard() {
   const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
   return (
     <View style={styles.loading} pointerEvents="none">
-      <View style={styles.loadingCard}>
+      <Animated.View style={[styles.loadingCard, { opacity: fade }]}>
         <Animated.View style={[styles.loadingSpinner, { transform: [{ rotate }] }]} />
-        <Text style={styles.loadingText}>준비 중</Text>
+        <Text style={styles.loadingText}>{label}</Text>
         <View style={styles.loadingBar}>
-          <View style={styles.loadingFill} />
+          <View
+            style={[
+              styles.loadingFill,
+              { width: `${Math.max(8, Math.min(100, Number(progress) || 0))}%` },
+            ]}
+          />
         </View>
-      </View>
+      </Animated.View>
     </View>
   );
 }
@@ -177,6 +205,27 @@ export default function TimerAniLab({ navigation }) {
   const [authScript, setAuthScript] = useState(null);
   /** 가로 고정이 끝난 뒤에 로딩을 그린다 (세로로 그렸다가 돌아가며 위치가 튀지 않게) */
   const [orientationReady, setOrientationReady] = useState(false);
+  /**
+   * 화면 크기가 자리 잡았는지. 들어올 때 회전·상태바 숨김·내비게이션 바 때문에 크기가 여러 번 바뀌어
+   * 가운데 놓인 로딩 카드가 위아래로 흔들렸다. 가로이고 0.2초 동안 크기가 그대로일 때만 카드를 보여 준다.
+   */
+  const { width: winW, height: winH } = useWindowDimensions();
+  const [layoutStable, setLayoutStable] = useState(false);
+  useEffect(() => {
+    setLayoutStable(false);
+    if (winW <= winH) return undefined;
+    const t = setTimeout(() => setLayoutStable(true), 220);
+    return () => clearTimeout(t);
+  }, [winW, winH]);
+  /** 카페 화면이 다 떴는지 (bridge:ready). 그 전까지 앱 로딩 카드를 덮어 둔다 */
+  const [webBooted, setWebBooted] = useState(false);
+  const [loadProgress, setLoadProgress] = useState({ progress: 8, label: '준비 중' });
+  /** 나가는 중 (세로로 돌린 뒤 닫는다) */
+  const [leaving, setLeaving] = useState(false);
+  const leavingRef = useRef(false);
+  const allowRemoveRef = useRef(false);
+  const bootFallbackRef = useRef(0);
+  useEffect(() => () => clearTimeout(bootFallbackRef.current), []);
 
   const inject = useCallback((message) => {
     const ref = webRef.current;
@@ -307,7 +356,22 @@ export default function TimerAniLab({ navigation }) {
 
       if (msg.type === 'bridge:ready') {
         readyRef.current = true;
+        setWebBooted(true);
         syncAll();
+        return;
+      }
+
+      // 카페 로딩 진행률 (로딩 카드는 앱이 한 장만 그린다)
+      if (msg.type === 'cafe:loading') {
+        setLoadProgress({
+          progress: Number(msg.payload?.progress) || 0,
+          label: String(msg.payload?.label || '불러오는 중'),
+        });
+        return;
+      }
+      // 카페가 불러오기에 실패하면 웹의 오류 화면이 보이게 로딩 카드를 내린다
+      if (msg.type === 'cafe:error') {
+        setWebBooted(true);
         return;
       }
 
@@ -336,14 +400,49 @@ export default function TimerAniLab({ navigation }) {
     [inject, syncAll],
   );
 
+  /**
+   * 나갈 때: 세로로 돌리고, 회전과 뒤 화면 다시 그리기가 끝난 뒤에 닫는다.
+   * 닫고 나서 돌리면 가로 크기로 그려져 있던 앱 화면이 잠깐 망가져 보였다.
+   */
+  const exitCafe = useCallback(
+    async (action) => {
+      if (leavingRef.current) return;
+      leavingRef.current = true;
+      setLeaving(true);
+      try {
+        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+      } catch {
+        // 회전 못 해도 닫기는 한다
+      }
+      await waitForPortrait();
+      // 뒤에 깔린 화면이 세로 크기로 다시 그려질 시간
+      await new Promise((r) => setTimeout(r, 160));
+      allowRemoveRef.current = true;
+      if (action) navigation.dispatch(action);
+      else if (navigation?.canGoBack?.()) navigation.goBack();
+      else shell?.navigation?.goBack?.();
+    },
+    [navigation, shell],
+  );
+
+  // 뒤로가기 버튼·안드로이드 뒤로가기·제스처 모두 exitCafe를 거치게 한다
+  useEffect(() => {
+    if (!navigation?.addListener) return undefined;
+    return navigation.addListener('beforeRemove', (e) => {
+      if (allowRemoveRef.current) return;
+      e.preventDefault();
+      exitCafe(e.data?.action);
+    });
+  }, [navigation, exitCafe]);
+
   const goBack = () => {
     if (navigation?.canGoBack?.()) navigation.goBack();
-    else shell?.navigation?.goBack?.();
+    else exitCafe(null);
   };
 
   return (
     <View style={styles.root}>
-      <StatusBar hidden />
+      <StatusBar hidden={!leaving} />
       {snowmapUrl ? (
         <WebView
           ref={webRef}
@@ -365,10 +464,14 @@ export default function TimerAniLab({ navigation }) {
           mixedContentMode="compatibility"
           setSupportMultipleWindows={false}
           allowsBackForwardNavigationGestures={false}
-          startInLoadingState
           onMessage={onWebMessage}
-          renderLoading={() => <CafeLoadingCard />}
+          onLoadEnd={() => {
+            // 실패하면 bridge:ready가 오지 않는다. 로딩 카드가 오류 화면을 계속 덮지 않게 60초 뒤에는 내린다
+            clearTimeout(bootFallbackRef.current);
+            bootFallbackRef.current = setTimeout(() => setWebBooted(true), 60000);
+          }}
           onError={(event) => {
+            setWebBooted(true);
             setLoadError(event?.nativeEvent?.description || '맵을 열 수 없어요');
           }}
           onHttpError={(event) => {
@@ -378,11 +481,21 @@ export default function TimerAniLab({ navigation }) {
             }
           }}
         />
-      ) : orientationReady ? (
-        <CafeLoadingCard />
-      ) : (
-        <View style={styles.loading} />
-      )}
+      ) : null}
+
+      {/* 로딩 카드는 이 한 장만 쓴다 (화면 크기가 자리 잡은 뒤에 나타난다) */}
+      {!webBooted && !loadError ? (
+        <View style={styles.loadingCover} pointerEvents="none">
+          <CafeLoadingCard
+            visible={orientationReady && layoutStable}
+            progress={loadProgress.progress}
+            label={loadProgress.label}
+          />
+        </View>
+      ) : null}
+
+      {/* 나가는 동안 회전하는 화면을 가린다 */}
+      {leaving ? <View style={styles.leaveCover} pointerEvents="none" /> : null}
 
       {loadError ? (
         <View style={styles.errorBox} pointerEvents="box-none">
@@ -425,6 +538,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     // #1a2433 위에 rgba(20, 30, 44, 0.92) 오버레이를 얹은 색
     backgroundColor: '#151f2d',
+  },
+  loadingCover: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  leaveCover: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#151f2d',
+    zIndex: 30,
   },
   loadingCard: {
     width: 280,
