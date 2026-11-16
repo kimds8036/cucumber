@@ -3,6 +3,7 @@ import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import { CONFIG } from "../config.js";
 import { prepareCharacterMaterials } from "./materials.js";
+import { createBlobShadow } from "./blobShadow.js";
 
 const fbxLoader = new FBXLoader();
 
@@ -209,13 +210,15 @@ export async function loadCharacter(gender = "boy") {
   prepareCharacterMaterials(stayFbx);
   stayFbx.traverse((child) => {
     if (!child.isMesh) return;
-    child.castShadow = true;
+    // 그림자 맵은 고정이라 움직이는 캐릭터는 그림자를 만들지 않는다 (발밑 둥근 그림자로 대신)
+    child.castShadow = false;
     child.receiveShadow = true;
   });
 
   const pivot = new THREE.Group();
   pivot.name = "characterPivot";
   pivot.add(stayFbx);
+  pivot.add(createBlobShadow());
   pivot.position.set(CONFIG.SPAWN.x, 0, CONFIG.SPAWN.z);
 
   const mixer = new THREE.AnimationMixer(stayFbx);
@@ -268,6 +271,7 @@ export function cloneCharacter(base) {
   const pivot = new THREE.Group();
   pivot.name = "remoteCharacterPivot";
   pivot.add(root);
+  pivot.add(createBlobShadow());
   return {
     pivot,
     root,

@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { Water } from "three/addons/objects/Water.js";
 import { CONFIG } from "../config.js";
+import { isMobileDevice } from "../core/device.js";
 
 /**
  * 연못 물: Three.js Water(실시간 거울 반사 + 흐르는 물결 노멀)를 연못 모양 그대로 깐다.
@@ -158,9 +159,11 @@ export function createPondWater(mapRoot) {
   const normals = new THREE.TextureLoader().load(CONFIG.WATER_NORMAL_URL);
   normals.wrapS = normals.wrapT = THREE.RepeatWrapping;
 
+  const mobile = isMobileDevice();
+  const reflectSize = mobile ? CONFIG.MOBILE_WATER_REFLECTION_SIZE : CONFIG.WATER_REFLECTION_SIZE;
   const water = new Water(geom, {
-    textureWidth: CONFIG.WATER_REFLECTION_SIZE,
-    textureHeight: CONFIG.WATER_REFLECTION_SIZE,
+    textureWidth: reflectSize,
+    textureHeight: reflectSize,
     waterNormals: normals,
     sunDirection: new THREE.Vector3(...CONFIG.WATER_SUN_DIRECTION).normalize(),
     sunColor: 0xffffff,
@@ -176,6 +179,18 @@ export function createPondWater(mapRoot) {
   water.material.transparent = CONFIG.WATER_OPACITY < 1;
   water.renderOrder = 1;
   holder.add(water);
+
+  // 반사는 장면 전체를 한 번 더 그리는 일이라 가장 비싸다. 폰에서는 몇 프레임에 한 번만 다시 그리고
+  // 그 사이에는 지난 반사 이미지를 쓴다 (물결 움직임은 매 프레임 그대로).
+  const reflectEvery = mobile ? Math.max(1, CONFIG.MOBILE_WATER_REFLECT_EVERY) : 1;
+  if (reflectEvery > 1 && typeof water.onBeforeRender === "function") {
+    const renderReflection = water.onBeforeRender;
+    let frame = 0;
+    water.onBeforeRender = function throttledReflection(...args) {
+      frame = (frame + 1) % reflectEvery;
+      if (frame === 1 || reflectEvery === 1) renderReflection.apply(this, args);
+    };
+  }
 
   for (const mesh of ponds) mesh.visible = false;
 

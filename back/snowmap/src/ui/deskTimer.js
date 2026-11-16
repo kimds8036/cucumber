@@ -87,10 +87,10 @@ export function createDeskTimer(opts) {
   /** 서 있는 채로 타이머가 멈춘 뒤 '정지됨' 칩을 보여 줄 마감 시각 */
   let lingerUntil = 0;
   let autoStopping = false;
+  let leaveTimer = 0;
   /** 일어선 뒤 '정지됨' 칩이 남아 있는 시간(ms) */
   const STOP_LINGER_MS = 3000;
   let busy = false;
-  let raf = 0;
 
   const listeners = new Set();
 
@@ -146,37 +146,44 @@ export function createDeskTimer(opts) {
     paintClock();
   }
 
+  /** 글자가 바뀔 때만 DOM을 건드린다 (같은 글자를 다시 넣어도 레이아웃 계산이 일어난다) */
+  function setText(el, text) {
+    if (el && el.textContent !== text) el.textContent = text;
+  }
+
   function paintTrigger() {
     const subject = selectedSubject();
     const list = subjects();
     if (!subject) {
-      selectedName.textContent = list.length ? "과목 선택" : "과목 없음";
+      setText(selectedName, list.length ? "과목 선택" : "과목 없음");
       selectedSwatch.style.background = "#555";
       selectedSwatch.style.opacity = "0.45";
       trigger.disabled = !list.length || busy;
       return;
     }
-    selectedName.textContent = subject.name;
+    setText(selectedName, subject.name);
     selectedSwatch.style.background = subject.color || "#A6DA95";
     selectedSwatch.style.opacity = "1";
     trigger.disabled = busy;
   }
 
   function paintClock() {
-    clock.textContent = formatClock(displayElapsedMs());
+    setText(clock, formatClock(displayElapsedMs()));
     const running = isRunning();
-    toggleBtn.textContent = running ? "정지" : "시작";
+    setText(toggleBtn, running ? "정지" : "시작");
     toggleBtn.classList.toggle("pause", running);
     toggleBtn.disabled = busy;
     root.classList.toggle("running", running);
     if (tabLabel) {
-      tabLabel.textContent =
+      setText(
+        tabLabel,
         flashText ||
-        (!running && mode === "chip"
-          ? "정지됨"
-          : !localMode && snap.onBreak
-            ? "휴식 중"
-            : "타이머");
+          (!running && mode === "chip"
+            ? "정지됨"
+            : !localMode && snap.onBreak
+              ? "휴식 중"
+              : "타이머"),
+      );
     }
     root.classList.toggle("busy", busy);
     paintTrigger();
@@ -309,18 +316,22 @@ export function createDeskTimer(opts) {
   function setMode(next) {
     if (next === mode) return;
     mode = next;
-    root.classList.remove("chip", "panel", "leaving", "entering");
+    window.clearTimeout(leaveTimer);
     if (mode === "hidden") {
       setMenuOpen(false);
+      // 사라지는 동안에는 직전 모양(칩/패널) 클래스를 그대로 둔다.
+      // 먼저 지우면 페이드아웃 0.6초 동안 기본 모양(큰 패널)이 잠깐 보였다.
+      root.classList.remove("entering");
       root.classList.add("leaving");
-      window.setTimeout(() => {
+      leaveTimer = window.setTimeout(() => {
         if (mode === "hidden") {
           root.hidden = true;
-          root.classList.remove("leaving");
+          root.classList.remove("leaving", "chip", "panel");
         }
       }, 650);
       return;
     }
+    root.classList.remove("chip", "panel", "leaving", "entering");
     root.hidden = false;
     root.classList.add(mode === "chip" ? "chip" : "panel", "entering");
     requestAnimationFrame(() => root.classList.remove("entering"));
@@ -387,13 +398,14 @@ export function createDeskTimer(opts) {
     setMenuOpen(false);
   });
 
-  function tick(now) {
+  // 시계는 초 단위라 매 프레임 그릴 필요가 없다. 0.25초마다 확인한다 (발열 줄이기)
+  function tick() {
+    const now = performance.now();
     if (localMode && localRunning) {
       if (localLastTick) localElapsedMs += now - localLastTick;
       localLastTick = now;
     }
     if (mode !== "hidden") paintClock();
-    raf = requestAnimationFrame(tick);
   }
 
   // 네이티브 여부는 늦게 생길 수 있음 — 주기적으로 확인
@@ -403,7 +415,7 @@ export function createDeskTimer(opts) {
 
   paintClock();
   renderSubjects();
-  raf = requestAnimationFrame(tick);
+  const clockTimer = window.setInterval(tick, 250);
 
   return {
     applySnapshot,
@@ -419,8 +431,9 @@ export function createDeskTimer(opts) {
       return selectedId();
     },
     dispose() {
-      cancelAnimationFrame(raf);
+      window.clearInterval(clockTimer);
       window.clearTimeout(flashTimer);
+      window.clearTimeout(leaveTimer);
       window.clearInterval(nativeProbe);
       listeners.clear();
     },

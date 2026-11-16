@@ -26,6 +26,27 @@ export const CONFIG = {
     },
   },
 
+  // --- 발열·성능 (폰) ---
+  /** 움직이는 동안 최대 fps. 120Hz 폰에서도 이 이상 그리지 않는다 */
+  FPS_ACTIVE: 60,
+  /** 가만히 서 있거나 앉아 있을 때 최대 fps. 낮추면 발열↓, 너무 낮으면 물결·다른 사람 움직임이 끊겨 보임 */
+  FPS_IDLE: 30,
+  /** 마지막 조작 뒤 이 시간(초)이 지나면 FPS_IDLE로 내린다 */
+  FPS_IDLE_AFTER_SEC: 1.2,
+  /** 폰의 픽셀 배율 상한. 3배 화면도 1.5배로 그린다 (픽셀 수 약 1/4) */
+  MOBILE_DPR_MAX: 1.5,
+  /** 폰 그림자 맵 한 변 (PC는 QUALITY.high.shadowMapSize) */
+  MOBILE_SHADOW_MAP_SIZE: 1024,
+  /** 폰 물 반사 해상도 */
+  MOBILE_WATER_REFLECTION_SIZE: 256,
+  /** 물 반사를 몇 프레임에 한 번 다시 그릴지 (폰). 1이면 매 프레임 */
+  MOBILE_WATER_REFLECT_EVERY: 3,
+  /** 버튼·타이머 패널 같은 화면 요소를 다시 확인하는 간격(초) */
+  UI_REFRESH_SEC: 0.1,
+  /** 캐릭터 발밑 둥근 그림자 반지름(m)과 진하기. 캐릭터는 실제 그림자를 만들지 않는다(그림자 맵 고정) */
+  BLOB_SHADOW_RADIUS: 0.2,
+  BLOB_SHADOW_OPACITY: 0.32,
+
   // --- 루프 ---
   /** 고정 물리/이동 스텝(초). 작을수록 충돌이 촘촘하지만 CPU↑ */
   FIXED_DT: 1 / 60,

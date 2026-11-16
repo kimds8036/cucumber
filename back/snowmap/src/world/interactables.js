@@ -395,8 +395,11 @@ export function createInteractables(mapRoot, ctx) {
 
   function updateDoorAnimations(dt) {
     for (const door of doors) {
+      if (Math.abs(door.angle - door.targetAngle) < 1e-4) continue;
       door.angle = THREE.MathUtils.damp(door.angle, door.targetAngle, CONFIG.DOOR_ANIM_SPEED, dt);
       for (const hinge of door.hinges) hinge.rotation.y = door.angle;
+      // 그림자 맵은 고정해 두므로 문이 움직이는 동안만 다시 그린다
+      ctx.onShadowsDirty?.();
     }
   }
 

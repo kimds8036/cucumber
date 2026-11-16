@@ -6,6 +6,7 @@ import { CONFIG } from "./config.js";
 import { createRenderer } from "./core/renderer.js";
 import { applyQuality, loadSavedQuality } from "./core/quality.js";
 import { createLoop } from "./core/loop.js";
+import { isMobileDevice } from "./core/device.js";
 import { createInput, isTyping } from "./core/input.js";
 import { loadMap } from "./world/map.js";
 import { buildCollisionWorld } from "./world/collision.js";
@@ -123,6 +124,17 @@ async function boot() {
     teleport: true,
   };
 
+  /** 마지막으로 무언가 움직인 시각. 한동안 가만히 있으면 fps를 낮춘다 (발열 줄이기) */
+  let lastActiveAt = performance.now();
+  function markActive() {
+    lastActiveAt = performance.now();
+  }
+  function targetFps() {
+    return performance.now() - lastActiveAt < CONFIG.FPS_IDLE_AFTER_SEC * 1000
+      ? CONFIG.FPS_ACTIVE
+      : CONFIG.FPS_IDLE;
+  }
+
   const me = await getIdentity();
   /** "server": Railway 서버(앱에서 로그인 토큰을 받은 경우) / "mock": 브라우저 개발용 */
   const netMode = pickNetMode();
@@ -176,6 +188,11 @@ async function boot() {
       renderPose.teleport = true;
     },
     onReleasePose: (intent) => anim?.releaseToLocomotion(intent),
+    // 그림자 맵은 고정이라, 문처럼 맵 물체가 움직일 때만 다시 그린다
+    onShadowsDirty: () => {
+      renderer.shadowMap.needsUpdate = true;
+      markActive();
+    },
   });
   const seatDebug = createSeatDebug(
     scene,
@@ -618,7 +635,9 @@ async function boot() {
   let stepsThisFrame = 0;
   let fixedMs = 0;
 
+  let uiRefreshAcc = 0;
   const loop = createLoop({
+    getMaxFps: targetFps,
     fixedUpdate(dt) {
       if (!character || !anim || !controller) return;
       const t0 = performance.now();
@@ -628,6 +647,15 @@ async function boot() {
 
       const raw = isUiOpen() ? null : input.read();
       interact.setMoveIntent(raw);
+      // 조작 중이거나 앉기·일어서기 동작 중이면 부드럽게(높은 fps) 그린다
+      if (
+        (raw && (Math.abs(raw.x) > 0.05 || Math.abs(raw.y) > 0.05)) ||
+        anim.state === "walk" ||
+        anim.state === "run" ||
+        (interact.phase && interact.phase !== "held")
+      ) {
+        markActive();
+      }
       if (
         interact.isHeld &&
         raw &&
@@ -689,8 +717,13 @@ async function boot() {
         renderer.render(scene, camera);
         nameTags.render();
       }
-      pad.refresh();
-      deskTimer.refresh();
+      // 버튼·타이머 패널은 0.1초마다만 확인한다 (매 프레임 DOM을 건드리면 발열·버벅임)
+      uiRefreshAcc += frameDt;
+      if (uiRefreshAcc >= CONFIG.UI_REFRESH_SEC) {
+        uiRefreshAcc = 0;
+        pad.refresh();
+        deskTimer.refresh();
+      }
       seatDebug.refresh();
       colliderDebug.refresh();
       perfHud.frame(frameDt, {
@@ -705,7 +738,23 @@ async function boot() {
     },
   });
 
+  // 맵·캐릭터가 다 올라온 뒤 그림자를 한 번 그린다 (그 뒤로는 고정)
+  renderer.shadowMap.needsUpdate = true;
   loop.start();
+
+  // 화면이 안 보이면(앱 백그라운드·다른 화면) 그리기를 멈춘다
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) loop.stop();
+    else {
+      markActive();
+      loop.start();
+    }
+  });
+
+  // 성능 확인용 (?debug=perf)
+  if (/[?&]debug=perf\b/.test(window.location.search)) {
+    window.__cafePerf = { renderer, scene, targetFps, mobile: isMobileDevice() };
+  }
   console.info("[study-cafe] ready", {
     seats: interact.seats.length,
     doors: interact.doors.length,
