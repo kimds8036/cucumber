@@ -23,8 +23,16 @@
       z-index: 10;
     }
     #status[hidden] { display: none !important; }
-    /* 앱 안에서는 로딩을 앱이 그린다(위치가 튀지 않게 한 장만). 오류 화면만 웹이 보여 준다 */
-    .in-app-loader #status:not(.error) { visibility: hidden; }
+    /*
+      로딩 카드는 웹이 그린다(앱이 그리면 회전 중 화면 틀이 흔들려 카드가 위·아래로 밀렸다).
+      회전·상태바 숨김으로 화면 크기가 바뀌는 동안은 카드를 감추고, 크기가 0.25초 동안 그대로면
+      (앱 안에서는 가로가 된 뒤) 정가운데에 부드럽게 보여 준다. 오류 화면은 바로 보인다.
+    */
+    #status .status-card { opacity: 0; transition: opacity 0.18s ease; }
+    html.status-stable #status .status-card,
+    #status.error .status-card { opacity: 1; }
+    /* 앱 바탕(#151f2d)과 같은 색으로 경계선이 안 보이게 */
+    .in-app-loader #status { background: #151f2d; }
     /* 불러오는 동안에는 조이스틱·버튼·채팅·방 정보·이름표를 숨긴다 (로딩이 끝나면 main.js가 booting을 뺀다) */
     body.booting #stick,
     body.booting #pad-right,
@@ -1085,6 +1093,22 @@
         document.documentElement.classList.add("in-app-loader");
       }
     } catch (e) {}
+    // 화면 크기가 자리 잡았는지 (로딩 카드를 언제 보여 줄지). 앱 안에서는 가로가 될 때까지 기다린다
+    (function () {
+      var root = document.documentElement;
+      var timer = 0;
+      function check() {
+        clearTimeout(timer);
+        root.classList.remove("status-stable");
+        var inApp = root.classList.contains("in-app-loader");
+        if (inApp && window.innerWidth <= window.innerHeight) return;
+        timer = setTimeout(function () {
+          root.classList.add("status-stable");
+        }, 250);
+      }
+      window.addEventListener("resize", check);
+      check();
+    })();
   </script>
   <script type="importmap">
     {
