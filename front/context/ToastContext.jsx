@@ -44,6 +44,11 @@ function isDuplicateToast(next, text) {
   return false;
 }
 
+/** 스터디 카페처럼 토스트를 대신 받아 가는 화면이 열려 있는지 */
+export function isToastIntercepted() {
+  return toastInterceptor != null;
+}
+
 /** @param {null | ((toast: object) => boolean)} fn */
 export function setToastInterceptor(fn) {
   toastInterceptor = typeof fn === 'function' ? fn : null;

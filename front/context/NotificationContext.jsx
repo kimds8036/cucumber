@@ -16,7 +16,16 @@ import React, {
 import { AppState, DeviceEventEmitter, Platform } from 'react-native';
 import { api } from '../utils/api';
 import { useSocket } from './SocketContext';
-import { useToast } from './ToastContext';
+import { isToastIntercepted, useToast } from './ToastContext';
+
+/**
+ * 타이머 화면(TimerContent)이 쿡 찌르기·공부 완료 요약 토스트를 직접 띄우는 상황인지.
+ * 스터디 카페는 타이머 화면 위에 열려 타이머 화면이 '비활성'이 되지만, TimerContent는 그대로 살아 있어
+ * 자기 토스트를 띄운다. 이때 여기서도 띄우면 같은 알림이 두 번(카페 알림벨에 두 개) 들어갔다.
+ */
+function timerHandlesOwnToasts(isTimerScreenActive) {
+  return Boolean(isTimerScreenActive) || isToastIntercepted();
+}
 import { useAuth } from './AuthContext';
 import {
   isStudySummaryNotification,
@@ -298,7 +307,7 @@ export function NotificationProvider({ children }) {
       }
       if (isStudySummary) {
         // 타이머 화면이 활성화된 경우에는 타이머 전용 토스트를 우선 사용한다.
-        if (isTimerScreenActive) {
+        if (timerHandlesOwnToasts(isTimerScreenActive)) {
           console.log(
             '[NotificationContext] study summary toast skipped (timer screen active)',
             {
@@ -322,7 +331,7 @@ export function NotificationProvider({ children }) {
       if (!isForeground) return;
 
       // 쿡 찌르기: 타이머 화면에선 TimerContent 짧은 토스트만 사용
-      if (isPoke && isTimerScreenActive) {
+      if (isPoke && timerHandlesOwnToasts(isTimerScreenActive)) {
         return;
       }
 
@@ -411,7 +420,7 @@ export function NotificationProvider({ children }) {
       refreshHasUnread();
       if (!isForeground) return;
       // 타이머 화면: TimerContent 짧은 토스트만 (중복 방지)
-      if (isTimerScreenActive) return;
+      if (timerHandlesOwnToasts(isTimerScreenActive)) return;
       showToast({
         message: senderName
           ? `${senderName} 님이 쿡 찔렀어요! 타이머에서 함께 공부를 시작해보세요`

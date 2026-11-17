@@ -62,12 +62,15 @@ function postToApp(type, payload = {}) {
   }
 }
 
+/** 로딩 문구는 단계와 상관없이 하나로 둔다. 단계 이름(label)은 진행률과 함께 앱 로그용으로만 보낸다 */
+const LOADING_TEXT = "스터디 카페 입장 중";
+
 function setLoading(progress, label = "불러오는 중") {
   postToApp("cafe:loading", { progress, label });
   if (!statusEl) return;
   statusEl.hidden = false;
   statusEl.classList.remove("error");
-  if (statusLabel) statusLabel.textContent = label;
+  if (statusLabel) statusLabel.textContent = LOADING_TEXT;
   if (statusFill) {
     const pct = Math.max(0, Math.min(100, Number(progress) || 0));
     statusFill.style.width = `${pct}%`;
