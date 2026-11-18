@@ -4,6 +4,7 @@
  * GET    /api/admin/study-cafe                         방별 인원(누구) · 방명록 현황
  * GET    /api/admin/study-cafe/boards/:roomId/:boardId 방명록 미리보기용 획 (숨긴 획 포함)
  * DELETE /api/admin/study-cafe/boards                  방명록 비우기 { roomId?, boardId? } (없으면 전체)
+ * DELETE /api/admin/study-cafe/strokes                 관리자 판단으로 획 지우기 { roomId, boardId, strokeIds? , authorId? }
  */
 import express from 'express';
 import { body, param } from 'express-validator';
@@ -85,6 +86,41 @@ router.delete(
     } catch (error) {
       console.error('[admin/study-cafe] 방명록 비우기 오류', error);
       return res.status(500).json({ success: false, message: '방명록을 비우지 못했습니다.' });
+    }
+  },
+);
+
+router.delete(
+  '/strokes',
+  ...editGuard,
+  validate([
+    body('roomId').matches(ROOM_RE),
+    body('boardId').custom((v) => isValidBoardId(v)),
+    body('strokeIds').optional({ nullable: true }).isArray({ min: 1, max: 1000 }),
+    body('authorId').optional({ nullable: true }).isInt({ min: 1 }),
+  ]),
+  async (req, res) => {
+    const { roomId, boardId } = req.body;
+    const strokeIds = Array.isArray(req.body.strokeIds) ? req.body.strokeIds : null;
+    const authorId = req.body.authorId != null ? Number(req.body.authorId) : null;
+    if (!strokeIds && authorId == null) {
+      return res.status(400).json({ success: false, message: '지울 획이나 작성자를 골라 주세요.' });
+    }
+    try {
+      const { removed, groups } = await clearCafeStrokes({ roomId, boardId, strokeIds, userId: authorId });
+      for (const g of groups) emitCafeStrokesRemoved(g.roomId, g.boardId, g.strokeIds);
+      await writeAuditLog({
+        adminUserId: req.user.userId,
+        actionType: 'study_cafe_stroke_delete',
+        targetType: 'study_cafe_stroke',
+        targetId: authorId || Number(strokeIds?.[0]) || 0,
+        note: `${roomId} / ${boardId} — ${authorId ? `작성자 #${authorId} ` : ''}${removed}획 지움`,
+        extra: { roomId, boardId, authorId, strokeIds, removed },
+      }).catch((err) => console.warn('[admin/study-cafe] 감사 로그 실패', err?.message || err));
+      return res.json({ success: true, data: { removed } });
+    } catch (error) {
+      console.error('[admin/study-cafe] 획 지우기 오류', error);
+      return res.status(500).json({ success: false, message: '획을 지우지 못했습니다.' });
     }
   },
 );
