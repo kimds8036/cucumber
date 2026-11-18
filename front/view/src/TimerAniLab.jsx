@@ -164,6 +164,8 @@ export default function TimerAniLab({ navigation }) {
   const [authScript, setAuthScript] = useState(null);
   /** 나가는 중 (세로로 돌린 뒤 닫는다) */
   const [leaving, setLeaving] = useState(false);
+  // 방명록을 보는 동안은 왼쪽 위 뒤로가기 버튼을 숨긴다 (웹이 'cafe:board'로 알려 줌)
+  const [boardOpen, setBoardOpen] = useState(false);
   const leavingRef = useRef(false);
   const allowRemoveRef = useRef(false);
 
@@ -349,6 +351,7 @@ export default function TimerAniLab({ navigation }) {
 
       if (msg.type === 'bridge:ready') {
         readyRef.current = true;
+        setBoardOpen(false);
         syncAll();
         // 로딩 중에 온 알림을 이제 보낸다
         const queued = pendingNoticesRef.current.splice(0);
@@ -358,6 +361,11 @@ export default function TimerAniLab({ navigation }) {
 
       // 로딩은 웹이 그린다. 진행률·오류 알림은 받기만 한다
       if (msg.type === 'cafe:loading' || msg.type === 'cafe:error') return;
+
+      if (msg.type === 'cafe:board') {
+        setBoardOpen(Boolean(msg.payload?.open));
+        return;
+      }
 
       // 카페 서버 토큰이 만료됐을 때 새 토큰을 준다
       if (msg.type === 'auth:refresh') {
@@ -477,20 +485,22 @@ export default function TimerAniLab({ navigation }) {
         </View>
       ) : null}
 
-      <TouchableOpacity
-        style={[
-          styles.backBtn,
-          {
-            top: Math.max(10, insets.top || 10),
-            left: Math.max(10, insets.left || 10),
-          },
-        ]}
-        onPress={goBack}
-        activeOpacity={0.85}
-        accessibilityLabel="뒤로가기"
-      >
-        <Ionicons name="chevron-back" size={24} color={colors.white} />
-      </TouchableOpacity>
+      {boardOpen ? null : (
+        <TouchableOpacity
+          style={[
+            styles.backBtn,
+            {
+              top: Math.max(10, insets.top || 10),
+              left: Math.max(10, insets.left || 10),
+            },
+          ]}
+          onPress={goBack}
+          activeOpacity={0.85}
+          accessibilityLabel="뒤로가기"
+        >
+          <Ionicons name="chevron-back" size={24} color={colors.white} />
+        </TouchableOpacity>
+      )}
     </View>
   );
 }

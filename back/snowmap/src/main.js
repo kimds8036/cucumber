@@ -177,7 +177,11 @@ async function boot() {
   const net = createNetAdapter(cafeRoom?.id || null, netMode);
   console.info("[study-cafe] net", netMode);
   const boardUI = createBoardUI(net, me, {
-    onOpenChange: () => input.keys.clear(),
+    onOpenChange: (open) => {
+      input.keys.clear();
+      // 방명록을 보는 동안 앱의 뒤로가기 버튼(왼쪽 위)을 숨기게 알린다
+      postToApp("cafe:board", { open: Boolean(open) });
+    },
   });
   const isUiOpen = () =>
     boardUI.isOpen ||
