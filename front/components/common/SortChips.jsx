@@ -108,6 +108,10 @@ function createSortChipStyles(width, normalize) {
       fontFamily: fonts.bold,
       color: colors.text,
     },
+    menuLabelInactive: {
+      fontFamily: fonts.regular,
+      color: colors.textLight4,
+    },
   });
 }
 
@@ -130,7 +134,8 @@ export default function SortChips({
     [width, normalize],
   );
   const triggerRef = useRef(null);
-  const [menuPos, setMenuPos] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
   const showSort = sortValue != null && typeof onSortChange === 'function';
   const sortLabel =
     SORT_OPTIONS.find((option) => option.value === sortValue)?.label ??
@@ -142,10 +147,11 @@ export default function SortChips({
         top: y + h + normalize(4),
         right: Math.max(0, width - (x + w)),
       });
+      setMenuOpen(true);
     });
   };
 
-  const closeMenu = () => setMenuPos(null);
+  const closeMenu = () => setMenuOpen(false);
 
   const selectSort = (next) => {
     onSortChange(next);
@@ -217,7 +223,7 @@ export default function SortChips({
         </View>
       ) : null}
       <Modal
-        visible={menuPos != null}
+        visible={menuOpen}
         transparent
         animationType="fade"
         onRequestClose={closeMenu}
@@ -228,7 +234,7 @@ export default function SortChips({
               <View
                 style={[
                   styles.menu,
-                  { top: menuPos?.top ?? 0, right: menuPos?.right ?? 0 },
+                  { top: menuPos.top, right: menuPos.right },
                 ]}
               >
                 {SORT_OPTIONS.map((option) => {
@@ -239,7 +245,14 @@ export default function SortChips({
                       style={[styles.menuItem, active && styles.menuItemActive]}
                       onPress={() => selectSort(option.value)}
                     >
-                      <Text style={styles.menuLabel}>{option.label}</Text>
+                      <Text
+                        style={[
+                          styles.menuLabel,
+                          !active && styles.menuLabelInactive,
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
                     </TouchableOpacity>
                   );
                 })}
