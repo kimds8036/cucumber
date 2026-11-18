@@ -1073,42 +1073,39 @@ async function fetchDashboardStats() {
               </span>`;
           })
           .join('');
-        const boards = (room.boards || [])
-          .map((b, i) => `
-            <tr>
-              <td>방명록 ${i + 1} <span class="txt-muted" style="font-size:12px">${esc(b.boardId)}</span></td>
-              <td>${Number(b.strokeCount || 0).toLocaleString()}${b.hiddenCount ? ` <span class="txt-muted">(숨김 ${b.hiddenCount})</span>` : ''}</td>
-              <td>${Number(b.authorCount || 0)}명</td>
-              <td>${b.lastAt ? esc(fmtDate(b.lastAt)) : '-'}</td>
-              <td style="white-space:nowrap">
-                <button type="button" class="btn btn-sm" data-cafe-view="${esc(room.id)}|${esc(b.boardId)}|${i + 1}">보기</button>
-                <button type="button" class="btn btn-sm btn-danger" data-cafe-clear="${esc(room.id)}|${esc(b.boardId)}">비우기</button>
-              </td>
-            </tr>`)
-          .join('');
+        // 방마다 방명록은 보통 하나. 여러 개면 줄마다 보기·비우기를 둔다
+        const boards = room.boards || [];
+        const boardLine = (bd, label) => `
+          <div class="study-cafe-board">
+            <span>📝 ${esc(label)}</span>
+            <span><strong>${Number(bd.strokeCount || 0).toLocaleString()}</strong>획${bd.hiddenCount ? ` <span class="txt-muted">(신고로 숨김 ${bd.hiddenCount})</span>` : ''}</span>
+            <span class="txt-muted">그린 사람 ${Number(bd.authorCount || 0)}명</span>
+            <span class="txt-muted">마지막 ${bd.lastAt ? esc(fmtDate(bd.lastAt)) : '-'}</span>
+            <span style="flex:1"></span>
+            <button type="button" class="btn btn-sm" data-cafe-view="${esc(room.id)}|${esc(bd.boardId)}|${esc(label)}">보기</button>
+            <button type="button" class="btn btn-sm btn-danger" data-cafe-clear="${esc(room.id)}|${esc(bd.boardId)}">비우기</button>
+          </div>`;
+        const boardHtml = boards.length
+          ? boards.map((bd, i) => boardLine(bd, boards.length > 1 ? `방명록 ${i + 1}` : '방명록')).join('')
+          : '<div class="study-cafe-board txt-muted">📝 방명록이 비어 있어요</div>';
         return `
           <section class="study-cafe-room${room.count ? ' is-active' : ''}">
             <div class="study-cafe-room-head">
               <strong>${esc(room.name || room.id)}</strong>
               <span class="${room.count ? '' : 'txt-muted'}">${Number(room.count || 0)} / ${Number(room.capacity || 0)}명</span>
-              <span style="flex:1"></span>
-              <span class="txt-muted">방명록 ${Number(room.strokeCount || 0).toLocaleString()}획</span>
-              ${room.strokeCount ? `<button type="button" class="btn btn-sm btn-danger" data-cafe-clear="${esc(room.id)}|">이 방 방명록 모두 비우기</button>` : ''}
             </div>
             <div class="study-cafe-people">${people || '<span class="txt-muted">지금 아무도 없어요</span>'}</div>
-            ${boards ? `
-              <div class="table-wrap" style="margin-top:8px">
-                <table>
-                  <thead><tr><th>방명록</th><th style="width:110px">획</th><th style="width:80px">그린 사람</th><th style="width:150px">마지막</th><th style="width:130px"></th></tr></thead>
-                  <tbody>${boards}</tbody>
-                </table>
-              </div>` : '<div class="txt-muted" style="font-size:13px;margin-top:6px">방명록이 비어 있어요</div>'}
+            ${boardHtml}
           </section>`;
       })
       .join('');
   }
 
-  function drawCafePreview(strokes) {
+  /** 미리보기 상태: 획 목록과 고른 작성자·획 */
+  let cafeStrokes = [];
+  let cafePick = { authorId: null, strokeId: null };
+
+  function drawCafePreview() {
     const canvas = document.getElementById('study-cafe-preview-canvas');
     const g = canvas?.getContext('2d');
     if (!g) return;
@@ -1120,11 +1117,25 @@ async function fetchDashboardStats() {
     g.lineWidth = 1;
     for (let x = 40; x < W; x += 40) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); }
     for (let y = 40; y < H; y += 40) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
-    for (const s of strokes) {
+    const picked = cafePick.authorId;
+    const box = (pts, pad) => {
+      let x0 = Infinity; let y0 = Infinity; let x1 = -Infinity; let y1 = -Infinity;
+      for (let i = 0; i < pts.length; i += 2) {
+        x0 = Math.min(x0, pts[i]); x1 = Math.max(x1, pts[i]);
+        y0 = Math.min(y0, pts[i + 1]); y1 = Math.max(y1, pts[i + 1]);
+      }
+      return [x0 - pad, y0 - pad, x1 - x0 + pad * 2, y1 - y0 + pad * 2];
+    };
+    // 고른 사람 획은 맨 위에 그린다
+    const ordered = picked
+      ? [...cafeStrokes.filter((s) => s.authorId !== picked), ...cafeStrokes.filter((s) => s.authorId === picked)]
+      : cafeStrokes;
+    for (const s of ordered) {
       const pts = s.points || [];
       if (pts.length < 4) continue;
+      const mine = !picked || s.authorId === picked;
       g.save();
-      g.globalAlpha = s.hidden ? 0.35 : 1;
+      g.globalAlpha = (mine ? 1 : 0.12) * (s.hidden ? 0.4 : 1);
       g.strokeStyle = s.color;
       g.lineWidth = s.width;
       g.lineCap = 'round';
@@ -1133,44 +1144,132 @@ async function fetchDashboardStats() {
       g.moveTo(pts[0], pts[1]);
       for (let i = 2; i < pts.length; i += 2) g.lineTo(pts[i], pts[i + 1]);
       g.stroke();
-      if (s.hidden) {
-        g.globalAlpha = 1;
+      g.globalAlpha = 1;
+      if (s.hidden && mine) {
         g.setLineDash([8, 6]);
         g.strokeStyle = '#e5484d';
         g.lineWidth = 2;
-        let x0 = Infinity; let y0 = Infinity; let x1 = -Infinity; let y1 = -Infinity;
-        for (let i = 0; i < pts.length; i += 2) {
-          x0 = Math.min(x0, pts[i]); x1 = Math.max(x1, pts[i]);
-          y0 = Math.min(y0, pts[i + 1]); y1 = Math.max(y1, pts[i + 1]);
-        }
-        const pad = s.width / 2 + 4;
-        g.strokeRect(x0 - pad, y0 - pad, x1 - x0 + pad * 2, y1 - y0 + pad * 2);
+        g.strokeRect(...box(pts, s.width / 2 + 4));
+      }
+      if (s.id === cafePick.strokeId) {
+        g.setLineDash([]);
+        g.strokeStyle = '#4c8dff';
+        g.lineWidth = 3;
+        g.strokeRect(...box(pts, s.width / 2 + 8));
       }
       g.restore();
     }
+  }
+
+  /** 점(x,y)에서 획까지 거리 */
+  function strokeDistance(s, x, y) {
+    const pts = s.points || [];
+    let best = Infinity;
+    for (let i = 0; i + 3 < pts.length; i += 2) {
+      const ax = pts[i]; const ay = pts[i + 1]; const bx = pts[i + 2]; const by = pts[i + 3];
+      const dx = bx - ax; const dy = by - ay;
+      const len2 = dx * dx + dy * dy || 1;
+      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / len2));
+      best = Math.min(best, Math.hypot(ax + t * dx - x, ay + t * dy - y));
+    }
+    return best - s.width / 2;
+  }
+
+  function renderCafeAuthors() {
+    const byAuthor = new Map();
+    for (const s of cafeStrokes) {
+      const a = byAuthor.get(s.authorId) || { id: s.authorId, name: s.authorName, count: 0, hidden: 0, last: null };
+      a.count += 1;
+      if (s.hidden) a.hidden += 1;
+      if (!a.last || s.createdAt > a.last) a.last = s.createdAt;
+      byAuthor.set(s.authorId, a);
+    }
+    const authors = [...byAuthor.values()].sort((a, b) => b.count - a.count);
+    const list = document.getElementById('study-cafe-authors');
+    if (list) {
+      list.innerHTML = authors.length
+        ? authors.map((a) => `
+            <button type="button" class="cafe-author${a.id === cafePick.authorId ? ' is-picked' : ''}" data-cafe-author="${esc(a.id)}">
+              @${esc(a.name)} <span class="txt-muted">${a.count}획${a.hidden ? ` · 숨김 ${a.hidden}` : ''}</span>
+            </button>`).join('')
+        : '<span class="txt-muted">그린 사람이 없어요</span>';
+    }
+    document.getElementById('study-cafe-preview-meta').textContent =
+      `${cafeStrokes.length}획 · ${authors.length}명`;
+
+    const bar = document.getElementById('study-cafe-pick');
+    if (!bar) return;
+    const a = cafePick.authorId ? byAuthor.get(cafePick.authorId) : null;
+    if (!a) {
+      bar.innerHTML = '<span class="txt-muted">획을 누르거나 위에서 이름을 고르면 그 사람이 그린 것만 진하게 보여요.</span>';
+      return;
+    }
+    const stroke = cafePick.strokeId ? cafeStrokes.find((s) => s.id === cafePick.strokeId) : null;
+    bar.innerHTML = `
+      <span>✏️ <strong>@${esc(a.name)}</strong> <span class="txt-muted">#${esc(a.id)} · 이 방명록에 ${a.count}획${a.hidden ? ` (신고로 숨김 ${a.hidden})` : ''} · 마지막 ${a.last ? esc(fmtDate(a.last)) : '-'}</span></span>
+      ${stroke ? `<span class="txt-muted">고른 획: ${esc(fmtDate(stroke.createdAt))}${stroke.hidden ? ' · 숨김' : ''}</span>` : ''}
+      <span style="flex:1"></span>
+      ${stroke ? '<button type="button" class="btn btn-sm btn-danger" data-cafe-del="stroke">이 획 지우기</button>' : ''}
+      <button type="button" class="btn btn-sm btn-danger" data-cafe-del="author">@${esc(a.name)} 획 모두 지우기 (${a.count})</button>
+      <button type="button" class="btn btn-sm" data-cafe-del="none">선택 해제</button>`;
+  }
+
+  function setCafePick(next) {
+    cafePick = { authorId: null, strokeId: null, ...next };
+    drawCafePreview();
+    renderCafeAuthors();
   }
 
   async function openCafePreview(roomId, boardId, label) {
     const box = document.getElementById('study-cafe-preview');
     if (!box) return;
     cafePreview = { roomId, boardId };
+    cafeStrokes = [];
+    cafePick = { authorId: null, strokeId: null };
     const room = (cafeData?.rooms || []).find((r) => r.id === roomId);
     document.getElementById('study-cafe-preview-title').textContent =
-      `${room?.name || roomId} · 방명록 ${label || ''}`;
+      `${room?.name || roomId} · ${label || '방명록'}`;
     document.getElementById('study-cafe-preview-meta').textContent = '불러오는 중…';
     box.hidden = false;
-    drawCafePreview([]);
+    drawCafePreview();
+    await reloadCafePreview();
+  }
+
+  async function reloadCafePreview() {
+    if (!cafePreview) return;
+    const { roomId, boardId } = cafePreview;
     const { data } = await api(
       `/study-cafe/boards/${encodeURIComponent(roomId)}/${encodeURIComponent(boardId)}`,
     );
     if (cafePreview?.roomId !== roomId || cafePreview?.boardId !== boardId) return;
-    const strokes = data?.strokes || [];
-    const authors = new Map();
-    for (const s of strokes) authors.set(s.authorId, s.authorName);
-    const names = [...authors.values()].slice(0, 8).map((n) => `@${n}`).join(' · ');
-    document.getElementById('study-cafe-preview-meta').textContent =
-      `${strokes.length}획 · ${authors.size}명${names ? ` (${names}${authors.size > 8 ? ' …' : ''})` : ''}`;
-    drawCafePreview(strokes);
+    cafeStrokes = data?.strokes || [];
+    if (cafePick.authorId && !cafeStrokes.some((s) => s.authorId === cafePick.authorId)) {
+      cafePick = { authorId: null, strokeId: null };
+    }
+    if (cafePick.strokeId && !cafeStrokes.some((s) => s.id === cafePick.strokeId)) cafePick.strokeId = null;
+    drawCafePreview();
+    renderCafeAuthors();
+  }
+
+  async function deleteCafeStrokes(kind) {
+    if (!cafePreview || !cafePick.authorId) return;
+    const name = cafeStrokes.find((s) => s.authorId === cafePick.authorId)?.authorName || cafePick.authorId;
+    const body = { roomId: cafePreview.roomId, boardId: cafePreview.boardId };
+    let question;
+    if (kind === 'stroke' && cafePick.strokeId) {
+      body.strokeIds = [cafePick.strokeId];
+      question = `@${name}이(가) 그린 이 획을 지울까요?`;
+    } else {
+      body.authorId = cafePick.authorId;
+      const n = cafeStrokes.filter((s) => s.authorId === cafePick.authorId).length;
+      question = `@${name}이(가) 이 방명록에 그린 ${n}획을 모두 지울까요?`;
+    }
+    if (!window.confirm(`${question}\n보고 있는 사람 화면에서도 바로 지워지고, 되돌릴 수 없어요.`)) return;
+    const { data } = await api('/study-cafe/strokes', { method: 'DELETE', body: JSON.stringify(body) });
+    if (kind === 'stroke') cafePick.strokeId = null;
+    await reloadCafePreview();
+    loadStudyRoomOps().catch(() => {});
+    if (!Number(data?.removed)) alert('지울 획이 없었어요.');
   }
 
   function closeCafePreview() {
@@ -1217,6 +1316,33 @@ async function fetchDashboardStats() {
   document.getElementById('study-cafe-preview-close')?.addEventListener('click', closeCafePreview);
   document.getElementById('study-cafe-preview')?.addEventListener('click', (e) => {
     if (e.target.id === 'study-cafe-preview') closeCafePreview();
+  });
+  document.getElementById('study-cafe-preview-canvas')?.addEventListener('click', (e) => {
+    const canvas = e.currentTarget;
+    const rect = canvas.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * canvas.width;
+    const y = ((e.clientY - rect.top) / rect.height) * canvas.height;
+    // 위에 그려진(나중) 획부터. 고른 사람이 있으면 그 사람 획을 먼저 본다
+    const order = [...cafeStrokes].reverse();
+    if (cafePick.authorId) order.sort((a, b) => (b.authorId === cafePick.authorId) - (a.authorId === cafePick.authorId));
+    let hit = null;
+    for (const s of order) {
+      if (strokeDistance(s, x, y) <= 10) { hit = s; break; }
+    }
+    setCafePick(hit ? { authorId: hit.authorId, strokeId: hit.id } : {});
+  });
+  document.getElementById('study-cafe-authors')?.addEventListener('click', (e) => {
+    const btn = e.target.closest?.('[data-cafe-author]');
+    if (!btn) return;
+    const id = btn.dataset.cafeAuthor;
+    setCafePick(cafePick.authorId === id ? {} : { authorId: id });
+  });
+  document.getElementById('study-cafe-pick')?.addEventListener('click', (e) => {
+    const btn = e.target.closest?.('[data-cafe-del]');
+    if (!btn) return;
+    const kind = btn.dataset.cafeDel;
+    if (kind === 'none') return setCafePick({});
+    deleteCafeStrokes(kind).catch((error) => alert(error?.message || '지우지 못했습니다.'));
   });
   document.getElementById('study-cafe-preview-clear')?.addEventListener('click', () => {
     if (!cafePreview) return;

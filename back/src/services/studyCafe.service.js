@@ -536,11 +536,22 @@ export async function listCafeStrokesForAdmin(roomId, boardId) {
 
 /**
  * 방명록 비우기 (관리자 수동·주간 자동). roomId·boardId가 없으면 그 범위 전체.
+ * strokeIds(획 몇 개)·userId(그 사람 획)로 더 좁힐 수 있다.
  * @returns {Promise<{ removed: number, groups: { roomId: string, boardId: string, strokeIds: string[] }[] }>}
  */
-export async function clearCafeStrokes({ roomId = null, boardId = null } = {}) {
+export async function clearCafeStrokes({ roomId = null, boardId = null, strokeIds = null, userId = null } = {}) {
   const where = ['is_deleted = 0'];
   const params = [];
+  if (Array.isArray(strokeIds)) {
+    const ids = strokeIds.map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, 1000);
+    if (!ids.length) return { removed: 0, groups: [] };
+    where.push(`id IN (${ids.map(() => '?').join(',')})`);
+    params.push(...ids);
+  }
+  if (userId != null) {
+    where.push('user_id = ?');
+    params.push(Number(userId));
+  }
   if (roomId) {
     where.push('room_id = ?');
     params.push(roomId);
