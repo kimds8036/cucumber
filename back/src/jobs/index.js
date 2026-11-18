@@ -16,6 +16,7 @@ import {
 } from './schoolSemester.infer.js';
 import { runCronManagerJob } from './cronManager.js';
 import { runDailyAdminPushReminder } from './dailyAdminPush.remind.js';
+import { runStudyCafeBoardResetJob } from './studyCafeBoard.reset.js';
 import { shutdownTimerBots } from '../services/timerBots.service.js';
 import { shouldRunCron } from '../config/serviceRole.js';
 
@@ -192,6 +193,22 @@ export function initJobs() {
     },
     { timezone: TZ },
   );
+
+  // 스터디 카페 방명록 주간 비우기 (기본 월요일 05:00). CRON_CAFE_BOARD_RESET=off 로 끈다
+  const cafeBoardResetSchedule = (process.env.CRON_CAFE_BOARD_RESET || '0 5 * * 1').trim();
+  if (!/^(off|false|0|no)$/i.test(cafeBoardResetSchedule) && cron.validate(cafeBoardResetSchedule)) {
+    cron.schedule(
+      cafeBoardResetSchedule,
+      async () => {
+        try {
+          await runStudyCafeBoardResetJob();
+        } catch (err) {
+          console.error('[BatchJob] study-cafe-board-reset 실패', err?.message || err);
+        }
+      },
+      { timezone: TZ },
+    );
+  }
 
   // 타이머 봇 1분 갱신 제거 — 자동 공부 표시 중단
 

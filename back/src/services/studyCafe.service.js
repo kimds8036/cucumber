@@ -184,6 +184,7 @@ export function addPlayerToRoom(room, profile, { socketId, gender }) {
     gender: gender === 'girl' ? 'girl' : 'boy',
     state: null,
     lastChatAt: 0,
+    joinedAt: Date.now(),
   };
   room.players.set(uid, player);
   userRoom.set(uid, room.id);
@@ -425,6 +426,159 @@ export async function countPendingStrokeReports(strokeId) {
     [strokeId],
   );
   return Number(rows[0]?.c ?? 0);
+}
+
+// ── 관리자 (스터디 카페 현황·방명록 정리) ─────────────
+
+/** 방명록을 자동으로 비우는 주기 안내 (jobs/index.js CRON_CAFE_BOARD_RESET 기본값과 같게) */
+export const CAFE_BOARD_RESET_DEFAULT_CRON = '0 5 * * 1';
+
+/**
+ * 방별 인원(누구)과 방별 방명록 현황.
+ * 방·인원은 이 서버 메모리 기준이라 API 서버가 여러 대면 이 서버에 붙은 사람만 보인다.
+ */
+export async function getCafeOpsOverview() {
+  const [rows] = await pool.query(
+    `SELECT room_id, board_id,
+            SUM(is_hidden = 0) AS visible_count,
+            SUM(is_hidden = 1) AS hidden_count,
+            COUNT(DISTINCT user_id) AS author_count,
+            MAX(created_at) AS last_at
+     FROM study_cafe_strokes
+     WHERE is_deleted = 0
+     GROUP BY room_id, board_id
+     ORDER BY room_id, board_id`,
+  );
+  const boardsByRoom = new Map();
+  for (const r of rows) {
+    const list = boardsByRoom.get(r.room_id) || [];
+    list.push({
+      boardId: r.board_id,
+      strokeCount: Number(r.visible_count || 0),
+      hiddenCount: Number(r.hidden_count || 0),
+      authorCount: Number(r.author_count || 0),
+      lastAt: r.last_at instanceof Date ? r.last_at.toISOString() : r.last_at || null,
+    });
+    boardsByRoom.set(r.room_id, list);
+  }
+
+  const now = Date.now();
+  const list = [...rooms.values()].map((room) => {
+    const players = [...room.players.values()]
+      .map((p) => ({
+        userId: p.userId,
+        displayName: p.displayName,
+        gender: p.gender,
+        seated: Boolean(p.state?.seatId),
+        studying: Boolean(p.state?.studying),
+        stayedSec: p.joinedAt ? Math.max(0, Math.round((now - p.joinedAt) / 1000)) : null,
+      }))
+      .sort((a, b) => (b.stayedSec || 0) - (a.stayedSec || 0));
+    const boards = boardsByRoom.get(room.id) || [];
+    boardsByRoom.delete(room.id);
+    return {
+      id: room.id,
+      name: room.name,
+      index: room.index,
+      count: players.length,
+      capacity: CAFE_ROOM_CAPACITY,
+      players,
+      boards,
+      strokeCount: boards.reduce((n, b) => n + b.strokeCount, 0),
+      hiddenCount: boards.reduce((n, b) => n + b.hiddenCount, 0),
+    };
+  });
+  // 지금은 없는 방 id로 남은 획 (방 개수를 줄였을 때 등)
+  for (const [roomId, boards] of boardsByRoom) {
+    list.push({
+      id: roomId,
+      name: roomId,
+      index: 999,
+      count: 0,
+      capacity: CAFE_ROOM_CAPACITY,
+      players: [],
+      boards,
+      strokeCount: boards.reduce((n, b) => n + b.strokeCount, 0),
+      hiddenCount: boards.reduce((n, b) => n + b.hiddenCount, 0),
+    });
+  }
+
+  return {
+    rooms: list,
+    roomCount: rooms.size,
+    activeRoomCount: list.filter((r) => r.count > 0).length,
+    memberCount: list.reduce((n, r) => n + r.count, 0),
+    studyingCount: list.reduce((n, r) => n + r.players.filter((p) => p.studying).length, 0),
+    strokeCount: list.reduce((n, r) => n + r.strokeCount, 0),
+    capacity: CAFE_ROOM_CAPACITY,
+    autoReset: {
+      cron: (process.env.CRON_CAFE_BOARD_RESET || CAFE_BOARD_RESET_DEFAULT_CRON).trim(),
+      enabled: !/^(off|false|0|no)$/i.test(String(process.env.CRON_CAFE_BOARD_RESET || '')),
+    },
+    fetchedAt: new Date().toISOString(),
+  };
+}
+
+/** 관리자 미리보기용 획 (숨긴 획 포함, 지운 획 제외) */
+export async function listCafeStrokesForAdmin(roomId, boardId) {
+  const [rows] = await pool.query(
+    `SELECT s.id, s.board_id, s.user_id, s.color, s.width, s.points, s.created_at, s.is_hidden,
+            u.username, u.is_shadow_muted
+     FROM study_cafe_strokes s
+     JOIN users u ON u.id = s.user_id
+     WHERE s.room_id = ? AND s.board_id = ? AND s.is_deleted = 0
+     ORDER BY s.id DESC
+     LIMIT ${CAFE_STROKE_KEEP}`,
+    [roomId, boardId],
+  );
+  return rows.reverse().map((row) => ({ ...publicStroke(rowToStroke(row)), hidden: Boolean(row.is_hidden) }));
+}
+
+/**
+ * 방명록 비우기 (관리자 수동·주간 자동). roomId·boardId가 없으면 그 범위 전체.
+ * @returns {Promise<{ removed: number, groups: { roomId: string, boardId: string, strokeIds: string[] }[] }>}
+ */
+export async function clearCafeStrokes({ roomId = null, boardId = null } = {}) {
+  const where = ['is_deleted = 0'];
+  const params = [];
+  if (roomId) {
+    where.push('room_id = ?');
+    params.push(roomId);
+  }
+  if (boardId) {
+    where.push('board_id = ?');
+    params.push(boardId);
+  }
+  const [rows] = await pool.query(
+    `SELECT id, room_id, board_id FROM study_cafe_strokes WHERE ${where.join(' AND ')}`,
+    params,
+  );
+  if (!rows.length) return { removed: 0, groups: [] };
+  await pool.query(
+    `UPDATE study_cafe_strokes
+     SET is_deleted = 1, deleted_at = CURRENT_TIMESTAMP
+     WHERE ${where.join(' AND ')}`,
+    params,
+  );
+  const map = new Map();
+  for (const r of rows) {
+    const key = `${r.room_id}\u0000${r.board_id}`;
+    const g = map.get(key) || { roomId: r.room_id, boardId: r.board_id, strokeIds: [] };
+    g.strokeIds.push(String(r.id));
+    map.set(key, g);
+  }
+  return { removed: rows.length, groups: [...map.values()] };
+}
+
+/** 지운 지 오래된 획을 DB에서 아예 뺀다 (신고 확인용으로 잠깐 남겨 둔다) */
+export async function purgeDeletedCafeStrokes(days = 30) {
+  const [result] = await pool.query(
+    `DELETE FROM study_cafe_strokes
+     WHERE is_deleted = 1 AND deleted_at < DATE_SUB(NOW(), INTERVAL ? DAY)
+     LIMIT 20000`,
+    [days],
+  );
+  return result.affectedRows || 0;
 }
 
 /** 테스트용: 메모리 상태 비우기 */

@@ -89,7 +89,7 @@ export const NAV_GROUPS = [
     items: [
       { id: 'ops-user', label: '사용자', panel: 'ops', opsView: 'user' },
       { id: 'ops-timer', label: '타이머', panel: 'ops', opsView: 'timer' },
-      { id: 'ops-study', label: '스터디룸', panel: 'ops', opsView: 'study-rooms' },
+      { id: 'ops-study', label: '스터디 카페', panel: 'ops', opsView: 'study-rooms' },
       { id: 'ops-activity', label: '앱 활동', panel: 'ops', opsView: 'activity' },
       { id: 'ops-jobs', label: '크론', panel: 'ops', opsView: 'jobs' },
       { id: 'ops-terms', label: '등교·학기', panel: 'ops', opsView: 'terms' },
