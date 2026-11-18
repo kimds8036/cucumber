@@ -5,7 +5,7 @@ import { useAutoRefresh, usePullRefresh } from './useAutoRefresh.js';
 export const MONITOR_ITEMS = [
   { id: 'ops-user', label: '사용자', view: 'user', metric: '학생' },
   { id: 'ops-timer', label: '타이머', view: 'timer', metric: '오늘 이용' },
-  { id: 'ops-study', label: '스터디룸', view: 'study-rooms', metric: '열린 방' },
+  { id: 'ops-study', label: '스터디 카페', view: 'study-rooms', metric: '카페 인원' },
   { id: 'ops-activity', label: '앱 활동', view: 'activity', metric: '오늘 글' },
   { id: 'ops-jobs', label: '크론', view: 'jobs', metric: '대기 예약' },
   { id: 'ops-terms', label: '등교·학기', view: 'terms', metric: '오늘 등교일' },

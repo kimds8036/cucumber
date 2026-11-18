@@ -176,8 +176,24 @@ async function boot() {
   }
   const net = createNetAdapter(cafeRoom?.id || null, netMode);
   console.info("[study-cafe] net", netMode);
+  // 꾹 누르기 메뉴(복사·이미지 저장 등)를 막는다. 입력칸은 그대로 둔다
+  document.addEventListener("contextmenu", (e) => {
+    const t = /** @type {HTMLElement|null} */ (e.target);
+    if (t?.closest?.("input, textarea, [contenteditable='true']")) return;
+    e.preventDefault();
+  });
+  document.addEventListener("selectstart", (e) => {
+    const t = /** @type {HTMLElement|null} */ (e.target);
+    if (t?.closest?.("input, textarea, [contenteditable='true']")) return;
+    e.preventDefault();
+  });
+
   const boardUI = createBoardUI(net, me, {
-    onOpenChange: () => input.keys.clear(),
+    onOpenChange: (open) => {
+      input.keys.clear();
+      // 방명록을 보는 동안 앱의 뒤로가기 버튼(왼쪽 위)을 숨기게 알린다
+      postToApp("cafe:board", { open: Boolean(open) });
+    },
   });
   const isUiOpen = () =>
     boardUI.isOpen ||
