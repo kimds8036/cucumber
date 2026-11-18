@@ -14,6 +14,19 @@
       font-family: "Segoe UI", system-ui, sans-serif;
     }
     canvas { display: block; }
+    /* 꾹 누르기 막기: 아이폰에서 글자 선택·복사 메뉴·돋보기·확대가 뜨지 않게 한다 (입력칸은 예외) */
+    html, body, body * {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    input, textarea, [contenteditable="true"] {
+      -webkit-touch-callout: default;
+      -webkit-user-select: text;
+      user-select: text;
+    }
+    img, canvas { -webkit-user-drag: none; }
     #status {
       position: fixed;
       inset: 0;

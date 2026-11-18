@@ -456,6 +456,8 @@ export default function TimerAniLab({ navigation }) {
           mixedContentMode="compatibility"
           setSupportMultipleWindows={false}
           allowsBackForwardNavigationGestures={false}
+          // 아이폰 꾹 누르기 미리보기 메뉴를 막는다 (글자 선택·복사 메뉴는 웹 CSS에서 막음)
+          allowsLinkPreview={false}
           onMessage={onWebMessage}
           onError={(event) => {
             setLoadError(event?.nativeEvent?.description || '맵을 열 수 없어요');

@@ -176,6 +176,18 @@ async function boot() {
   }
   const net = createNetAdapter(cafeRoom?.id || null, netMode);
   console.info("[study-cafe] net", netMode);
+  // 꾹 누르기 메뉴(복사·이미지 저장 등)를 막는다. 입력칸은 그대로 둔다
+  document.addEventListener("contextmenu", (e) => {
+    const t = /** @type {HTMLElement|null} */ (e.target);
+    if (t?.closest?.("input, textarea, [contenteditable='true']")) return;
+    e.preventDefault();
+  });
+  document.addEventListener("selectstart", (e) => {
+    const t = /** @type {HTMLElement|null} */ (e.target);
+    if (t?.closest?.("input, textarea, [contenteditable='true']")) return;
+    e.preventDefault();
+  });
+
   const boardUI = createBoardUI(net, me, {
     onOpenChange: (open) => {
       input.keys.clear();
