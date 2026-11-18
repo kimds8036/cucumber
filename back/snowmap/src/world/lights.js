@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { CONFIG } from "../config.js";
-import { isMobileDevice } from "../core/device.js";
+import { getGraphicsPreset } from "../core/graphics.js";
 
 /**
  * 맵 전역 조명 + 캐릭터용 월드 고정 키 라이트.
@@ -21,9 +21,7 @@ export function createWorldLights(scene) {
   sun.name = "sun";
   sun.position.set(6, 14, 4);
   sun.castShadow = true;
-  const shadowSize = isMobileDevice()
-    ? CONFIG.MOBILE_SHADOW_MAP_SIZE
-    : CONFIG.QUALITY.high.shadowMapSize;
+  const shadowSize = getGraphicsPreset().shadowMapSize;
   sun.shadow.mapSize.set(shadowSize, shadowSize);
   sun.shadow.camera.near = 0.5;
   sun.shadow.camera.far = 50;
