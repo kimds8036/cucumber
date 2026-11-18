@@ -47,6 +47,9 @@ export const colors = {
   yellow: '#FFFCD7',
   red: '#FFF3F3',
   blue: '#E5F0FF',
+  /** 성별 기호 ♀ / ♂ */
+  female: '#F0657A',
+  male: '#4A8FE7',
   transparent: 'transparent',
 };
 

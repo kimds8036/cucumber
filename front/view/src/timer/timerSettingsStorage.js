@@ -8,6 +8,9 @@ const STORAGE_KEY = 'timerSettings:v1';
 
 export const PHASE_END_CUES = ['sound', 'vibrate', 'popup', 'none'];
 
+/** 스터디 카페 그래픽 품질. low가 기본(발열 적음) */
+export const CAFE_GRAPHICS_LEVELS = ['low', 'medium', 'high'];
+
 export const DEFAULT_TIMER_SETTINGS = {
   pomodoroOn: false,
   autoStart: false,
@@ -18,6 +21,8 @@ export const DEFAULT_TIMER_SETTINGS = {
   longBreakEvery: 4,
   /** 스터디 카페 캐릭터 성별 */
   gender: 'boy',
+  /** 스터디 카페 그래픽 품질 (low | medium | high) */
+  cafeGraphics: 'low',
 };
 
 const LIMITS = {
@@ -57,6 +62,7 @@ export function normalizeTimerSettings(raw) {
     longBreakMin: clampSetting('longBreakMin', src.longBreakMin),
     longBreakEvery: clampSetting('longBreakEvery', src.longBreakEvery),
     gender,
+    cafeGraphics: CAFE_GRAPHICS_LEVELS.includes(src.cafeGraphics) ? src.cafeGraphics : 'low',
   };
 }
 

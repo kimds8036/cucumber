@@ -2389,9 +2389,13 @@ export const createTimerSettingsStyles = (width, normalize) =>
       borderRadius: normalize(12),
       backgroundColor: colors.white,
     },
-    genderOptionActive: {
-      borderColor: colors.primary,
-      backgroundColor: colors.primaryLight1,
+    genderOptionFemale: {
+      borderColor: colors.female,
+      backgroundColor: colors.red,
+    },
+    genderOptionMale: {
+      borderColor: colors.male,
+      backgroundColor: colors.blue,
     },
     genderImage: {
       width: normalize(48),

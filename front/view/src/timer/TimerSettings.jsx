@@ -23,6 +23,18 @@ const GENDER_OPTIONS = [
   { key: 'boy', label: '남자' },
 ];
 
+const GRAPHICS_OPTIONS = [
+  { key: 'low', label: '낮음' },
+  { key: 'medium', label: '중간' },
+  { key: 'high', label: '높음' },
+];
+
+const GRAPHICS_DESC = {
+  low: '발열과 배터리 소모가 가장 적어요 (권장)',
+  medium: '화면이 더 선명하고 그림자·물 반사가 좋아져요',
+  high: '가장 선명하고 부드러워요. 기기가 뜨거워질 수 있어요',
+};
+
 const PHASE_END_CUES = [
   { key: 'sound', label: '소리' },
   { key: 'vibrate', label: '진동' },
@@ -57,7 +69,8 @@ export default function TimerSettings({ navigation }) {
     [width, normalize],
   );
   const { settings, ready, update } = useTimerSettings();
-  const { pomodoroOn, autoStart, phaseEndCue, gender } = settings;
+  const { pomodoroOn, autoStart, phaseEndCue, gender, cafeGraphics } = settings;
+  const graphics = cafeGraphics || 'low';
 
   const switchColors = {
     trackColor: { false: colors.textLight1, true: colors.primary },
@@ -171,10 +184,14 @@ export default function TimerSettings({ navigation }) {
           <View style={styles.genderRow}>
             {GENDER_OPTIONS.map((opt) => {
               const active = gender === opt.key;
+              const girl = opt.key === 'girl';
               return (
                 <TouchableOpacity
                   key={opt.key}
-                  style={[styles.genderOption, active && styles.genderOptionActive]}
+                  style={[
+                    styles.genderOption,
+                    active && (girl ? styles.genderOptionFemale : styles.genderOptionMale),
+                  ]}
                   onPress={() => update({ gender: opt.key })}
                   activeOpacity={0.8}
                   disabled={!ready}
@@ -182,10 +199,10 @@ export default function TimerSettings({ navigation }) {
                   accessibilityState={{ selected: active }}
                 >
                   <Ionicons
-                    name={opt.key === 'girl' ? 'female' : 'male'}
+                    name={girl ? 'female' : 'male'}
                     size={normalize(28)}
-                    color={active ? colors.primaryDark : colors.textLight4}
-                    style={{ marginBottom: normalize(6) }}
+                    color={girl ? colors.female : colors.male}
+                    style={{ marginBottom: normalize(6), opacity: active ? 1 : 0.45 }}
                   />
                   <Text style={[styles.genderLabel, active && styles.genderLabelActive]}>
                     {opt.label}
@@ -193,6 +210,34 @@ export default function TimerSettings({ navigation }) {
                 </TouchableOpacity>
               );
             })}
+          </View>
+        </View>
+
+        <Text style={styles.sectionTitle}>스터디 카페 그래픽 품질</Text>
+        <Text style={styles.footNote}>다음에 스터디 카페에 들어갈 때부터 적용돼요</Text>
+        <View style={styles.card}>
+          <View style={styles.cueBlock}>
+            <Text style={styles.rowDesc}>{GRAPHICS_DESC[graphics] || GRAPHICS_DESC.low}</Text>
+            <View style={styles.cueRow}>
+              {GRAPHICS_OPTIONS.map((opt) => {
+                const active = graphics === opt.key;
+                return (
+                  <TouchableOpacity
+                    key={opt.key}
+                    style={[styles.cueChip, active && styles.cueChipActive]}
+                    onPress={() => update({ cafeGraphics: opt.key })}
+                    disabled={!ready}
+                    activeOpacity={0.8}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: active }}
+                  >
+                    <Text style={[styles.cueChipText, active && styles.cueChipTextActive]}>
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
         </View>
       </ScrollView>

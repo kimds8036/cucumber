@@ -4,7 +4,8 @@
 import * as THREE from "three";
 import { CONFIG } from "./config.js";
 import { createRenderer } from "./core/renderer.js";
-import { applyQuality, loadSavedQuality } from "./core/quality.js";
+import { applyQuality } from "./core/quality.js";
+import { getGraphicsLevel, getGraphicsPreset } from "./core/graphics.js";
 import { createLoop } from "./core/loop.js";
 import { isMobileDevice } from "./core/device.js";
 import { createInput, isTyping } from "./core/input.js";
@@ -98,7 +99,7 @@ async function boot() {
   setLoading(4, "준비 중");
 
   const { renderer } = createRenderer(document.body);
-  applyQuality(renderer, loadSavedQuality());
+  applyQuality(renderer);
   setLoading(10, "화면 준비");
 
   const scene = new THREE.Scene();
@@ -156,7 +157,7 @@ async function boot() {
   function targetFps() {
     return performance.now() - lastActiveAt < CONFIG.FPS_IDLE_AFTER_SEC * 1000
       ? CONFIG.FPS_ACTIVE
-      : CONFIG.FPS_IDLE;
+      : getGraphicsPreset().fpsIdle;
   }
 
   const me = await getIdentity();
@@ -788,7 +789,14 @@ async function boot() {
 
   // 성능 확인용 (?debug=perf)
   if (/[?&]debug=perf\b/.test(window.location.search)) {
-    window.__cafePerf = { renderer, scene, targetFps, mobile: isMobileDevice(), boardUI };
+    window.__cafePerf = {
+      renderer,
+      scene,
+      targetFps,
+      mobile: isMobileDevice(),
+      graphics: getGraphicsLevel(),
+      boardUI,
+    };
   }
   console.info("[study-cafe] ready", {
     seats: interact.seats.length,

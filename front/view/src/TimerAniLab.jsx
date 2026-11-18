@@ -61,8 +61,12 @@ async function buildSnowmapUrl() {
     const settings = await loadTimerSettings();
     const gender = settings?.gender === 'girl' ? 'girl' : 'boy';
     params.set('gender', gender);
+    const quality = ['low', 'medium', 'high'].includes(settings?.cafeGraphics)
+      ? settings.cafeGraphics
+      : 'low';
+    params.set('quality', quality);
   } catch (err) {
-    console.warn('[StudyCafe] gender load failed', err?.message || err);
+    console.warn('[StudyCafe] settings load failed', err?.message || err);
   }
   const query = params.toString();
   return query ? `${base}/snowmap/?${query}` : `${base}/snowmap/`;
