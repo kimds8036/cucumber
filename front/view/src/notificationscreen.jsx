@@ -34,6 +34,7 @@ import {
   normalizeStudySummaryWatchers,
 } from '../../utils/studySummaryNotification';
 import NotificationAdPlaceholder from '../../src/screens/ad/NotificationAdPlaceholder';
+import TopAdBanner from '../../components/ads/TopAdBanner';
 import { injectAdSlots } from '../../hooks/useAdSlots';
 import { AD_PLACEMENTS } from '../../constants/adPlacements';
 import {
@@ -894,6 +895,8 @@ const NotificationScreen = ({ navigation }) => {
           onRightPress={handleMarkAllRead}
         />
 
+        <TopAdBanner placement="board" />
+
         {/* 탭 메뉴 */}
         <View style={[styles.tabContainer, getDebugBorderStyle('#FFCC00')]}>
           <ScrollView
@@ -990,19 +993,26 @@ const NotificationScreen = ({ navigation }) => {
                     getDebugBorderStyle('#5AC8FA'),
                   ]}
                 >
-                  {notification.title ? (
-                    <Text style={styles.notificationTitle}>
-                      {notification.title}
+                  <View style={styles.notificationHeaderRow}>
+                    {notification.title ? (
+                      <Text
+                        style={styles.notificationTitle}
+                        numberOfLines={1}
+                      >
+                        {notification.title}
+                      </Text>
+                    ) : (
+                      <View style={styles.notificationTitleSpacer} />
+                    )}
+                    <Text style={styles.notificationTime}>
+                      {notification.time}
                     </Text>
-                  ) : null}
+                  </View>
                   {notification.content ? (
                     <Text style={styles.notificationText} numberOfLines={3}>
                       {notification.content}
                     </Text>
                   ) : null}
-                  <Text style={styles.notificationTime}>
-                    {notification.time}
-                  </Text>
                   {canExpandWatchers && isExpanded ? (
                     <ScrollView
                       horizontal

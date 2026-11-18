@@ -47,7 +47,7 @@ export const createNotificationStyles = (normalize, width) =>
     tabContent: {
       alignItems: 'center',
       paddingHorizontal: width * 0.04,
-      paddingVertical: normalize(10),
+      paddingBottom: normalize(10),
       gap: normalize(8),
     },
     tabButton: {
@@ -95,13 +95,13 @@ export const createNotificationStyles = (normalize, width) =>
     },
     tabUnreadDot: {
       position: 'absolute',
-      top: normalize(1),
+      top: normalize(-1),
       right: -normalize(1),
-      width: normalize(8),
-      height: normalize(8),
       width: normalize(10),
       height: normalize(10),
       borderRadius: normalize(10),
+      borderWidth: normalize(1.5),
+      borderColor: colors.white,
       backgroundColor: colors.alert,
     },
     scrollView: {
@@ -131,13 +131,23 @@ export const createNotificationStyles = (normalize, width) =>
     notificationContent: {
       flex: 1,
     },
+    notificationHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      marginBottom: normalize(2),
+    },
     notificationTitle: {
+      flex: 1,
+      marginRight: normalize(8),
       fontSize: normalize(fontSizes.xl),
       lineHeight: normalize(22),
       includeFontPadding: false,
       fontFamily: fonts.regular,
       color: colors.text,
-      marginBottom: normalize(2),
+    },
+    notificationTitleSpacer: {
+      flex: 1,
+      marginRight: normalize(8),
     },
     notificationText: {
       fontSize: normalize(fontSizes.xl),
@@ -145,7 +155,10 @@ export const createNotificationStyles = (normalize, width) =>
       color: colors.textLight4,
     },
     notificationTime: {
+      flexShrink: 0,
       fontSize: normalize(fontSizes.lg),
+      lineHeight: normalize(22),
+      includeFontPadding: false,
       fontFamily: fonts.regular,
       color: colors.textLight3,
     },
