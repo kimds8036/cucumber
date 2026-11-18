@@ -61,9 +61,7 @@ async function buildSnowmapUrl() {
     const settings = await loadTimerSettings();
     const gender = settings?.gender === 'girl' ? 'girl' : 'boy';
     params.set('gender', gender);
-    const quality = ['low', 'medium', 'high'].includes(settings?.cafeGraphics)
-      ? settings.cafeGraphics
-      : 'low';
+    const quality = settings?.cafeGraphics === 'high' ? 'high' : 'low';
     params.set('quality', quality);
   } catch (err) {
     console.warn('[StudyCafe] settings load failed', err?.message || err);

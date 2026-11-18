@@ -25,14 +25,12 @@ const GENDER_OPTIONS = [
 
 const GRAPHICS_OPTIONS = [
   { key: 'low', label: '낮음' },
-  { key: 'medium', label: '중간' },
   { key: 'high', label: '높음' },
 ];
 
 const GRAPHICS_DESC = {
   low: '발열과 배터리 소모가 가장 적어요 (권장)',
-  medium: '화면이 더 선명하고 그림자·물 반사가 좋아져요',
-  high: '가장 선명하고 부드러워요. 기기가 뜨거워질 수 있어요',
+  high: '화면이 더 선명하고 그림자·물 반사가 좋아져요. 기기가 조금 더 따뜻해질 수 있어요',
 };
 
 const PHASE_END_CUES = [

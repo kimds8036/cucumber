@@ -9,10 +9,10 @@ export const CONFIG = {
   TONE_MAPPING_EXPOSURE: 1.0,
 
   /**
-   * 그래픽 품질 (앱 타이머 설정 '스터디 카페 그래픽 품질'에서 고름 → 주소 ?quality=low|medium|high).
+   * 그래픽 품질 (앱 타이머 설정 '스터디 카페 그래픽 품질'에서 고름 → 주소 ?quality=low|high).
    * 값이 없으면 폰은 low, PC 브라우저는 high (core/graphics.js).
    * - dprMax: 기기 픽셀 배율 상한. 올리면 선명해지지만 GPU 부하·발열↑
-   * - antialias: 계단 현상 줄이기. 비용이 커서 high만
+   * - antialias: 계단 현상 줄이기. 비용이 커서 꺼 둔다
    * - softShadows: 부드러운 그림자(PCFSoft). 아니면 가벼운 PCF
    * - shadowMapSize: 그림자 맵 한 변. 그림자는 처음 한 번만 그리고 고정이라 비용은 주로 화면 픽셀 쪽
    * - waterReflectionSize / waterReflectEvery: 연못 반사 해상도와 몇 프레임마다 다시 그릴지
@@ -28,7 +28,7 @@ export const CONFIG = {
       waterReflectEvery: 3,
       fpsIdle: 30,
     }),
-    medium: Object.freeze({
+    high: Object.freeze({
       dprMax: 2,
       antialias: false,
       softShadows: false,
@@ -36,15 +36,6 @@ export const CONFIG = {
       waterReflectionSize: 512,
       waterReflectEvery: 2,
       fpsIdle: 30,
-    }),
-    high: Object.freeze({
-      dprMax: 2.5,
-      antialias: true,
-      softShadows: true,
-      shadowMapSize: 2048,
-      waterReflectionSize: 512,
-      waterReflectEvery: 1,
-      fpsIdle: 60,
     }),
   }),
 

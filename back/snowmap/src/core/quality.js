@@ -2,7 +2,7 @@ import { CONFIG } from "../config.js";
 import { getGraphicsLevel, getGraphicsPreset } from "./graphics.js";
 
 /**
- * 그래픽 품질(낮음·중간·높음)의 해상도 배율을 렌더러에 적용한다.
+ * 그래픽 품질(낮음·높음)의 해상도 배율을 렌더러에 적용한다.
  * 안티앨리어싱·그림자 종류는 렌더러를 만들 때(core/renderer.js) 정해진다.
  * @param {import("three").WebGLRenderer} renderer
  */
