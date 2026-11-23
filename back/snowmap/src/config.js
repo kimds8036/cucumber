@@ -428,6 +428,12 @@ export const CONFIG = {
   NET_INTERP_DELAY_MS: 120,
   /** 다른 사람 소식이 이 시간(초) 넘게 없으면 걷기·뛰기 애니를 멈춘다 (연결이 멎었을 때 제자리 뛰기 방지) */
   NET_STALE_SEC: 3,
+  /** 안전장치: 서버 연결 점검 주기(ms). 답이 NET_PING_MAX_MISSES번 연달아 없으면 다시 연결한다 */
+  NET_PING_INTERVAL_MS: 5000,
+  /** 점검 답을 기다리는 시간(ms) */
+  NET_PING_TIMEOUT_MS: 4000,
+  /** 점검 실패가 이만큼 연달아 나면 다시 연결 */
+  NET_PING_MAX_MISSES: 2,
   /** 입장 자동 착석 전에 다른 사람 상태를 기다리는 시간(ms). 늘리면 겹쳐 앉을 일이 줄지만 늦게 앉음 */
   ENTRY_SEAT_WAIT_MS: 1500,
   /** 이 시간(초) 동안 소식이 없으면 나간 것으로 처리 */
