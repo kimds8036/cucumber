@@ -64,11 +64,62 @@ export function createWorldLights(scene) {
     note: "캐릭터 Point/Spot/Hemisphere fill 없음",
   });
 
+  // ── 시간대별 조명 (새벽·낮·노을·밤). 바뀔 때는 SKY_LIGHTING_FADE 초 동안 천천히 넘어간다 ──
+  const targets = [
+    [hemi, "color", "hemiSky", "hemi"],
+    [ambient, "color", "ambientColor", "ambient"],
+    [sun, "color", "sunColor", "sun"],
+    [key, "color", "keyColor", "key"],
+  ];
+  let fade = null;
+
+  function readState() {
+    return targets.map(([light]) => ({
+      color: light.color.clone(),
+      ground: light.groundColor ? light.groundColor.clone() : null,
+      intensity: light.intensity,
+    }));
+  }
+
+  /**
+   * @param {"day"|"morning"|"night"} phase
+   * @param {boolean} [instant] 처음 들어올 때는 바로 맞춘다
+   */
+  function setSkyPhase(phase, instant = false) {
+    const preset = CONFIG.SKY_LIGHTING?.[phase];
+    if (!preset) return;
+    const to = targets.map(([, , colorKey, intensityKey]) => ({
+      color: new THREE.Color(preset[colorKey]),
+      ground: intensityKey === "hemi" ? new THREE.Color(preset.hemiGround) : null,
+      intensity: preset[intensityKey],
+    }));
+    const duration = instant ? 0 : CONFIG.SKY_LIGHTING_FADE || 0;
+    fade = { from: readState(), to, t: 0, duration };
+    update(0);
+  }
+
+  function update(dt) {
+    if (!fade) return;
+    fade.t += dt;
+    const k = fade.duration > 0 ? Math.min(1, fade.t / fade.duration) : 1;
+    const e = k * k * (3 - 2 * k);
+    targets.forEach(([light], i) => {
+      const a = fade.from[i];
+      const b = fade.to[i];
+      light.color.copy(a.color).lerp(b.color, e);
+      if (light.groundColor && b.ground) light.groundColor.copy(a.ground).lerp(b.ground, e);
+      light.intensity = a.intensity + (b.intensity - a.intensity) * e;
+    });
+    if (k >= 1) fade = null;
+  }
+
   return {
     hemi,
     ambient,
     sun,
     characterKey: key,
     followKeyTarget,
+    setSkyPhase,
+    update,
   };
 }

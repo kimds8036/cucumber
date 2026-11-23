@@ -25,8 +25,9 @@ function skyUrlFor(phase) {
  * 이음새 없이 구름이 움직이는 것처럼 보이게 한다. sphere 모드는 하늘 전체를 천천히 돌린다.
  * 시간대(새벽·낮·노을·밤)에 따라 이미지를 바꾸고, 카페에 있는 동안 시간대가 넘어가면 1분 안에 바뀐다.
  * @param {THREE.Scene} scene
+ * @param {{ onPhase?: (phase: string, initial: boolean) => void }} [opts] 시간대가 정해지거나 바뀔 때 (조명 맞추기)
  */
-export async function createSky(scene) {
+export async function createSky(scene, opts = {}) {
   const loader = new THREE.TextureLoader();
   const sphere = CONFIG.SKY_MODE === "sphere";
 
@@ -43,6 +44,8 @@ export async function createSky(scene) {
   }
 
   let phase = skyPhaseAt();
+  // 하늘 이미지를 못 받아도 조명은 시간대에 맞춘다
+  opts.onPhase?.(phase, true);
   let texture = await loadTexture(skyUrlFor(phase));
   // 시간대 이미지를 못 받으면 낮 하늘로
   if (!texture && skyUrlFor(phase) !== CONFIG.SKY_URL) texture = await loadTexture(CONFIG.SKY_URL);
@@ -64,6 +67,7 @@ export async function createSky(scene) {
     phase = next;
     scene.background = tex;
     old.dispose();
+    opts.onPhase?.(next, false);
   }
 
   function update(dt) {
