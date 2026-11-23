@@ -295,8 +295,44 @@ export const CONFIG = {
   HIDE_DUPLICATE_MESHES: true,
 
   // --- 하늘 배경 ---
-  /** 배경 하늘 이미지 */
+  /** 배경 하늘 이미지 (낮) */
   SKY_URL: "sky/sky.png",
+  /** 시간대별 하늘. 기기 시각으로 고르고 1분마다 다시 확인한다. 주소에 ?sky=morning 처럼 붙이면 고정(확인용) */
+  SKY_URLS: {
+    day: "sky/sky.png",
+    morning: "sky/sky-morning.jpg",
+    night: "sky/sky-night.jpg",
+  },
+  /** 새벽·노을 시간 [시작시, 끝시) — 5시~8시 전, 17시~19시 전 */
+  SKY_MORNING_HOURS: [[5, 8], [17, 19]],
+  /** 낮 시간 [시작시, 끝시). 나머지(19시~5시)는 밤 */
+  SKY_DAY_HOURS: [8, 17],
+  /**
+   * 시간대별 조명. 밤도 캐릭터·글자가 잘 보이게 낮의 절반 정도로만 낮춘다.
+   * hemi: 하늘/땅 반사광, ambient: 전체 바탕빛, sun: 해(밤엔 달빛), key: 캐릭터 비추는 빛
+   */
+  SKY_LIGHTING: {
+    day: {
+      hemiSky: 0xe8f3ff, hemiGround: 0xc4b8a8, hemi: 0.62,
+      ambientColor: 0xffffff, ambient: 0.18,
+      sunColor: 0xfff4e6, sun: 1.7,
+      keyColor: 0xfff1e4, key: 0.9,
+    },
+    morning: {
+      hemiSky: 0xffe2cf, hemiGround: 0xc9ab98, hemi: 0.56,
+      ambientColor: 0xfff0e4, ambient: 0.18,
+      sunColor: 0xffc99c, sun: 1.3,
+      keyColor: 0xffe4cf, key: 0.85,
+    },
+    night: {
+      hemiSky: 0xa9bce6, hemiGround: 0x75737f, hemi: 0.44,
+      ambientColor: 0xcdd8ff, ambient: 0.17,
+      sunColor: 0xc8d6ff, sun: 0.7,
+      keyColor: 0xe8eeff, key: 0.78,
+    },
+  },
+  /** 시간대가 바뀔 때 조명이 넘어가는 시간(초) */
+  SKY_LIGHTING_FADE: 3,
   /** "screen": 화면에 고정된 배경(이미지 왜곡 없음) / "sphere": 카메라 방향 따라 도는 360° 배경 */
   SKY_MODE: "screen",
   /** 구름 흐름 속도. 0이면 정지. 올리면 빨라짐 */

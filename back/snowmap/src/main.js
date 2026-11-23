@@ -130,7 +130,9 @@ async function boot() {
   const colliderDebug = createColliderDebug(scene, collisionWorld);
   const mapLamps = createMapLamps(mapRoot, scene);
   setLoading(55, "하늘·물");
-  const sky = await createSky(scene);
+  const sky = await createSky(scene, {
+    onPhase: (phase, initial) => lights.setSkyPhase(phase, initial),
+  });
   const water = createPondWater(mapRoot);
   setLoading(62, "상호작용");
 
@@ -747,6 +749,7 @@ async function boot() {
     frameUpdate(alpha, frameDt) {
       water.update(frameDt);
       sky.update(frameDt);
+      lights.update(frameDt);
       remotes.update(frameDt);
       if (character) {
         const pivot = character.pivot;
