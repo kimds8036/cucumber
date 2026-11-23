@@ -39,12 +39,7 @@ import {
   subscribeStudyCafeController,
   subscribeStudyCafeSnapshot,
 } from '../../utils/studyCafeBridge';
-import {
-  loadCafeBgmEnabled,
-  releaseCafeBgm,
-  saveCafeBgmEnabled,
-  setCafeBgmOn,
-} from './cafeBgm';
+import { releaseCafeBgm, setCafeBgmOn } from './cafeBgm';
 
 async function buildSnowmapUrl() {
   const base = getApiBaseUrlNoSlash().replace(/\/+$/, '');
@@ -174,32 +169,18 @@ export default function TimerAniLab({ navigation }) {
   const [boardOpen, setBoardOpen] = useState(false);
   const leavingRef = useRef(false);
   const allowRemoveRef = useRef(false);
-  // 배경음악 켜짐/꺼짐. 저장된 값을 읽기 전에는 null (버튼을 그리지 않는다)
-  const [bgmOn, setBgmOn] = useState(null);
+  // 배경음악은 들어올 때마다 꺼진 채로 시작한다. 사용자가 버튼으로 켠다
+  const [bgmOn, setBgmOn] = useState(false);
+
+  useEffect(() => () => releaseCafeBgm(), []);
 
   useEffect(() => {
-    let cancelled = false;
-    loadCafeBgmEnabled().then((enabled) => {
-      if (!cancelled) setBgmOn(enabled);
-    });
-    return () => {
-      cancelled = true;
-      releaseCafeBgm();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (bgmOn == null) return;
     // 나가는 중에는 끈다
     setCafeBgmOn(bgmOn && !leaving);
   }, [bgmOn, leaving]);
 
   const toggleBgm = useCallback(() => {
-    setBgmOn((prev) => {
-      const next = !prev;
-      saveCafeBgmEnabled(next);
-      return next;
-    });
+    setBgmOn((prev) => !prev);
   }, []);
 
   // 스터디 카페에 있는 동안은 화면이 꺼지지 않게 한다 (타이머 화면과 같은 방식)
@@ -535,7 +516,7 @@ export default function TimerAniLab({ navigation }) {
         </TouchableOpacity>
       )}
 
-      {boardOpen || bgmOn == null ? null : (
+      {boardOpen ? null : (
         <TouchableOpacity
           style={[
             styles.backBtn,

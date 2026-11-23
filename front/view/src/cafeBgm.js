@@ -2,10 +2,9 @@
  * 스터디 카페 배경음악.
  * 앱에 넣어 둔 두 곡을 번갈아 틀고, 곡이 끝나면 30초 쉬었다가 다음 곡을 튼다.
  * 서버에서 받지 않으므로 전송량 비용이 들지 않고, 인터넷이 느려도 바로 나온다.
- * 켜기/끄기 상태는 기기에 저장한다 (처음에는 켜짐).
+ * 카페에 들어올 때마다 꺼진 채로 시작하고, 사용자가 버튼으로 켜야 나온다.
  */
 import { AppState } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const TRACKS = [
   require('../../assets/cafe/cafe-bgm-1.m4a'),
@@ -13,8 +12,8 @@ const TRACKS = [
 ];
 /** 곡과 곡 사이 쉬는 시간 */
 const GAP_MS = 30 * 1000;
-const VOLUME = 0.6;
-const STORAGE_KEY = 'studyCafe.bgmEnabled';
+/** 공부에 방해되지 않게 작게 */
+const VOLUME = 0.3;
 
 let players = [];
 let statusSubs = [];
@@ -134,19 +133,6 @@ function onAppStateChange(state) {
     pauseAll();
     if (wasGap) playing = false;
   }
-}
-
-export async function loadCafeBgmEnabled() {
-  try {
-    const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    return raw == null ? true : raw === '1';
-  } catch {
-    return true;
-  }
-}
-
-export function saveCafeBgmEnabled(enabled) {
-  AsyncStorage.setItem(STORAGE_KEY, enabled ? '1' : '0').catch(() => {});
 }
 
 /** 음악을 켜거나 끈다. 카페 화면에서만 부른다. */
