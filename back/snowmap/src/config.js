@@ -227,7 +227,7 @@ export const CONFIG = {
   /** 앉는 면보다 골반을 얼마나 띄울지. 올리면 의자 위에 더 높이 앉음 */
   SEAT_HIP_CLEARANCE: 0.03,
   /** 매트리스보다 몸을 얼마나 띄울지. 올리면 침대 위에 더 떠서 누움 */
-  BED_BODY_CLEARANCE: 0.1,
+  BED_BODY_CLEARANCE: 0.17,
   /** 누운 몸을 침대 발치 쪽으로 미는 거리(m). 올리면 머리가 침대 헤드에서 더 멀어짐 */
   BED_FOOT_SHIFT: 0.25,
   /** 좌석 앞 접근 지점 거리. 올리면 더 앞에서 앉기 시작 */
