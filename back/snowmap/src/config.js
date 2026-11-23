@@ -300,8 +300,8 @@ export const CONFIG = {
   /** 시간대별 하늘. 기기 시각으로 고르고 1분마다 다시 확인한다. 주소에 ?sky=morning 처럼 붙이면 고정(확인용) */
   SKY_URLS: {
     day: "sky/sky.png",
-    morning: "sky/sky-morning.jpg",
-    night: "sky/sky-night.jpg",
+    morning: "sky/sky-morning.png",
+    night: "sky/sky-night.png",
   },
   /** 새벽·노을 시간 [시작시, 끝시) — 5시~8시 전, 17시~19시 전 */
   SKY_MORNING_HOURS: [[5, 8], [17, 19]],
