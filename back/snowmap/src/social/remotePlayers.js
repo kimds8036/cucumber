@@ -75,6 +75,7 @@ export function createRemotePlayers(deps) {
         seatId: null,
         pending: state,
         building: false,
+        lastStateAt: 0,
       };
       players.set(state.userId, player);
       deps.onJoin?.(state);
@@ -92,6 +93,7 @@ export function createRemotePlayers(deps) {
       build(player);
     }
     player.pending = state;
+    player.lastStateAt = performance.now();
     // 타이머 실행 중이면 머리 위 시계 (이름표가 아직 없어도 기억해 두었다가 만들 때 붙는다)
     nameTags.setStudying(player.userId, Boolean(state.studying));
     player.samples.push({ at: performance.now(), x: state.x, y: state.y, z: state.z, yaw: state.yaw });
@@ -190,10 +192,25 @@ export function createRemotePlayers(deps) {
         player.char.pivot.position.set(pose.x, pose.y, pose.z);
         player.char.pivot.rotation.y = pose.yaw;
       }
-      applyAnim(player, player.pending?.anim || "stay");
+      // 몇 초 동안 소식이 없으면(연결이 멎음) 걷기·뛰기를 멈춘다. 제자리에서 계속 뛰는 것처럼 보이지 않게
+      let animName = player.pending?.anim || "stay";
+      const stale = performance.now() - player.lastStateAt > (CONFIG.NET_STALE_SEC ?? 3) * 1000;
+      if (stale && (animName === "walk" || animName === "run")) animName = "stay";
+      applyAnim(player, animName);
       player.anim.update(dt);
       player.char.mixer.update(dt);
     }
+  }
+
+  /** 연결 진단용: 사람마다 마지막으로 받은 뒤 지난 시간 */
+  function debugList() {
+    const now = performance.now();
+    return [...players.values()].map((p) => ({
+      name: p.displayName,
+      ageSec: p.lastStateAt ? (now - p.lastStateAt) / 1000 : null,
+      anim: p.pending?.anim || "-",
+      hasChar: Boolean(p.char),
+    }));
   }
 
   net.onPlayerJoin(upsert);
@@ -243,6 +260,7 @@ export function createRemotePlayers(deps) {
   return {
     update,
     hitTest,
+    debugList,
     /** 로컬 봇·테스트용. 네트워크와 같은 경로로 원격 캐릭터를 넣는다. */
     applyState(state) {
       upsert(state);

@@ -25,9 +25,24 @@ export function createServerAdapter(requestedRoomId = null) {
   let kicked = false;
   /** 지금 화면에 있는 다른 사람 (처음 보면 join 이벤트) */
   const known = new Set();
+  /** 연결 진단용 (네트워크 표시창). 원인 좁히기에 쓴다 */
+  const stats = {
+    connects: 0,
+    disconnects: 0,
+    lastDisconnectReason: null,
+    lastDisconnectAt: 0,
+    recovered: 0,
+    joinFails: 0,
+    sent: 0,
+    skippedSend: 0,
+    received: 0,
+    lastReceivedAt: 0,
+  };
 
   function emitPlayer(state) {
     if (!state?.userId) return;
+    stats.received += 1;
+    stats.lastReceivedAt = performance.now();
     if (!known.has(state.userId)) {
       known.add(state.userId);
       events.emit("join", state);
@@ -138,6 +153,17 @@ export function createServerAdapter(requestedRoomId = null) {
     get me() {
       return meInfo;
     },
+    /** 연결 진단 (네트워크 표시창) */
+    netStats() {
+      return {
+        ...stats,
+        connected: Boolean(socket?.connected),
+        transport: socket?.io?.engine?.transport?.name || "-",
+        socketId: socket?.id || null,
+        roomId: room?.id || null,
+        kicked,
+      };
+    },
 
     async connect(identity) {
       gender = identity?.gender === "girl" ? "girl" : "boy";
@@ -160,7 +186,10 @@ export function createServerAdapter(requestedRoomId = null) {
 
       socket.on("connect", async () => {
         authRetries = 0;
+        stats.connects += 1;
+        if (socket.recovered) stats.recovered += 1;
         const res = await join();
+        if (!res?.ok) stats.joinFails += 1;
         if (firstJoin) {
           const done = firstJoin;
           firstJoin = null;
@@ -173,6 +202,13 @@ export function createServerAdapter(requestedRoomId = null) {
         } else if (!res?.ok) {
           console.warn("[net:server] 재입장 실패", res);
         }
+      });
+
+      socket.on("disconnect", (reason) => {
+        stats.disconnects += 1;
+        stats.lastDisconnectReason = reason;
+        stats.lastDisconnectAt = performance.now();
+        console.warn("[net:server] disconnect", reason);
       });
 
       socket.on("connect_error", async (err) => {
@@ -228,7 +264,11 @@ export function createServerAdapter(requestedRoomId = null) {
     sendState(state) {
       lastState = state;
       if (state?.gender) gender = state.gender;
-      if (!socket?.connected || kicked) return;
+      if (!socket?.connected || kicked) {
+        stats.skippedSend += 1;
+        return;
+      }
+      stats.sent += 1;
       // 위치는 늦게 가느니 버리는 편이 낫다
       socket.volatile.emit("cafe:state", state);
     },
