@@ -25,6 +25,7 @@ import { loadSavedGender } from "./character/gender.js";
 import { createPadControls } from "./ui/padControls.js";
 import { createDeskTimer } from "./ui/deskTimer.js";
 import { createPerfHud } from "./debug/perfHud.js";
+import { createNetHud } from "./debug/netHud.js";
 import { createNetAdapter, pickNetMode } from "./net/adapter.js";
 import { setTokenRefresher } from "./net/auth.js";
 import { getIdentity } from "./net/identity.js";
@@ -244,6 +245,8 @@ async function boot() {
   );
 
   const perfHud = createPerfHud();
+  /** 연결 진단 표시창: 위쪽 가운데 사용자 탭을 2초 꾹 누르거나 주소에 ?debug=net */
+  const netHud = createNetHud();
 
   const nameTags = createNameTags(scene, camera);
   /** @type {ReturnType<typeof createUserRoster>|null} */
@@ -751,6 +754,7 @@ async function boot() {
       sky.update(frameDt);
       lights.update(frameDt);
       remotes.update(frameDt);
+      netHud.frame(frameDt, { net, remotes });
       if (character) {
         const pivot = character.pivot;
         renderPose.curr.copy(pivot.position);
