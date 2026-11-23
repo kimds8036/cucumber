@@ -39,6 +39,12 @@ import {
   subscribeStudyCafeController,
   subscribeStudyCafeSnapshot,
 } from '../../utils/studyCafeBridge';
+import {
+  loadCafeBgmEnabled,
+  releaseCafeBgm,
+  saveCafeBgmEnabled,
+  setCafeBgmOn,
+} from './cafeBgm';
 
 async function buildSnowmapUrl() {
   const base = getApiBaseUrlNoSlash().replace(/\/+$/, '');
@@ -168,8 +174,33 @@ export default function TimerAniLab({ navigation }) {
   const [boardOpen, setBoardOpen] = useState(false);
   const leavingRef = useRef(false);
   const allowRemoveRef = useRef(false);
+  // 배경음악 켜짐/꺼짐. 저장된 값을 읽기 전에는 null (버튼을 그리지 않는다)
+  const [bgmOn, setBgmOn] = useState(null);
 
+  useEffect(() => {
+    let cancelled = false;
+    loadCafeBgmEnabled().then((enabled) => {
+      if (!cancelled) setBgmOn(enabled);
+    });
+    return () => {
+      cancelled = true;
+      releaseCafeBgm();
+    };
+  }, []);
 
+  useEffect(() => {
+    if (bgmOn == null) return;
+    // 나가는 중에는 끈다
+    setCafeBgmOn(bgmOn && !leaving);
+  }, [bgmOn, leaving]);
+
+  const toggleBgm = useCallback(() => {
+    setBgmOn((prev) => {
+      const next = !prev;
+      saveCafeBgmEnabled(next);
+      return next;
+    });
+  }, []);
 
   // 스터디 카페에 있는 동안은 화면이 꺼지지 않게 한다 (타이머 화면과 같은 방식)
   useEffect(() => {
@@ -501,6 +532,29 @@ export default function TimerAniLab({ navigation }) {
           accessibilityLabel="뒤로가기"
         >
           <Ionicons name="chevron-back" size={24} color={colors.white} />
+        </TouchableOpacity>
+      )}
+
+      {boardOpen || bgmOn == null ? null : (
+        <TouchableOpacity
+          style={[
+            styles.backBtn,
+            {
+              top: Math.max(10, insets.top || 10),
+              left: Math.max(10, insets.left || 10) + 48,
+            },
+          ]}
+          onPress={toggleBgm}
+          activeOpacity={0.85}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: bgmOn }}
+          accessibilityLabel={bgmOn ? '배경음악 끄기' : '배경음악 켜기'}
+        >
+          <Ionicons
+            name={bgmOn ? 'musical-notes' : 'volume-mute'}
+            size={20}
+            color={bgmOn ? colors.white : 'rgba(255, 255, 255, 0.55)'}
+          />
         </TouchableOpacity>
       )}
     </View>
