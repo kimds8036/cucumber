@@ -87,6 +87,27 @@ function buildAuthInjectScript(token) {
   `;
 }
 
+/** 왼쪽 위 앱 버튼(뒤로가기·음악)이 차지하는 폭: 버튼 40 + 간격 8, 두 개 */
+const APP_HUD_BUTTONS_WIDTH = 96;
+
+/**
+ * 웹의 왼쪽 위 버튼 줄(방 버튼·채팅)을 앱 버튼 옆·아래에 맞추도록 위치를 알려 준다.
+ * 웹 CSS 변수 --hud-top, --hud-left, --app-btn-space 로 받는다.
+ */
+function buildHudLayoutScript(top, left) {
+  return `
+    (function(){
+      try {
+        var s = document.documentElement.style;
+        s.setProperty('--hud-top', '${Number(top) || 10}px');
+        s.setProperty('--hud-left', '${Number(left) || 10}px');
+        s.setProperty('--app-btn-space', '${APP_HUD_BUTTONS_WIDTH}px');
+      } catch (e) {}
+      true;
+    })();
+  `;
+}
+
 /** 세로가 될 때까지(최대 timeoutMs) 기다린다 */
 async function waitForPortrait(timeoutMs = 900) {
   const t0 = Date.now();
@@ -169,6 +190,9 @@ export default function TimerAniLab({ navigation }) {
   const [boardOpen, setBoardOpen] = useState(false);
   const leavingRef = useRef(false);
   const allowRemoveRef = useRef(false);
+  const hudTop = Math.max(10, insets.top || 10);
+  const hudLeft = Math.max(10, insets.left || 10);
+  const hudScript = buildHudLayoutScript(hudTop, hudLeft);
   // 배경음악은 들어올 때마다 꺼진 채로 시작한다. 사용자가 버튼으로 켠다
   const [bgmOn, setBgmOn] = useState(false);
 
@@ -182,6 +206,15 @@ export default function TimerAniLab({ navigation }) {
   const toggleBgm = useCallback(() => {
     setBgmOn((prev) => !prev);
   }, []);
+
+  // 가로로 돌면 여백(노치)이 바뀐다. 웹 버튼 줄도 같이 옮긴다
+  useEffect(() => {
+    try {
+      webRef.current?.injectJavaScript(hudScript);
+    } catch {
+      // noop
+    }
+  }, [hudScript]);
 
   // 스터디 카페에 있는 동안은 화면이 꺼지지 않게 한다 (타이머 화면과 같은 방식)
   useEffect(() => {
@@ -364,6 +397,7 @@ export default function TimerAniLab({ navigation }) {
       if (msg.type === 'bridge:ready') {
         readyRef.current = true;
         setBoardOpen(false);
+        webRef.current?.injectJavaScript(hudScript);
         syncAll();
         // 로딩 중에 온 알림을 이제 보낸다
         const queued = pendingNoticesRef.current.splice(0);
@@ -401,7 +435,7 @@ export default function TimerAniLab({ navigation }) {
       if (reply) inject(reply);
       // 최신 타이머 상태는 TimerContent가 바뀐 뒤 subscribeStudyCafeSnapshot으로 보낸다
     },
-    [inject, syncAll],
+    [hudScript, inject, syncAll],
   );
 
   /**
@@ -451,7 +485,7 @@ export default function TimerAniLab({ navigation }) {
         <WebView
           ref={webRef}
           source={{ uri: snowmapUrl }}
-          injectedJavaScriptBeforeContentLoaded={authScript || undefined}
+          injectedJavaScriptBeforeContentLoaded={authScript ? authScript + hudScript : undefined}
           style={styles.webview}
           originWhitelist={['https://*', 'http://*']}
           onShouldStartLoadWithRequest={(req) => {
@@ -504,8 +538,8 @@ export default function TimerAniLab({ navigation }) {
           style={[
             styles.backBtn,
             {
-              top: Math.max(10, insets.top || 10),
-              left: Math.max(10, insets.left || 10),
+              top: hudTop,
+              left: hudLeft,
             },
           ]}
           onPress={goBack}
@@ -521,8 +555,8 @@ export default function TimerAniLab({ navigation }) {
           style={[
             styles.backBtn,
             {
-              top: Math.max(10, insets.top || 10),
-              left: Math.max(10, insets.left || 10) + 48,
+              top: hudTop,
+              left: hudLeft + 48,
             },
           ]}
           onPress={toggleBgm}
@@ -532,7 +566,7 @@ export default function TimerAniLab({ navigation }) {
           accessibilityLabel={bgmOn ? '배경음악 끄기' : '배경음악 켜기'}
         >
           <Ionicons
-            name={bgmOn ? 'musical-notes' : 'volume-mute'}
+            name={bgmOn ? 'volume-high' : 'volume-mute'}
             size={20}
             color={bgmOn ? colors.white : 'rgba(255, 255, 255, 0.55)'}
           />
