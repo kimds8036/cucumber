@@ -107,6 +107,21 @@ export function createServerAdapter(requestedRoomId = null) {
     return json?.data ?? {};
   }
 
+  /**
+   * 방명록 API. 소켓이 잠깐 끊겼다 붙는 사이에는 서버가 "방에 없음(NOT_IN_ROOM)"으로 거절한다.
+   * 그때는 방에 다시 들어간 뒤 한 번 더 시도한다.
+   */
+  async function boardApi(method, makePath, body) {
+    try {
+      return await api(method, makePath(), body);
+    } catch (err) {
+      if (/** @type {any} */ (err).code !== "NOT_IN_ROOM" || kicked) throw err;
+      const res = await join();
+      if (!res?.ok) throw err;
+      return api(method, makePath(), body);
+    }
+  }
+
   function boardPath(boardId) {
     if (!room) throw new Error("방에 아직 들어가지 않았어요");
     return `/rooms/${encodeURIComponent(room.id)}/boards/${encodeURIComponent(boardId)}/strokes`;
@@ -233,11 +248,11 @@ export function createServerAdapter(requestedRoomId = null) {
     },
 
     async listStrokes(boardId) {
-      const data = await api("GET", boardPath(boardId));
+      const data = await boardApi("GET", () => boardPath(boardId));
       return Array.isArray(data.strokes) ? data.strokes : [];
     },
     async addStroke(boardId, stroke) {
-      const data = await api("POST", boardPath(boardId), {
+      const data = await boardApi("POST", () => boardPath(boardId), {
         color: stroke.color,
         width: stroke.width,
         points: stroke.points,
@@ -247,12 +262,12 @@ export function createServerAdapter(requestedRoomId = null) {
       return data.stroke;
     },
     async removeStroke(boardId, strokeId) {
-      await api("DELETE", `${boardPath(boardId)}/${encodeURIComponent(strokeId)}`);
+      await boardApi("DELETE", () => `${boardPath(boardId)}/${encodeURIComponent(strokeId)}`);
       events.emit("stroke-remove", boardId, [String(strokeId)]);
       return true;
     },
     async removeMyStrokes(boardId) {
-      const data = await api("DELETE", `${boardPath(boardId)}/mine`);
+      const data = await boardApi("DELETE", () => `${boardPath(boardId)}/mine`);
       const ids = Array.isArray(data.strokeIds) ? data.strokeIds : [];
       if (ids.length) events.emit("stroke-remove", boardId, ids);
       return ids;

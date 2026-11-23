@@ -505,6 +505,14 @@ export default function TimerAniLab({ navigation }) {
           // 아이폰 꾹 누르기 미리보기 메뉴를 막는다 (글자 선택·복사 메뉴는 웹 CSS에서 막음)
           allowsLinkPreview={false}
           onMessage={onWebMessage}
+          // 페이지가 다 뜬 뒤에도 버튼 줄 위치를 한 번 더 넣는다 (안드로이드에서 시작 전 주입이 빠지는 경우 대비)
+          onLoadEnd={() => {
+            try {
+              webRef.current?.injectJavaScript(hudScript);
+            } catch {
+              // noop
+            }
+          }}
           onError={(event) => {
             setLoadError(event?.nativeEvent?.description || '맵을 열 수 없어요');
           }}
