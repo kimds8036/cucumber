@@ -145,9 +145,14 @@ export function createChat(deps) {
   async function loadHistory() {
     try {
       const recent = await net.getRecentChat(CONFIG.CHAT_HISTORY_ON_JOIN);
-      const slice = Array.isArray(recent)
-        ? recent.slice(-CONFIG.CHAT_LOG_KEEP)
-        : [];
+      // 오래된 채팅은 띄우지 않는다. 시각을 모르는 글도 오래된 것으로 본다
+      const maxAgeMs = (CONFIG.CHAT_HISTORY_MAX_AGE_SEC ?? 300) * 1000;
+      const now = Date.now();
+      const fresh = (Array.isArray(recent) ? recent : []).filter((msg) => {
+        const at = Date.parse(msg?.createdAt || "");
+        return Number.isFinite(at) && now - at <= maxAgeMs;
+      });
+      const slice = fresh.slice(-CONFIG.CHAT_LOG_KEEP);
       for (const msg of slice) addMessage(msg);
       if (!slice.length) hideLog();
     } catch (err) {

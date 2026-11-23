@@ -467,6 +467,8 @@ export const CONFIG = {
   CHAT_LOG_KEEP: 4,
   /** 입장 시 불러올 최근 채팅 개수 */
   CHAT_HISTORY_ON_JOIN: 4,
+  /** 입장할 때 이 시간(초) 안에 올라온 채팅만 보여 준다. 오래된 채팅만 있으면 채팅창을 띄우지 않는다 */
+  CHAT_HISTORY_MAX_AGE_SEC: 300,
   /** 이 시간(초) 동안 새 채팅이 없으면 좌측 채팅 로그를 페이드아웃 */
   CHAT_LOG_FADE_SEC: 10,
 

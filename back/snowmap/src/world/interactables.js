@@ -629,7 +629,8 @@ export function createInteractables(mapRoot, ctx) {
     if (!desk) return null;
     return {
       kind: "lamp",
-      label: desk.on ? "램프 끄기" : "램프 켜기",
+      // 둥근 버튼 안에서 "램프 / 끄기" 두 줄로 보이게 (버튼 CSS가 줄바꿈을 살린다)
+      label: desk.on ? "램프\n끄기" : "램프\n켜기",
       run: () => ctx.mapLamps.toggleLamp(desk),
     };
   }
