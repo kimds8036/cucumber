@@ -219,6 +219,7 @@ export default ({ config }) => ({
       './plugins/withAndroidAabLintMemory.cjs',
       './plugins/withAndroidMainActivityLaunchMode.cjs',
       './plugins/withAndroidCameraPreviewCompatible.cjs',
+      './plugins/withAndroidOptionalFeatures.cjs',
       'youth-paper-widget',
     ],
 
