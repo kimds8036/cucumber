@@ -295,16 +295,16 @@ export const CONFIG = {
   HIDE_DUPLICATE_MESHES: true,
 
   // --- 하늘 배경 ---
-  /** 배경 하늘 이미지 (낮) */
-  SKY_URL: "sky/sky.png",
-  /** 시간대별 하늘. 기기 시각으로 고르고 1분마다 다시 확인한다. 주소에 ?sky=morning 처럼 붙이면 고정(확인용) */
+  /** 배경 하늘 이미지 (낮, 시간대 이미지를 못 받을 때 대신 씀) */
+  SKY_URL: "sky/sky-day.jpg",
+  /** 시간대별 하늘. 기기 시각으로 고르고 1분마다 다시 확인한다. 주소에 ?sky=evening 처럼 붙이면 고정(확인용) */
   SKY_URLS: {
-    day: "sky/sky.png",
-    morning: "sky/sky-morning.jpg",
+    day: "sky/sky-day.jpg",
+    evening: "sky/sky-evening.jpg",
     night: "sky/sky-night.jpg",
   },
-  /** 새벽·노을 시간 [시작시, 끝시) — 5시~8시 전, 17시~19시 전 */
-  SKY_MORNING_HOURS: [[5, 8], [17, 19]],
+  /** 노을 하늘 시간 [시작시, 끝시) — 새벽 5시~8시 전, 저녁 17시~19시 전 */
+  SKY_EVENING_HOURS: [[5, 8], [17, 19]],
   /** 낮 시간 [시작시, 끝시). 나머지(19시~5시)는 밤 */
   SKY_DAY_HOURS: [8, 17],
   /**
@@ -318,11 +318,11 @@ export const CONFIG = {
       sunColor: 0xfff4e6, sun: 1.7,
       keyColor: 0xfff1e4, key: 0.9,
     },
-    morning: {
-      hemiSky: 0xffe2cf, hemiGround: 0xc9ab98, hemi: 0.56,
-      ambientColor: 0xfff0e4, ambient: 0.18,
-      sunColor: 0xffc99c, sun: 1.3,
-      keyColor: 0xffe4cf, key: 0.85,
+    evening: {
+      hemiSky: 0xf0c6c0, hemiGround: 0xb89482, hemi: 0.52,
+      ambientColor: 0xffe6d6, ambient: 0.18,
+      sunColor: 0xffb47e, sun: 1.2,
+      keyColor: 0xffdcc4, key: 0.84,
     },
     night: {
       hemiSky: 0xa9bce6, hemiGround: 0x75737f, hemi: 0.44,
@@ -335,10 +335,15 @@ export const CONFIG = {
   SKY_LIGHTING_FADE: 3,
   /** "screen": 화면에 고정된 배경(이미지 왜곡 없음) / "sphere": 카메라 방향 따라 도는 360° 배경 */
   SKY_MODE: "screen",
+  /**
+   * 하늘 사진은 늘리지 않고 화면 비율에 맞춰 잘라 쓴다. 세로 어디를 보여 줄지(0=맨 아래, 1=맨 위).
+   * 해·달이 위쪽에 있어 위쪽을 조금 더 보여 준다.
+   */
+  SKY_ANCHOR_Y: 0.62,
   /** 구름 흐름 속도. 0이면 정지. 올리면 빨라짐 */
   SKY_DRIFT_SPEED: 0.05,
   /** screen 모드에서 좌우로 흐르는 폭(이미지 폭 비율). 올리면 더 멀리 흐르지만 이미지가 더 확대됨 */
-  SKY_DRIFT_RANGE: 0.3,
+  SKY_DRIFT_RANGE: 0.1,
 
   // --- 연못 물 ---
   /** 물 노멀맵 (프로젝트 로컬) */

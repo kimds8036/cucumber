@@ -64,7 +64,7 @@ export function createWorldLights(scene) {
     note: "캐릭터 Point/Spot/Hemisphere fill 없음",
   });
 
-  // ── 시간대별 조명 (새벽·낮·노을·밤). 바뀔 때는 SKY_LIGHTING_FADE 초 동안 천천히 넘어간다 ──
+  // ── 시간대별 조명 (낮·노을·밤). 바뀔 때는 SKY_LIGHTING_FADE 초 동안 천천히 넘어간다 ──
   const targets = [
     [hemi, "color", "hemiSky", "hemi"],
     [ambient, "color", "ambientColor", "ambient"],
@@ -82,7 +82,7 @@ export function createWorldLights(scene) {
   }
 
   /**
-   * @param {"day"|"morning"|"night"} phase
+   * @param {"day"|"evening"|"night"} phase
    * @param {boolean} [instant] 처음 들어올 때는 바로 맞춘다
    */
   function setSkyPhase(phase, instant = false) {
