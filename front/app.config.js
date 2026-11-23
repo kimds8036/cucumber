@@ -20,7 +20,7 @@ export default ({ config }) => ({
     name: 'Youth Paper',
     slug: 'youth-paper',
     scheme: 'youthpaper',
-    version: '2.0.8',
+    version: '2.0.9',
     // 기본은 세로. 스터디 카페(TimerAniLab)만 런타임에 가로 잠금.
     orientation: 'default',
     icon: './assets/icon.png',
@@ -35,7 +35,7 @@ export default ({ config }) => ({
 
     ios: {
       supportsTablet: true,
-      buildNumber: '57',
+      buildNumber: '58',
       usesAppleSignIn: true,
       // iOS 전용 아이콘 (안드로이드·공통 icon.png 와 분리)
       icon: './assets/icon-ios.png',
@@ -63,7 +63,7 @@ export default ({ config }) => ({
     },
 
     android: {
-      versionCode: 46,
+      versionCode: 47,
       usesCleartextTraffic: !isProduction,
       // (선택) 안드로이드도 같은 방식으로 secret 적용 가능
       googleServicesFile:
