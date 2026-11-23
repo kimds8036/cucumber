@@ -67,7 +67,7 @@
         "android.permission.ACCESS_FINE_LOCATION"
       ],
       "package": "com.ucost.YouthPaper",
-      "versionCode": 47,
+      "versionCode": 48,
       "softwareKeyboardLayoutMode": "pan"
     },
     "web": {

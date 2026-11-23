@@ -63,7 +63,7 @@ export default ({ config }) => ({
     },
 
     android: {
-      versionCode: 47,
+      versionCode: 48,
       usesCleartextTraffic: !isProduction,
       // (선택) 안드로이드도 같은 방식으로 secret 적용 가능
       googleServicesFile:
