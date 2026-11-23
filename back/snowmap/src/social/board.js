@@ -495,7 +495,10 @@ export function createBoardUI(net, me, hooks = {}) {
         invalidateGroups();
       }
     } catch (err) {
-      setError("방명록을 불러오지 못했어요");
+      // 원인을 알 수 있게 서버가 준 이유(방에 없음 등)나 상태 코드를 붙인다
+      const status = /** @type {any} */ (err)?.status;
+      const reason = status && status < 500 ? err?.message : null;
+      setError(reason || `방명록을 불러오지 못했어요${status ? ` (${status})` : ""}`);
       console.error("[board] list", err);
     }
     if (boardId === id) redraw();
