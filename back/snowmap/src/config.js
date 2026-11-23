@@ -295,8 +295,18 @@ export const CONFIG = {
   HIDE_DUPLICATE_MESHES: true,
 
   // --- 하늘 배경 ---
-  /** 배경 하늘 이미지 */
+  /** 배경 하늘 이미지 (낮) */
   SKY_URL: "sky/sky.png",
+  /** 시간대별 하늘. 기기 시각으로 고르고 1분마다 다시 확인한다. 주소에 ?sky=morning 처럼 붙이면 고정(확인용) */
+  SKY_URLS: {
+    day: "sky/sky.png",
+    morning: "sky/sky-morning.jpg",
+    night: "sky/sky-night.jpg",
+  },
+  /** 새벽·노을 시간 [시작시, 끝시) — 5시~8시 전, 17시~19시 전 */
+  SKY_MORNING_HOURS: [[5, 8], [17, 19]],
+  /** 낮 시간 [시작시, 끝시). 나머지(19시~5시)는 밤 */
+  SKY_DAY_HOURS: [8, 17],
   /** "screen": 화면에 고정된 배경(이미지 왜곡 없음) / "sphere": 카메라 방향 따라 도는 360° 배경 */
   SKY_MODE: "screen",
   /** 구름 흐름 속도. 0이면 정지. 올리면 빨라짐 */
