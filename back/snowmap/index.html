@@ -153,11 +153,25 @@
     }
     #perf-hud[hidden] { display: none !important; }
 
-    /* 채팅 로그: 좌측 상단. 최근 4줄, 10초 뒤 페이드아웃 */
+    /*
+      왼쪽 위 버튼 줄: [앱 뒤로가기][앱 음악] [방 버튼]. 채팅 로그는 그 아래.
+      앱이 자기 버튼 위치(--hud-top/--hud-left)와 차지하는 폭(--app-btn-space)을 넣어 준다.
+      앱 버튼이 없는 브라우저에서는 방 버튼이 맨 왼쪽.
+    */
+    :root {
+      --hud-top: max(10px, env(safe-area-inset-top, 0px));
+      --hud-left: max(10px, env(safe-area-inset-left, 0px));
+      --hud-btn: 40px;
+      --app-btn-space: 0px;
+    }
+    /* 앱 안인데 앱이 폭을 안 알려 주면(예전 앱) 뒤로가기 버튼 하나만큼 비운다 */
+    .in-app-loader { --app-btn-space: 48px; }
+
+    /* 채팅 로그: 왼쪽 위 버튼 줄 아래. 최근 4줄, 10초 뒤 페이드아웃 */
     #chat-log {
       position: fixed;
-      left: max(10px, env(safe-area-inset-left, 0px));
-      top: max(10px, env(safe-area-inset-top, 0px));
+      left: var(--hud-left);
+      top: calc(var(--hud-top) + var(--hud-btn) + 8px);
       z-index: 7;
       width: min(260px, calc(42vw - 24px), calc(100vw - 160px));
       max-height: min(28dvh, 160px);
@@ -452,23 +466,25 @@
     }
 
     /* 방 표시 · 이동 (좌측 조이스틱 위, 패널은 위로 펼침) */
+    /* 방 버튼: 왼쪽 위 앱 버튼(뒤로가기·음악) 옆. 패널은 아래로 펼침 */
     #room-switch {
       position: fixed;
-      left: max(14px, env(safe-area-inset-left, 0px));
-      bottom: max(148px, calc(env(safe-area-inset-bottom, 0px) + 140px));
+      left: calc(var(--hud-left) + var(--app-btn-space));
+      top: var(--hud-top);
       z-index: 8;
       display: flex;
-      flex-direction: column-reverse;
+      flex-direction: column;
       align-items: flex-start;
       gap: 8px;
-      max-height: calc(100dvh - 24px - max(148px, calc(env(safe-area-inset-bottom, 0px) + 140px)));
-      max-width: calc(100vw - 28px);
+      max-height: calc(100dvh - var(--hud-top) - 12px);
+      max-width: calc(100vw - var(--hud-left) - var(--app-btn-space) - 14px);
     }
     #room-switch-tab {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      padding: 8px 12px;
+      height: var(--hud-btn);
+      padding: 0 14px;
       border-radius: 999px;
       border: 1px solid rgba(255, 255, 255, 0.18);
       background: rgba(12, 18, 28, 0.78);
@@ -489,12 +505,17 @@
       padding: 12px;
       border-radius: 14px;
       border: 1px solid rgba(255, 255, 255, 0.14);
-      background: rgba(12, 18, 28, 0.92);
+      /* 열면 뒤가 비치지 않게 불투명 */
+      background: #0c121c;
       box-shadow: 0 14px 32px rgba(0, 0, 0, 0.36);
       display: flex;
       flex-direction: column;
       min-height: 0;
       overflow: hidden;
+    }
+    #room-switch.open #room-switch-tab {
+      background: #0c121c;
+      backdrop-filter: none;
     }
     #room-switch-panel[hidden] { display: none !important; }
     .room-switch-head {
