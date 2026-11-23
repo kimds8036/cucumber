@@ -7,6 +7,8 @@
  * - 연결 O, 받음 N초 전이 계속 커짐 → 연결은 살아 있다고 나오는데 아무것도 안 옴 (멎은 연결 / 서버가 안 보냄)
  * - 특정 사람만 N초 전이 커짐 → 그 사람 폰이 안 보내고 있음 (그 사람 쪽 문제)
  * - 끊김·재연결 횟수가 자꾸 오름 → 망이 불안정
+ * - 강제재연결이 오름 → 안전장치가 멎은 연결을 찾아 다시 붙였음 (원인 1: 조용히 죽은 연결)
+ * - 재입장이 오름 → 서버에서 방에서 빠져 있었음 (원인: 서버 쪽 입장 정보 유실)
  */
 export function createNetHud() {
   const el = document.createElement("div");
@@ -76,6 +78,9 @@ export function createNetHud() {
       );
       lines.push(
         `보냄 ${s.sent}  못보냄 ${s.skippedSend}  받음 ${s.received}  마지막받음 ${sec(s.lastReceivedAt)}초 전`,
+      );
+      lines.push(
+        `점검 ${s.lastPingMs ?? "-"}ms  점검실패 ${s.pingFails}  강제재연결 ${s.forcedReconnects}  재입장 ${s.rejoins}`,
       );
     }
     const list = deps.remotes?.debugList?.() || [];

@@ -1,5 +1,6 @@
 import { createEmitter } from "./emitter.js";
 import { getAuthToken, refreshAuthToken } from "./auth.js";
+import { CONFIG } from "../config.js";
 
 /**
  * 실제 서버(Railway, back/src) 연결.
@@ -37,7 +38,72 @@ export function createServerAdapter(requestedRoomId = null) {
     skippedSend: 0,
     received: 0,
     lastReceivedAt: 0,
+    pingFails: 0,
+    forcedReconnects: 0,
+    rejoins: 0,
+    lastPingMs: null,
   };
+
+  // ── 안전장치: 멎은 연결 찾기 ──
+  // 폰이 "연결됨"이라고 믿는데 실제로는 아무것도 안 오는 경우가 있다(망 전환·앱 복귀 등).
+  // socket.io가 스스로 알아채기까지 최대 수십 초가 걸려 그동안 다른 사람이 멈춰 보인다.
+  // 몇 초마다 서버에 점검을 보내 답이 연달아 없으면 직접 끊고 다시 붙는다.
+  let watchdogTimer = 0;
+  let pingInFlight = false;
+  let missedPings = 0;
+  let rejoining = false;
+
+  async function rejoin(reason) {
+    if (rejoining || kicked || !socket?.connected) return;
+    rejoining = true;
+    stats.rejoins += 1;
+    console.warn("[net:server] 다시 입장", reason);
+    try {
+      await join();
+    } finally {
+      rejoining = false;
+    }
+  }
+
+  function forceReconnect(reason) {
+    if (!socket || kicked) return;
+    stats.forcedReconnects += 1;
+    missedPings = 0;
+    console.warn("[net:server] 연결이 멎어 다시 연결", reason);
+    socket.disconnect();
+    socket.connect();
+  }
+
+  async function checkConnection() {
+    if (!socket || kicked || pingInFlight || !socket.connected) return;
+    pingInFlight = true;
+    const t0 = performance.now();
+    try {
+      const res = await emitAck("cafe:ping", {}, CONFIG.NET_PING_TIMEOUT_MS);
+      if (res?.ok) {
+        missedPings = 0;
+        stats.lastPingMs = Math.round(performance.now() - t0);
+        // 연결은 살아 있는데 서버에서 방에서 빠져 있으면 다시 들어간다
+        if (res.inRoom === false) await rejoin("not_in_room");
+        return;
+      }
+      if (!socket?.connected) return;
+      missedPings += 1;
+      stats.pingFails += 1;
+      if (missedPings >= CONFIG.NET_PING_MAX_MISSES) forceReconnect(res?.error || "ping");
+    } finally {
+      pingInFlight = false;
+    }
+  }
+
+  function startWatchdog() {
+    window.clearInterval(watchdogTimer);
+    watchdogTimer = window.setInterval(checkConnection, CONFIG.NET_PING_INTERVAL_MS);
+    // 앱이 뒤에 갔다 돌아오면 바로 한 번 점검한다
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) checkConnection();
+    });
+  }
 
   function emitPlayer(state) {
     if (!state?.userId) return;
@@ -242,6 +308,7 @@ export function createServerAdapter(requestedRoomId = null) {
         if (boardId) events.emit("stroke-remove", boardId, strokeIds || []);
       });
       socket.on("cafe:seat:denied", (payload) => events.emit("seat-denied", payload || {}));
+      socket.on("cafe:rejoin", () => rejoin("server_hint"));
       socket.on("cafe:kicked", (payload) => {
         kicked = true;
         socket.disconnect();
@@ -252,10 +319,12 @@ export function createServerAdapter(requestedRoomId = null) {
         window.setTimeout(() => reject(new Error("서버 연결이 너무 오래 걸려요")), 15000);
       });
       await Promise.race([firstJoinDone, timeout]);
+      startWatchdog();
       console.info("[net:server] connected", { room: room?.id, me: meInfo?.userId });
     },
 
     disconnect() {
+      window.clearInterval(watchdogTimer);
       socket?.emit("cafe:leave");
       socket?.disconnect();
       socket = null;

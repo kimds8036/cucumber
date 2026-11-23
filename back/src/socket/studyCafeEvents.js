@@ -9,6 +9,7 @@
  *   cafe:rooms                                (ack) 방 목록·인원
  *   cafe:block  { userId }                   (ack) 차단 (user_blocks, 친구 관계 해제)
  *   cafe:report { userId, reason }           (ack) 사용자 신고 (최근 채팅을 근거로 붙임)
+ *   cafe:ping   {}                           (ack) 연결 점검 { ok, inRoom } — 멎은 연결·빠진 입장을 찾는다
  *
  * 서버 → 클라이언트
  *   cafe:player:state  PlayerState   (처음 받으면 입장으로 처리)
@@ -18,6 +19,7 @@
  *   cafe:stroke        { boardId, stroke }      방명록 획 추가 (REST로 저장된 뒤)
  *   cafe:stroke:remove { boardId, strokeIds }
  *   cafe:kicked        { reason }               같은 계정이 다른 곳에서 입장
+ *   cafe:rejoin        {}                       방에 없는데 위치를 보냄 → 다시 입장하라는 신호
  */
 
 import pool from '../config/database.js';
@@ -210,9 +212,32 @@ export function registerStudyCafeEvents(socket, io) {
     leaveCafe();
   });
 
+  /** 지금 이 소켓이 방의 주인 소켓으로 들어가 있는지 */
+  function isSeatedInCafe() {
+    const data = socket.data.cafe;
+    if (!data) return false;
+    const player = getCafeRoomPlayer(data.roomId, userId);
+    return Boolean(player && player.socketId === socket.id);
+  }
+
+  let lastRejoinHintAt = 0;
+
+  // 안전장치: 클라이언트가 몇 초마다 확인한다. 답이 안 오면 클라이언트가 다시 연결한다.
+  socket.on('cafe:ping', (_payload, ack) => {
+    ackOf(ack)({ ok: true, inRoom: isSeatedInCafe() });
+  });
+
   socket.on('cafe:state', (raw) => {
     const data = socket.data.cafe;
-    if (!data) return;
+    if (!data || !isSeatedInCafe()) {
+      // 방에서 빠졌는데 위치를 보내고 있다 → 다른 사람에게 안 보이므로 다시 들어오라고 알린다
+      const now = Date.now();
+      if (now - lastRejoinHintAt > 5000) {
+        lastRejoinHintAt = now;
+        socket.emit('cafe:rejoin', {});
+      }
+      return;
+    }
     const now = Date.now();
     if (now - data.lastStateAt < STATE_MIN_INTERVAL_MS) return;
     data.lastStateAt = now;
