@@ -24,6 +24,8 @@ import {
   adminHardDeleteUser,
   adminSoftWithdrawUser,
 } from '../services/adminUserLifecycle.service.js';
+import { getCafeStrokeMeta, setCafeStrokeHidden } from '../services/studyCafe.service.js';
+import { emitCafeStrokesRemoved } from '../socket/studyCafeEvents.js';
 
 const router = express.Router();
 
@@ -38,6 +40,18 @@ async function applyReportTargetModeration(connection, report, actionRaw) {
        WHERE id = ?`,
       [report.target_id]
     );
+    return;
+  }
+
+  if (report.target_type === 'cafe_stroke') {
+    // 확정: 숨김 유지/적용, 기각: 다시 보이게
+    if (actionRaw === 'CONFIRM' || actionRaw === 'REJECT') {
+      await setCafeStrokeHidden(report.target_id, actionRaw === 'CONFIRM', connection);
+      if (actionRaw === 'CONFIRM') {
+        const meta = await getCafeStrokeMeta(report.target_id, connection);
+        if (meta) emitCafeStrokesRemoved(meta.room_id, meta.board_id, [report.target_id]);
+      }
+    }
     return;
   }
 
@@ -70,6 +84,10 @@ async function getTargetOwnerId(connection, targetType, targetId) {
   }
   if (targetType === 'user') {
     return Number(targetId) || null;
+  }
+  if (targetType === 'cafe_stroke') {
+    const [rows] = await connection.execute('SELECT user_id FROM study_cafe_strokes WHERE id = ?', [targetId]);
+    return rows[0]?.user_id ?? null;
   }
   return null;
 }
@@ -551,6 +569,10 @@ router.get('/reports', requireAdminApi, async (req, res) => {
            WHEN r.target_type = 'comment' THEN (SELECT c.content FROM comments c WHERE c.id = r.target_id)
            WHEN r.target_type = 'school_mail' THEN (SELECT sm.content FROM school_mails sm WHERE sm.id = r.target_id)
            WHEN r.target_type = 'school_mail_comment' THEN (SELECT smc.content FROM school_mail_comments smc WHERE smc.id = r.target_id)
+           WHEN r.target_type = 'cafe_stroke' THEN (
+             SELECT CONCAT('[스터디 카페 방명록 그림] ', s.room_id, ' / ', s.board_id, ' · 점 ', JSON_LENGTH(s.points) DIV 2, '개')
+             FROM study_cafe_strokes s WHERE s.id = r.target_id
+           )
            ELSE NULL
          END AS target_content
        FROM reports r

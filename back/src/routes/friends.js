@@ -8,6 +8,10 @@ import { checkNotificationAllowed } from '../utils/notificationUtils.js';
 import { getStudyingFriends } from '../socket/socketService.js';
 import { submitContentReport } from '../services/reportSubmission.service.js';
 import { listTimerFriendSuggestions } from '../services/timerFriendSuggest.service.js';
+import {
+  friendSchoolLineForBot,
+  listTimerBarBots,
+} from '../services/timerBots.service.js';
 import { evaluateAndUnlockBadges } from '../services/badge.service.js';
 
 const router = express.Router();
@@ -48,6 +52,7 @@ router.get('/list', authenticate, async (req, res) => {
          s.name AS school_name,
          u.grade,
          u.class_number,
+         u.is_bot,
          c.color_number AS profile_color_number,
          uf.created_at
        FROM user_friendships uf
@@ -65,7 +70,10 @@ router.get('/list', authenticate, async (req, res) => {
 
     res.json({
       success: true,
-      data: rows.map((r) => ({
+      data: rows.map((r) => {
+        const botLine =
+          Number(r.is_bot) === 1 ? friendSchoolLineForBot(r.username) : null;
+        return {
         friendshipId: r.id,
         userId: r.friend_user_id,
         name: r.name,
@@ -76,18 +84,20 @@ router.get('/list', authenticate, async (req, res) => {
           id: r.color_id,
           hexCode: r.profile_color_hex,
         },
-        school: r.school_name || '',
+        school: botLine?.school || r.school_name || '',
         grade:
-          r.grade != null && r.class_number != null
+          botLine?.grade ||
+          (r.grade != null && r.class_number != null
             ? `${r.grade}학년 ${r.class_number}반`
-            : '',
+            : ''),
         profileColor: {
           id: r.color_id,
           hexCode: r.profile_color_hex,
           colorNumber: r.profile_color_number,
         },
         createdAt: r.created_at,
-      })),
+        };
+      }),
     });
   } catch (error) {
     console.error('친구 목록 조회 오류:', error);
@@ -128,6 +138,19 @@ router.get('/timer-suggestions', authenticate, async (req, res) => {
     res.status(500).json({
       success: false,
       message: '친구 추천을 불러오지 못했습니다.',
+    });
+  }
+});
+
+router.get('/timer-bots', authenticate, async (req, res) => {
+  try {
+    const data = await listTimerBarBots(req.user.userId);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('타이머 봇 조회 오류:', error);
+    res.status(500).json({
+      success: false,
+      message: '공부 중인 사용자를 불러오지 못했습니다.',
     });
   }
 });

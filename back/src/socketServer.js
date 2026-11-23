@@ -23,8 +23,8 @@ import { Server } from 'socket.io';
 import pool from './config/database.js';
 import { verifyToken } from './utils/auth.js';
 import { registerFriendEvents } from './socket/friendEvents.js';
-import { registerStudyRoomEvents } from './socket/studyRoomEvents.js';
 import { registerHunminGameEvents } from './socket/hunminGameRooms.js';
+import { registerStudyCafeEvents } from './socket/studyCafeEvents.js';
 import { getReverificationBlockCode } from './services/reverification.service.js';
 
 /** @type {import('socket.io').Server | null} */
@@ -144,10 +144,12 @@ export function initSocketServer(httpServer) {
 
     // ── 친구/타이머 관련 실시간 이벤트 등록 ──
     registerFriendEvents(socket);
-    registerStudyRoomEvents(socket);
 
     // ── 등교 미니게임: 훈민정음 멀티 ──
     registerHunminGameEvents(socket, io);
+
+    // ── 스터디 카페(snowmap 3D): 방·위치·자리·채팅 ──
+    registerStudyCafeEvents(socket, io);
 
     // ── 채팅방 입장 ─────────────────────────────
     socket.on('join_room', async ({ roomId }) => {

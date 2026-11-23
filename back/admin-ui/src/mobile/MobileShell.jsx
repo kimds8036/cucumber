@@ -35,6 +35,7 @@ const PC_ONLY = new Set([
   'legalDocuments',
   'adminAccounts',
   'featureTests',
+  'timerBots',
 ]);
 
 const IN_TABS = new Set([

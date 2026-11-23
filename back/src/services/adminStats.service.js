@@ -59,11 +59,11 @@ export async function reconcileAdminStats() {
     pending_inquiries: `SELECT COUNT(*) AS c FROM inquiries WHERE status = 'pending' AND is_deleted = FALSE`,
     today_answered_inquiries: `SELECT COUNT(*) AS c FROM inquiries WHERE answered_at IS NOT NULL AND DATE(CONVERT_TZ(answered_at, '+00:00', '+09:00')) = ?`,
     delayed_reports_3d: `SELECT COUNT(*) AS c FROM reports WHERE status = 'pending' AND created_at < DATE_SUB(NOW(), INTERVAL 3 DAY)`,
-    today_new_signups: `SELECT COUNT(*) AS c FROM users WHERE is_deleted = FALSE AND DATE(CONVERT_TZ(created_at, '+00:00', '+09:00')) = ?`,
-    unverified_users: `SELECT COUNT(*) AS c FROM users WHERE is_deleted = FALSE AND student_verified = FALSE`,
+    today_new_signups: `SELECT COUNT(*) AS c FROM users WHERE is_deleted = FALSE AND is_bot = 0 AND DATE(CONVERT_TZ(created_at, '+00:00', '+09:00')) = ?`,
+    unverified_users: `SELECT COUNT(*) AS c FROM users WHERE is_deleted = FALSE AND is_bot = 0 AND student_verified = FALSE`,
     pending_student_id_reviews: `SELECT COUNT(*) AS c
       FROM signup_student_id_submissions s
-      JOIN users u ON u.id = s.user_id AND u.is_deleted = FALSE
+      JOIN users u ON u.id = s.user_id AND u.is_deleted = FALSE AND u.is_bot = 0
       WHERE s.status = 'pending' AND s.submission_purpose IN ('signup', 'resubmit')`,
   };
 

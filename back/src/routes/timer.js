@@ -4,7 +4,6 @@ import pool from '../config/database.js';
 import { authenticate } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { closeIncompleteStudySessions } from '../socket/socketService.js';
-import { getStudyRoomSnapshotForUser } from '../services/studyRoom.service.js';
 import {
   KST_NOW_SQL,
   touchStudyPresence,
@@ -1123,18 +1122,12 @@ router.post('/heartbeat', authenticate, async (req, res) => {
   }
 });
 
-/** 스터디룸: 내 방 멤버만 (서버 배정, 최대 16) */
-router.get('/study-room/studying', authenticate, async (req, res) => {
-  try {
-    const data = await getStudyRoomSnapshotForUser(req.user.userId);
-    return res.json({ success: true, data });
-  } catch (error) {
-    console.error('스터디룸 공부 중 목록 조회 오류:', error);
-    return res.status(500).json({
-      success: false,
-      message: '스터디룸 공부 중 목록 조회 중 오류가 발생했습니다.',
-    });
-  }
+/** 구 교실 스터디룸 API — snowmap 전환으로 비움 */
+router.get('/study-room/studying', authenticate, async (_req, res) => {
+  return res.json({
+    success: true,
+    data: { roomId: null, members: [], capacity: 0, relocated: false },
+  });
 });
 
 export default router;

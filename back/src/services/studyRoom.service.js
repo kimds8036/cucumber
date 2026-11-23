@@ -86,6 +86,13 @@ async function backend() {
  * @returns {Promise<{ roomId: string, placement: 'existing'|'open'|'new', relocated: boolean }>}
  */
 export async function assignUserToStudyRoom(userId) {
+  const [botRows] = await pool.execute(
+    `SELECT is_bot FROM users WHERE id = ? LIMIT 1`,
+    [userId],
+  );
+  if (Number(botRows[0]?.is_bot) === 1) {
+    return { roomId: null, placement: 'skipped', relocated: false };
+  }
   const uid = uidKey(userId);
   if ((await backend()) === 'redis') {
     try {

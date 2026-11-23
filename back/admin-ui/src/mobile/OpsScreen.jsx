@@ -89,15 +89,21 @@ function present(view, data) {
   if (view === 'study-rooms') {
     return {
       summaries: [
-        { label: '열린 방', value: n(data?.openRoomCount) },
-        { label: '방', value: n(data?.roomCount) },
-        { label: '참여자', value: n(data?.memberCount) },
-        { label: '정원', value: n(data?.capacity) },
+        { label: '사람 있는 방', value: `${n(data?.activeRoomCount)} / ${n(data?.roomCount)}` },
+        { label: '카페 인원', value: n(data?.memberCount) },
+        { label: '공부 중', value: n(data?.studyingCount) },
+        { label: '방명록 획', value: n(data?.strokeCount) },
       ],
-      items: (data?.rooms || []).map((room) => ({
-        title: room.name || `방 ${room.id || ''}`,
-        meta: `참여 ${n(room.memberCount)}`,
-      })),
+      items: (data?.rooms || []).map((room) => {
+        const people = (room.players || [])
+          .map((p) => `${p.gender === 'girl' ? '♀' : '♂'} ${p.displayName || p.userId}${p.studying ? ' ⏱' : ''}`)
+          .join(' · ');
+        return {
+          title: `${room.name || room.id} · ${n(room.count)}/${n(room.capacity)}명`,
+          meta: `${people || '지금 아무도 없어요'} — 방명록 ${n(room.strokeCount)}획 (${(room.boards || []).length}개)`,
+        };
+      }),
+      note: '방명록 그림 보기·비우기는 PC 관리자에서 할 수 있어요. 방명록은 매주 월요일 05:00에 자동으로 비워져요.',
     };
   }
   if (view === 'activity') {

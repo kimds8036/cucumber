@@ -65,7 +65,7 @@ export async function listOpsUsersPreview({ page = 1, limit = 20, q = '', filter
 
   const trimmedQ = String(q || '').trim();
   const filterKey = String(filter || 'all');
-  let whereSql = 'u.is_deleted = FALSE';
+  let whereSql = 'u.is_deleted = FALSE AND u.is_bot = 0';
   const params = [];
 
   if (trimmedQ) {

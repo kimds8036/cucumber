@@ -2865,37 +2865,6 @@
       .panel { min-width: 0; }
     }
 
-    .daily-push-status {
-      display: inline-block;
-      margin: 0 0 10px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 13px;
-      background: #eef2f6;
-    }
-    .daily-push-status.is-sent { background: #e5f6e8; }
-    .daily-push-status.is-due { background: #fff3d6; }
-    .daily-push-status.is-missed { background: #fde8e8; }
-    .daily-badge {
-      display: inline-block;
-      margin-right: 6px;
-      padding: 1px 7px;
-      border-radius: 999px;
-      font-style: normal;
-      font-size: 11px;
-    }
-    .daily-badge.is-national { background: #e7f0ff; color: #1d4f91; }
-    .daily-badge.is-school { background: #fff3d6; color: #8a5a00; }
-    .daily-push-lock {
-      max-width: 360px;
-      padding: 12px 14px;
-      border-radius: 16px;
-      background: #1c2430;
-      color: #f2f5f8;
-    }
-    .daily-push-lock strong { display: block; margin-bottom: 4px; }
-    .daily-push-lock p { margin: 0; color: #c5d0dc; }
-    .daily-push-history { margin: 0; padding-left: 18px; }
     body.admin-is-mobile .layout { display: none !important; }
     .admin-mobile-root {
       display: none;
@@ -3242,3 +3211,26 @@
       background: #0b0f14;
       padding: 12px 12px calc(16px + env(safe-area-inset-bottom));
     }
+
+    /* ── 스터디 카페 (모니터링) ── */
+    .study-cafe-rooms { display: grid; gap: 10px; margin-top: 12px; }
+    .study-cafe-room { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px 14px; background: var(--bg); }
+    .study-cafe-room.is-active { border-color: var(--green-border); }
+    .study-cafe-room-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .study-cafe-people { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; font-size: 13px; }
+    .cafe-person { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 999px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); }
+    .cafe-gender { font-weight: 700; }
+    .cafe-gender-girl { color: #f0657a; }
+    .cafe-gender-boy { color: #4a8fe7; }
+    .cafe-tag { font-size: 12px; padding: 1px 6px; border-radius: 999px; background: rgba(255,255,255,0.08); color: var(--text-secondary); }
+    .cafe-tag-study { background: var(--green-bg); color: var(--green); }
+    .study-cafe-preview { position: fixed; inset: 0; z-index: 2000; background: rgba(0,0,0,0.6); display: grid; place-items: center; padding: 16px; }
+    .study-cafe-preview[hidden] { display: none; }
+    .study-cafe-preview-card { width: min(1000px, 100%); background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+    .study-cafe-preview-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+    #study-cafe-preview-canvas { width: 100%; height: auto; aspect-ratio: 2 / 1; border-radius: 8px; display: block; cursor: crosshair; }
+    .study-cafe-board { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 10px; padding: 8px 10px; border-radius: var(--radius-md); background: rgba(255,255,255,0.03); border: 1px solid var(--border); font-size: 13px; }
+    .study-cafe-authors { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+    .cafe-author { font: inherit; font-size: 12px; color: var(--text-primary); background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 999px; padding: 3px 9px; cursor: pointer; }
+    .cafe-author.is-picked { border-color: #4c8dff; background: var(--blue-bg); }
+    .study-cafe-pick { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; min-height: 32px; font-size: 13px; }

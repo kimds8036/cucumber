@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import {
   createRedisRateLimitStore,
   logRateLimitStoreMode,
@@ -19,6 +21,7 @@ import friendRoutes from './routes/friends.js';
 import notificationRoutes from './routes/notifications.js';
 import settingsRoutes from './routes/settings.js';
 import timerRoutes from './routes/timer.js';
+import studyCafeRoutes from './routes/studyCafe.js';
 import timetableRoutes from './routes/timetable.js';
 import schoolsRoutes from './routes/schools.js';
 import usersRoutes from './routes/users.js';
@@ -39,6 +42,8 @@ import legalRoutes from './routes/legal.js';
 import announcementsRoutes from './routes/announcements.js';
 import adminAnnouncementsRoutes from './routes/adminAnnouncements.js';
 import adminDailyPushRoutes from './routes/adminDailyPush.js';
+import adminTimerBotsRoutes from './routes/adminTimerBots.js';
+import adminStudyCafeRoutes from './routes/adminStudyCafe.js';
 import tipsRoutes from './routes/tips.js';
 import adminTipsRoutes from './routes/adminTips.js';
 import adminRecommendedHashtagsRoutes from './routes/adminRecommendedHashtags.js';
@@ -136,15 +141,27 @@ const allowedOrigins = isProductionEnv()
     ]
   : ['http://localhost:3000', 'http://localhost:8081', ...defaultAdminOrigins];
 
-const corsMiddleware = cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    return callback(new Error('CORS 정책에 의해 차단되었습니다.'));
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+/** 같은 서버가 내려준 페이지(/snowmap 스터디 카페 등)가 자기 서버로 보내는 요청 */
+function isSameHostOrigin(req, origin) {
+  try {
+    return new URL(origin).host === req.get('host');
+  } catch {
+    return false;
+  }
+}
+
+const corsMiddleware = cors((req, callback) => {
+  const origin = req.header('Origin');
+  const options = {
+    origin: true,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  };
+  // 같은 출처 요청은 CORS 대상이 아니다. 도메인이 목록에 없어도(커스텀 도메인·로컬) 막지 않는다.
+  if (!origin || isSameHostOrigin(req, origin) || allowedOrigins.includes(origin)) {
+    return callback(null, options);
+  }
+  return callback(new Error('CORS 정책에 의해 차단되었습니다.'));
 });
 
 // 이니시스 인증 완료 후 successUrl/failUrl로 form POST — Origin이 inicis.com 등 허용 목록 밖.
@@ -249,6 +266,31 @@ if (isProductionEnv()) {
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 }
 
+// 3D 스터디룸 맵 (WebView). 인증 없이 GET만.
+const snowmapDir = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '../snowmap',
+);
+app.use(
+  '/snowmap',
+  express.static(snowmapDir, {
+    index: 'index.html',
+    redirect: true,
+    // 큰 파일(캐릭터 FBX·맵 GLB·이미지)은 1시간 캐시
+    maxAge: '1h',
+    setHeaders(res, filePath) {
+      if (filePath.endsWith('.js')) {
+        res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+      }
+      // 화면 코드(HTML·JS·CSS·JSON)는 매번 서버에 바뀌었는지 묻는다 (안 바뀌면 304라 가볍다).
+      // 1시간 캐시면 배포해도 폰 WebView가 예전 화면을 계속 쓰고, 앱을 다시 빌드해도 지워지지 않는다.
+      if (/\.(html|js|css|json)$/i.test(filePath)) {
+        res.setHeader('Cache-Control', 'no-cache');
+      }
+    },
+  }),
+);
+
 // Health check
 app.get('/health', async (req, res) => {
   const payload = {
@@ -314,6 +356,7 @@ app.use('/api/friends', friendRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/timer', timerRoutes);
+app.use('/api/study-cafe', studyCafeRoutes);
 app.use('/api/timetable', timetableRoutes);
 app.use('/api/schools', schoolsRoutes);
 app.use('/api/users', usersRoutes);
@@ -329,6 +372,8 @@ app.use('/api/tips', tipsRoutes);
 app.use('/api/admin', adminReportsRoutes);
 app.use('/api/admin/announcements', adminAnnouncementsRoutes);
 app.use('/api/admin/daily-push', adminDailyPushRoutes);
+app.use('/api/admin/timer-bots', adminTimerBotsRoutes);
+app.use('/api/admin/study-cafe', adminStudyCafeRoutes);
 app.use('/api/admin/tips', adminTipsRoutes);
 app.use('/api/admin/recommended-hashtags', adminRecommendedHashtagsRoutes);
 app.use('/api/admin/inquiries', adminInquiriesRoutes);
